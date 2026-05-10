@@ -127,6 +127,54 @@ let intern_action_plan = fun t build ->
     ~key:(action_plan_key build)
     ~make:(fun () -> Work_node.ActionPlan build)
 
+let module_dependencies_key = fun source -> Work_node.ModuleDependenciesKey source
+
+let intern_module_dependencies = fun t source ->
+  intern
+    t
+    ~key:(module_dependencies_key source)
+    ~make:(fun () -> Work_node.ModuleDependencies source)
+
+let ocaml_interface_key = fun source -> Work_node.OCamlInterfaceKey source
+
+let intern_ocaml_interface = fun t source ->
+  intern
+    t
+    ~key:(ocaml_interface_key source)
+    ~make:(fun () -> Work_node.OCamlInterface source)
+
+let ocaml_implementation_key = fun source -> Work_node.OCamlImplementationKey source
+
+let intern_ocaml_implementation = fun t source ->
+  intern
+    t
+    ~key:(ocaml_implementation_key source)
+    ~make:(fun () -> Work_node.OCamlImplementation source)
+
+let ocaml_generated_key = fun source -> Work_node.OCamlGeneratedKey source
+
+let intern_ocaml_generated = fun t source ->
+  intern
+    t
+    ~key:(ocaml_generated_key source)
+    ~make:(fun () -> Work_node.OCamlGenerated source)
+
+let c_object_key = fun c_object -> Work_node.CObjectKey c_object
+
+let intern_c_object = fun t c_object ->
+  intern
+    t
+    ~key:(c_object_key c_object)
+    ~make:(fun () -> Work_node.CObject c_object)
+
+let ocaml_archive_key = fun build -> Work_node.OCamlArchiveKey build
+
+let intern_ocaml_archive = fun t build ->
+  intern
+    t
+    ~key:(ocaml_archive_key build)
+    ~make:(fun () -> Work_node.OCamlArchive build)
+
 let action_execution_key = fun (action: Action_execution.t) ->
   Work_node.ActionExecutionKey action.ref_
 
@@ -137,14 +185,6 @@ let intern_ocaml_library = fun t (action: Action_execution.t) ->
     t
     ~key:(ocaml_library_key action)
     ~make:(fun () -> Work_node.OCamlLibrary action)
-
-let ocaml_archive_key = fun (action: Action_execution.t) -> Work_node.OCamlArchiveKey action.ref_
-
-let intern_ocaml_archive = fun t (action: Action_execution.t) ->
-  intern
-    t
-    ~key:(ocaml_archive_key action)
-    ~make:(fun () -> Work_node.OCamlArchive action)
 
 let intern_action_execution = fun t (action: Action_execution.t) ->
   intern

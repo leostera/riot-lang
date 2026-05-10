@@ -809,12 +809,47 @@ let test_execution_time_dependency_requeue_waits_for_dependencies = fun _ctx ->
           | _ -> false)
     ) then
     Error "expected execution-time dependency requeue event"
-  else if
-    Int.equal summary.Executor.Summary.completed_count 2 && Int.equal summary.failed_count 0
-  then
-    Ok ()
   else
-    Error "expected execution-time dependency requeue to complete parent and dependency"
+    match find_goal_node summary dependency_action with
+    | None -> Error "expected execution-time dependency node to be interned"
+    | Some dependency ->
+        let dependency_registered =
+          Work_node.dependencies seed
+          |> List.any ~fn:(fun id -> Work_node.Node_id.equal id (Work_node.id dependency))
+        in
+        if not dependency_registered then
+          Error "expected execution-time dependency requeue to register a graph edge"
+        else if
+          Int.equal summary.Executor.Summary.completed_count 2 && Int.equal summary.failed_count 0
+        then
+          Ok ()
+        else
+          Error "expected execution-time dependency requeue to complete parent and dependency"
+
+let test_execution_time_dependency_failure_fails_requeued_node = fun _ctx ->
+  let dependency_action = sample_goal "execution-time-failing-dependency" in
+  let seed = goal_node 10 (sample_goal "execution-time-failed-parent") in
+  let execute _context node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = dependency_action ->
+        Error (Error.IntentPlanningFailed { reason = "dynamic dependency failed" })
+    | Work_node.Goal _ ->
+        Ok (Work_result.RequeueWithDependencies [ goal_request dependency_action ])
+    | _ -> unexpected_node node
+  in
+  let summary = run_executor ~parallelism:1 ~seeds:[ seed ] ~execute () in
+  match find_goal_node summary dependency_action with
+  | None -> Error "expected execution-time failing dependency node to be interned"
+  | Some dependency ->
+      if
+        Int.equal summary.Executor.Summary.failed_count 2
+        && Int.equal summary.completed_count 0
+        && Work_node.status dependency = Work_node.Failed
+        && Work_node.status seed = Work_node.Failed
+      then
+        Ok ()
+      else
+        Error "expected failed execution-time dependency to fail requeued parent"
 
 let test_independent_work_continues_after_failure = fun _ctx ->
   let fail_action = sample_goal "fail" in
@@ -982,6 +1017,9 @@ let tests =
     case
       "execution-time dependency requeue waits for dependencies"
       test_execution_time_dependency_requeue_waits_for_dependencies;
+    case
+      "execution-time dependency failure fails requeued node"
+      test_execution_time_dependency_failure_fails_requeued_node;
     case "independent work continues after failure" test_independent_work_continues_after_failure;
     case "returned error is preserved in summary" test_returned_error_is_preserved_in_summary;
     case "worker exception is materialized as error" test_worker_exception_is_materialized_as_error;

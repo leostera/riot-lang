@@ -10,7 +10,7 @@ type t = {
   source_analyzer: Source_analyzer.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
-  package_finalizer: Package_finalizer.t;
+  rule_service: Rule_service.t;
 }
 
 let create = fun ~config () ->
@@ -42,8 +42,8 @@ let create = fun ~config () ->
       ()
   in
   let action_executor = Action_executor.create ~store ~toolchains () in
-  let package_finalizer =
-    Package_finalizer.create
+  let rule_service =
+    Rule_service.create
       ~workspace
       ~catalog
       ~store
@@ -61,8 +61,13 @@ let create = fun ~config () ->
     source_analyzer;
     module_planning;
     action_executor;
-    package_finalizer;
+    rule_service;
   }
+
+let begin_execution = fun t ->
+  Package_catalog.begin_execution t.catalog;
+  Module_planning.begin_execution t.module_planning;
+  Rule_service.begin_execution t.rule_service
 
 let config = fun t -> t.config
 
@@ -72,30 +77,8 @@ let action_results = fun t -> Action_executor.results t.action_executor
 
 let module_plan = fun t build -> Module_planning.find t.module_planning build
 
-let package_results = fun t -> Package_finalizer.results t.package_finalizer
+let package_results = fun t -> Rule_service.package_results t.rule_service
 
-let action_dependency_key = fun registry ref_ ->
-  let library_key = Work_node.OCamlLibraryKey ref_ in
-  if Option.is_some (Work_registry.find registry library_key) then
-    library_key
-  else
-    let archive_key = Work_node.OCamlArchiveKey ref_ in
-    if Option.is_some (Work_registry.find registry archive_key) then
-      archive_key
-    else
-      Work_node.ActionExecutionKey ref_
-
-let action_dependencies = fun registry action ->
-  let action_dependencies =
-    List.map action.Action_execution.dependencies ~fn:(action_dependency_key registry)
-  in
-  let keys =
-    if Action_executor.requires_toolchain action then
-      Work_node.ToolchainReadyKey { target = action.ref_.target } :: action_dependencies
-    else
-      action_dependencies
-  in
-  Work_request.from_keys keys
 let plan_dependencies = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
@@ -103,20 +86,36 @@ let plan_dependencies = fun t registry node ->
       |> Result.map ~fn:(fun goals ->
         List.map goals ~fn:(fun goal -> Work_request.existing (Work_node.GoalKey goal)))
   | Goal (BuildPackage build) ->
-      Package_finalizer.plan_dependencies t.package_finalizer registry build
+      Rule_service.plan_goal_dependencies t.rule_service build
   | Goal _
   | ToolchainReady _
   | SourceAnalysis _ -> Ok []
   | PackageArtifact build ->
-      Package_finalizer.plan_artifact_dependencies t.package_finalizer registry build
+      Rule_service.plan_package_artifact_dependencies t.rule_service build
+  | ModuleDependencies build ->
+      Rule_service.plan_module_dependencies t.rule_service build
+  | OCamlArchive build ->
+      Rule_service.plan_ocaml_archive t.rule_service build
+  | OCamlInterface source
+  | OCamlImplementation source ->
+      Rule_service.plan_ocaml_source t.rule_service source
+  | OCamlGenerated source ->
+      Rule_service.plan_ocaml_generated t.rule_service source
+  | CObject c_object ->
+      Rule_service.plan_c_object t.rule_service c_object
   | PackageFinalize build ->
-      Package_finalizer.plan_finalize_dependencies t.package_finalizer registry build
+      Error (Error.ExecutorInvariantViolated {
+        message = "legacy package finalize node was planned in rule-based build service for "
+        ^ Riot_model.Package_name.to_string build.package;
+      })
   | ModulePlan build -> Module_planning.plan_dependencies t.module_planning registry build
-  | ActionPlan build ->
-      Package_finalizer.plan_action_dependencies t.package_finalizer registry build
+  | ActionPlan build -> Ok [ Work_request.existing (Work_node.ModulePlanKey build) ]
   | OCamlLibrary action
-  | OCamlArchive action -> Ok (action_dependencies registry action)
-  | ActionExecution action -> Ok (action_dependencies registry action)
+  | ActionExecution action ->
+      if Action_executor.requires_toolchain action then
+        Ok (Work_request.from_keys [ Work_node.ToolchainReadyKey { target = action.ref_.target } ])
+      else
+        Ok []
 let execute_node = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent _ ->
@@ -131,10 +130,26 @@ let execute_node = fun t registry node ->
   | SourceAnalysis source ->
       Source_analyzer.execute t.source_analyzer source
       |> Result.map ~fn:(fun () -> Work_result.Complete [])
-  | PackageArtifact build -> Package_finalizer.execute_artifact t.package_finalizer registry build
-  | PackageFinalize build -> Package_finalizer.execute_finalize t.package_finalizer registry build
+  | PackageArtifact build -> Rule_service.execute_package_artifact t.rule_service registry build
+  | ModuleDependencies build ->
+      Rule_service.execute_module_dependencies t.rule_service registry build
+  | OCamlArchive build -> Rule_service.execute_ocaml_archive t.rule_service registry build
+  | OCamlInterface source -> Rule_service.execute_ocaml_interface t.rule_service registry source
+  | OCamlImplementation source ->
+      Rule_service.execute_ocaml_implementation t.rule_service registry source
+  | OCamlGenerated source ->
+      Rule_service.execute_ocaml_generated t.rule_service registry source
+  | CObject c_object -> Rule_service.execute_c_object t.rule_service registry c_object
+  | PackageFinalize build ->
+      Error (Error.ExecutorInvariantViolated {
+        message = "legacy package finalize node reached rule-based build service for "
+        ^ Riot_model.Package_name.to_string build.package;
+      })
   | ModulePlan build -> Module_planning.execute t.module_planning registry build
-  | ActionPlan build -> Package_finalizer.execute_action_plan t.package_finalizer registry build
+  | ActionPlan build ->
+      Error (Error.ExecutorInvariantViolated {
+        message = "legacy action plan node reached rule-based build service for "
+        ^ Riot_model.Package_name.to_string build.package;
+      })
   | OCamlLibrary action
-  | OCamlArchive action -> Action_executor.execute t.action_executor action
   | ActionExecution action -> Action_executor.execute t.action_executor action

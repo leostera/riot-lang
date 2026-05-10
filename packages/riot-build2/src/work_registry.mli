@@ -47,8 +47,18 @@ val intern_module_plan: t -> Goal.build_package -> Work_node.t
 
 val intern_action_plan: t -> Goal.build_package -> Work_node.t
 
-val intern_ocaml_library: t -> Action_execution.t -> Work_node.t
+val intern_module_dependencies: t -> Goal.build_package -> Work_node.t
 
-val intern_ocaml_archive: t -> Action_execution.t -> Work_node.t
+val intern_ocaml_interface: t -> Rule.ocaml_source -> Work_node.t
+
+val intern_ocaml_implementation: t -> Rule.ocaml_source -> Work_node.t
+
+val intern_ocaml_generated: t -> Rule.ocaml_generated -> Work_node.t
+
+val intern_c_object: t -> Rule.c_object -> Work_node.t
+
+val intern_ocaml_archive: t -> Goal.build_package -> Work_node.t
+
+val intern_ocaml_library: t -> Action_execution.t -> Work_node.t
 
 val intern_action_execution: t -> Action_execution.t -> Work_node.t

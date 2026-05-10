@@ -62,26 +62,17 @@ let plan_has_archive_ref = fun (plan: Module_plan.t) ref_ ->
 let action_dependency_key = fun (plan: Module_plan.t) action_ref ->
   if plan_has_library_ref plan action_ref then
     Work_node.OCamlLibraryKey action_ref
-  else if plan_has_archive_ref plan action_ref then
-    Work_node.OCamlArchiveKey action_ref
   else
     Work_node.ActionExecutionKey action_ref
 
 let action_node_kind = fun (plan: Module_plan.t) (action: Action_execution.t) ->
   match action_dependency_key plan action.Action_execution.ref_ with
   | Work_node.OCamlLibraryKey _ -> Work_node.OCamlLibrary action
-  | Work_node.OCamlArchiveKey _ -> Work_node.OCamlArchive action
   | Work_node.ActionExecutionKey _ -> Work_node.ActionExecution action
   | _ -> Work_node.ActionExecution action
 
-let action_node_key = fun (plan: Module_plan.t) (action: Action_execution.t) ->
-  Work_node.key_from_kind (action_node_kind plan action)
-
 let action_node_request = fun plan action ->
   Work_request.materialize (action_node_kind plan action)
-
-let action_node_requests = fun plan ->
-  List.map plan.Module_plan.action_executions ~fn:(action_node_request plan)
 
 let compute_export_entries = fun t (plan: Module_plan.t) ->
   plan.action_executions
@@ -222,11 +213,7 @@ let has_results t goal =
   ConcurrentHashMap.get t.package_results ~key:goal
   |> Option.is_some
 
-let package_dependencies_ready = fun t build ->
-  let* dependency_builds = Package_planning.dependency_builds t.package_planning build in
-  Ok (List.all dependency_builds ~fn:(has_results t))
-
-let missing_action_dependency_keys = fun
+let missing_action_dependency_requests = fun
   t (plan: Module_plan.t) (actions: Action_execution.t list) ->
   actions
   |> List.filter
@@ -234,12 +221,7 @@ let missing_action_dependency_keys = fun
       match Action_executor.find_result t.action_executor action.Action_execution.ref_ with
       | Some _ -> false
       | None -> true)
-  |> List.map ~fn:(action_node_key plan)
-
-let package_dependency_action_requests = fun t _registry (plan: Module_plan.t) ->
-  match plan.ocaml_archive with
-  | Some archive -> Work_request.from_keys (missing_action_dependency_keys t plan [ archive ])
-  | None -> Work_request.from_keys (missing_action_dependency_keys t plan plan.action_executions)
+  |> List.map ~fn:(action_node_request plan)
 
 let package_artifact_key = fun build -> Work_node.PackageArtifactKey build
 
@@ -261,72 +243,44 @@ let plan_finalize_dependencies = fun _t _registry build ->
 let plan_action_dependencies = fun _t _registry build ->
   Ok [ Work_request.existing (Work_node.ModulePlanKey build) ]
 
-let package_artifact_completed = fun registry build ->
-  match Work_registry.find registry (package_artifact_key build) with
-  | Some node when Work_node.status node = Work_node.Completed -> true
-  | Some _
-  | None -> false
-
-let action_plan_completed = fun registry build ->
-  match Work_registry.find registry (action_plan_key build) with
-  | Some node when Work_node.status node = Work_node.Completed -> true
-  | Some _
-  | None -> false
-
-let execute = fun t registry (build: Goal.build_package) ->
+let execute = fun t _registry (build: Goal.build_package) ->
   if has_results t build then
     Ok (Work_result.Complete [])
-  else if package_artifact_completed registry build then
-    Error (Error.ExecutorInvariantViolated {
-      message = "package artifact completed without package result for "
-      ^ Riot_model.Package_name.to_string build.package;
-    })
   else
     Ok (Work_result.RequeueWithDependencies [ Work_request.existing (package_artifact_key build) ])
 
-let execute_artifact = fun t registry (build: Goal.build_package) ->
+let execute_artifact = fun t _registry (build: Goal.build_package) ->
   if has_results t build then
     Ok (Work_result.Complete [])
   else
     match Package_planning.cached_artifact t.package_planning build with
     | Error error -> Error error
     | Ok (Some cached) -> finalize_cached_artifact t cached
-    | Ok None ->
-        let* package_dependencies_ready = package_dependencies_ready t build in
-        if not package_dependencies_ready then
-          let* package_dependency_keys = package_dependency_goal_keys t build in
-          Ok (Work_result.RequeueWithDependencies (Work_request.from_keys package_dependency_keys))
-        else
-          Ok (Work_result.RequeueWithDependencies [ Work_request.existing (package_finalize_key build) ])
+    | Ok None -> Ok (Work_result.RequeueWithDependencies [
+        Work_request.existing (package_finalize_key build);
+      ])
 
-let execute_finalize = fun t registry (build: Goal.build_package) ->
+let execute_finalize = fun t _registry (build: Goal.build_package) ->
   if has_results t build then
     Ok (Work_result.Complete [])
-  else if not (action_plan_completed registry build) then
-    Ok (Work_result.RequeueWithDependencies [ Work_request.existing (action_plan_key build) ])
   else
-    let* package_dependencies_ready = package_dependencies_ready t build in
-    if not package_dependencies_ready then
-      let* package_dependency_keys = package_dependency_goal_keys t build in
-      Ok (Work_result.RequeueWithDependencies (Work_request.from_keys package_dependency_keys))
-    else
-      match Module_planning.find t.module_planning build with
-      | None ->
-          Ok (Work_result.RequeueWithDependencies [
-            Work_request.existing (Work_node.ModulePlanKey build);
-          ])
-      | Some plan ->
-          match package_dependency_action_requests t registry plan with
-          | [] -> finalize t plan
-          | action_dependency_requests ->
-              Ok (Work_result.RequeueWithDependencies action_dependency_requests)
+    match Module_planning.find t.module_planning build with
+    | None ->
+        Error (Error.ExecutorInvariantViolated {
+          message = "package finalization for "
+          ^ Riot_model.Package_name.to_string build.package
+          ^ " started before module planning completed";
+        })
+    | Some plan -> finalize t plan
 
 let execute_action_plan = fun t _registry (build: Goal.build_package) ->
   match Module_planning.find t.module_planning build with
   | None ->
-      Ok (Work_result.RequeueWithDependencies [
-        Work_request.existing (Work_node.ModulePlanKey build);
-      ])
+      Error (Error.ExecutorInvariantViolated {
+        message = "action planning for "
+        ^ Riot_model.Package_name.to_string build.package
+        ^ " started before module planning completed";
+      })
   | Some plan ->
       let* () =
         match Graph_cache.get t.action_plan_cache plan.module_plan_hash with
@@ -338,4 +292,6 @@ let execute_action_plan = fun t _registry (build: Goal.build_package) ->
               plan.module_plan_hash
               (Action_plan_cache.payload_of_plan plan)
       in
-      Ok (Work_result.Complete (action_node_requests plan))
+      match missing_action_dependency_requests t plan plan.action_executions with
+      | [] -> Ok (Work_result.Complete [])
+      | missing -> Ok (Work_result.RequeueWithDependencies missing)

@@ -53,8 +53,13 @@ type key =
   | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
   | ActionPlanKey of Goal.build_package
+  | ModuleDependenciesKey of Goal.build_package
+  | OCamlInterfaceKey of Rule.ocaml_source
+  | OCamlImplementationKey of Rule.ocaml_source
+  | OCamlGeneratedKey of Rule.ocaml_generated
+  | CObjectKey of Rule.c_object
+  | OCamlArchiveKey of Goal.build_package
   | OCamlLibraryKey of Action_execution.ref_
-  | OCamlArchiveKey of Action_execution.ref_
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
@@ -66,8 +71,13 @@ type kind =
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionPlan of Goal.build_package
+  | ModuleDependencies of Goal.build_package
+  | OCamlInterface of Rule.ocaml_source
+  | OCamlImplementation of Rule.ocaml_source
+  | OCamlGenerated of Rule.ocaml_generated
+  | CObject of Rule.c_object
+  | OCamlArchive of Goal.build_package
   | OCamlLibrary of Action_execution.t
-  | OCamlArchive of Action_execution.t
   | ActionExecution of Action_execution.t
 
 type t = {
@@ -90,8 +100,13 @@ let key_from_kind = fun __tmp1 ->
   | PackageFinalize build -> PackageFinalizeKey build
   | ModulePlan build -> ModulePlanKey build
   | ActionPlan build -> ActionPlanKey build
+  | ModuleDependencies source -> ModuleDependenciesKey source
+  | OCamlInterface source -> OCamlInterfaceKey source
+  | OCamlImplementation source -> OCamlImplementationKey source
+  | OCamlGenerated source -> OCamlGeneratedKey source
+  | CObject c_object -> CObjectKey c_object
+  | OCamlArchive build -> OCamlArchiveKey build
   | OCamlLibrary action -> OCamlLibraryKey action.ref_
-  | OCamlArchive action -> OCamlArchiveKey action.ref_
   | ActionExecution action -> ActionExecutionKey action.ref_
 
 let kind_from_key = fun __tmp1 ->
@@ -103,12 +118,17 @@ let kind_from_key = fun __tmp1 ->
   | PackageFinalizeKey build -> Some (PackageFinalize build)
   | ModulePlanKey build -> Some (ModulePlan build)
   | ActionPlanKey build -> Some (ActionPlan build)
+  | ModuleDependenciesKey source -> Some (ModuleDependencies source)
+  | OCamlInterfaceKey source -> Some (OCamlInterface source)
+  | OCamlImplementationKey source -> Some (OCamlImplementation source)
+  | OCamlGeneratedKey source -> Some (OCamlGenerated source)
+  | CObjectKey c_object -> Some (CObject c_object)
+  | OCamlArchiveKey build -> Some (OCamlArchive build)
   | Package _
   | Module _
   | Source _
   | SourceAnalysisKey _
   | OCamlLibraryKey _
-  | OCamlArchiveKey _
   | ActionExecutionKey _ -> None
 
 let create = fun ~id ?key kind ->
@@ -142,9 +162,19 @@ let module_plan = fun ~id build -> create ~id (ModulePlan build)
 
 let action_plan = fun ~id build -> create ~id (ActionPlan build)
 
-let ocaml_library = fun ~id action -> create ~id (OCamlLibrary action)
+let module_dependencies = fun ~id source -> create ~id (ModuleDependencies source)
 
-let ocaml_archive = fun ~id action -> create ~id (OCamlArchive action)
+let ocaml_interface = fun ~id source -> create ~id (OCamlInterface source)
+
+let ocaml_implementation = fun ~id source -> create ~id (OCamlImplementation source)
+
+let ocaml_generated = fun ~id source -> create ~id (OCamlGenerated source)
+
+let c_object = fun ~id c_object -> create ~id (CObject c_object)
+
+let ocaml_archive = fun ~id build -> create ~id (OCamlArchive build)
+
+let ocaml_library = fun ~id action -> create ~id (OCamlLibrary action)
 
 let action_execution = fun ~id action -> create ~id (ActionExecution action)
 
@@ -165,8 +195,13 @@ let execution_mode_of_kind = fun __tmp1 ->
   | PackageFinalize _
   | ModulePlan _
   | ActionPlan _
-  | OCamlLibrary _
+  | ModuleDependencies _
+  | OCamlInterface _
+  | OCamlImplementation _
+  | OCamlGenerated _
+  | CObject _
   | OCamlArchive _
+  | OCamlLibrary _
   | ActionExecution _ -> Concrete
 
 let execution_mode = fun node -> execution_mode_of_kind node.kind

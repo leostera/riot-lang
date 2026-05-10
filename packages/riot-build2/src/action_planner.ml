@@ -13,6 +13,7 @@ type input = {
   depset: Riot_planner.Dependency.t list;
   sandbox_dir: Path.t;
   module_graph: Module_node.t G.t;
+  dep_analysis: Dep_analysis.t;
 }
 
 type source_info = {
@@ -21,6 +22,8 @@ type source_info = {
   outputs: Path.t list;
   is_alias: bool;
 }
+
+let cache_key_version = "riot-build2-action-planner:v3"
 
 let stdlib_flags = fun (package: Riot_model.Package.t) ->
   let has_stdlib_dep =
@@ -277,6 +280,12 @@ let library_outputs = fun package ->
 
 let flags_for_source = fun input source ->
   let base_flags = stdlib_flags input.package @ profile_compile_flags input.profile in
+  let base_flags =
+    match source.source.kind with
+    | Action.LibraryImplementation ->
+        Riot_toolchain.Ocamlc.Raw "-opaque" :: base_flags
+    | Action.LibraryInterface -> base_flags
+  in
   let flags =
     if source.is_alias then
       Riot_toolchain.Ocamlc.NoAliasDeps :: base_flags
@@ -370,8 +379,8 @@ let make_execution = fun input ~dependencies action ->
     ~dependencies
     ~sandbox_dir:input.sandbox_dir
 
-let source_dependencies = fun source_refs info ->
-  G.deps info.node
+let source_dependencies = fun input source_refs info ->
+  Dep_analysis.compile_dependency_ids input.dep_analysis input.module_graph info.node
   |> List.filter_map ~fn:(fun dep_id -> HashMap.get source_refs ~key:dep_id)
 
 let plan = fun input ->
@@ -413,7 +422,7 @@ let plan = fun input ->
           ~fn:(fun (info, action) ->
             make_execution
               input
-              ~dependencies:(source_dependencies source_refs info)
+              ~dependencies:(source_dependencies input source_refs info)
               action)
       in
       match final_library_action input source_infos c_actions with

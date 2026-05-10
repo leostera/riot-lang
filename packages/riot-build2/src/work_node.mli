@@ -50,8 +50,13 @@ type key =
   | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
   | ActionPlanKey of Goal.build_package
+  | ModuleDependenciesKey of Goal.build_package
+  | OCamlInterfaceKey of Rule.ocaml_source
+  | OCamlImplementationKey of Rule.ocaml_source
+  | OCamlGeneratedKey of Rule.ocaml_generated
+  | CObjectKey of Rule.c_object
+  | OCamlArchiveKey of Goal.build_package
   | OCamlLibraryKey of Action_execution.ref_
-  | OCamlArchiveKey of Action_execution.ref_
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
@@ -63,8 +68,13 @@ type kind =
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionPlan of Goal.build_package
+  | ModuleDependencies of Goal.build_package
+  | OCamlInterface of Rule.ocaml_source
+  | OCamlImplementation of Rule.ocaml_source
+  | OCamlGenerated of Rule.ocaml_generated
+  | CObject of Rule.c_object
+  | OCamlArchive of Goal.build_package
   | OCamlLibrary of Action_execution.t
-  | OCamlArchive of Action_execution.t
   | ActionExecution of Action_execution.t
 
 type t
@@ -91,9 +101,19 @@ val module_plan: id:Node_id.t -> Goal.build_package -> t
 
 val action_plan: id:Node_id.t -> Goal.build_package -> t
 
-val ocaml_library: id:Node_id.t -> Action_execution.t -> t
+val module_dependencies: id:Node_id.t -> Goal.build_package -> t
 
-val ocaml_archive: id:Node_id.t -> Action_execution.t -> t
+val ocaml_interface: id:Node_id.t -> Rule.ocaml_source -> t
+
+val ocaml_implementation: id:Node_id.t -> Rule.ocaml_source -> t
+
+val ocaml_generated: id:Node_id.t -> Rule.ocaml_generated -> t
+
+val c_object: id:Node_id.t -> Rule.c_object -> t
+
+val ocaml_archive: id:Node_id.t -> Goal.build_package -> t
+
+val ocaml_library: id:Node_id.t -> Action_execution.t -> t
 
 val action_execution: id:Node_id.t -> Action_execution.t -> t
 

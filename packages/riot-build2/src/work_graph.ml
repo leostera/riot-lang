@@ -13,8 +13,13 @@ let execute_node = fun _registry node ->
   | PackageFinalize _
   | ModulePlan _
   | ActionPlan _
-  | OCamlLibrary _
+  | ModuleDependencies _
+  | OCamlInterface _
+  | OCamlImplementation _
+  | OCamlGenerated _
+  | CObject _
   | OCamlArchive _
+  | OCamlLibrary _
   | ActionExecution _ ->
       Error (Error.ExecutorInvariantViolated {
         message = "default work graph only supports user intent and goal nodes";
@@ -35,8 +40,13 @@ let run_intent = fun ~config intent ->
     | PackageFinalize _
     | ModulePlan _
     | ActionPlan _
-    | OCamlLibrary _
+    | ModuleDependencies _
+    | OCamlInterface _
+    | OCamlImplementation _
+    | OCamlGenerated _
+    | CObject _
     | OCamlArchive _
+    | OCamlLibrary _
     | ActionExecution _ ->
         Error (Error.ExecutorInvariantViolated {
           message = "default work graph only supports user intent and goal nodes";
@@ -56,8 +66,13 @@ let run_intent = fun ~config intent ->
       | PackageFinalize _
       | ModulePlan _
       | ActionPlan _
-      | OCamlLibrary _
+      | ModuleDependencies _
+      | OCamlInterface _
+      | OCamlImplementation _
+      | OCamlGenerated _
+      | CObject _
       | OCamlArchive _
+      | OCamlLibrary _
       | ActionExecution _ -> Work_node.Concrete)
     ~execute:execute_node
     ()

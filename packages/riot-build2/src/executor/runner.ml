@@ -89,8 +89,13 @@ let unsupported_key_error = fun key ->
     | Work_node.PackageFinalizeKey _ -> "package-finalize"
     | Work_node.ModulePlanKey _ -> "module-plan"
     | Work_node.ActionPlanKey _ -> "action-plan"
-    | Work_node.OCamlLibraryKey _ -> "ocaml-library"
+    | Work_node.ModuleDependenciesKey _ -> "module-dependencies"
+    | Work_node.OCamlInterfaceKey _ -> "ocaml-interface"
+    | Work_node.OCamlImplementationKey _ -> "ocaml-implementation"
+    | Work_node.OCamlGeneratedKey _ -> "ocaml-generated"
+    | Work_node.CObjectKey _ -> "c-object"
     | Work_node.OCamlArchiveKey _ -> "ocaml-archive"
+    | Work_node.OCamlLibraryKey _ -> "ocaml-library"
     | Work_node.ActionExecutionKey _ -> "action-execution"
   in
   Error.ExecutorInvariantViolated {

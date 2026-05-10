@@ -204,6 +204,25 @@ val promote_action_artifact:
   (unit, error) result
 
 (** Promote a cached action artifact that has already been loaded with [get_action]. *)
+val promote_action_artifact_files:
+  ?preserve_permissions:bool ->
+  t ->
+  Artifact.t ->
+  files:Std.Path.t list ->
+  target_dir:Std.Path.t ->
+  (unit, error) result
+
+(** Promote selected files from a cached action artifact. *)
+val save_package_from_action_artifacts:
+  ?ocamlc_warnings:string list ->
+  ?exports:export_entry list ->
+  t ->
+  package:string ->
+  input_hash:Std.Crypto.hash ->
+  artifacts:Artifact.t list ->
+  (Artifact.t, error) result
+
+(** Save package outputs by copying files directly from action artifacts. *)
 val exists: t -> Std.Crypto.hash -> bool
 
 (** Check if artifacts for a given hash exist in the store *)

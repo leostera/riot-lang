@@ -12,7 +12,15 @@ val create:
   unit ->
   t
 
+val begin_execution: t -> unit
+
 val find: t -> Goal.build_package -> Module_plan.t option
+
+val source_analysis_sources: t -> Goal.build_package -> (Source_analysis.t list, Error.t) result
+
+val ocaml_sources: t -> Goal.build_package -> (Rule.ocaml_source list, Error.t) result
+
+val c_objects: t -> Goal.build_package -> (Rule.c_object list, Error.t) result
 
 val plan_dependencies:
   t ->

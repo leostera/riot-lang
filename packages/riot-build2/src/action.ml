@@ -149,7 +149,7 @@ let write_source_content = fun hasher ~package source content ->
 
 let hash = fun ~(package:Riot_model.Package.t) ~toolchain action ->
   let hasher = Crypto.Sha256.create () in
-  Crypto.Sha256.write hasher "riot-build2-action:v1";
+  Crypto.Sha256.write hasher "riot-build2-action:v2";
   Crypto.Sha256.write hasher (Riot_model.Package_name.to_string package.name);
   Crypto.Sha256.write_hash hasher (Riot_toolchain.hash toolchain);
   (

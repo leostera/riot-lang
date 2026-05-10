@@ -438,6 +438,16 @@ let copy_without_permissions = fun ~src ~dst ~copy_error ->
   Fs.copy ~src ~dst
   |> Result.map_err ~fn:copy_error
 
+let replace_without_permissions = fun ~src ~dst ~copy_error ->
+  let copy () = copy_without_permissions ~src ~dst ~copy_error in
+  match Fs.exists dst with
+  | Ok true -> (
+      match Fs.remove_file dst with
+      | Ok () -> copy ()
+      | Error _ -> copy ())
+  | Ok false
+  | Error _ -> copy ()
+
 let copy_with_permissions = fun ~src ~dst ~copy_error ->
   let* metadata =
     Fs.metadata src
@@ -506,7 +516,7 @@ let promote_files = fun ~preserve_permissions ~hash_dir ~files ~target_dir ->
     if preserve_permissions then
       copy_with_permissions ~src ~dst ~copy_error
     else
-      copy_without_permissions ~src ~dst ~copy_error
+      replace_without_permissions ~src ~dst ~copy_error
   in
   List.fold_left
     files
@@ -531,15 +541,20 @@ let promote = fun store input_hash ~target_dir ->
   promote_files ~preserve_permissions:true ~hash_dir ~files:manifest.files ~target_dir
 
 (** Store artifacts from sandbox to content-addressable store *)
-let store_artifacts = fun
+type file_source = {
+  source: Path.t;
+  path: string;
+  link: bool;
+}
+
+let store_file_sources = fun
   content_store
   store
   ~package
   ?(ocamlc_warnings = [])
   ?(exports = [])
   input_hash
-  sandbox_dir
-  declared_outputs ->
+  file_sources ->
   let hash_dir = ContentStore.hash_dir_of content_store input_hash in
   let temp_dir =
     let nanos =
@@ -569,29 +584,39 @@ let store_artifacts = fun
     | None -> Ok ()
   in
   (* Copy declared outputs to store and track what was actually stored *)
-  let copy_output output_file =
-    let src = Path.(sandbox_dir / Path.v output_file) in
+  let copy_file_source file_source ~dst =
+    if file_source.link then
+      match Fs.hard_link ~src:file_source.source ~dst with
+      | Ok () -> Ok ()
+      | Error _ ->
+          copy_with_permissions
+            ~src:file_source.source
+            ~dst
+            ~copy_error:(fun cause -> CopyArtifactFailed { src = file_source.source; dst; cause })
+    else
+      copy_with_permissions
+        ~src:file_source.source
+        ~dst
+        ~copy_error:(fun cause -> CopyArtifactFailed { src = file_source.source; dst; cause })
+  in
+  let copy_output file_source =
+    let src = file_source.source in
     match Fs.exists src with
     | Ok false -> Error (DeclaredOutputMissing { path = src })
     | Error cause -> Error (CheckSourceExistsFailed { path = src; cause })
     | Ok true ->
-        let dst = Path.(temp_dir / Path.v output_file) in
+        let dst = Path.(temp_dir / Path.v file_source.path) in
         let dst_parent = Path.dirname dst in
         let* () =
           Fs.create_dir_all dst_parent
           |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
         in
-        let* () =
-          copy_with_permissions
-            ~src
-            ~dst
-            ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause })
-        in
+        let* () = copy_file_source file_source ~dst in
         let* metadata =
           Fs.metadata dst
           |> Result.map_err ~fn:(fun cause -> MetadataReadFailed { path = dst; cause })
         in
-        Ok (Some (Path.v output_file, Fs.Metadata.len metadata))
+        Ok (Some (Path.v file_source.path, Fs.Metadata.len metadata))
   in
   let rec collect_outputs = fun acc ->
     fun __tmp1 ->
@@ -606,7 +631,7 @@ let store_artifacts = fun
   in
   let result =
     let* () = validate_exports_relative exports in
-    let* stored_files_with_sizes = collect_outputs [] declared_outputs in
+    let* stored_files_with_sizes = collect_outputs [] file_sources in
     let manifest =
       Manifest.create
         ~base_dir:temp_dir
@@ -654,6 +679,34 @@ let store_artifacts = fun
   in
   let _ = cleanup_temp_dir temp_dir in
   result
+
+(** Store artifacts from sandbox to content-addressable store *)
+let store_artifacts = fun
+  content_store
+  store
+  ~package
+  ?(ocamlc_warnings = [])
+  ?(exports = [])
+  input_hash
+  sandbox_dir
+  declared_outputs ->
+  let file_sources =
+    List.map
+      declared_outputs
+      ~fn:(fun output_file -> {
+        source = Path.(sandbox_dir / Path.v output_file);
+        path = output_file;
+        link = false;
+      })
+  in
+  store_file_sources
+    content_store
+    store
+    ~package
+    ~ocamlc_warnings
+    ~exports
+    input_hash
+    file_sources
 
 let load_manifest = fun store ~hash ->
   match Manifest.load ~path:(manifest_path (get_package_hash_dir store hash)) with
@@ -897,6 +950,36 @@ let save_package = fun
     ~sandbox_dir
     ~outs
 
+let save_package_from_action_artifacts = fun
+  ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~artifacts ->
+  let seen = HashSet.create () in
+  let file_sources =
+    artifacts
+    |> List.flat_map
+      ~fn:(fun (artifact: Artifact.t) ->
+        let hash_dir = get_action_hash_dir store artifact.input_hash in
+        artifact.files
+        |> List.filter_map
+          ~fn:(fun (entry: Manifest.file_entry) ->
+            let path = Path.to_string entry.path in
+            if HashSet.insert seen ~value:path then
+              Some { source = Path.(hash_dir / entry.path); path; link = true }
+            else
+              None))
+  in
+  let* artifact =
+    store_file_sources
+      store.package_store
+      store
+      ~package
+      ~ocamlc_warnings
+      ~exports
+      input_hash
+      file_sources
+  in
+  remember_artifact store.package_cache artifact;
+  Ok artifact
+
 let save_action = fun ?(ocamlc_warnings = []) store ~package ~input_hash ~sandbox_dir ~outs ->
   save_to
     store.action_store
@@ -937,6 +1020,27 @@ let promote_action_artifact = fun
   ?(preserve_permissions = true) store (artifact: Artifact.t) ~target_dir ->
   let hash_dir = get_action_hash_dir store artifact.input_hash in
   promote_files ~preserve_permissions ~hash_dir ~files:artifact.files ~target_dir
+
+let promote_action_artifact_files = fun
+  ?(preserve_permissions = true) store (artifact: Artifact.t) ~files ~target_dir ->
+  let hash_dir = get_action_hash_dir store artifact.input_hash in
+  let requested = HashSet.create () in
+  List.for_each files ~fn:(fun file -> ignore (HashSet.insert requested ~value:(Path.to_string file)));
+  let selected =
+    artifact.files
+    |> List.filter
+      ~fn:(fun (entry: Manifest.file_entry) ->
+        HashSet.contains requested ~value:(Path.to_string entry.path))
+  in
+  let missing =
+    files
+    |> List.find
+      ~fn:(fun file ->
+        not (List.any artifact.files ~fn:(fun entry -> Path.equal entry.Manifest.path file)))
+  in
+  match missing with
+  | Some file -> Error (DeclaredOutputMissing { path = Path.(hash_dir / file) })
+  | None -> promote_files ~preserve_permissions ~hash_dir ~files:selected ~target_dir
 
 (** Get absolute paths to artifact files in immutable cache *)
 let get_artifact_paths = fun store artifact ->

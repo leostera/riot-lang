@@ -38,8 +38,6 @@ let store_result = fun t result ->
 
 let store_error = fun ?package reason -> Error.StoreFailed { package; reason }
 
-let action_dependency_key = fun action_ref -> Work_node.ActionExecutionKey action_ref
-
 let compute_action_input_hash = fun ~planned_hash ~dependency_output_hashes ->
   let hasher = Crypto.Sha256.create () in
   Crypto.Sha256.write hasher "riot-build2-action-input:v1";
@@ -152,7 +150,7 @@ let source_include_dir = fun source ->
   | Some dir -> dir
   | None -> Path.v "."
 
-let stage_compile_library_source = fun ~package ~package_root ~sandbox_dir source ->
+let stage_single_compile_library_source = fun ~package ~package_root ~sandbox_dir source ->
   let dst = Path.join sandbox_dir source.Action.staged in
   let* () =
     ensure_parent_dir dst
@@ -199,6 +197,38 @@ let stage_compile_library_source = fun ~package ~package_root ~sandbox_dir sourc
         ^ ": "
         ^ IO.error_message error;
       })
+
+let stage_compile_library_interface_if_present = fun ~package ~package_root ~sandbox_dir source ->
+  match (source.Action.kind, source.content, Path.extension source.source) with
+  | (Action.LibraryImplementation, None, Some ".ml") ->
+      let interface_source = Path.replace_extension source.source ~ext:"mli" in
+      let interface_path = resolve_source ~package_root ~sandbox_dir interface_source in
+      (
+        match Fs.exists interface_path with
+        | Ok true ->
+            let interface =
+              {
+                source with
+                source = interface_source;
+                staged = Path.replace_extension source.staged ~ext:"mli";
+                kind = Action.LibraryInterface;
+              }
+            in
+            stage_single_compile_library_source ~package ~package_root ~sandbox_dir interface
+        | Ok false -> Ok ()
+        | Error error ->
+            Error (Error.ExecutorInvariantViolated {
+              message = "failed to check compile-library interface source "
+              ^ Path.to_string interface_path
+              ^ ": "
+              ^ IO.error_message error;
+            })
+      )
+  | _ -> Ok ()
+
+let stage_compile_library_source = fun ~package ~package_root ~sandbox_dir source ->
+  let* () = stage_single_compile_library_source ~package ~package_root ~sandbox_dir source in
+  stage_compile_library_interface_if_present ~package ~package_root ~sandbox_dir source
 
 let stage_compile_library_sources = fun ~package ~package_root ~sandbox_dir sources ->
   if List.is_empty sources then
@@ -398,6 +428,159 @@ let verify_outputs = fun outputs ->
 let finish_timing = fun started_at (timing: Action_execution.timing) ->
   { timing with total = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) }
 
+let is_final_archive_action = fun __tmp1 ->
+  match __tmp1 with
+  | Action.CompileLibrary { sources = []; outputs; _ } ->
+      List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa")
+  | _ -> false
+
+let same_relative_path = fun left right ->
+  String.equal (Path.to_string (Path.normalize left)) (Path.to_string (Path.normalize right))
+
+let artifact_file_path = fun t (artifact: Riot_store.Artifact.t) path ->
+  if Path.is_absolute path then
+    Ok (Some path)
+  else
+    artifact.files
+    |> List.find ~fn:(fun (entry: Riot_store.Manifest.file_entry) ->
+      same_relative_path entry.path path)
+    |> Option.map
+      ~fn:(fun (entry: Riot_store.Manifest.file_entry) ->
+        Path.(Riot_store.Store.action_hash_dir_of t.store artifact.input_hash / entry.path))
+    |> Option.map ~fn:absolute_path
+    |> Option.transpose
+
+let dependency_artifact_for_ref = fun t (ref_: Action_execution.ref_) ->
+  match find_result t ref_ with
+  | None -> None
+  | Some result -> Action_execution.artifact result
+
+let dependency_file_path = fun t (action: Action_execution.t) path ->
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok None
+    | ref_ :: rest -> (
+        match dependency_artifact_for_ref t ref_ with
+        | None -> loop rest
+        | Some artifact -> (
+            match artifact_file_path t artifact path with
+            | Ok (Some path) -> Ok (Some path)
+            | Ok None -> loop rest
+            | Error error -> Error error
+          )
+      )
+  in
+  loop action.dependencies
+
+let resolve_archive_objects_from_dependencies = fun t (action: Action_execution.t) objects ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | object_ :: rest -> (
+        match dependency_file_path t action object_ with
+        | Ok (Some path) -> loop (path :: acc) rest
+        | Ok None ->
+            Error (Error.ExecutorInvariantViolated {
+              message = "archive action for "
+              ^ Riot_model.Package_name.to_string action.ref_.package
+              ^ " could not find dependency object "
+              ^ Path.to_string object_
+              ^ " in completed action artifacts";
+            })
+        | Error error -> Error error
+      )
+  in
+  loop [] objects
+
+let action_for_execution = fun t (action: Action_execution.t) ->
+  match action.action with
+  | Action.CompileLibrary {
+      sources = [];
+      objects;
+      outputs;
+      output;
+      includes;
+      flags;
+    } when is_final_archive_action action.action ->
+      let* objects = resolve_archive_objects_from_dependencies t action objects in
+      Ok (Action.CompileLibrary {
+        sources = [];
+        objects;
+        outputs;
+        output;
+        includes;
+        flags;
+      })
+  | _ -> Ok action.action
+
+let artifact_paths = fun (artifact: Riot_store.Artifact.t) ->
+  artifact.files
+  |> List.map ~fn:(fun (entry: Riot_store.Manifest.file_entry) -> entry.path)
+
+let artifact_paths_with_extension = fun (artifact: Riot_store.Artifact.t) extension ->
+  artifact.files
+  |> List.filter_map
+    ~fn:(fun (entry: Riot_store.Manifest.file_entry) ->
+      if Path.extension entry.path = Some extension then
+        Some entry.path
+      else
+        None)
+
+let dependency_outputs_for_consumer = fun (consumer: Action_execution.t) artifact ->
+  match consumer.action with
+  | Action.CompileSource _
+  | Action.CompileSources _ -> artifact_paths_with_extension artifact ".cmi"
+  | Action.CompileLibrary { sources = []; outputs; _ }
+    when List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa") -> []
+  | Action.CompileC _
+  | Action.CompileLibrary _
+  | Action.CopyFile _
+  | Action.WriteFile _ -> artifact_paths artifact
+
+let dependency_promotion_preserves_permissions = fun (consumer: Action_execution.t) ->
+  match consumer.action with
+  | Action.CompileC _
+  | Action.CompileSource _
+  | Action.CompileSources _
+  | Action.CompileLibrary _ -> false
+  | Action.CopyFile _
+  | Action.WriteFile _ -> true
+
+let materialize_cached_dependencies_for_execution = fun t (action: Action_execution.t) ~sandbox_dir ->
+  let preserve_permissions = dependency_promotion_preserves_permissions action in
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
+    | ref_ :: rest -> (
+        match find_result t ref_ with
+        | None ->
+            Error (Error.ExecutorInvariantViolated {
+              message = "action execution for "
+              ^ Riot_model.Package_name.to_string action.ref_.package
+              ^ " started before planned action dependency completed";
+            })
+        | Some { Action_execution.status = Failed reason; _ } ->
+            Error (Error.ActionExecutionFailed { package = action.ref_.package; reason })
+        | Some { Action_execution.status = Executed _; _ } -> loop rest
+        | Some { Action_execution.status = Cached artifact; _ } ->
+            let files = dependency_outputs_for_consumer action artifact in
+            if List.is_empty files then
+              loop rest
+            else
+              Riot_store.Store.promote_action_artifact_files
+                ~preserve_permissions
+                t.store
+                artifact
+                ~files
+                ~target_dir:sandbox_dir
+              |> Result.map_err
+                ~fn:(fun error ->
+                  store_error ~package:action.ref_.package (Riot_store.Store.error_message error))
+              |> Result.and_then ~fn:(fun () -> loop rest)
+      )
+  in
+  loop action.dependencies
+
 let execute_uncached = fun
   t
   (action: Action_execution.t)
@@ -417,6 +600,11 @@ let execute_uncached = fun
   let* (sandbox_dir, package_root) = sandbox_result in
   let ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
   let c_compiler = Option.and_then toolchain ~fn:Riot_toolchain.c_compiler in
+  let dependency_materialization_result, dependency_materialization_duration =
+    timed (fun () -> materialize_cached_dependencies_for_execution t action ~sandbox_dir)
+  in
+  let* () = dependency_materialization_result in
+  let* action_to_run = action_for_execution t action in
   let action_run =
     run_action
       ~package:package.name
@@ -424,10 +612,11 @@ let execute_uncached = fun
       ?c_compiler
       ocamlc
       sandbox_dir
-      action.action
+      action_to_run
   in
   let timing: Action_execution.timing = {
     timing with
+    cache_promotion = dependency_materialization_duration;
     sandbox_prepare = sandbox_prepare_duration;
     source_staging = action_run.source_staging_duration;
     command_execution = action_run.command_execution_duration;
@@ -488,47 +677,17 @@ let promote_cached = fun
   (artifact: Riot_store.Artifact.t)
   ~started_at
   ~(timing: Action_execution.timing) ->
-  let preserve_permissions =
-    match action.action with
-    | Action.CompileC _
-    | Action.CompileSource _
-    | Action.CompileSources _
-    | Action.CompileLibrary _ -> false
-    | Action.CopyFile _
-    | Action.WriteFile _ -> true
-  in
-  let promote_result, cache_promotion_duration =
-    timed
-      (fun () ->
-        match absolute_path action.sandbox_dir with
-        | Error error -> Error error
-        | Ok target_dir ->
-            Riot_store.Store.promote_action_artifact
-              ~preserve_permissions
-              t.store
-              artifact
-              ~target_dir
-            |> Result.map_err
-              ~fn:(fun error ->
-                store_error ~package:action.ref_.package (Riot_store.Store.error_message error)))
-  in
-  let timing: Action_execution.timing =
-    { timing with cache_promotion = cache_promotion_duration }
-  in
-  match promote_result with
-  | Error error -> Error error
-  | Ok () ->
-      let timing = finish_timing started_at timing in
-      store_result
-        t
-        {
-          Action_execution.ref_ = action.ref_;
-          action_kind = Action.kind action.action;
-          status = Action_execution.Cached artifact;
-          ocamlc_warnings = artifact.ocamlc_warnings;
-          timing;
-        };
-      Ok (Work_result.Complete [])
+  let timing = finish_timing started_at timing in
+  store_result
+    t
+    {
+      Action_execution.ref_ = action.ref_;
+      action_kind = Action.kind action.action;
+      status = Action_execution.Cached artifact;
+      ocamlc_warnings = artifact.ocamlc_warnings;
+      timing;
+    };
+  Ok (Work_result.Complete [])
 
 let dependency_output_hashes = fun t (action: Action_execution.t) ->
   let package = action.ref_.package in
@@ -564,13 +723,11 @@ let execute = fun t (action: Action_execution.t) ->
         |> List.filter ~fn:(fun ref_ -> Option.is_none (find_result t ref_))
       in
       if not (List.is_empty missing) then
-        Ok (
-          Work_result.RequeueWithDependencies (
-            missing
-            |> List.map ~fn:action_dependency_key
-            |> Work_request.from_keys
-          )
-        )
+        Error (Error.ExecutorInvariantViolated {
+          message = "action execution for "
+          ^ Riot_model.Package_name.to_string action.ref_.package
+          ^ " started before planned action dependencies completed";
+        })
       else
         let started_at = Time.Instant.now () in
         let dependency_hashes_result, dependency_hashing =
@@ -600,10 +757,10 @@ let execute = fun t (action: Action_execution.t) ->
               | Some toolchain ->
                   execute_uncached t action (Some toolchain) action_input_hash ~started_at ~timing
               | None ->
-                  Ok (Work_result.RequeueWithDependencies [
-                    Work_request.existing (
-                      Work_node.ToolchainReadyKey { target = action.ref_.target }
-                    );
-                  ])
+                  Error (Error.ExecutorInvariantViolated {
+                    message = "action execution for "
+                    ^ Riot_model.Package_name.to_string action.ref_.package
+                    ^ " started before toolchain readiness completed";
+                  })
             else
               execute_uncached t action None action_input_hash ~started_at ~timing

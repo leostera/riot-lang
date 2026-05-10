@@ -4,6 +4,8 @@ type t
 
 val create: Riot_model.Workspace.t -> t
 
+val begin_execution: t -> unit
+
 val workspace: t -> Riot_model.Workspace.t
 
 val manifests: t -> Riot_model.Package_manifest.t list

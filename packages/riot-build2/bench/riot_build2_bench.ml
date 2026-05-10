@@ -463,6 +463,28 @@ let make_kernel_runtime_realize_bench = fun () ->
     | Ok _ -> panic "kernel runtime realization benchmark produced unexpected package"
     | Error error -> panic ("kernel runtime realization benchmark failed: " ^ Error.message error)
 
+let make_kernel_runtime_realize_cached_bench = fun () ->
+  let workspace = load_repo_workspace () in
+  let catalog = Package_catalog.create workspace in
+  Package_catalog.begin_execution catalog;
+  begin
+    match Package_catalog.realize catalog ~intent:Riot_model.Package.Runtime kernel_package with
+    | Ok package when Riot_model.Package_name.equal package.name kernel_package -> ()
+    | Ok _ -> panic "kernel cached realization benchmark produced unexpected package"
+    | Error error ->
+        panic ("kernel cached realization benchmark setup failed: " ^ Error.message error)
+  end;
+  fun () ->
+    match Package_catalog.realize catalog ~intent:Riot_model.Package.Runtime kernel_package with
+    | Ok package when Riot_model.Package_name.equal package.name kernel_package ->
+        if List.is_empty package.sources.src then
+          panic "kernel cached realization benchmark produced no src files"
+        else
+          ()
+    | Ok _ -> panic "kernel cached realization benchmark produced unexpected package"
+    | Error error ->
+        panic ("kernel cached realization benchmark failed: " ^ Error.message error)
+
 let make_kernel_intent_to_goal_bench = fun () ->
   let workspace = load_repo_workspace () in
   let catalog = Package_catalog.create workspace in
@@ -518,23 +540,20 @@ let execute_source_analysis_requests = fun services registry requests ->
       | Error error -> panic ("source analysis benchmark failed: " ^ Error.message error))
 
 let execute_module_plan_with_source_summaries = fun services registry node ->
+  let source_keys =
+    match Build_services.plan_dependencies services registry node with
+    | Ok keys -> source_analysis_requests keys
+    | Error error -> panic ("module plan benchmark dependency planning failed: " ^ Error.message error)
+  in
+  if List.is_empty source_keys then
+    panic "module plan benchmark planned no source analysis dependencies"
+  else
+    execute_source_analysis_requests services registry source_keys;
   match Build_services.execute_node services registry node with
   | Ok (Work_result.Complete []) -> ()
   | Ok (Work_result.Complete _) -> panic "module plan benchmark produced unexpected requests"
-  | Ok (Work_result.RequeueWithDependencies keys) ->
-      let source_keys = source_analysis_requests keys in
-      if List.is_empty source_keys then
-        panic "module plan benchmark requested no source analysis dependencies"
-      else
-        execute_source_analysis_requests services registry source_keys;
-      (
-        match Build_services.execute_node services registry node with
-        | Ok (Work_result.Complete []) -> ()
-        | Ok (Work_result.Complete _) -> panic "module plan benchmark produced unexpected requests"
-        | Ok (Work_result.RequeueWithDependencies _) ->
-            panic "module plan benchmark requested dependencies after source summaries"
-        | Error error -> panic ("module plan benchmark failed: " ^ Error.message error)
-      )
+  | Ok (Work_result.RequeueWithDependencies _) ->
+      panic "module plan benchmark requested dependencies after source summaries"
   | Error error -> panic ("module plan benchmark failed: " ^ Error.message error)
 
 let execute_module_plan_to_cache = fun workspace ->
@@ -557,10 +576,10 @@ let make_module_plan_cache_hit_bench = fun () ->
     let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
     execute_module_plan_with_source_summaries services registry node
 
-let make_action_plan_from_cached_module_plan_bench = fun () ->
+let make_module_dependencies_from_cached_module_plan_bench = fun () ->
   let workspace =
     source_package_workspace
-      Path.(Path.v "_bench" / Path.v ("action-plan-cache-" ^ UUID.to_string (UUID.v4 ())))
+      Path.(Path.v "_bench" / Path.v ("module-dependencies-cache-" ^ UUID.to_string (UUID.v4 ())))
   in
   execute_module_plan_to_cache workspace;
   fun () ->
@@ -568,17 +587,8 @@ let make_action_plan_from_cached_module_plan_bench = fun () ->
     let services = Build_services.create ~config () in
     let registry = Work_registry.create () in
     let build = source_build () in
-    let module_node = Work_node.module_plan ~id:(node_id 1) build in
-    let action_node = Work_node.action_plan ~id:(node_id 2) build in
-    execute_module_plan_with_source_summaries services registry module_node;
-    match Build_services.execute_node services registry action_node with
-    | Ok (Work_result.Complete action_requests) -> (
-        match action_requests with
-        | [] -> panic "action plan benchmark produced no action nodes"
-        | _ :: _ -> ()
-      )
-    | Ok (Work_result.RequeueWithDependencies _) -> panic "action plan benchmark requested dependencies"
-    | Error error -> panic ("action plan benchmark failed: " ^ Error.message error)
+    let node = Work_node.module_dependencies ~id:(node_id 1) build in
+    execute_module_plan_with_source_summaries services registry node
 
 let make_native_compile_library_action_hash_bench = fun ~source_count ->
   let root = Path.v "." in
@@ -941,15 +951,15 @@ let expect_kernel_partial_event_action_results = fun executor ->
   let executed = count_status `Executed in
   let failed = count_status `Failed in
   if
-    Int.equal (List.length results) 216
-    && Int.equal cached 163
-    && Int.equal executed 53
+    Int.equal (List.length results) 220
+    && Int.equal cached 218
+    && Int.equal executed 2
     && Int.equal failed 0
   then
     ()
   else
     panic
-      ("kernel partial event benchmark expected actions total=216 cached=163 executed=53 failed=0, got total="
+      ("kernel partial event benchmark expected actions total=220 cached=218 executed=2 failed=0, got total="
       ^ Int.to_string (List.length results)
       ^ " cached="
       ^ Int.to_string cached
@@ -1133,6 +1143,10 @@ let benchmarks = fun () ->
       (make_kernel_runtime_realize_bench ());
     with_config
       ~config:planning_config
+      "riot-build2 kernel runtime package realization cached within execution"
+      (make_kernel_runtime_realize_cached_bench ());
+    with_config
+      ~config:planning_config
       "riot-build2 kernel intent expands to concrete package goal"
       (make_kernel_intent_to_goal_bench ());
     with_config
@@ -1145,8 +1159,8 @@ let benchmarks = fun () ->
       (make_module_plan_cache_hit_bench ());
     with_config
       ~config:stage_config
-      "riot-build2 action plan from cached module plan small package"
-      (make_action_plan_from_cached_module_plan_bench ());
+      "riot-build2 module dependencies from cached module plan small package"
+      (make_module_dependencies_from_cached_module_plan_bench ());
     with_config
       ~config:action_hash_config
       "riot-build2 native compile-library action hash 64 objects"

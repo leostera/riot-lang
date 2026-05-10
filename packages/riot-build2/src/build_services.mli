@@ -4,6 +4,8 @@ type t
 
 val create: config:Build_config.t -> unit -> t
 
+val begin_execution: t -> unit
+
 val config: t -> Build_config.t
 
 val catalog: t -> Package_catalog.t

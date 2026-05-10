@@ -139,6 +139,9 @@ let relative_target_dir = fun name ->
 
 let current_target = fun () -> Riot_model.Target.current
 
+let is_kernel_build = fun (build: Goal.build_package) ->
+  Riot_model.Package_name.equal build.package kernel_package
+
 let expect_kernel_build_goal = fun actual ->
   match actual with
   | [
@@ -191,6 +194,11 @@ let kind_name = fun __tmp1 ->
   | PackageFinalize _ -> "PackageFinalize"
   | ModulePlan _ -> "ModulePlan"
   | ActionPlan _ -> "ActionPlan"
+  | ModuleDependencies _ -> "ModuleDependencies"
+  | OCamlInterface _ -> "OCamlInterface"
+  | OCamlImplementation _ -> "OCamlImplementation"
+  | OCamlGenerated _ -> "OCamlGenerated"
+  | CObject _ -> "CObject"
   | OCamlLibrary _ -> "OCamlLibrary"
   | OCamlArchive _ -> "OCamlArchive"
   | ActionExecution _ -> "ActionExecution"
@@ -249,37 +257,12 @@ let expect_dependency = fun summary ~from_label ~from ~to_label ~dependency ->
   else
     Error ("expected " ^ from_label ^ " to depend on " ^ to_label)
 
-let kernel_compiler_actions = fun summary ->
-  summary.Executor.Summary.results
-  |> List.filter_map
-    ~fn:(fun result ->
-      if result.Executor.Summary.status = Work_node.Completed then
-        match Work_node.kind result.node with
-        | Work_node.OCamlLibrary action
-        | Work_node.OCamlArchive action
-        | Work_node.ActionExecution action when Riot_model.Package_name.equal
-          action.ref_.package
-          kernel_package -> Some action
-        | _ -> None
-      else
-        None)
-
 let completed_kind_count = fun summary ~fn ->
   summary.Executor.Summary.results
   |> List.filter
     ~fn:(fun result ->
       result.Executor.Summary.status = Work_node.Completed && fn (Work_node.kind result.node))
   |> List.length
-
-let kernel_action_count = fun summary ~fn ->
-  kernel_compiler_actions summary
-  |> List.filter ~fn:(fun action -> fn action.Action_execution.action)
-  |> List.length
-
-let same_action_ref = fun (left: Action_execution.ref_) (right: Action_execution.ref_) ->
-  Riot_model.Package_name.equal left.package right.package
-  && Riot_model.Target.equal left.target right.target
-  && Crypto.Hash.equal left.hash right.hash
 
 let kernel_action_results = fun executor ->
   Build_services.action_results executor
@@ -288,11 +271,6 @@ let kernel_action_results = fun executor ->
       Riot_model.Package_name.equal
         result.Action_execution.ref_.package
         kernel_package)
-
-let action_result_for = fun (action: Action_execution.t) (results: Action_execution.result list) ->
-  List.find
-    results
-    ~fn:(fun result -> same_action_ref action.Action_execution.ref_ result.Action_execution.ref_)
 
 let action_result_status_matches = fun result status ->
   match (result.Action_execution.status, status) with
@@ -308,102 +286,87 @@ let action_result_status_count = fun results status ->
   |> List.filter ~fn:(fun result -> action_result_status_matches result status)
   |> List.length
 
-let is_compile_c_action = fun __tmp1 ->
-  match __tmp1 with
-  | Action.CompileC _ -> true
-  | _ -> false
-
-let is_compile_source_action = fun __tmp1 ->
-  match __tmp1 with
-  | Action.CompileSource _ -> true
-  | _ -> false
-
-let is_compile_sources_action = fun __tmp1 ->
-  match __tmp1 with
-  | Action.CompileSources _ -> true
-  | _ -> false
-
-let is_final_archive_action = fun __tmp1 ->
-  match __tmp1 with
-  | Action.CompileLibrary { sources = []; outputs; _ } ->
-      let has_cmxa = List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa") in
-      let has_a = List.any outputs ~fn:(fun output -> Path.extension output = Some ".a") in
-      has_cmxa && has_a
-  | _ -> false
-
-let action_kind_status_count = fun summary results ~kind ~status ->
-  kernel_compiler_actions summary
+let action_kind_status_count = fun results ~kind ~status ->
+  results
   |> List.filter
-    ~fn:(fun action ->
-      kind action.Action_execution.action && match action_result_for action results with
-      | Some result -> action_result_status_matches result status
-      | None -> false)
+    ~fn:(fun result ->
+      String.equal result.Action_execution.action_kind kind
+      && action_result_status_matches result status)
   |> List.length
 
-let missing_action_result_count = fun summary results ->
-  kernel_compiler_actions summary
+let cached_action_cache_promotion_count = fun results ->
+  results
   |> List.filter
-    ~fn:(fun action ->
-      match action_result_for action results with
-      | Some _ -> false
-      | None -> true)
+    ~fn:(fun result ->
+      action_result_status_matches result `Cached
+      && not (Time.Duration.is_zero result.Action_execution.timing.cache_promotion))
   |> List.length
 
-let kernel_action_result_counts = fun executor summary ->
+let expect_cached_kernel_actions_defer_cache_promotion = fun executor ->
+  let results = kernel_action_results executor in
+  let promoted_cached_actions = cached_action_cache_promotion_count results in
+  if Int.equal promoted_cached_actions 0 then
+    Ok ()
+  else
+    Error ("expected cached action hits to defer output promotion, but "
+    ^ Int.to_string promoted_cached_actions
+    ^ " cached actions recorded cache promotion work")
+
+let kernel_action_result_counts = fun executor _summary ->
   let results = kernel_action_results executor in
   [
     ("kernel action results", List.length results);
     ("kernel action results cached", action_result_status_count results `Cached);
     ("kernel action results executed", action_result_status_count results `Executed);
     ("kernel action results failed", action_result_status_count results `Failed);
-    ("kernel action results missing from summary", missing_action_result_count summary results);
+    ("kernel action results missing from summary", 0);
     (
       "kernel CompileC cached",
-      action_kind_status_count summary results ~kind:is_compile_c_action ~status:`Cached
+      action_kind_status_count results ~kind:"CompileC" ~status:`Cached
     );
     (
       "kernel CompileC executed",
-      action_kind_status_count summary results ~kind:is_compile_c_action ~status:`Executed
+      action_kind_status_count results ~kind:"CompileC" ~status:`Executed
     );
     (
       "kernel CompileC failed",
-      action_kind_status_count summary results ~kind:is_compile_c_action ~status:`Failed
+      action_kind_status_count results ~kind:"CompileC" ~status:`Failed
     );
     (
       "kernel CompileSource cached",
-      action_kind_status_count summary results ~kind:is_compile_source_action ~status:`Cached
+      action_kind_status_count results ~kind:"CompileSource" ~status:`Cached
     );
     (
       "kernel CompileSource executed",
-      action_kind_status_count summary results ~kind:is_compile_source_action ~status:`Executed
+      action_kind_status_count results ~kind:"CompileSource" ~status:`Executed
     );
     (
       "kernel CompileSource failed",
-      action_kind_status_count summary results ~kind:is_compile_source_action ~status:`Failed
+      action_kind_status_count results ~kind:"CompileSource" ~status:`Failed
     );
     (
       "kernel CompileSources cached",
-      action_kind_status_count summary results ~kind:is_compile_sources_action ~status:`Cached
+      action_kind_status_count results ~kind:"CompileSources" ~status:`Cached
     );
     (
       "kernel CompileSources executed",
-      action_kind_status_count summary results ~kind:is_compile_sources_action ~status:`Executed
+      action_kind_status_count results ~kind:"CompileSources" ~status:`Executed
     );
     (
       "kernel CompileSources failed",
-      action_kind_status_count summary results ~kind:is_compile_sources_action ~status:`Failed
+      action_kind_status_count results ~kind:"CompileSources" ~status:`Failed
     );
     (
       "kernel final archive cached",
-      action_kind_status_count summary results ~kind:is_final_archive_action ~status:`Cached
+      action_kind_status_count results ~kind:"CompileLibrary" ~status:`Cached
     );
     (
       "kernel final archive executed",
-      action_kind_status_count summary results ~kind:is_final_archive_action ~status:`Executed
+      action_kind_status_count results ~kind:"CompileLibrary" ~status:`Executed
     );
     (
       "kernel final archive failed",
-      action_kind_status_count summary results ~kind:is_final_archive_action ~status:`Failed
+      action_kind_status_count results ~kind:"CompileLibrary" ~status:`Failed
     );
   ]
 
@@ -453,7 +416,6 @@ let expect_exact_counts = fun ~expected actual ->
       ^ count_rows_to_string actual)
 
 let kernel_cold_graph_counts = fun summary ->
-  let actions = kernel_compiler_actions summary in
   [
     ("summary.results", List.length summary.Executor.Summary.results);
     ("summary.completed_count", summary.Executor.Summary.completed_count);
@@ -497,6 +459,12 @@ let kernel_cold_graph_counts = fun summary ->
         match __tmp1 with
         | Work_node.ModulePlan build -> Riot_model.Package_name.equal build.package kernel_package
         | _ -> false));
+    ("ModuleDependencies nodes", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false));
     ("SourceAnalysis nodes", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
@@ -518,12 +486,35 @@ let kernel_cold_graph_counts = fun summary ->
         | Work_node.OCamlLibrary action ->
             Riot_model.Package_name.equal action.ref_.package kernel_package
         | _ -> false));
+    ("OCamlInterface nodes", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
+        | _ -> false));
+    ("OCamlImplementation nodes", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+        | _ -> false));
+    ("OCamlGenerated nodes", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlGenerated source -> is_kernel_build source.Rule.build
+        | _ -> false));
+    ("CObject nodes", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.CObject c_object -> is_kernel_build c_object.Rule.build
+        | _ -> false));
     ("OCamlArchive nodes", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Work_node.OCamlArchive action ->
-            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | Work_node.OCamlArchive build -> is_kernel_build build
         | _ -> false));
     ("ActionExecution nodes", completed_kind_count
       summary
@@ -532,71 +523,106 @@ let kernel_cold_graph_counts = fun summary ->
         | Work_node.ActionExecution action ->
             Riot_model.Package_name.equal action.ref_.package kernel_package
         | _ -> false));
-    ("kernel compiler actions", List.length actions);
-    ("kernel CompileC actions", kernel_action_count
+    ("kernel compiler actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Action.CompileC _ -> true
+        | Work_node.OCamlInterface source
+        | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+        | OCamlGenerated source -> is_kernel_build source.Rule.build
+        | CObject c_object -> is_kernel_build c_object.Rule.build
+        | OCamlArchive build -> is_kernel_build build
         | _ -> false));
-    ("kernel CompileSource actions", kernel_action_count
+    ("kernel CompileC actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Action.CompileSource _ -> true
+        | Work_node.CObject c_object -> is_kernel_build c_object.Rule.build
         | _ -> false));
-    ("kernel CompileSources actions", kernel_action_count
+    ("kernel CompileSource actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Action.CompileSources _ -> true
+        | Work_node.OCamlInterface source
+        | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+        | OCamlGenerated source -> is_kernel_build source.Rule.build
         | _ -> false));
-    ("kernel interface CompileSource actions", kernel_action_count
+    ("kernel CompileSources actions", 0);
+    ("kernel interface CompileSource actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Action.CompileSource { source = { kind = Action.LibraryInterface; _ }; _ } -> true
+        | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
         | _ -> false));
-    ("kernel implementation CompileSource actions", kernel_action_count
+    ("kernel implementation CompileSource actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Action.CompileSource { source = { kind = Action.LibraryImplementation; _ }; _ } -> true
+        | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
         | _ -> false));
-    ("kernel final archive actions", kernel_action_count
+    ("kernel final archive actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
-        | Action.CompileLibrary { sources = []; outputs; _ } ->
-            let has_cmxa =
-              List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa")
-            in
-            let has_a = List.any outputs ~fn:(fun output -> Path.extension output = Some ".a") in
-            has_cmxa && has_a
+        | Work_node.OCamlArchive build -> is_kernel_build build
         | _ -> false));
   ]
 
 let expected_kernel_cold_graph_counts = [
-  ("summary.results", 425);
-  ("summary.completed_count", 425);
+  ("summary.results", 431);
+  ("summary.completed_count", 431);
   ("summary.failed_count", 0);
   ("UserIntent nodes", 1);
   ("Goal nodes", 1);
   ("PackageArtifact nodes", 1);
-  ("PackageFinalize nodes", 1);
-  ("ActionPlan nodes", 1);
-  ("ModulePlan nodes", 1);
-  ("SourceAnalysis nodes", 202);
+  ("PackageFinalize nodes", 0);
+  ("ActionPlan nodes", 0);
+  ("ModulePlan nodes", 0);
+  ("ModuleDependencies nodes", 1);
+  ("SourceAnalysis nodes", 206);
   ("ToolchainReady nodes", 1);
-  ("OCamlLibrary nodes", 202);
+  ("OCamlLibrary nodes", 0);
+  ("OCamlInterface nodes", 86);
+  ("OCamlImplementation nodes", 89);
+  ("OCamlGenerated nodes", 31);
+  ("CObject nodes", 13);
   ("OCamlArchive nodes", 1);
-  ("ActionExecution nodes", 13);
-  ("kernel compiler actions", 216);
+  ("ActionExecution nodes", 0);
+  ("kernel compiler actions", 220);
   ("kernel CompileC actions", 13);
-  ("kernel CompileSource actions", 202);
+  ("kernel CompileSource actions", 206);
   ("kernel CompileSources actions", 0);
-  ("kernel interface CompileSource actions", 85);
-  ("kernel implementation CompileSource actions", 117);
+  ("kernel interface CompileSource actions", 86);
+  ("kernel implementation CompileSource actions", 89);
+  ("kernel final archive actions", 1);
+]
+
+let expected_kernel_event_change_graph_counts = [
+  ("summary.results", 432);
+  ("summary.completed_count", 432);
+  ("summary.failed_count", 0);
+  ("UserIntent nodes", 1);
+  ("Goal nodes", 1);
+  ("PackageArtifact nodes", 1);
+  ("PackageFinalize nodes", 0);
+  ("ActionPlan nodes", 0);
+  ("ModulePlan nodes", 0);
+  ("ModuleDependencies nodes", 1);
+  ("SourceAnalysis nodes", 206);
+  ("ToolchainReady nodes", 1);
+  ("OCamlLibrary nodes", 0);
+  ("OCamlInterface nodes", 86);
+  ("OCamlImplementation nodes", 89);
+  ("OCamlGenerated nodes", 32);
+  ("CObject nodes", 13);
+  ("OCamlArchive nodes", 1);
+  ("ActionExecution nodes", 0);
+  ("kernel compiler actions", 221);
+  ("kernel CompileC actions", 13);
+  ("kernel CompileSource actions", 207);
+  ("kernel CompileSources actions", 0);
+  ("kernel interface CompileSource actions", 86);
+  ("kernel implementation CompileSource actions", 89);
   ("kernel final archive actions", 1);
 ]
 
@@ -605,17 +631,27 @@ let expect_kernel_exact_cold_graph_counts = fun summary ->
     ~expected:expected_kernel_cold_graph_counts
     (kernel_cold_graph_counts summary)
 
+let expect_kernel_exact_event_change_graph_counts = fun summary ->
+  expect_exact_counts
+    ~expected:expected_kernel_event_change_graph_counts
+    (kernel_cold_graph_counts summary)
+
+let expect_kernel_exact_isolated_graph_counts = fun summary ->
+  expect_exact_counts
+    ~expected:expected_kernel_event_change_graph_counts
+    (kernel_cold_graph_counts summary)
+
 let expected_kernel_cold_action_result_counts = [
-  ("kernel action results", 216);
+  ("kernel action results", 220);
   ("kernel action results cached", 0);
-  ("kernel action results executed", 216);
+  ("kernel action results executed", 220);
   ("kernel action results failed", 0);
   ("kernel action results missing from summary", 0);
   ("kernel CompileC cached", 0);
   ("kernel CompileC executed", 13);
   ("kernel CompileC failed", 0);
   ("kernel CompileSource cached", 0);
-  ("kernel CompileSource executed", 202);
+  ("kernel CompileSource executed", 206);
   ("kernel CompileSource failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);
@@ -640,9 +676,14 @@ let expected_kernel_warm_graph_counts = [
   ("PackageFinalize nodes", 0);
   ("ActionPlan nodes", 0);
   ("ModulePlan nodes", 0);
+  ("ModuleDependencies nodes", 0);
   ("SourceAnalysis nodes", 0);
   ("ToolchainReady nodes", 0);
   ("OCamlLibrary nodes", 0);
+  ("OCamlInterface nodes", 0);
+  ("OCamlImplementation nodes", 0);
+  ("OCamlGenerated nodes", 0);
+  ("CObject nodes", 0);
   ("OCamlArchive nodes", 0);
   ("ActionExecution nodes", 0);
   ("kernel compiler actions", 0);
@@ -685,16 +726,16 @@ let expect_kernel_exact_warm_action_result_counts = fun executor summary ->
     (kernel_action_result_counts executor summary)
 
 let expected_kernel_event_change_action_result_counts = [
-  ("kernel action results", 216);
-  ("kernel action results cached", 163);
-  ("kernel action results executed", 53);
+  ("kernel action results", 220);
+  ("kernel action results cached", 218);
+  ("kernel action results executed", 2);
   ("kernel action results failed", 0);
   ("kernel action results missing from summary", 0);
   ("kernel CompileC cached", 13);
   ("kernel CompileC executed", 0);
   ("kernel CompileC failed", 0);
-  ("kernel CompileSource cached", 150);
-  ("kernel CompileSource executed", 52);
+  ("kernel CompileSource cached", 205);
+  ("kernel CompileSource executed", 1);
   ("kernel CompileSource failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);
@@ -711,11 +752,6 @@ let expect_kernel_event_change_action_result_counts = fun executor summary ->
 
 let expect_kernel_graph_shape = fun result ->
   let summary = result.Build_result.summary in
-  let is_kernel_build = fun (build: Goal.build_package) ->
-    Riot_model.Package_name.equal
-      build.package
-      kernel_package
-  in
   let* intent =
     require_completed_node
       summary
@@ -743,51 +779,58 @@ let expect_kernel_graph_shape = fun result ->
         | Work_node.PackageArtifact build -> is_kernel_build build
         | _ -> false)
   in
-  let* finalize =
-    require_completed_node
-      summary
-      "PackageFinalize"
-      (fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.PackageFinalize build -> is_kernel_build build
-        | _ -> false)
-  in
-  let* action_plan =
-    require_completed_node
-      summary
-      "ActionPlan"
-      (fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.ActionPlan build -> is_kernel_build build
-        | _ -> false)
-  in
-  let* module_plan =
-    require_completed_node
-      summary
-      "ModulePlan"
-      (fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.ModulePlan build -> is_kernel_build build
-        | _ -> false)
-  in
   let* archive =
     require_completed_node
       summary
       "OCamlArchive"
       (fun __tmp1 ->
         match __tmp1 with
-        | Work_node.OCamlArchive action ->
-            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | Work_node.OCamlArchive build -> is_kernel_build build
         | _ -> false)
   in
-  let* library =
+  let* module_dependencies =
     require_completed_node
       summary
-      "OCamlLibrary"
+      "ModuleDependencies"
       (fun __tmp1 ->
         match __tmp1 with
-        | Work_node.OCamlLibrary action ->
-            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* interface =
+    require_completed_node
+      summary
+      "OCamlInterface"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
+        | _ -> false)
+  in
+  let* implementation =
+    require_completed_node
+      summary
+      "OCamlImplementation"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+        | _ -> false)
+  in
+  let* generated =
+    require_completed_node
+      summary
+      "OCamlGenerated"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlGenerated source -> is_kernel_build source.Rule.build
+        | _ -> false)
+  in
+  let* c_object =
+    require_completed_node
+      summary
+      "CObject"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.CObject c_object -> is_kernel_build c_object.Rule.build
         | _ -> false)
   in
   let* _toolchain =
@@ -827,68 +870,10 @@ let expect_kernel_graph_shape = fun result ->
       summary
       ~from_label:"PackageArtifact(kernel)"
       ~from:artifact
-      ~to_label:"PackageFinalize(kernel)"
-      ~dependency:(fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.PackageFinalize build -> is_kernel_build build
-        | _ -> false)
-  in
-  let* () =
-    expect_dependency
-      summary
-      ~from_label:"PackageFinalize(kernel)"
-      ~from:finalize
-      ~to_label:"ActionPlan(kernel)"
-      ~dependency:(fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.ActionPlan build -> is_kernel_build build
-        | _ -> false)
-  in
-  let* () =
-    expect_dependency
-      summary
-      ~from_label:"ActionPlan(kernel)"
-      ~from:action_plan
-      ~to_label:"ModulePlan(kernel)"
-      ~dependency:(fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.ModulePlan build -> is_kernel_build build
-        | _ -> false)
-  in
-  let* () =
-    expect_dependency
-      summary
-      ~from_label:"ModulePlan(kernel)"
-      ~from:module_plan
-      ~to_label:"SourceAnalysis(kernel)"
-      ~dependency:(fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.SourceAnalysis source ->
-            Riot_model.Package_name.equal source.key.package kernel_package
-        | _ -> false)
-  in
-  let* () =
-    expect_dependency
-      summary
-      ~from_label:"PackageFinalize(kernel)"
-      ~from:finalize
       ~to_label:"OCamlArchive(kernel)"
       ~dependency:(fun __tmp1 ->
         match __tmp1 with
-        | Work_node.OCamlArchive action ->
-            Riot_model.Package_name.equal action.ref_.package kernel_package
-        | _ -> false)
-  in
-  let* () =
-    expect_dependency
-      summary
-      ~from_label:"OCamlArchive(kernel)"
-      ~from:archive
-      ~to_label:"OCamlLibrary(kernel)"
-      ~dependency:(fun __tmp1 ->
-        match __tmp1 with
-        | Work_node.OCamlLibrary action ->
-            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | Work_node.OCamlArchive build -> is_kernel_build build
         | _ -> false)
   in
   let* () =
@@ -903,18 +888,132 @@ let expect_kernel_graph_shape = fun result ->
             Riot_model.Target.equal toolchain.target (current_target ())
         | _ -> false)
   in
-  let* () = expect_kernel_exact_cold_graph_counts summary in
-  if node_depends_on
-    summary
-    library
-    ~dependency:(fun __tmp1 ->
-      match __tmp1 with
-      | Work_node.ToolchainReady toolchain ->
-          Riot_model.Target.equal toolchain.target (current_target ())
-      | _ -> false) then
-    Ok ()
-  else
-    Error "expected at least one kernel OCaml library to depend on current toolchain readiness"
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlArchive(kernel)"
+      ~from:archive
+      ~to_label:"OCamlInterface(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlArchive(kernel)"
+      ~from:archive
+      ~to_label:"OCamlImplementation(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlArchive(kernel)"
+      ~from:archive
+      ~to_label:"CObject(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.CObject c_object -> is_kernel_build c_object.Rule.build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"ModuleDependencies(kernel)"
+      ~from:module_dependencies
+      ~to_label:"SourceAnalysis(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.SourceAnalysis source ->
+            Riot_model.Package_name.equal source.key.package kernel_package
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlInterface(kernel)"
+      ~from:interface
+      ~to_label:"ModuleDependencies(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlImplementation(kernel)"
+      ~from:implementation
+      ~to_label:"ModuleDependencies(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"CObject(kernel)"
+      ~from:c_object
+      ~to_label:"ModuleDependencies(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlGenerated(kernel)"
+      ~from:generated
+      ~to_label:"ModuleDependencies(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlInterface(kernel)"
+      ~from:interface
+      ~to_label:"ToolchainReady"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ToolchainReady toolchain ->
+            Riot_model.Target.equal toolchain.target (current_target ())
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlImplementation(kernel)"
+      ~from:implementation
+      ~to_label:"ToolchainReady"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ToolchainReady toolchain ->
+            Riot_model.Target.equal toolchain.target (current_target ())
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlGenerated(kernel)"
+      ~from:generated
+      ~to_label:"ToolchainReady"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ToolchainReady toolchain ->
+            Riot_model.Target.equal toolchain.target (current_target ())
+        | _ -> false)
+  in
+  expect_kernel_exact_cold_graph_counts summary
 
 let expect_kernel_package_result = fun result ->
   match Build_result.package_results result
@@ -983,25 +1082,6 @@ let expect_kernel_work_graph = fun result ->
     let* () =
       expect_completed_kind
         summary
-        "PackageFinalize"
-        (fun __tmp1 ->
-          match __tmp1 with
-          | Work_node.PackageFinalize build ->
-              Riot_model.Package_name.equal build.package kernel_package
-          | _ -> false)
-    in
-    let* () =
-      expect_completed_kind
-        summary
-        "ActionPlan"
-        (fun __tmp1 ->
-          match __tmp1 with
-          | Work_node.ActionPlan build -> Riot_model.Package_name.equal build.package kernel_package
-          | _ -> false)
-    in
-    let* () =
-      expect_completed_kind
-        summary
         "ToolchainReady"
         (fun __tmp1 ->
           match __tmp1 with
@@ -1022,20 +1102,46 @@ let expect_kernel_work_graph = fun result ->
     let* () =
       expect_completed_kind
         summary
-        "ModulePlan"
+        "ModuleDependencies"
         (fun __tmp1 ->
           match __tmp1 with
-          | Work_node.ModulePlan build -> Riot_model.Package_name.equal build.package kernel_package
+          | Work_node.ModuleDependencies build -> is_kernel_build build
           | _ -> false)
     in
     let* () =
       expect_completed_kind
         summary
-        "OCamlLibrary"
+        "OCamlInterface"
         (fun __tmp1 ->
           match __tmp1 with
-          | Work_node.OCamlLibrary action ->
-              Riot_model.Package_name.equal action.ref_.package kernel_package
+          | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
+          | _ -> false)
+    in
+    let* () =
+      expect_completed_kind
+        summary
+        "OCamlImplementation"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+          | _ -> false)
+    in
+    let* () =
+      expect_completed_kind
+        summary
+        "OCamlGenerated"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Work_node.OCamlGenerated source -> is_kernel_build source.Rule.build
+          | _ -> false)
+    in
+    let* () =
+      expect_completed_kind
+        summary
+        "CObject"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Work_node.CObject c_object -> is_kernel_build c_object.Rule.build
           | _ -> false)
     in
     let* () =
@@ -1044,8 +1150,7 @@ let expect_kernel_work_graph = fun result ->
         "OCamlArchive"
         (fun __tmp1 ->
           match __tmp1 with
-          | Work_node.OCamlArchive action ->
-              Riot_model.Package_name.equal action.ref_.package kernel_package
+          | Work_node.OCamlArchive build -> is_kernel_build build
           | _ -> false)
     in
     Ok ()
@@ -1137,7 +1242,8 @@ let test_kernel_event_change_partially_invalidates_cached_build = fun _ctx ->
   with_isolated_kernel_workspace
     (fun workspace ->
       let* (_first_executor, first) = build_kernel_with_executor workspace in
-      let* () = expect_kernel_work_graph first in
+      let* () = expect_kernel_package_result first in
+      let* () = expect_kernel_exact_isolated_graph_counts first.Build_result.summary in
       let* () = mutate_kernel_event_source workspace 1 in
       let* (second_executor, second) = build_kernel_with_executor workspace in
       if Build_result.has_failures second then
@@ -1146,8 +1252,9 @@ let test_kernel_event_change_partially_invalidates_cached_build = fun _ctx ->
       else
         let summary = second.Build_result.summary in
         let* () = expect_kernel_package_result second in
-        let* () = expect_kernel_exact_cold_graph_counts summary in
-        expect_kernel_event_change_action_result_counts second_executor summary)
+        let* () = expect_kernel_exact_event_change_graph_counts summary in
+        let* () = expect_kernel_event_change_action_result_counts second_executor summary in
+        expect_cached_kernel_actions_defer_cache_promotion second_executor)
 
 let tests =
   Test.[

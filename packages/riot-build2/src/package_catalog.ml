@@ -25,6 +25,8 @@ let create = fun (workspace: Riot_model.Workspace.t) ->
     realized_packages = ConcurrentHashMap.with_capacity ~size:(List.length manifests);
   }
 
+let begin_execution = fun t -> ConcurrentHashMap.clear t.realized_packages
+
 let workspace = fun t -> t.workspace
 
 let manifests = fun t -> t.manifest_list
@@ -80,6 +82,12 @@ let realize = fun t ~intent package_name ->
       require_manifest t package_name
       |> Result.map
         ~fn:(fun manifest ->
-          let package = Riot_model.Workspace.realize_package ~intent t.workspace manifest in
+          let package =
+            Riot_model.Package_manifest.realize
+              ~intent
+              ~source_scan_concurrency:1
+              ~source_ignore_patterns:t.workspace.source_ignore_patterns
+              manifest
+          in
           ignore (ConcurrentHashMap.insert t.realized_packages ~key ~value:package);
           package)

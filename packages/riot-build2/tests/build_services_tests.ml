@@ -93,6 +93,11 @@ let key_name = fun request ->
   | PackageFinalizeKey _ -> "PackageFinalizeKey"
   | ModulePlanKey _ -> "ModulePlanKey"
   | ActionPlanKey _ -> "ActionPlanKey"
+  | ModuleDependenciesKey _ -> "ModuleDependenciesKey"
+  | OCamlInterfaceKey _ -> "OCamlInterfaceKey"
+  | OCamlImplementationKey _ -> "OCamlImplementationKey"
+  | OCamlGeneratedKey _ -> "OCamlGeneratedKey"
+  | CObjectKey _ -> "CObjectKey"
   | OCamlLibraryKey _ -> "OCamlLibraryKey"
   | OCamlArchiveKey _ -> "OCamlArchiveKey"
   | ActionExecutionKey _ -> "ActionExecutionKey"
@@ -263,6 +268,7 @@ let test_module_plan_dependencies_are_stable_without_source_analysis_state = fun
             )
           )
       in
+      let* () = execute_source_requests services registry (source_analysis_requests first) in
       let* _ =
         Build_services.execute_node services registry node
         |> Result.map_err ~fn:Error.message
@@ -293,6 +299,23 @@ let test_module_plan_declares_package_dependency_provider_nodes = fun _ctx ->
       else
         Error "expected module planning to depend on declared package provider")
 
+let test_module_plan_execution_requires_planned_source_analysis = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_module_plan_requires_sources"
+    (fun root ->
+      let* workspace = source_package_workspace root in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
+      let registry = Work_registry.create () in
+      let build = build_package "sourcepkg" in
+      let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
+      match Build_services.execute_node services registry node with
+      | Error (Error.ExecutorInvariantViolated _) -> Ok ()
+      | Error error -> Error (Error.message error)
+      | Ok _ -> Error "expected module planning execution to require planned source analysis")
+  with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
 let test_module_plan_cache_key_uses_source_summary_not_package_hash = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build2_module_plan_summary_cache"
@@ -304,15 +327,15 @@ let test_module_plan_cache_key_uses_source_summary_not_package_hash = fun _ctx -
       let registry = Work_registry.create () in
       let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
       let* source_keys =
-        match Build_services.execute_node services registry node with
-        | Ok (Work_result.RequeueWithDependencies keys) ->
+        Build_services.plan_dependencies services registry node
+        |> Result.map_err ~fn:Error.message
+        |> Result.and_then
+          ~fn:(fun keys ->
             let source_keys = source_analysis_requests keys in
             if List.is_empty source_keys then
-              Error "expected cold module planning to request source analysis dependencies"
+              Error "expected cold module planning to plan source analysis dependencies"
             else
-              Ok source_keys
-        | Ok _ -> Error "expected cold module planning to request source analysis dependencies"
-        | Error error -> Error (Error.message error)
+              Ok source_keys)
       in
       let* () = execute_source_requests services registry source_keys in
       let* () =
@@ -330,15 +353,15 @@ let test_module_plan_cache_key_uses_source_summary_not_package_hash = fun _ctx -
       let cached_registry = Work_registry.create () in
       let cached_node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
       let* cached_source_keys =
-        match Build_services.execute_node cached_services cached_registry cached_node with
-        | Ok (Work_result.RequeueWithDependencies keys) ->
+        Build_services.plan_dependencies cached_services cached_registry cached_node
+        |> Result.map_err ~fn:Error.message
+        |> Result.and_then
+          ~fn:(fun keys ->
             let source_keys = source_analysis_requests keys in
             if List.is_empty source_keys then
-              Error "expected cached module planning to request source summaries"
+              Error "expected cached module planning to plan source summaries"
             else
-              Ok source_keys
-        | Ok _ -> Error "expected cached module planning to request source summaries first"
-        | Error error -> Error (Error.message error)
+              Ok source_keys)
       in
       let* () = execute_source_requests cached_services cached_registry cached_source_keys in
       let* () =
@@ -627,6 +650,23 @@ let action_execution = fun root ~action ->
     ~dependencies:[]
     ~sandbox_dir:Path.(root / Path.v "sandbox")
 
+let action_execution_with_dependencies = fun root ~action ~dependencies ->
+  let target = Riot_model.Target.current in
+  let package = action_package root in
+  let toolchain =
+    Riot_toolchain.from_config_for_target
+      ~config:(Riot_model.Toolchain_config.from_root ~root)
+      ~target
+  in
+  Action_execution.make
+    ~package
+    ~profile:Riot_model.Profile.debug
+    ~target
+    ~toolchain
+    ~action
+    ~dependencies
+    ~sandbox_dir:Path.(root / Path.v "sandbox")
+
 let write_action_execution = fun root ->
   let output = Path.v "out.txt" in
   action_execution root ~action:(Action.WriteFile { destination = output; content = "hello" })
@@ -745,7 +785,7 @@ let test_uncached_action_reads_concrete_package_sources_without_sandbox_copy = f
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
-let test_uncached_compiler_action_requests_toolchain_readiness_at_execution = fun _ctx ->
+let test_uncached_compiler_action_requires_planned_toolchain_readiness = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build2_action_toolchain"
     (fun root ->
@@ -757,15 +797,34 @@ let test_uncached_compiler_action_requests_toolchain_readiness_at_execution = fu
       let executor = Action_executor.create ~store ~toolchains () in
       let action = compile_action_execution root in
       match Action_executor.execute executor action with
-      | Ok (Work_result.RequeueWithDependencies [ request ]) -> (
-          match request_key request with
-          | Work_node.ToolchainReadyKey toolchain when Riot_model.Target.equal
-            toolchain.target
-            action.ref_.target -> Ok ()
-          | _ -> Error "expected uncached action to request toolchain readiness"
-        )
-      | Ok _ -> Error "expected uncached action to request toolchain readiness"
-      | Error error -> Error (Error.message error)) with
+      | Error (Error.ExecutorInvariantViolated _) -> Ok ()
+      | Error error -> Error (Error.message error)
+      | Ok _ -> Error "expected uncached compiler action to require planned toolchain readiness")
+  with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_action_execution_requires_planned_action_dependencies = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_action_dependency"
+    (fun root ->
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let store = Riot_store.Store.create ~workspace in
+      let toolchains = Toolchain_service.create ~root () in
+      let executor = Action_executor.create ~store ~toolchains () in
+      let dependency = write_action_execution root in
+      let dependent =
+        action_execution_with_dependencies
+          root
+          ~dependencies:[ dependency.ref_ ]
+          ~action:(Action.WriteFile { destination = Path.v "dependent.txt"; content = "ok" })
+      in
+      match Action_executor.execute executor dependent with
+      | Error (Error.ExecutorInvariantViolated _) -> Ok ()
+      | Error error -> Error (Error.message error)
+      | Ok _ -> Error "expected action execution to require planned action dependencies") with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -786,6 +845,9 @@ let tests =
     case
       "module plan declares package dependency provider nodes"
       test_module_plan_declares_package_dependency_provider_nodes;
+    case
+      "module plan execution requires planned source analysis"
+      test_module_plan_execution_requires_planned_source_analysis;
     case
       "module plan cache key uses source summary not package hash"
       test_module_plan_cache_key_uses_source_summary_not_package_hash;
@@ -814,8 +876,11 @@ let tests =
       "uncached action reads concrete package sources without sandbox copy"
       test_uncached_action_reads_concrete_package_sources_without_sandbox_copy;
     case
-      "uncached compiler action requests toolchain readiness at execution"
-      test_uncached_compiler_action_requests_toolchain_readiness_at_execution;
+      "uncached compiler action requires planned toolchain readiness"
+      test_uncached_compiler_action_requires_planned_toolchain_readiness;
+    case
+      "action execution requires planned action dependencies"
+      test_action_execution_requires_planned_action_dependencies;
   ]
 
 let main ~args = Test.Cli.main ~name:"riot_build2_build_services_tests" ~tests ~args ()

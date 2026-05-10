@@ -6,6 +6,7 @@ module Action = Action
 module Package_catalog = Package_catalog
 module Config = Build_config
 module Build_result = Build_result
+module Dep_analysis = Dep_analysis
 module Action_execution = Action_execution
 module Action_timing_summary = Action_timing_summary
 module Build_services = Build_services
@@ -18,6 +19,8 @@ module Module_planning = Module_planning
 module Module_provider_registry = Module_provider_registry
 module Package_finalizer = Package_finalizer
 module Package_planning = Package_planning
+module Rule = Rule
+module Rule_service = Rule_service
 module User_intent = User_intent
 module Source_analysis = Source_analysis
 module Source_analyzer = Source_analyzer
@@ -39,6 +42,7 @@ let create_executor: config:Config.t -> unit -> (t, Error.t) result = fun ~confi
   Ok (Build_services.create ~config ())
 
 let execute: t -> User_intent.t -> (Build_result.t, Error.t) result = fun t intent ->
+  Build_services.begin_execution t;
   let seed = Work_node.user_intent ~id:(Work_node.Node_id.from_int 1) intent in
   let summary = Executor.run ~services:t ~seeds:[ seed ] () in
   let packages = Build_services.package_results t in

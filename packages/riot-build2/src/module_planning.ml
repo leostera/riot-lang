@@ -11,6 +11,9 @@ type t = {
   module_providers: Module_provider_registry.t;
   source_analyzer: Source_analyzer.t;
   module_plan_cache: Module_plan_cache.payload Graph_cache.t;
+  source_graphs: (Goal.build_package, Riot_planner.Module_graph.t) ConcurrentHashMap.t;
+  source_tasks:
+    (Goal.build_package, Riot_planner.Module_graph.source_analysis_task list) ConcurrentHashMap.t;
   plans: (Goal.build_package, Module_plan.t) ConcurrentHashMap.t;
 }
 
@@ -24,8 +27,15 @@ let create = fun
     module_providers;
     source_analyzer;
     module_plan_cache = Module_plan_cache.create_cache ~store;
+    source_graphs = ConcurrentHashMap.with_capacity ~size:128;
+    source_tasks = ConcurrentHashMap.with_capacity ~size:128;
     plans = ConcurrentHashMap.with_capacity ~size:128;
   }
+
+let begin_execution = fun t ->
+  ConcurrentHashMap.clear t.source_graphs;
+  ConcurrentHashMap.clear t.source_tasks;
+  ConcurrentHashMap.clear t.plans
 
 let find = fun t build -> ConcurrentHashMap.get t.plans ~key:build
 
@@ -69,18 +79,31 @@ let source_groups = fun (package: Riot_model.Package.t) ->
       };
     ]
 
-let package_source_tasks = fun (t: t) ~(package:Riot_model.Package.t) ~toolchain ~build_ctx ->
-  let config =
-    Riot_planner.Module_graph.{
-      root = package.path;
-      source_groups = source_groups package;
-      package;
-      toolchain;
-      workspace = t.workspace;
-    }
-  in
-  let graph_builder = Riot_planner.Module_graph.create config in
-  Riot_planner.Module_graph.source_tasks graph_builder
+let source_graph_for_input = fun t (input: Package_planning.input) ->
+  match ConcurrentHashMap.get t.source_graphs ~key:input.build with
+  | Some graph -> Ok graph
+  | None ->
+      let config =
+        Riot_planner.Module_graph.{
+          root = input.package.path;
+          source_groups = source_groups input.package;
+          package = input.package;
+          toolchain = input.toolchain;
+          workspace = t.workspace;
+        }
+      in
+      let graph_builder = Riot_planner.Module_graph.create config in
+      ignore (ConcurrentHashMap.insert t.source_graphs ~key:input.build ~value:graph_builder);
+      Ok graph_builder
+
+let source_tasks_for_input = fun t (input: Package_planning.input) ->
+  match ConcurrentHashMap.get t.source_tasks ~key:input.build with
+  | Some tasks -> Ok tasks
+  | None ->
+      let* graph_builder = source_graph_for_input t input in
+      let tasks = Riot_planner.Module_graph.source_tasks graph_builder in
+      ignore (ConcurrentHashMap.insert t.source_tasks ~key:input.build ~value:tasks);
+      Ok tasks
 
 let realized_dependency_packages = fun t ~scope ~intent (package: Riot_model.Package.t) ->
   let rec loop acc = fun __tmp1 ->
@@ -108,18 +131,43 @@ let package_dependency_keys = fun t build ->
     t.module_providers
     build
 
-let source_dependency_requests = fun t (build: Goal.build_package) ->
+let source_analysis_sources = fun t (build: Goal.build_package) ->
   let* input = Package_planning.resolve t.package_planning build in
   let package = input.package in
-  let tasks =
-    package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
-  in
+  let* tasks = source_tasks_for_input t input in
   Ok (
     List.map
       tasks
       ~fn:(fun source ->
-        let source = Source_analysis.make ~package:package.name ~task:source in
-        Work_request.materialize (Work_node.SourceAnalysis source))
+        Source_analysis.make ~package:package.name ~task:source)
+  )
+
+let source_dependency_requests = fun t build ->
+  source_analysis_sources t build
+  |> Result.map
+    ~fn:(fun sources ->
+      List.map
+        sources
+        ~fn:(fun source -> Work_request.materialize (Work_node.SourceAnalysis source)))
+
+let ocaml_sources = fun t (build: Goal.build_package) ->
+  let* input = Package_planning.resolve t.package_planning build in
+  let package = input.package in
+  let* tasks = source_tasks_for_input t input in
+  Ok (
+    tasks
+    |> List.filter
+      ~fn:(fun task ->
+        Rule.is_interface_source task || Rule.is_implementation_source task)
+    |> List.map ~fn:(Rule.ocaml_source ~build ~package:package.name)
+  )
+
+let c_objects = fun t (build: Goal.build_package) ->
+  let* input = Package_planning.resolve t.package_planning build in
+  Ok (
+    input.package.sources.native
+    |> List.filter ~fn:(fun path -> String.ends_with ~suffix:".c" (Path.to_string path))
+    |> List.map ~fn:(fun source -> Rule.c_object ~build ~source)
   )
 
 let source_analysis_for_task = fun
@@ -204,6 +252,7 @@ let module_plan_cache_key = fun
   let* source_hashes = source_summary_hashes t input.package.name tasks in
   let hasher = Crypto.Sha256.create () in
   Crypto.Sha256.write hasher "riot-build2-module-plan-input:v2";
+  Crypto.Sha256.write hasher Action_planner.cache_key_version;
   Crypto.Sha256.write hasher (Riot_model.Package_name.to_string input.package.name);
   Riot_model.Build_ctx.hash hasher input.build_ctx;
   Riot_model.Target.hash hasher input.target;
@@ -385,16 +434,7 @@ let dependency_package_by_name = fun t dependency_packages depset package_name -
               | Error _ -> None)
 
 let build_module_graph = fun (t: t) (input: Package_planning.input) ~depset ~dependency_packages ->
-  let config =
-    Riot_planner.Module_graph.{
-      root = input.package.path;
-      source_groups = source_groups input.package;
-      package = input.package;
-      toolchain = input.toolchain;
-      workspace = t.workspace;
-    }
-  in
-  let graph_builder = Riot_planner.Module_graph.create config in
+  let* graph_builder = source_graph_for_input t input in
   List.for_each
     (Riot_model.Package.build_graph_dependencies input.package)
     ~fn:(fun dependency ->
@@ -441,15 +481,17 @@ let build_module_graph = fun (t: t) (input: Package_planning.input) ~depset ~dep
               ~includes:[]
         | None -> ()
       );
-      Ok (Riot_planner.Module_graph.graph graph_builder)
+      Ok (
+        Riot_planner.Module_graph.graph graph_builder,
+        Dep_analysis.from_analyzed_modules
+          (Riot_planner.Module_graph.analyzed_modules graph_builder)
+      )
 
 let plan = fun t _registry (build: Goal.build_package) ->
   let* depset = Package_planning.depset t.package_planning build in
   let* input = Package_planning.resolve ~depset t.package_planning build in
   let package = input.package in
-  let tasks =
-    package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
-  in
+  let* tasks = source_tasks_for_input t input in
   let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
   if not (List.is_empty missing) then
     Error (Error.ExecutorInvariantViolated {
@@ -466,7 +508,9 @@ let plan = fun t _registry (build: Goal.build_package) ->
         package
     in
     let* module_plan_hash = module_plan_cache_key t input tasks in
-    let* module_graph = build_module_graph t input ~depset ~dependency_packages in
+    let* (module_graph, dep_analysis) =
+      build_module_graph t input ~depset ~dependency_packages
+    in
     let* sandbox_dir = sandbox_dir t input in
     let* action_executions =
       Action_planner.plan
@@ -479,6 +523,7 @@ let plan = fun t _registry (build: Goal.build_package) ->
           depset;
           sandbox_dir;
           module_graph;
+          dep_analysis;
         }
     in
     let* module_plan = module_plan_from_actions t input ~module_plan_hash action_executions in
@@ -497,15 +542,15 @@ let execute = fun t registry (build: Goal.build_package) ->
   | None ->
       let* depset = Package_planning.depset t.package_planning build in
       let* input = Package_planning.resolve ~depset t.package_planning build in
-      let source_dependencies = source_dependency_requests t build in
-      let* source_dependencies = source_dependencies in
       let package = input.package in
-      let tasks =
-        package_source_tasks t ~package ~toolchain:input.toolchain ~build_ctx:input.build_ctx
-      in
+      let* tasks = source_tasks_for_input t input in
       let missing = Source_analyzer.missing t.source_analyzer ~package:package.name tasks in
       if not (List.is_empty missing) then
-        Ok (Work_result.RequeueWithDependencies source_dependencies)
+        Error (Error.ExecutorInvariantViolated {
+          message = "module planning for "
+          ^ Riot_model.Package_name.to_string package.name
+          ^ " started before source analysis dependencies completed";
+        })
       else
         let* module_plan_hash = module_plan_cache_key t input tasks in
         match load_cached_plan t input ~module_plan_hash with
