@@ -70,6 +70,26 @@ let catalog = fun t -> t.catalog
 
 let package_results = fun t -> Package_finalizer.results t.package_finalizer
 
+let action_dependency_key = fun registry ref_ ->
+  let library_key = Work_node.OCamlLibraryKey ref_ in
+  if Option.is_some (Work_registry.find registry library_key) then
+    library_key
+  else
+    let archive_key = Work_node.OCamlArchiveKey ref_ in
+    if Option.is_some (Work_registry.find registry archive_key) then
+      archive_key
+    else
+      Work_node.ActionExecutionKey ref_
+
+let action_dependencies = fun registry action ->
+  let action_dependencies =
+    List.map action.Action_execution.dependencies ~fn:(action_dependency_key registry)
+  in
+  if Action_executor.requires_toolchain action then
+    Work_node.ToolchainReadyKey { target = action.ref_.target } :: action_dependencies
+  else
+    action_dependencies
+
 let plan_dependencies = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
@@ -87,14 +107,11 @@ let plan_dependencies = fun t registry node ->
   | ModulePlan build -> Module_planning.plan_dependencies t.module_planning registry build
   | ActionPlan build ->
       Package_finalizer.plan_action_dependencies t.package_finalizer registry build
+  | OCamlLibrary action
+  | OCamlArchive action ->
+      Ok (action_dependencies registry action)
   | ActionExecution action ->
-      let action_dependencies =
-        List.map action.dependencies ~fn:(fun ref_ -> Work_node.ActionExecutionKey ref_)
-      in
-      if Action_executor.requires_toolchain action then
-        Ok (Work_node.ToolchainReadyKey { target = action.ref_.target } :: action_dependencies)
-      else
-        Ok action_dependencies
+      Ok (action_dependencies registry action)
 
 let execute_node = fun t registry node ->
   match Work_node.kind node with
@@ -114,4 +131,7 @@ let execute_node = fun t registry node ->
   | PackageFinalize build -> Package_finalizer.execute_finalize t.package_finalizer registry build
   | ModulePlan build -> Module_planning.execute t.module_planning registry build
   | ActionPlan build -> Package_finalizer.execute_action_plan t.package_finalizer registry build
+  | OCamlLibrary action
+  | OCamlArchive action ->
+      Action_executor.execute t.action_executor action
   | ActionExecution action -> Action_executor.execute t.action_executor action

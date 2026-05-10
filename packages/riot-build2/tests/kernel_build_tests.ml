@@ -104,6 +104,8 @@ let kind_name = fun __tmp1 ->
   | PackageFinalize _ -> "PackageFinalize"
   | ModulePlan _ -> "ModulePlan"
   | ActionPlan _ -> "ActionPlan"
+  | OCamlLibrary _ -> "OCamlLibrary"
+  | OCamlArchive _ -> "OCamlArchive"
   | ActionExecution _ -> "ActionExecution"
 
 let completed_kind_names = fun summary ->
@@ -160,12 +162,14 @@ let expect_dependency = fun summary ~from_label ~from ~to_label ~dependency ->
   else
     Error ("expected " ^ from_label ^ " to depend on " ^ to_label)
 
-let kernel_action_executions = fun summary ->
+let kernel_compiler_actions = fun summary ->
   summary.Executor.Summary.results
   |> List.filter_map
     ~fn:(fun result ->
       if result.Executor.Summary.status = Work_node.Completed then
         match Work_node.kind result.node with
+        | Work_node.OCamlLibrary action
+        | Work_node.OCamlArchive action
         | Work_node.ActionExecution action when Riot_model.Package_name.equal
           action.ref_.package
           kernel_package -> Some action
@@ -174,14 +178,14 @@ let kernel_action_executions = fun summary ->
         None)
 
 let expect_kernel_native_compile_library = fun summary ->
-  let actions = kernel_action_executions summary in
+  let actions = kernel_compiler_actions summary in
   let compile_library_source_actions =
     actions
     |> List.filter
       ~fn:(fun action ->
         match action.Action_execution.action with
         | Action.CompileSource _ -> true
-        | Action.CompileLibrary { sources; _ } -> not (List.is_empty sources)
+        | Action.CompileSources { sources; _ } -> not (List.is_empty sources)
         | _ -> false)
   in
   let grouped_compile_library_count =
@@ -189,7 +193,7 @@ let expect_kernel_native_compile_library = fun summary ->
     |> List.filter
       ~fn:(fun action ->
         match action.Action_execution.action with
-        | Action.CompileLibrary { sources; _ } -> List.length sources > 1
+        | Action.CompileSources { sources; _ } -> List.length sources > 1
         | _ -> false)
     |> List.length
   in
@@ -198,7 +202,7 @@ let expect_kernel_native_compile_library = fun summary ->
     |> List.filter
       ~fn:(fun action ->
         match action.Action_execution.action with
-        | Action.CompileLibrary { sources; _ } ->
+        | Action.CompileSources { sources; _ } ->
             List.length sources > 1
             && not (List.any sources ~fn:(fun source -> Option.is_some source.Action.content))
         | _ -> false)
@@ -228,7 +232,7 @@ let expect_kernel_native_compile_library = fun summary ->
   then
     Ok ()
   else
-    Error ("expected kernel to execute grouped native CompileLibrary actions and one final archive, got "
+    Error ("expected kernel to execute grouped native CompileSources actions and one final archive, got "
     ^ Int.to_string (List.length compile_library_source_actions)
     ^ " source actions, "
     ^ Int.to_string grouped_compile_library_count
@@ -301,13 +305,23 @@ let expect_kernel_graph_shape = fun result ->
         | Work_node.ModulePlan build -> is_kernel_build build
         | _ -> false)
   in
-  let* action =
+  let* archive =
     require_completed_node
       summary
-      "ActionExecution"
+      "OCamlArchive"
       (fun __tmp1 ->
         match __tmp1 with
-        | Work_node.ActionExecution action ->
+        | Work_node.OCamlArchive action ->
+            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | _ -> false)
+  in
+  let* library =
+    require_completed_node
+      summary
+      "OCamlLibrary"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlLibrary action ->
             Riot_model.Package_name.equal action.ref_.package kernel_package
         | _ -> false)
   in
@@ -393,33 +407,49 @@ let expect_kernel_graph_shape = fun result ->
       summary
       ~from_label:"PackageFinalize(kernel)"
       ~from:finalize
-      ~to_label:"ActionExecution(kernel)"
+      ~to_label:"OCamlArchive(kernel)"
       ~dependency:(fun __tmp1 ->
         match __tmp1 with
-        | Work_node.ActionExecution action ->
+        | Work_node.OCamlArchive action ->
             Riot_model.Package_name.equal action.ref_.package kernel_package
         | _ -> false)
   in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlArchive(kernel)"
+      ~from:archive
+      ~to_label:"OCamlLibrary(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlLibrary action ->
+            Riot_model.Package_name.equal action.ref_.package kernel_package
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlArchive(kernel)"
+      ~from:archive
+      ~to_label:"ToolchainReady"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ToolchainReady toolchain ->
+            Riot_model.Target.equal toolchain.target (current_target ())
+        | _ -> false)
+  in
   let* () = expect_kernel_native_compile_library summary in
-  if summary.Executor.Summary.results
-  |> List.any
-    ~fn:(fun result ->
-      result.Executor.Summary.status = Work_node.Completed && match Work_node.kind result.node with
-      | Work_node.ActionExecution action when Riot_model.Package_name.equal
-        action.ref_.package
-        kernel_package ->
-          node_depends_on
-            summary
-            result.node
-            ~dependency:(fun __tmp1 ->
-              match __tmp1 with
-              | Work_node.ToolchainReady toolchain ->
-                  Riot_model.Target.equal toolchain.target (current_target ())
-              | _ -> false)
+  if node_depends_on
+    summary
+    library
+    ~dependency:(fun __tmp1 ->
+      match __tmp1 with
+      | Work_node.ToolchainReady toolchain ->
+          Riot_model.Target.equal toolchain.target (current_target ())
       | _ -> false) then
     Ok ()
   else
-    Error "expected at least one kernel action execution to depend on current toolchain readiness"
+    Error "expected at least one kernel OCaml library to depend on current toolchain readiness"
 
 let expect_kernel_package_result = fun result ->
   match Build_result.package_results result
@@ -536,10 +566,20 @@ let expect_kernel_work_graph = fun result ->
     let* () =
       expect_completed_kind
         summary
-        "ActionExecution"
+        "OCamlLibrary"
         (fun __tmp1 ->
           match __tmp1 with
-          | Work_node.ActionExecution action ->
+          | Work_node.OCamlLibrary action ->
+              Riot_model.Package_name.equal action.ref_.package kernel_package
+          | _ -> false)
+    in
+    let* () =
+      expect_completed_kind
+        summary
+        "OCamlArchive"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Work_node.OCamlArchive action ->
               Riot_model.Package_name.equal action.ref_.package kernel_package
           | _ -> false)
     in
@@ -640,6 +680,26 @@ let test_kernel_repeated_build_uses_package_cache_fast_path = fun _ctx ->
               match __tmp1 with
               | Work_node.ModulePlan build ->
                   Riot_model.Package_name.equal build.package kernel_package
+              | _ -> false)
+        in
+        let* () =
+          expect_no_completed_kind
+            summary
+            "OCamlLibrary"
+            (fun __tmp1 ->
+              match __tmp1 with
+              | Work_node.OCamlLibrary action ->
+                  Riot_model.Package_name.equal action.ref_.package kernel_package
+              | _ -> false)
+        in
+        let* () =
+          expect_no_completed_kind
+            summary
+            "OCamlArchive"
+            (fun __tmp1 ->
+              match __tmp1 with
+              | Work_node.OCamlArchive action ->
+                  Riot_model.Package_name.equal action.ref_.package kernel_package
               | _ -> false)
         in
         expect_no_completed_kind

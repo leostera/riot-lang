@@ -124,6 +124,18 @@ val compile_impl:
    Compile an implementation file (.ml -> .cmo). The current directory is
    automatically included.
 *)
+val compile_sources:
+  t ->
+  cwd:Std.Path.t ->
+  includes:Path.t list ->
+  flags:compiler_flag list ->
+  Path.t list ->
+  invocation
+
+(**
+   Compile source files in one compiler invocation without creating an archive.
+   The current directory is automatically included.
+*)
 val generate_interface:
   t ->
   cwd:Std.Path.t ->

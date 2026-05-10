@@ -616,6 +616,16 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
   in
   make_invocation ~cwd (String.concat " " ([ base_command t ] @ args))
 
+let compile_sources = fun t ~cwd ~includes ~flags sources ->
+  let includes_with_dot = Path.v "." :: includes in
+  build_invocation
+    t
+    ~cwd
+    ~includes:includes_with_dot
+    ~flags
+    ~mode:Compile
+    (List.map sources ~fn:Path.to_string)
+
 let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let args =

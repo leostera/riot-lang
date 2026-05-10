@@ -433,9 +433,6 @@ let flags_for_sources = fun input sources ->
   in
   dedup_flags flags
 
-let source_group_output = fun group ->
-  Path.v ("__riot_build2_" ^ source_group_kind_prefix group.kind ^ "_" ^ group.name ^ ".cmxa")
-
 let first_output_with_extension = fun outputs extension ->
   List.find outputs ~fn:(fun output -> Path.extension output = Some extension)
 
@@ -479,14 +476,12 @@ let source_group_action = fun input group ->
         | (FolderSourcesGroup, _)
         | (LibraryInterfaceGroup, _) ->
             Some (
-              Action.CompileLibrary {
+              Action.CompileSources {
                 sources = List.map group.sources ~fn:(fun info -> info.source);
-                objects = [];
                 outputs =
                   group.sources
                   |> List.flat_map ~fn:(fun info -> info.outputs)
                   |> dedup_paths;
-                output = source_group_output group;
                 includes = dedup_paths (Path.v "." :: dependency_includes input);
                 flags = flags_for_sources input group.sources;
               }

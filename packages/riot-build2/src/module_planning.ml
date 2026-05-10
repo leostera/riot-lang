@@ -136,8 +136,31 @@ let sandbox_dir = fun t (input: Package_planning.input) ->
   / Path.v (Crypto.Digest.hex input.package_hash))
   |> absolute_path
 
+let is_final_archive_action = fun __tmp1 ->
+  match __tmp1 with
+  | Action.CompileLibrary { sources = []; outputs; _ } ->
+      List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa")
+  | _ -> false
+
+let classify_action_executions = fun action_executions ->
+  let ocaml_libraries =
+    action_executions
+    |> List.filter
+      ~fn:(fun action ->
+        match action.Action_execution.action with
+        | Action.CompileSource _
+        | Action.CompileSources _ -> true
+        | _ -> false)
+  in
+  let ocaml_archive =
+    action_executions
+    |> List.find ~fn:(fun action -> is_final_archive_action action.Action_execution.action)
+  in
+  (ocaml_libraries, ocaml_archive)
+
 let module_plan_from_actions = fun t (input: Package_planning.input) action_executions ->
   let* sandbox_dir = sandbox_dir t input in
+  let (ocaml_libraries, ocaml_archive) = classify_action_executions action_executions in
   Ok Module_plan.{
     build = input.build;
     package = input.package;
@@ -146,6 +169,8 @@ let module_plan_from_actions = fun t (input: Package_planning.input) action_exec
     toolchain = input.toolchain;
     build_ctx = input.build_ctx;
     action_executions;
+    ocaml_libraries;
+    ocaml_archive;
     sandbox_dir;
     package_hash = input.package_hash;
   }
@@ -165,6 +190,7 @@ let load_cached_plan = fun t (input: Package_planning.input) ->
           ~sandbox_dir
           payload
       in
+      let (ocaml_libraries, ocaml_archive) = classify_action_executions action_executions in
       let module_plan =
         Module_plan.{
           build = input.build;
@@ -174,6 +200,8 @@ let load_cached_plan = fun t (input: Package_planning.input) ->
           toolchain = input.toolchain;
           build_ctx = input.build_ctx;
           action_executions;
+          ocaml_libraries;
+          ocaml_archive;
           sandbox_dir;
           package_hash = input.package_hash;
         }

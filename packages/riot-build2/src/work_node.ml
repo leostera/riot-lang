@@ -52,6 +52,8 @@ type key =
   | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
   | ActionPlanKey of Goal.build_package
+  | OCamlLibraryKey of Action_execution.ref_
+  | OCamlArchiveKey of Action_execution.ref_
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
@@ -63,6 +65,8 @@ type kind =
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionPlan of Goal.build_package
+  | OCamlLibrary of Action_execution.t
+  | OCamlArchive of Action_execution.t
   | ActionExecution of Action_execution.t
 
 type t = {
@@ -85,6 +89,8 @@ let key_from_kind = fun __tmp1 ->
   | PackageFinalize build -> PackageFinalizeKey build
   | ModulePlan build -> ModulePlanKey build
   | ActionPlan build -> ActionPlanKey build
+  | OCamlLibrary action -> OCamlLibraryKey action.ref_
+  | OCamlArchive action -> OCamlArchiveKey action.ref_
   | ActionExecution action -> ActionExecutionKey action.ref_
 
 let kind_from_key = fun __tmp1 ->
@@ -100,6 +106,8 @@ let kind_from_key = fun __tmp1 ->
   | Module _
   | Source _
   | SourceAnalysisKey _
+  | OCamlLibraryKey _
+  | OCamlArchiveKey _
   | ActionExecutionKey _ -> None
 
 let create = fun ~id ?key kind ->
@@ -133,6 +141,10 @@ let module_plan = fun ~id build -> create ~id (ModulePlan build)
 
 let action_plan = fun ~id build -> create ~id (ActionPlan build)
 
+let ocaml_library = fun ~id action -> create ~id (OCamlLibrary action)
+
+let ocaml_archive = fun ~id action -> create ~id (OCamlArchive action)
+
 let action_execution = fun ~id action -> create ~id (ActionExecution action)
 
 let id = fun node -> node.id
@@ -151,6 +163,8 @@ let execution_mode_of_kind = fun __tmp1 ->
   | PackageFinalize _
   | ModulePlan _
   | ActionPlan _
+  | OCamlLibrary _
+  | OCamlArchive _
   | ActionExecution _ -> Concrete
 
 let execution_mode = fun node -> execution_mode_of_kind node.kind

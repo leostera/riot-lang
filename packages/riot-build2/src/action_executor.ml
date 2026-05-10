@@ -222,6 +222,36 @@ let run_action = fun
                       source.staged
               in
               Riot_toolchain.Ocamlc.run invocation)
+  | Action.CompileSources {
+      sources;
+      outputs = _ :: _;
+      includes;
+      flags;
+    } ->
+      with_toolchain
+        ocamlc
+        (fun ocamlc ->
+          let staged =
+            sources
+            |> List.fold_left
+              ~init:(Ok [])
+              ~fn:(fun acc source ->
+                let* acc = acc in
+                let* () = stage_compile_library_source ~package ~package_root ~sandbox_dir source in
+                Ok (source.Action.staged :: acc))
+          in
+          match staged with
+          | Error (Error.ExecutorInvariantViolated { message }) -> ocamlc_failed message
+          | Error (Error.ActionExecutionFailed { reason; _ }) -> ocamlc_failed reason
+          | Error error -> ocamlc_failed (Error.message error)
+          | Ok staged ->
+              Riot_toolchain.Ocamlc.compile_sources
+                ocamlc
+                ~cwd:sandbox_dir
+                ~includes:(resolve_include_paths sandbox_dir includes)
+                ~flags:(make_flags_absolute sandbox_dir flags)
+                (List.reverse staged)
+              |> Riot_toolchain.Ocamlc.run)
   | Action.CompileLibrary {
       sources;
       objects;
@@ -272,6 +302,7 @@ let run_action = fun
         ~error:(fun error -> ocamlc_failed ("write failed: " ^ IO.error_message error))
   | Action.CompileC { outputs = []; _ }
   | Action.CompileSource { outputs = []; _ }
+  | Action.CompileSources { outputs = []; _ }
   | Action.CompileLibrary { outputs = []; _ } -> ocamlc_failed "action has no outputs"
 
 let verify_outputs = fun outputs ->

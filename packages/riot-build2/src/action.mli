@@ -25,6 +25,12 @@ type t =
       includes: Path.t list;
       flags: Riot_toolchain.Ocamlc.compiler_flag list;
     }
+  | CompileSources of {
+      sources: compile_library_source list;
+      outputs: Path.t list;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
   | CompileLibrary of {
       sources: compile_library_source list;
       objects: Path.t list;

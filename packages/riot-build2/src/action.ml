@@ -29,6 +29,12 @@ type t =
       includes: Path.t list;
       flags: Riot_toolchain.Ocamlc.compiler_flag list;
     }
+  | CompileSources of {
+      sources: compile_library_source list;
+      outputs: Path.t list;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
   | CompileLibrary of {
       sources: compile_library_source list;
       objects: Path.t list;
@@ -50,6 +56,7 @@ let outputs = fun __tmp1 ->
   match __tmp1 with
   | CompileC { outputs; _ }
   | CompileSource { outputs; _ }
+  | CompileSources { outputs; _ }
   | CompileLibrary { outputs; _ } -> outputs
   | CopyFile { destination; _ } -> [ destination ]
   | WriteFile { destination; _ } -> [ destination ]
@@ -66,6 +73,7 @@ let export_outputs = fun __tmp1 ->
       | _ -> false)
   | CompileC _
   | CompileSource _
+  | CompileSources _
   | CopyFile _
   | WriteFile _ -> []
 
@@ -73,6 +81,7 @@ let requires_toolchain = fun __tmp1 ->
   match __tmp1 with
   | CompileC _
   | CompileSource _
+  | CompileSources _
   | CompileLibrary _ -> true
   | CopyFile _
   | WriteFile _ -> false
@@ -81,6 +90,7 @@ let kind = fun __tmp1 ->
   match __tmp1 with
   | CompileC _ -> "CompileC"
   | CompileSource _ -> "CompileSource"
+  | CompileSources _ -> "CompileSources"
   | CompileLibrary _ -> "CompileLibrary"
   | CopyFile _ -> "CopyFile"
   | WriteFile _ -> "WriteFile"
@@ -169,6 +179,28 @@ let hash = fun ~(package:Riot_model.Package.t) ~toolchain action ->
         write_strings hasher source.opens;
         write_paths hasher outputs;
         write_path hasher output;
+        write_paths hasher includes;
+        write_flags hasher flags
+    | CompileSources {
+        sources;
+        outputs;
+        includes;
+        flags;
+      } ->
+        Crypto.Sha256.write hasher "CompileSources";
+        List.for_each
+          sources
+          ~fn:(fun source ->
+            (
+              match source.kind with
+              | LibraryInterface -> Crypto.Sha256.write hasher "interface"
+              | LibraryImplementation -> Crypto.Sha256.write hasher "implementation"
+            );
+            write_path hasher source.source;
+            write_path hasher source.staged;
+            write_source_content hasher ~package source.source source.content;
+            write_strings hasher source.opens);
+        write_paths hasher outputs;
         write_paths hasher includes;
         write_flags hasher flags
     | CompileLibrary {
@@ -337,6 +369,13 @@ type compile_source_payload = {
   source_flags: Riot_toolchain.Ocamlc.compiler_flag list;
 }
 
+type compile_sources_payload = {
+  sources_sources: compile_library_source list;
+  sources_outputs: Path.t list;
+  sources_includes: Path.t list;
+  sources_flags: Riot_toolchain.Ocamlc.compiler_flag list;
+}
+
 type copy_file_payload = {
   copy_source: Path.t;
   copy_destination: Path.t;
@@ -467,6 +506,70 @@ let compile_source_serialize =
         Ser.field "output" path_serialize (fun (value: compile_source_payload) -> value.source_output);
         Ser.field "includes" (ser_list path_serialize) (fun (value: compile_source_payload) -> value.source_includes);
         Ser.field "flags" flags_serialize (fun (value: compile_source_payload) -> value.source_flags);
+      ]
+    )
+
+type compile_sources_field =
+  | Sources_sources
+  | Sources_outputs
+  | Sources_includes
+  | Sources_flags
+
+type compile_sources_builder = {
+  mutable sources_sources: compile_library_source list option;
+  mutable sources_outputs: Path.t list option;
+  mutable sources_includes: Path.t list option;
+  mutable sources_flags: Riot_toolchain.Ocamlc.compiler_flag list option;
+}
+
+let compile_sources_fields =
+  De.fields [
+    De.field "sources" Sources_sources;
+    De.field "outputs" Sources_outputs;
+    De.field "includes" Sources_includes;
+    De.field "flags" Sources_flags;
+  ]
+
+let compile_sources_deserialize =
+  De.record_mut
+    ~fields:compile_sources_fields
+    ~create:(fun () -> {
+      sources_sources = Some [];
+      sources_outputs = Some [];
+      sources_includes = Some [];
+      sources_flags = Some [];
+    })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Sources_sources -> builder.sources_sources <- Some (De.read reader (de_list source_deserialize))
+      | Some Sources_outputs -> builder.sources_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Sources_includes -> builder.sources_includes <- Some (De.read reader (de_list path_deserialize))
+      | Some Sources_flags -> builder.sources_flags <- Some (De.read reader flags_deserialize)
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun builder ->
+      match (
+        builder.sources_sources,
+        builder.sources_outputs,
+        builder.sources_includes,
+        builder.sources_flags
+      ) with
+      | (Some sources_sources, Some sources_outputs, Some sources_includes, Some sources_flags) ->
+          ({
+            sources_sources;
+            sources_outputs;
+            sources_includes;
+            sources_flags;
+          }: compile_sources_payload)
+      | _ -> De.missing_field ())
+
+let compile_sources_serialize =
+  Ser.record
+    (
+      Ser.fields [
+        Ser.field "sources" (ser_list source_serialize) (fun (value: compile_sources_payload) -> value.sources_sources);
+        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_sources_payload) -> value.sources_outputs);
+        Ser.field "includes" (ser_list path_serialize) (fun (value: compile_sources_payload) -> value.sources_includes);
+        Ser.field "flags" flags_serialize (fun (value: compile_sources_payload) -> value.sources_flags);
       ]
     )
 
@@ -663,6 +766,16 @@ let deserialize =
           flags = payload.source_flags;
         });
     De.Variant.newtype
+      "CompileSources"
+      compile_sources_deserialize
+      (fun payload ->
+        CompileSources {
+          sources = payload.sources_sources;
+          outputs = payload.sources_outputs;
+          includes = payload.sources_includes;
+          flags = payload.sources_flags;
+        });
+    De.Variant.newtype
       "CopyFile"
       copy_file_deserialize
       (fun payload ->
@@ -712,6 +825,24 @@ let serialize =
               source_output = output;
               source_includes = includes;
               source_flags = flags;
+            }
+        | _ -> None);
+    Ser.Variant.newtype
+      "CompileSources"
+      compile_sources_serialize
+      (fun __tmp1 ->
+        match __tmp1 with
+        | CompileSources {
+            sources;
+            outputs;
+            includes;
+            flags;
+          } ->
+            Some {
+              sources_sources = sources;
+              sources_outputs = outputs;
+              sources_includes = includes;
+              sources_flags = flags;
             }
         | _ -> None);
     Ser.Variant.newtype

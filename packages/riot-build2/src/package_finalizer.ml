@@ -46,14 +46,45 @@ let find = fun t build -> ConcurrentHashMap.get t.package_results ~key:build
 
 let store_error = fun ?package reason -> Error.StoreFailed { package; reason }
 
-let action_dependency_key = fun action_ref -> Work_node.ActionExecutionKey action_ref
+let same_action_ref = fun (left: Action_execution.ref_) (right: Action_execution.ref_) ->
+  Riot_model.Package_name.equal left.Action_execution.package right.Action_execution.package
+  && Riot_model.Target.equal left.target right.target
+  && Crypto.Hash.equal left.hash right.hash
+
+let plan_has_library_ref = fun (plan: Module_plan.t) ref_ ->
+  List.any
+    plan.ocaml_libraries
+    ~fn:(fun action -> same_action_ref action.Action_execution.ref_ ref_)
+
+let plan_has_archive_ref = fun (plan: Module_plan.t) ref_ ->
+  match plan.ocaml_archive with
+  | Some action -> same_action_ref action.Action_execution.ref_ ref_
+  | None -> false
+
+let action_dependency_key = fun (plan: Module_plan.t) action_ref ->
+  if plan_has_library_ref plan action_ref then
+    Work_node.OCamlLibraryKey action_ref
+  else if plan_has_archive_ref plan action_ref then
+    Work_node.OCamlArchiveKey action_ref
+  else
+    Work_node.ActionExecutionKey action_ref
+
+let action_node_key = fun (plan: Module_plan.t) (action: Action_execution.t) ->
+  action_dependency_key plan action.Action_execution.ref_
 
 let register_action_nodes = fun t registry (plan: Module_plan.t) ->
   List.for_each
     plan.action_executions
     ~fn:(fun (action: Action_execution.t) ->
-      ignore
-        (Work_registry.intern_action_execution registry action));
+      match action_node_key plan action with
+      | Work_node.OCamlLibraryKey _ ->
+          ignore (Work_registry.intern_ocaml_library registry action)
+      | Work_node.OCamlArchiveKey _ ->
+          ignore (Work_registry.intern_ocaml_archive registry action)
+      | Work_node.ActionExecutionKey _ ->
+          ignore (Work_registry.intern_action_execution registry action)
+      | _ ->
+          ignore (Work_registry.intern_action_execution registry action));
   List.map
     plan.action_executions
     ~fn:(fun (action: Action_execution.t) -> action.Action_execution.ref_)
@@ -201,7 +232,7 @@ let package_dependencies_ready = fun t build ->
   let* dependency_builds = Package_planning.dependency_builds t.package_planning build in
   Ok (List.all dependency_builds ~fn:(has_results t))
 
-let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
+let register_plan_nodes = fun t registry (plan: Module_plan.t) ->
   let registered =
     ConcurrentHashMap.compute
       t.registered_actions
@@ -211,21 +242,25 @@ let register_action_dependency_keys = fun t registry (plan: Module_plan.t) ->
         | Some () -> ConcurrentHashMap.Abort true
         | None -> ConcurrentHashMap.Insert ((), false))
   in
-  let action_refs =
-    if registered then
-      List.map
-        plan.action_executions
-        ~fn:(fun (action: Action_execution.t) -> action.Action_execution.ref_)
-    else
-      register_action_nodes t registry plan
-  in
-  action_refs
+  if registered then
+    ()
+  else
+    ignore (register_action_nodes t registry plan)
+
+let missing_action_dependency_keys = fun t (plan: Module_plan.t) (actions: Action_execution.t list) ->
+  actions
   |> List.filter
-    ~fn:(fun ref_ ->
-      match Action_executor.find_result t.action_executor ref_ with
+    ~fn:(fun (action: Action_execution.t) ->
+      match Action_executor.find_result t.action_executor action.Action_execution.ref_ with
       | Some _ -> false
       | None -> true)
-  |> List.map ~fn:action_dependency_key
+  |> List.map ~fn:(action_node_key plan)
+
+let package_dependency_action_keys = fun t registry (plan: Module_plan.t) ->
+  register_plan_nodes t registry plan;
+  match plan.ocaml_archive with
+  | Some archive -> missing_action_dependency_keys t plan [ archive ]
+  | None -> missing_action_dependency_keys t plan plan.action_executions
 
 let package_artifact_key = fun build -> Work_node.PackageArtifactKey build
 
@@ -295,7 +330,7 @@ let execute_finalize = fun t registry (build: Goal.build_package) ->
       match Module_planning.find t.module_planning build with
       | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
       | Some plan ->
-          match register_action_dependency_keys t registry plan with
+          match package_dependency_action_keys t registry plan with
           | [] -> finalize t plan
           | action_dependency_keys ->
               Ok (Work_result.RequeueWithDependencies action_dependency_keys)
@@ -314,5 +349,5 @@ let execute_action_plan = fun t registry (build: Goal.build_package) ->
               plan.package_hash
               (Action_plan_cache.payload_of_plan plan)
       in
-      ignore (register_action_dependency_keys t registry plan);
+      register_plan_nodes t registry plan;
       Ok (Work_result.Complete [])

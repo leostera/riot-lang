@@ -71,6 +71,8 @@ let unsupported_key_error = fun key ->
     | Work_node.PackageFinalizeKey _ -> "package-finalize"
     | Work_node.ModulePlanKey _ -> "module-plan"
     | Work_node.ActionPlanKey _ -> "action-plan"
+    | Work_node.OCamlLibraryKey _ -> "ocaml-library"
+    | Work_node.OCamlArchiveKey _ -> "ocaml-archive"
     | Work_node.ActionExecutionKey _ -> "action-execution"
   in
   Error.ExecutorInvariantViolated {

@@ -49,6 +49,8 @@ type key =
   | PackageFinalizeKey of Goal.build_package
   | ModulePlanKey of Goal.build_package
   | ActionPlanKey of Goal.build_package
+  | OCamlLibraryKey of Action_execution.ref_
+  | OCamlArchiveKey of Action_execution.ref_
   | ActionExecutionKey of Action_execution.ref_
 
 type kind =
@@ -60,6 +62,8 @@ type kind =
   | PackageFinalize of Goal.build_package
   | ModulePlan of Goal.build_package
   | ActionPlan of Goal.build_package
+  | OCamlLibrary of Action_execution.t
+  | OCamlArchive of Action_execution.t
   | ActionExecution of Action_execution.t
 
 type t
@@ -85,6 +89,10 @@ val package_finalize: id:Node_id.t -> Goal.build_package -> t
 val module_plan: id:Node_id.t -> Goal.build_package -> t
 
 val action_plan: id:Node_id.t -> Goal.build_package -> t
+
+val ocaml_library: id:Node_id.t -> Action_execution.t -> t
+
+val ocaml_archive: id:Node_id.t -> Action_execution.t -> t
 
 val action_execution: id:Node_id.t -> Action_execution.t -> t
 
