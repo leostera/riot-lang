@@ -18,6 +18,13 @@ type t =
       outputs: Path.t list;
       ccflags: string list;
     }
+  | CompileSource of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
   | CompileLibrary of {
       sources: compile_library_source list;
       objects: Path.t list;

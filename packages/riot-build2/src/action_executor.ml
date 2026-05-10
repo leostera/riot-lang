@@ -187,6 +187,41 @@ let run_action = fun
             ~output:(Path.join sandbox_dir output)
             source
           |> Riot_toolchain.Ocamlc.run)
+  | Action.CompileSource {
+      source;
+      outputs = _ :: _;
+      output;
+      includes;
+      flags;
+    } ->
+      with_toolchain
+        ocamlc
+        (fun ocamlc ->
+          match stage_compile_library_source ~package ~package_root ~sandbox_dir source with
+          | Error (Error.ExecutorInvariantViolated { message }) -> ocamlc_failed message
+          | Error (Error.ActionExecutionFailed { reason; _ }) -> ocamlc_failed reason
+          | Error error -> ocamlc_failed (Error.message error)
+          | Ok () ->
+              let invocation =
+                match source.kind with
+                | Action.LibraryInterface ->
+                    Riot_toolchain.Ocamlc.compile_interface
+                      ocamlc
+                      ~cwd:sandbox_dir
+                      ~includes:(resolve_include_paths sandbox_dir includes)
+                      ~flags:(make_flags_absolute sandbox_dir flags)
+                      ~output
+                      source.staged
+                | Action.LibraryImplementation ->
+                    Riot_toolchain.Ocamlc.compile_impl
+                      ocamlc
+                      ~cwd:sandbox_dir
+                      ~includes:(resolve_include_paths sandbox_dir includes)
+                      ~flags:(make_flags_absolute sandbox_dir flags)
+                      ~output
+                      source.staged
+              in
+              Riot_toolchain.Ocamlc.run invocation)
   | Action.CompileLibrary {
       sources;
       objects;
@@ -236,6 +271,7 @@ let run_action = fun
         ~ok:(fun () -> ocamlc_success "written")
         ~error:(fun error -> ocamlc_failed ("write failed: " ^ IO.error_message error))
   | Action.CompileC { outputs = []; _ }
+  | Action.CompileSource { outputs = []; _ }
   | Action.CompileLibrary { outputs = []; _ } -> ocamlc_failed "action has no outputs"
 
 let verify_outputs = fun outputs ->

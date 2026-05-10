@@ -193,6 +193,23 @@ let native_compile_library_action = fun ~source_count ~revision ->
   in
   loop 0 [] []
 
+let native_compile_source_action = fun ~revision ->
+  let module_stem = "BenchSource" in
+  Action.CompileSource {
+    source =
+      {
+        Action.source = Path.v "generated/BenchSource.ml";
+        staged = Path.v "BenchSource.ml";
+        kind = Action.LibraryImplementation;
+        content = Some ("let value = " ^ Int.to_string revision ^ "\n");
+        opens = [];
+      };
+    outputs = module_output_paths module_stem;
+    output = Path.v "BenchSource.cmx";
+    includes = [ Path.v "." ];
+    flags = [];
+  }
+
 let expect_no_failures = fun label summary expected_completed ->
   if
     Int.equal summary.Executor.Summary.failed_count 0
@@ -532,6 +549,14 @@ let make_native_compile_library_action_hash_bench = fun ~source_count ->
   let action = native_compile_library_action ~source_count ~revision:0 in
   fun () -> ignore (Action.hash ~package ~toolchain action)
 
+let make_native_compile_source_action_hash_bench = fun () ->
+  let root = Path.v "." in
+  let package = native_action_package root in
+  let target = Riot_model.Target.current in
+  let toolchain = native_action_toolchain root target in
+  let action = native_compile_source_action ~revision:0 in
+  fun () -> ignore (Action.hash ~package ~toolchain action)
+
 let make_native_compile_library_action_json_roundtrip_bench = fun ~source_count ->
   let action = native_compile_library_action ~source_count ~revision:0 in
   fun () ->
@@ -544,6 +569,19 @@ let make_native_compile_library_action_json_roundtrip_bench = fun ~source_count 
         | Ok _ -> panic "compile-library action json roundtrip changed the action"
         | Error error ->
             panic ("compile-library action deserialization failed: " ^ Serde.Error.to_string error)
+
+let make_native_compile_source_action_json_roundtrip_bench = fun () ->
+  let action = native_compile_source_action ~revision:0 in
+  fun () ->
+    match Serde_json.to_string Action.serialize action with
+    | Error error ->
+        panic ("compile-source action serialization failed: " ^ Serde.Error.to_string error)
+    | Ok encoded ->
+        match Serde_json.from_string Action.deserialize encoded with
+        | Ok decoded when decoded = action -> ()
+        | Ok _ -> panic "compile-source action json roundtrip changed the action"
+        | Error error ->
+            panic ("compile-source action deserialization failed: " ^ Serde.Error.to_string error)
 
 let make_native_compile_library_execution = fun ~root ~source_count ~revision ~toolchain ->
   let target = Riot_model.Target.current in
@@ -814,8 +852,16 @@ let benchmarks = fun () ->
       (make_native_compile_library_action_hash_bench ~source_count:64);
     with_config
       ~config:action_hash_config
+      "riot-build2 native compile-source action hash generated source"
+      (make_native_compile_source_action_hash_bench ());
+    with_config
+      ~config:action_hash_config
       "riot-build2 native compile-library action json roundtrip 64 generated sources"
       (make_native_compile_library_action_json_roundtrip_bench ~source_count:64);
+    with_config
+      ~config:action_hash_config
+      "riot-build2 native compile-source action json roundtrip generated source"
+      (make_native_compile_source_action_json_roundtrip_bench ());
     with_config
       ~config:action_execute_config
       "riot-build2 native compile-library cold action execution 8 generated sources"

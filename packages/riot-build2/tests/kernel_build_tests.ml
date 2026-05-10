@@ -175,21 +175,68 @@ let kernel_action_executions = fun summary ->
 
 let expect_kernel_native_compile_library = fun summary ->
   let actions = kernel_action_executions summary in
-  let compile_library_count =
+  let compile_library_source_actions =
     actions
     |> List.filter
       ~fn:(fun action ->
         match action.Action_execution.action with
+        | Action.CompileSource _ -> true
         | Action.CompileLibrary { sources; _ } -> not (List.is_empty sources)
+        | _ -> false)
+  in
+  let grouped_compile_library_count =
+    actions
+    |> List.filter
+      ~fn:(fun action ->
+        match action.Action_execution.action with
+        | Action.CompileLibrary { sources; _ } -> List.length sources > 1
         | _ -> false)
     |> List.length
   in
-  if Int.equal compile_library_count 1 then
+  let concrete_grouped_compile_library_count =
+    actions
+    |> List.filter
+      ~fn:(fun action ->
+        match action.Action_execution.action with
+        | Action.CompileLibrary { sources; _ } ->
+            List.length sources > 1
+            && not (List.any sources ~fn:(fun source -> Option.is_some source.Action.content))
+        | _ -> false)
+    |> List.length
+  in
+  let final_archive_count =
+    actions
+    |> List.filter
+      ~fn:(fun action ->
+        match action.Action_execution.action with
+        | Action.CompileLibrary { sources = []; outputs; _ } ->
+            let has_cmxa =
+              List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa")
+            in
+            let has_a =
+              List.any outputs ~fn:(fun output -> Path.extension output = Some ".a")
+            in
+            has_cmxa && has_a
+        | _ -> false)
+    |> List.length
+  in
+  if
+    List.length compile_library_source_actions > 1
+    && grouped_compile_library_count > 0
+    && concrete_grouped_compile_library_count > 0
+    && Int.equal final_archive_count 1
+  then
     Ok ()
   else
-    Error ("expected kernel to execute one native CompileLibrary action, got "
-    ^ Int.to_string compile_library_count
-    ^ " out of "
+    Error ("expected kernel to execute grouped native CompileLibrary actions and one final archive, got "
+    ^ Int.to_string (List.length compile_library_source_actions)
+    ^ " source actions, "
+    ^ Int.to_string grouped_compile_library_count
+    ^ " grouped source actions, and "
+    ^ Int.to_string concrete_grouped_compile_library_count
+    ^ " concrete grouped source actions, and "
+    ^ Int.to_string final_archive_count
+    ^ " final archive actions out of "
     ^ Int.to_string (List.length actions)
     ^ " kernel actions")
 
