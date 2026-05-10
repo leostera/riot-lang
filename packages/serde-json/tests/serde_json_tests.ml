@@ -399,23 +399,23 @@ let test_roundtrips_arrays = fun _ctx ->
   | Ok _ -> Error "expected serde-json array roundtrip to preserve elements"
   | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)
 
-let test_roundtrips_maps = fun _ctx ->
+let test_roundtrips_dicts = fun _ctx ->
   let values = Vector.from_list [ ("alpha", 1); ("beta", 2); ] in
   let* encoded =
-    match Serde_json.to_string (Ser.map Ser.int) values with
+    match Serde_json.to_string (Ser.dict Ser.int) values with
     | Ok encoded -> Ok encoded
-    | Error err -> Error ("map encode failed: " ^ Serde.Error.to_string err)
+    | Error err -> Error ("dict encode failed: " ^ Serde.Error.to_string err)
   in
   let* () =
     expect_equal
       ~expected:{|{"alpha":1,"beta":2}|}
       ~actual:encoded
-      ~message:"expected serde-json map encoder to emit JSON objects"
+      ~message:"expected serde-json dict encoder to emit JSON objects"
   in
-  match Serde_json.from_string (De.map De.int) encoded with
+  match Serde_json.from_string (De.dict De.int) encoded with
   | Ok actual when vec_to_list actual = vec_to_list values -> Ok ()
-  | Ok _ -> Error "expected serde-json map roundtrip to preserve entries"
-  | Error err -> Error ("map decode failed: " ^ Serde.Error.to_string err)
+  | Ok _ -> Error "expected serde-json dict roundtrip to preserve entries"
+  | Error err -> Error ("dict decode failed: " ^ Serde.Error.to_string err)
 
 let test_roundtrips_large_float = fun _ctx ->
   let value = 907_309_392_156.125 in
@@ -456,7 +456,7 @@ let tests =
     case "serde-json writes to writers" test_writes_to_writer;
     case "serde-json roundtrips records" test_roundtrips_record;
     case "serde-json roundtrips arrays" test_roundtrips_arrays;
-    case "serde-json roundtrips maps" test_roundtrips_maps;
+    case "serde-json roundtrips dicts" test_roundtrips_dicts;
     case "serde-json roundtrips large floats" test_roundtrips_large_float;
     case
       "serde-json decodes negative int64 across reader chunk boundary"

@@ -250,7 +250,7 @@ let host_config_fields =
       De.field "PortBindings" Host_port_bindings;
     ]
 
-let host_binding_decode = De.map De.string
+let host_binding_decode = De.dict De.string
 
 let host_config_decode =
   De.record_mut
@@ -260,7 +260,7 @@ let host_config_decode =
       match field with
       | Some Host_publish_all_ports -> builder.publish_all_ports <- Some (De.read reader De.bool)
       | Some Host_port_bindings ->
-          builder.port_bindings <- Some (De.read reader (De.map (De.list host_binding_decode)))
+          builder.port_bindings <- Some (De.read reader (De.dict (De.list host_binding_decode)))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: host_config_builder) ->
       ({ publish_all_ports = builder.publish_all_ports; port_bindings = builder.port_bindings }:
@@ -283,9 +283,9 @@ let create_body_decode =
       | Some Body_cmd -> builder.cmd <- Some (De.read reader (De.list De.string))
       | Some Body_image -> builder.image <- Some (De.read reader De.string)
       | Some Body_env -> builder.env <- Some (De.read reader (De.list De.string))
-      | Some Body_labels -> builder.labels <- Some (De.read reader (De.map De.string))
+      | Some Body_labels -> builder.labels <- Some (De.read reader (De.dict De.string))
       | Some Body_exposed_ports ->
-          builder.exposed_ports <- Some (De.read reader (De.map De.skip_any))
+          builder.exposed_ports <- Some (De.read reader (De.dict De.skip_any))
       | Some Body_host_config -> builder.host_config <- Some (De.read reader host_config_decode)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: create_body_builder) ->

@@ -175,13 +175,13 @@ and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit =
       (Array.get_unchecked values ~at:index)
   done
 
-and map_backend: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
+and dict_backend: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
   state encode values ->
-  write_uint32_le state (encode_u32 "map" (Vector.len values));
+  write_uint32_le state (encode_u32 "dict" (Vector.len values));
   Vector.for_each
     values
     ~fn:(fun (name, value) ->
-      write_uint32_le state (encode_u32 "map key" (String.length name));
+      write_uint32_le state (encode_u32 "dict key" (String.length name));
       write_string state name;
       encode.run backend state value)
 
@@ -246,7 +246,7 @@ and backend: state Serde.Ser.backend = {
           encode.run backend state payload);
   list = list_backend;
   array = array_backend;
-  map = map_backend;
+  dict = dict_backend;
   record = record_backend;
   variant = variant_backend;
 }
@@ -266,7 +266,7 @@ and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array
       (Array.get_unchecked values ~at:index)
   done
 
-and size_map_backend: 'value. size_state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
+and size_dict_backend: 'value. size_state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
   state encode values ->
   state.bytes_written <- state.bytes_written + 4;
   Vector.for_each
@@ -326,7 +326,7 @@ and size_backend: size_state Serde.Ser.backend = {
       | Some payload -> encode.run size_backend state payload);
   list = size_list_backend;
   array = size_array_backend;
-  map = size_map_backend;
+  dict = size_dict_backend;
   record = size_record_backend;
   variant = size_variant_backend;
 }

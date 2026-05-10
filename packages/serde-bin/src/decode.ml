@@ -270,8 +270,8 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
   let len = decode_length state "array" in
   Array.init ~count:len ~fn:(fun _index -> decode.run backend state)
 
-and map_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
-  let len = decode_length state "map" in
+and dict_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
+  let len = decode_length state "dict" in
   let values = Vector.with_capacity ~size:len in
   for _index = 0 to len - 1 do
     let key = read_string state in
@@ -347,7 +347,7 @@ and backend: state De.backend = {
       | _ -> error_at (position state.input - 1) "invalid option tag");
   list = list_backend;
   array = array_backend;
-  map = map_backend;
+  dict = dict_backend;
   record = record_backend;
   record_mut = record_mut_backend;
   variant = variant_backend;

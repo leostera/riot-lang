@@ -45,7 +45,7 @@ and encode_array: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = 
   done;
   set state (Toml_value.Array (List.rev !items))
 
-and encode_map: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
+and encode_dict: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
   state encode values ->
   let items = ref [] in
   Vector.for_each
@@ -113,7 +113,7 @@ and backend: state Ser.backend = {
       | Some payload -> encode.run backend state payload);
   list = encode_list;
   array = encode_array;
-  map = encode_map;
+  dict = encode_dict;
   record = encode_record;
   variant = encode_variant;
 }

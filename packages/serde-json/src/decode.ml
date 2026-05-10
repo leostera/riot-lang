@@ -1538,7 +1538,7 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
   let values = list_backend state decode in
   Vector.to_array values
 
-and map_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
+and dict_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
   match state.input with
   | Input.Reader_input reader ->
       reader_skip_whitespace reader;
@@ -1828,7 +1828,7 @@ and backend: state De.backend = {
   option = option_backend;
   list = list_backend;
   array = array_backend;
-  map = map_backend;
+  dict = dict_backend;
   record = record_backend;
   record_mut = record_mut_backend;
   variant = variant_backend;

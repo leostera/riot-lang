@@ -43,7 +43,7 @@ and encode_array: 'value. state -> 'value Ser.t -> 'value array -> unit = fun st
   done;
   set state (Yaml_value.Seq (List.rev !items))
 
-and encode_map: 'value. state -> 'value Ser.t -> (string * 'value) vec -> unit = fun
+and encode_dict: 'value. state -> 'value Ser.t -> (string * 'value) vec -> unit = fun
   state encode values ->
   let items = ref [] in
   Vector.for_each
@@ -51,7 +51,7 @@ and encode_map: 'value. state -> 'value Ser.t -> (string * 'value) vec -> unit =
     ~fn:(fun (name, value) ->
       let child = child_state () in
       encode.run backend child value;
-      items := (name, expect_value child ("map entry '" ^ name ^ "'")) :: !items);
+      items := (name, expect_value child ("dict entry '" ^ name ^ "'")) :: !items);
   set state (Yaml_value.Map (List.rev !items))
 
 and encode_record: 'value. state -> 'value Ser.fields -> 'value -> unit = fun state fields value ->
@@ -102,7 +102,7 @@ and backend: state Ser.backend = {
       | Some payload -> encode.run backend state payload);
   list = encode_list;
   array = encode_array;
-  map = encode_map;
+  dict = encode_dict;
   record = encode_record;
   variant = encode_variant;
 }

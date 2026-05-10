@@ -162,7 +162,7 @@ and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit =
   done;
   write_char state ']'
 
-and map_backend: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
+and dict_backend: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
   state encode values ->
   write_char state '{';
   let first = ref true in
@@ -237,7 +237,7 @@ and backend: state Serde.Ser.backend = {
       | Some payload -> encode.run backend state payload);
   list = list_backend;
   array = array_backend;
-  map = map_backend;
+  dict = dict_backend;
   record = record_backend;
   variant = variant_backend;
 }

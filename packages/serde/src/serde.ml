@@ -375,7 +375,7 @@ and 'state backend = {
   option: 'value. 'state -> 'value t -> 'value option;
   list: 'value. 'state -> 'value t -> 'value vec;
   array: 'value. 'state -> 'value t -> 'value array;
-  map: 'value. 'state -> 'value t -> (string * 'value) vec;
+  dict: 'value. 'state -> 'value t -> (string * 'value) vec;
   record:
     'field 'acc 'value. 'state ->
     fields:'field Fields.t ->
@@ -509,9 +509,9 @@ let array = fun decode ->
     run = (fun backend state -> backend.array state decode);
   }
 
-let map = fun decode ->
+let dict = fun decode ->
   {
-    run = (fun backend state -> backend.map state decode);
+    run = (fun backend state -> backend.dict state decode);
   }
 
 let record = fun ~fields ~init ~step ~finish ->
@@ -567,7 +567,7 @@ module De = struct
     option: 'value. 'state -> 'value t -> 'value option;
     list: 'value. 'state -> 'value t -> 'value vec;
     array: 'value. 'state -> 'value t -> 'value array;
-    map: 'value. 'state -> 'value t -> (string * 'value) vec;
+    dict: 'value. 'state -> 'value t -> (string * 'value) vec;
     record:
       'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
@@ -687,9 +687,9 @@ module De = struct
       run = (fun backend state -> backend.array state decode);
     }
 
-  let map = fun decode ->
+  let dict = fun decode ->
     {
-      run = (fun backend state -> backend.map state decode);
+      run = (fun backend state -> backend.dict state decode);
     }
 
   let record = fun ~fields ~init ~step ~finish ->
@@ -768,7 +768,7 @@ module Ser = struct
     option: 'value. 'state -> 'value t -> 'value option -> unit;
     list: 'value. 'state -> 'value t -> 'value vec -> unit;
     array: 'value. 'state -> 'value t -> 'value array -> unit;
-    map: 'value. 'state -> 'value t -> (string * 'value) vec -> unit;
+    dict: 'value. 'state -> 'value t -> (string * 'value) vec -> unit;
     record: 'value. 'state -> 'value fields -> 'value -> unit;
     variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
@@ -846,9 +846,9 @@ module Ser = struct
       run = (fun backend state value -> backend.array state encode value);
     }
 
-  let map = fun encode ->
+  let dict = fun encode ->
     {
-      run = (fun backend state value -> backend.map state encode value);
+      run = (fun backend state value -> backend.dict state encode value);
     }
 
   let field = Field.make

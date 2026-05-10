@@ -123,11 +123,11 @@ let serde_decode = fun decode body ->
 
 let ser_list = fun encode -> Ser.contramap Vector.from_list (Ser.list encode)
 
-let ser_map = fun encode -> Ser.contramap Vector.from_list (Ser.map encode)
+let ser_dict = fun encode -> Ser.contramap Vector.from_list (Ser.dict encode)
 
 let empty_object_encode = Ser.record (Ser.fields [])
 
-let string_map_encode = ser_map Ser.string
+let string_map_encode = ser_dict Ser.string
 
 let exposed_ports_encode = fun ports ->
   let ports =
@@ -141,7 +141,7 @@ let exposed_ports_encode = fun ports ->
   in
   Ser.contramap
     (fun () -> List.map ports ~fn:(fun port -> (Port.to_string port, ())))
-    (ser_map empty_object_encode)
+    (ser_dict empty_object_encode)
 
 let host_port_binding_encode =
   Ser.record (Ser.fields [ Ser.field "HostPort" Ser.string Int.to_string; ])
@@ -176,7 +176,7 @@ let port_bindings_encode = fun port_mappings ->
           Port.to_string container_port,
           List.reverse host_ports
         )))
-    (ser_map (ser_list host_port_binding_encode))
+    (ser_dict (ser_list host_port_binding_encode))
 
 let host_config_encode = fun request ->
   Ser.record
@@ -341,7 +341,7 @@ let port_binding_decode =
 
 let network_fields = De.fields [ De.field "Ports" Network_ports; ]
 
-let raw_ports_decode = De.map (De.option (De.list port_binding_decode))
+let raw_ports_decode = De.dict (De.option (De.list port_binding_decode))
 
 let network_decode =
   De.record_mut

@@ -9,7 +9,7 @@ All notable changes to `docker-client` are documented here.
 - Hardened Docker host parsing by trimming `DOCKER_HOST` and rejecting empty hosts, empty Unix socket paths, and out-of-range TCP ports.
 - Deduplicated exposed container ports when generating Docker create request JSON.
 - Grouped repeated Docker port bindings under one container-port key.
-- Switched Docker create and inspect JSON handling to `serde-json` with string-keyed map codecs.
+- Switched Docker create and inspect JSON handling to `serde-json` with string-keyed dictionary codecs.
 - Tightened inspect parsing for Docker port bindings and host port ranges.
 
 ## 0.0.1 - 2026-05-10
