@@ -119,8 +119,8 @@ let format_db_error = fun err ->
 
 (* Format full error for display *)
 
-let to_string = fun __tmp1 ->
-  match __tmp1 with
+let to_string = fun error ->
+  match error with
   | Connection_error { message; cause = Some cause } ->
       "Connection failed: " ^ message ^ "\n" ^ format_db_error cause
   | Connection_error { message; cause = None } -> "Connection failed: " ^ message
@@ -137,8 +137,8 @@ let to_string = fun __tmp1 ->
 
 (* Extract the underlying db_error if available *)
 
-let get_db_error = fun __tmp1 ->
-  match __tmp1 with
+let get_db_error = fun error ->
+  match error with
   | Connection_error { cause = Some cause; _ } -> Some cause
   | Query_error { cause; _ } -> Some cause
   | Preparation_error { cause; _ } -> Some cause
@@ -149,8 +149,8 @@ let get_db_error = fun __tmp1 ->
 (* Check if error is a specific constraint violation by name *)
 
 let is_constraint_violation = fun ~name ->
-  fun __tmp1 ->
-    match __tmp1 with
+  fun error ->
+    match error with
     | Query_error { cause; _ }
     | Execution_error { cause }
     | Preparation_error { cause; _ } -> (

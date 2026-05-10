@@ -1,0 +1,15 @@
+# Changelog
+
+All notable changes to `sqlx-driver` are documented here.
+
+## 0.0.32 - 2026-05-10
+
+### Changed
+
+- Reworked driver isolation levels into regular variants.
+- Converted public interface documentation to markdown docstrings.
+- Tightened row and value interfaces around structured conversion behavior.
+
+### Fixed
+
+- Removed unnecessary polymorphic variant usage from public driver contracts.

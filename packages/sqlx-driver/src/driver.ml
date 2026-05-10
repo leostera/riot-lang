@@ -1,5 +1,11 @@
 open Std
 
+type isolation_level =
+  | ReadUncommitted
+  | ReadCommitted
+  | RepeatableRead
+  | Serializable
+
 module type Intf = sig
   type config
   type connection
@@ -37,7 +43,5 @@ module type Intf = sig
   val rollback: connection -> (unit, error) result
 
   val set_isolation_level:
-    connection ->
-    [ | `Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable] ->
-    (unit, error) result
+    connection -> isolation_level -> (unit, error) result
 end

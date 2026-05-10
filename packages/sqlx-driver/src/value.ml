@@ -48,8 +48,8 @@ let json = fun s -> Json s
 
 let numeric = fun s -> Numeric s
 
-let to_int = fun __tmp1 ->
-  match __tmp1 with
+let to_int = fun value ->
+  match value with
   | Int n -> Some n
   | _ -> None
 
@@ -57,78 +57,78 @@ let bytes_equal = fun left right -> String.equal (Bytes.to_string left) (Bytes.t
 
 let bytes_compare = fun left right -> String.compare (Bytes.to_string left) (Bytes.to_string right)
 
-let to_int64 = fun __tmp1 ->
-  match __tmp1 with
+let to_int64 = fun value ->
+  match value with
   | Int64 n -> Some n
   | _ -> None
 
-let to_int16 = fun __tmp1 ->
-  match __tmp1 with
+let to_int16 = fun value ->
+  match value with
   | Int16 n -> Some n
   | _ -> None
 
-let to_string_value = fun __tmp1 ->
-  match __tmp1 with
+let to_string_value = fun value ->
+  match value with
   | String s -> Some s
   | _ -> None
 
-let to_bool = fun __tmp1 ->
-  match __tmp1 with
+let to_bool = fun value ->
+  match value with
   | Bool b -> Some b
   | _ -> None
 
-let to_float = fun __tmp1 ->
-  match __tmp1 with
+let to_float = fun value ->
+  match value with
   | Float f -> Some f
   | _ -> None
 
-let to_bytes = fun __tmp1 ->
-  match __tmp1 with
+let to_bytes = fun value ->
+  match value with
   | Bytes b -> Some b
   | _ -> None
 
-let to_timestamp = fun __tmp1 ->
-  match __tmp1 with
+let to_timestamp = fun value ->
+  match value with
   | Timestamp dt -> Some dt
   | _ -> None
 
-let to_timestamp_with_timezone = fun __tmp1 ->
-  match __tmp1 with
+let to_timestamp_with_timezone = fun value ->
+  match value with
   | TimestampWithTimezone dt -> Some dt
   | _ -> None
 
-let to_date = fun __tmp1 ->
-  match __tmp1 with
+let to_date = fun value ->
+  match value with
   | Date (y, m, d) -> Some (y, m, d)
   | _ -> None
 
-let to_time = fun __tmp1 ->
-  match __tmp1 with
+let to_time = fun value ->
+  match value with
   | Time (h, m, s, us) -> Some (h, m, s, us)
   | _ -> None
 
-let to_uuid = fun __tmp1 ->
-  match __tmp1 with
+let to_uuid = fun value ->
+  match value with
   | Uuid s -> Some s
   | _ -> None
 
-let to_json = fun __tmp1 ->
-  match __tmp1 with
+let to_json = fun value ->
+  match value with
   | Json s -> Some s
   | _ -> None
 
-let to_numeric = fun __tmp1 ->
-  match __tmp1 with
+let to_numeric = fun value ->
+  match value with
   | Numeric s -> Some s
   | _ -> None
 
-let is_null = fun __tmp1 ->
-  match __tmp1 with
+let is_null = fun value ->
+  match value with
   | Null -> true
   | _ -> false
 
-let to_string = fun __tmp1 ->
-  match __tmp1 with
+let to_string = fun value ->
+  match value with
   | Null -> "NULL"
   | Int n -> string_of_int n
   | Int64 n -> Int64.to_string n

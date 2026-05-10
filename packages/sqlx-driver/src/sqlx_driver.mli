@@ -1,4 +1,5 @@
-(* SQLx Driver Interface Library
+(**
+   SQLx driver interface library.
 
    This library defines the common types and interfaces that all SQLx database
    drivers must implement. It provides a uniform way to interact with different
@@ -44,11 +45,11 @@
    ```
 *)
 
-(* Database value types and conversions *)
+(** Database value types and conversions. *)
 module Value = Value
 
-(* Database row representation and typed field access *)
+(** Database row representation and typed field access. *)
 module Row = Row
 
-(* Database driver interface that all drivers must implement *)
+(** Database driver interface that all drivers must implement. *)
 module Driver = Driver
