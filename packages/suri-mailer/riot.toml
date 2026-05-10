@@ -1,0 +1,13 @@
+[package]
+name = "suri-mailer"
+version = "0.1.0"
+description = "Action Mailer-style message and delivery adapters for Suri apps"
+license = "Apache-2.0"
+public = false
+
+[lib]
+path = "src/suri_mailer.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+suri = { path = "../suri", version = "*" }
