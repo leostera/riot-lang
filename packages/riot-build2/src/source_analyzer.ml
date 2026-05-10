@@ -93,7 +93,12 @@ let analyze_from_cache = fun t package ~on_source_analyzed tasks ->
       let analysis =
         match find t key with
         | Some cached -> Ok { cached with Riot_planner.Module_graph.analysis_task = task }
-        | None -> Riot_planner.Module_graph.analyze_source task
+        | None ->
+            Error (Riot_planner.Planning_error.DependencyAnalysisFailed {
+              reason = "source analysis for "
+              ^ Path.to_string task.task_display_path
+              ^ " was requested before its SourceAnalysis work node completed";
+            })
       in
       match analysis with
       | Ok analysis ->

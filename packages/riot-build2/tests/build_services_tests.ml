@@ -424,6 +424,68 @@ let test_source_analyzer_refreshes_changed_source = fun _ctx ->
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
+let test_source_analyzer_cache_reader_requires_completed_source_node = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_source_analysis_cache_reader"
+    (fun root ->
+      let package = package "sourcepkg" in
+      let package_path = Path.(root / Path.v "sourcepkg") in
+      let source = Path.v "src/sourcepkg.ml" in
+      let source_path = Path.(package_path / source) in
+      let* () =
+        Fs.create_dir_all Path.(package_path / Path.v "src")
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.write "let value = 1\n" source_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let store = Riot_store.Store.create ~workspace in
+      let analyzer = Source_analyzer.create ~store () in
+      let task = source_analysis_task ~source ~source_path in
+      let package_manifest =
+        Riot_model.Package.make
+          ~name:package
+          ~path:package_path
+          ~relative_path:(Path.v "sourcepkg")
+          ()
+      in
+      let source_analysis = Source_analysis.make ~package ~task in
+      let cache_read () =
+        Source_analyzer.analyze_from_cache
+          analyzer
+          package_manifest
+          ~on_source_analyzed:(fun _ -> ())
+          [ task ]
+      in
+      let* () =
+        match cache_read () with
+        | [ Error (Riot_planner.Planning_error.DependencyAnalysisFailed _) ] -> Ok ()
+        | [ Ok _ ] -> Error "expected cache-only source reader not to analyze missing source"
+        | _ -> Error "expected one cache-only source reader result"
+      in
+      let* () =
+        Source_analyzer.execute analyzer source_analysis
+        |> Result.map_err ~fn:Error.message
+      in
+      match cache_read () with
+      | [ Ok analysis ] -> (
+          match Source_analyzer.find analyzer source_analysis.key with
+          | Some cached
+            when Crypto.Hash.equal
+              analysis.Riot_planner.Module_graph.analysis_source_hash
+              cached.Riot_planner.Module_graph.analysis_source_hash -> Ok ()
+          | Some _ -> Error "expected cache-only source reader to return stored analysis"
+          | None -> Error "expected executed source analysis to be stored"
+        )
+      | [ Error error ] -> Error (Riot_planner.Planning_error.to_string error)
+      | _ -> Error "expected one cache-only source reader result") with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
 let test_source_analysis_cache_roundtrips_reusable_summary = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_build2_source_analysis_cache_roundtrip"
@@ -730,6 +792,9 @@ let tests =
     case
       "source analyzer refreshes changed source"
       test_source_analyzer_refreshes_changed_source;
+    case
+      "source analyzer cache reader requires completed source node"
+      test_source_analyzer_cache_reader_requires_completed_source_node;
     case
       "source analysis cache roundtrips reusable summary"
       test_source_analysis_cache_roundtrips_reusable_summary;
