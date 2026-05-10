@@ -1,0 +1,36 @@
+[package]
+name = "suri-jobs"
+version = "0.1.0"
+description = "Typed supervised background jobs for Suri apps"
+license = "Apache-2.0"
+public = false
+
+[lib]
+path = "src/suri_jobs.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+serde = { path = "../serde", version = "*" }
+serde-json = { path = "../serde-json", version = "*" }
+sqlx = { path = "../sqlx", version = "*" }
+postgres = { path = "../postgres", version = "*" }
+suri = { path = "../suri", version = "*" }
+
+[dev-dependencies]
+dotenv = { path = "../dotenv", version = "*" }
+propane = { path = "../propane", version = "*" }
+
+[riot.fix]
+rules = [
+  "-alphabetized-named-arguments",
+  "-class-case-constructors",
+  "-class-case-module-names",
+  "-limit-function-parameters",
+  "-limit-open-statements",
+  "-no-inline-parameter-type-annotations",
+  "-ordered-argument-kinds",
+  "-prefer-record-destructuring-parameters",
+  "-prefer-scoped-field-access",
+  "-prefer-t-for-single-type-modules",
+  "-require-module-interfaces",
+]
