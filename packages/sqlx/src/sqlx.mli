@@ -3,11 +3,11 @@ open Std
 module ProtocolError: sig
   type t
 
-  val to_json: t -> Data.Json.t
+  val serializer: t Serde.Ser.t
 
   val to_string: t -> string
 
-  val make: 'err -> to_json:('err -> Data.Json.t) -> to_string:('err -> string) -> t
+  val make: 'err -> serializer:'err Serde.Ser.t -> to_string:('err -> string) -> t
 end
 
 type operation =

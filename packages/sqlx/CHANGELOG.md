@@ -2,6 +2,13 @@
 
 All notable changes to `sqlx` are documented here.
 
+## 0.0.33 - 2026-05-10
+
+### Changed
+
+- Switched connection and protocol error codecs from `Std.Data.Json` callbacks to `Serde.Ser` serializers.
+- Updated SQLX driver wiring and test drivers to use serde-backed error serialization.
+
 ## 0.0.32 - 2026-05-10
 
 ### Added

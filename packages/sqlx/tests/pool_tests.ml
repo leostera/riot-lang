@@ -25,7 +25,7 @@ module MockDriver: Driver.Intf with type config = unit = struct
 
   let error_to_string = fun error -> error
 
-  let error_to_json = fun error -> Data.Json.String error
+  let error_serializer = Serde.Ser.string
 
   let connect = fun () ->
     Ok {
@@ -79,7 +79,7 @@ module ClosingDriver: Driver.Intf with type config = unit = struct
 
   let error_to_string = fun error -> error
 
-  let error_to_json = fun error -> Data.Json.String error
+  let error_serializer = Serde.Ser.string
 
   let connect = fun () ->
     Ok {
@@ -141,7 +141,7 @@ module RaisingDriver: Driver.Intf with type config = unit = struct
 
   let error_to_string = fun error -> error
 
-  let error_to_json = fun error -> Data.Json.String error
+  let error_serializer = Serde.Ser.string
 
   let connect = fun () -> Ok { closed = false }
 
@@ -235,7 +235,11 @@ let test_pool_discards_connection_after_driver_exception = fun _ctx ->
       (
         match Pool.with_connection pool (fun conn -> Connection.execute conn "raise" []) with
         | Ok _ -> Error "expected raising driver to fail"
-        | Error (Pool.ConnectionError (Connection.RuntimeError (Connection.RaisedException message))) ->
+        | Error (
+          Pool.ConnectionError (
+            Connection.RuntimeError (Connection.RaisedException message)
+          )
+        ) ->
             Test.assert_equal ~expected:"Failure: driver exploded" ~actual:message;
             Ok ()
         | Error error -> Error (Sqlx.show_error (Sqlx.PoolError error))

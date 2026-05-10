@@ -1,18 +1,22 @@
 open Std
 
+module Ser = Serde.Ser
+
 module ProtocolError = struct
   type t =
     | P: {
         error: 'err;
-        to_json: 'err -> Data.Json.t;
+        serializer: 'err Ser.t;
         to_string: 'err -> string;
       } -> t
 
-  let to_json = fun (P { error; to_json; _ }) -> to_json error
+  let serializer = {
+    Ser.run = (fun backend state (P { error; serializer; _ }) -> serializer.run backend state error);
+  }
 
   let to_string = fun (P { error; to_string; _ }) -> to_string error
 
-  let make = fun error ~to_json ~to_string -> P { error; to_json; to_string }
+  let make = fun error ~serializer ~to_string -> P { error; serializer; to_string }
 end
 
 type operation =

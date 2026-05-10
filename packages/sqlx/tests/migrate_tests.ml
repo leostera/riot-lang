@@ -70,7 +70,7 @@ module FakeDriver: Driver.Intf with type config = fake_state = struct
 
   let error_to_string = fun error -> error
 
-  let error_to_json = fun error -> Data.Json.String error
+  let error_serializer = Serde.Ser.string
 
   let connect = fun config -> Ok config
 

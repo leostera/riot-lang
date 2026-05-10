@@ -1,12 +1,11 @@
 open Std
 open Result.Syntax
 
+module Ser = Serde.Ser
+
 (** Error type that wraps driver errors with their conversion functions *)
 type runtime_error =
-  | RandomFailure of {
-      label: string;
-      reason: string;
-    }
+  | RandomFailure of { label: string; reason: string }
   | RaisedException of string
   | InvalidConfiguration of string
 
@@ -14,7 +13,7 @@ type error =
   | DriverError: {
       error: 'err;
       to_string: 'err -> string;
-      to_json: 'err -> Data.Json.t;
+      serializer: 'err Ser.t;
     } -> error
   | RuntimeError of runtime_error
 
@@ -67,25 +66,60 @@ let error_to_string = fun error ->
   | DriverError { error; to_string; _ } -> to_string error
   | RuntimeError error -> "Runtime error: " ^ runtime_error_to_string error
 
-let error_to_json = fun error ->
+type runtime_error_document = {
+  type_: string;
+  label: string option;
+  reason: string option;
+  message: string option;
+}
+
+let runtime_error_document = fun error ->
   match error with
-  | DriverError { error; to_json; _ } -> to_json error
-  | RuntimeError runtime_error -> (
-      match runtime_error with
-      | RandomFailure { label; reason } ->
-          Data.Json.obj
+  | RandomFailure { label; reason } ->
+      {
+        type_ = "random_failure";
+        label = Some label;
+        reason = Some reason;
+        message = None;
+      }
+  | RaisedException message ->
+      {
+        type_ = "raised_exception";
+        label = None;
+        reason = None;
+        message = Some message;
+      }
+  | InvalidConfiguration message ->
+      {
+        type_ = "invalid_configuration";
+        label = None;
+        reason = None;
+        message = Some message;
+      }
+
+let runtime_error_serializer =
+  Ser.contramap
+    runtime_error_document
+    (
+      Ser.record
+        (
+          Ser.fields
             [
-              ("type", Data.Json.string "random_failure");
-              ("label", Data.Json.string label);
-              ("reason", Data.Json.string reason);
+              Ser.field "type" Ser.string (fun (error: runtime_error_document) -> error.type_);
+              Ser.field "label" (Ser.option Ser.string) (fun error -> error.label);
+              Ser.field "reason" (Ser.option Ser.string) (fun error -> error.reason);
+              Ser.field "message" (Ser.option Ser.string) (fun error -> error.message);
             ]
-      | RaisedException message ->
-          Data.Json.obj
-            [ ("type", Data.Json.string "raised_exception"); ("message", Data.Json.string message); ]
-      | InvalidConfiguration message ->
-          Data.Json.obj
-            [ ("type", Data.Json.string "invalid_configuration"); ("message", Data.Json.string message); ]
+        )
     )
+
+let error_serializer = {
+  Ser.run =
+    (fun backend state error ->
+      match error with
+      | DriverError { error; serializer; _ } -> serializer.run backend state error
+      | RuntimeError error -> runtime_error_serializer.run backend state error);
+}
 
 (** Create a new connection - connects directly, no spawned process *)
 let create = fun (Config { driver; config }) ->
@@ -110,7 +144,7 @@ let create = fun (Config { driver; config }) ->
             Error (DriverError {
               error = e;
               to_string = D.error_to_string;
-              to_json = D.error_to_json;
+              serializer = D.error_serializer;
             })
       with
       | exn -> Error (RuntimeError (RaisedException (exception_to_string exn)))
@@ -129,29 +163,32 @@ let query = fun ((Connection t) as conn) sql params ->
   try
     match D.prepare t.driver_conn sql with
     | Error e ->
-        Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
+        Error (DriverError {
+          error = e;
+          to_string = D.error_to_string;
+          serializer = D.error_serializer;
+        })
     | Ok stmt -> (
         match D.execute stmt params with
         | Error e ->
             Error (DriverError {
               error = e;
               to_string = D.error_to_string;
-              to_json = D.error_to_json;
+              serializer = D.error_serializer;
             })
-        | Ok result_set ->
-            (
-              match sample_random_int "cursor id" with
-              | Error error -> Error error
-              | Ok random_id ->
-                  let cursor_id = "cursor_" ^ Int.to_string random_id in
-                  let cursor =
-                    Cursor.make
-                      cursor_id
-                      result_set
-                      (module D : Sqlx_driver.Driver.Intf with type result_set = D.result_set)
-                  in
-                  Ok cursor
-            )
+        | Ok result_set -> (
+            match sample_random_int "cursor id" with
+            | Error error -> Error error
+            | Ok random_id ->
+                let cursor_id = "cursor_" ^ Int.to_string random_id in
+                let cursor =
+                  Cursor.make
+                    cursor_id
+                    result_set
+                    (module D : Sqlx_driver.Driver.Intf with type result_set = D.result_set)
+                in
+                Ok cursor
+          )
       )
   with
   | exn ->
@@ -165,14 +202,18 @@ let execute = fun ((Connection t) as conn) sql params ->
   try
     match D.prepare t.driver_conn sql with
     | Error e ->
-        Error (DriverError { error = e; to_string = D.error_to_string; to_json = D.error_to_json })
+        Error (DriverError {
+          error = e;
+          to_string = D.error_to_string;
+          serializer = D.error_serializer;
+        })
     | Ok stmt -> (
         match D.execute stmt params with
         | Error e ->
             Error (DriverError {
               error = e;
               to_string = D.error_to_string;
-              to_json = D.error_to_json;
+              serializer = D.error_serializer;
             })
         | Ok result_set -> Ok (D.rows_affected result_set)
       )
@@ -192,7 +233,7 @@ let wrap_driver_result = fun
   match result with
   | Ok value -> Ok value
   | Error error ->
-      Error (DriverError { error; to_string = D.error_to_string; to_json = D.error_to_json })
+      Error (DriverError { error; to_string = D.error_to_string; serializer = D.error_serializer })
 
 let begin_transaction = fun (Connection t) ->
   let module D = (val t.driver) in
