@@ -13,7 +13,6 @@ type t = {
   action_executor: Action_executor.t;
   action_plan_cache: Action_plan_cache.payload Graph_cache.t;
   package_results: (Goal.build_package, Build_result.package_result) ConcurrentHashMap.t;
-  registered_actions: (Goal.build_package, unit) ConcurrentHashMap.t;
 }
 
 let create = fun
@@ -27,7 +26,6 @@ let create = fun
     action_executor;
     action_plan_cache = Action_plan_cache.create_cache ~store;
     package_results = ConcurrentHashMap.with_capacity ~size:128;
-    registered_actions = ConcurrentHashMap.with_capacity ~size:128;
   }
 
 let results = fun t ->
@@ -69,24 +67,21 @@ let action_dependency_key = fun (plan: Module_plan.t) action_ref ->
   else
     Work_node.ActionExecutionKey action_ref
 
-let action_node_key = fun (plan: Module_plan.t) (action: Action_execution.t) ->
-  action_dependency_key
-    plan
-    action.Action_execution.ref_
+let action_node_kind = fun (plan: Module_plan.t) (action: Action_execution.t) ->
+  match action_dependency_key plan action.Action_execution.ref_ with
+  | Work_node.OCamlLibraryKey _ -> Work_node.OCamlLibrary action
+  | Work_node.OCamlArchiveKey _ -> Work_node.OCamlArchive action
+  | Work_node.ActionExecutionKey _ -> Work_node.ActionExecution action
+  | _ -> Work_node.ActionExecution action
 
-let register_action_nodes = fun t registry (plan: Module_plan.t) ->
-  List.for_each
-    plan.action_executions
-    ~fn:(fun (action: Action_execution.t) ->
-      match action_node_key plan action with
-      | Work_node.OCamlLibraryKey _ -> ignore (Work_registry.intern_ocaml_library registry action)
-      | Work_node.OCamlArchiveKey _ -> ignore (Work_registry.intern_ocaml_archive registry action)
-      | Work_node.ActionExecutionKey _ ->
-          ignore (Work_registry.intern_action_execution registry action)
-      | _ -> ignore (Work_registry.intern_action_execution registry action));
-  List.map
-    plan.action_executions
-    ~fn:(fun (action: Action_execution.t) -> action.Action_execution.ref_)
+let action_node_key = fun (plan: Module_plan.t) (action: Action_execution.t) ->
+  Work_node.key_from_kind (action_node_kind plan action)
+
+let action_node_request = fun plan action ->
+  Work_request.materialize (action_node_kind plan action)
+
+let action_node_requests = fun plan ->
+  List.map plan.Module_plan.action_executions ~fn:(action_node_request plan)
 
 let compute_export_entries = fun t (plan: Module_plan.t) ->
   plan.action_executions
@@ -231,21 +226,6 @@ let package_dependencies_ready = fun t build ->
   let* dependency_builds = Package_planning.dependency_builds t.package_planning build in
   Ok (List.all dependency_builds ~fn:(has_results t))
 
-let register_plan_nodes = fun t registry (plan: Module_plan.t) ->
-  let registered =
-    ConcurrentHashMap.compute
-      t.registered_actions
-      ~key:plan.build
-      ~fn:(fun current ->
-        match current with
-        | Some () -> ConcurrentHashMap.Abort true
-        | None -> ConcurrentHashMap.Insert ((), false))
-  in
-  if registered then
-    ()
-  else
-    ignore (register_action_nodes t registry plan)
-
 let missing_action_dependency_keys = fun
   t (plan: Module_plan.t) (actions: Action_execution.t list) ->
   actions
@@ -256,11 +236,10 @@ let missing_action_dependency_keys = fun
       | None -> true)
   |> List.map ~fn:(action_node_key plan)
 
-let package_dependency_action_keys = fun t registry (plan: Module_plan.t) ->
-  register_plan_nodes t registry plan;
+let package_dependency_action_requests = fun t _registry (plan: Module_plan.t) ->
   match plan.ocaml_archive with
-  | Some archive -> missing_action_dependency_keys t plan [ archive ]
-  | None -> missing_action_dependency_keys t plan plan.action_executions
+  | Some archive -> Work_request.from_keys (missing_action_dependency_keys t plan [ archive ])
+  | None -> Work_request.from_keys (missing_action_dependency_keys t plan plan.action_executions)
 
 let package_artifact_key = fun build -> Work_node.PackageArtifactKey build
 
@@ -270,13 +249,17 @@ let action_plan_key = fun build -> Work_node.ActionPlanKey build
 
 let plan_dependencies = fun t _registry build ->
   let* package_dependency_keys = package_dependency_goal_keys t build in
-  Ok (package_dependency_keys @ [ package_artifact_key build ])
+  Ok (Work_request.from_keys (package_dependency_keys @ [ package_artifact_key build ]))
 
-let plan_artifact_dependencies = fun t _registry build -> package_dependency_goal_keys t build
+let plan_artifact_dependencies = fun t _registry build ->
+  package_dependency_goal_keys t build
+  |> Result.map ~fn:Work_request.from_keys
 
-let plan_finalize_dependencies = fun _t _registry build -> Ok [ action_plan_key build ]
+let plan_finalize_dependencies = fun _t _registry build ->
+  Ok [ Work_request.existing (action_plan_key build) ]
 
-let plan_action_dependencies = fun _t _registry build -> Ok [ Work_node.ModulePlanKey build ]
+let plan_action_dependencies = fun _t _registry build ->
+  Ok [ Work_request.existing (Work_node.ModulePlanKey build) ]
 
 let package_artifact_completed = fun registry build ->
   match Work_registry.find registry (package_artifact_key build) with
@@ -299,7 +282,7 @@ let execute = fun t registry (build: Goal.build_package) ->
       ^ Riot_model.Package_name.to_string build.package;
     })
   else
-    Ok (Work_result.RequeueWithDependencies [ package_artifact_key build ])
+    Ok (Work_result.RequeueWithDependencies [ Work_request.existing (package_artifact_key build) ])
 
 let execute_artifact = fun t registry (build: Goal.build_package) ->
   if has_results t build then
@@ -312,32 +295,38 @@ let execute_artifact = fun t registry (build: Goal.build_package) ->
         let* package_dependencies_ready = package_dependencies_ready t build in
         if not package_dependencies_ready then
           let* package_dependency_keys = package_dependency_goal_keys t build in
-          Ok (Work_result.RequeueWithDependencies package_dependency_keys)
+          Ok (Work_result.RequeueWithDependencies (Work_request.from_keys package_dependency_keys))
         else
-          Ok (Work_result.RequeueWithDependencies [ package_finalize_key build ])
+          Ok (Work_result.RequeueWithDependencies [ Work_request.existing (package_finalize_key build) ])
 
 let execute_finalize = fun t registry (build: Goal.build_package) ->
   if has_results t build then
     Ok (Work_result.Complete [])
   else if not (action_plan_completed registry build) then
-    Ok (Work_result.RequeueWithDependencies [ action_plan_key build ])
+    Ok (Work_result.RequeueWithDependencies [ Work_request.existing (action_plan_key build) ])
   else
     let* package_dependencies_ready = package_dependencies_ready t build in
     if not package_dependencies_ready then
       let* package_dependency_keys = package_dependency_goal_keys t build in
-      Ok (Work_result.RequeueWithDependencies package_dependency_keys)
+      Ok (Work_result.RequeueWithDependencies (Work_request.from_keys package_dependency_keys))
     else
       match Module_planning.find t.module_planning build with
-      | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+      | None ->
+          Ok (Work_result.RequeueWithDependencies [
+            Work_request.existing (Work_node.ModulePlanKey build);
+          ])
       | Some plan ->
-          match package_dependency_action_keys t registry plan with
+          match package_dependency_action_requests t registry plan with
           | [] -> finalize t plan
-          | action_dependency_keys ->
-              Ok (Work_result.RequeueWithDependencies action_dependency_keys)
+          | action_dependency_requests ->
+              Ok (Work_result.RequeueWithDependencies action_dependency_requests)
 
-let execute_action_plan = fun t registry (build: Goal.build_package) ->
+let execute_action_plan = fun t _registry (build: Goal.build_package) ->
   match Module_planning.find t.module_planning build with
-  | None -> Ok (Work_result.RequeueWithDependencies [ Work_node.ModulePlanKey build ])
+  | None ->
+      Ok (Work_result.RequeueWithDependencies [
+        Work_request.existing (Work_node.ModulePlanKey build);
+      ])
   | Some plan ->
       let* () =
         match Graph_cache.get t.action_plan_cache plan.package_hash with
@@ -349,5 +338,4 @@ let execute_action_plan = fun t registry (build: Goal.build_package) ->
               plan.package_hash
               (Action_plan_cache.payload_of_plan plan)
       in
-      register_plan_nodes t registry plan;
-      Ok (Work_result.Complete [])
+      Ok (Work_result.Complete (action_node_requests plan))

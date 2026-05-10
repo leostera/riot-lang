@@ -185,6 +185,42 @@ let test_save_and_promote_nested_outputs = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_save_and_promote_loaded_action_artifact = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"store_action_artifact_promote_test"
+    (fun tmpdir ->
+      let workspace = make_test_workspace tmpdir in
+      let store = Riot_store.Store.create ~workspace in
+      let sandbox = Path.(tmpdir / Path.v "sandbox") in
+      let _ = Fs.create_dir_all Path.(sandbox / Path.v "obj") in
+      let output = Path.(sandbox / Path.v "obj" / Path.v "x.cmx") in
+      let _ = Fs.write "compiled-action-output" output in
+      let hash = Crypto.hash_string "loaded-action-artifact" in
+      let _ =
+        Riot_store.Store.save_action
+          store
+          ~package:"pkg"
+          ~input_hash:hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save action should succeed"
+      in
+      match Riot_store.Store.get_action store hash with
+      | None -> Error "expected saved action artifact"
+      | Some artifact ->
+          let target = Path.(tmpdir / Path.v "out") in
+          let _ =
+            Riot_store.Store.promote_action_artifact store artifact ~target_dir:target
+            |> Result.expect ~msg:"promote loaded action artifact should succeed"
+          in
+          let promoted = Path.(target / Path.v "obj" / Path.v "x.cmx") in
+          if String.equal (read_file promoted) "compiled-action-output" then
+            Ok ()
+          else
+            Error "loaded action artifact was not promoted correctly") with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_get_preserves_relative_paths = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"store_manifest_path_test"
@@ -1820,6 +1856,9 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
 let tests =
   Test.[
     case "save/promote nested outputs" test_save_and_promote_nested_outputs;
+    case
+      "save/promote loaded action artifact"
+      test_save_and_promote_loaded_action_artifact;
     case "save/promote self-host-style outputs" test_save_and_promote_self_host_style_outputs;
     case "get preserves relative paths" test_get_preserves_relative_paths;
     case

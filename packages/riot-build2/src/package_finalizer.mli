@@ -20,25 +20,25 @@ val plan_dependencies:
   t ->
   Work_registry.t ->
   Goal.build_package ->
-  (Work_node.key list, Error.t) result
+  (Work_request.t list, Error.t) result
 
 val plan_artifact_dependencies:
   t ->
   Work_registry.t ->
   Goal.build_package ->
-  (Work_node.key list, Error.t) result
+  (Work_request.t list, Error.t) result
 
 val plan_finalize_dependencies:
   t ->
   Work_registry.t ->
   Goal.build_package ->
-  (Work_node.key list, Error.t) result
+  (Work_request.t list, Error.t) result
 
 val plan_action_dependencies:
   t ->
   Work_registry.t ->
   Goal.build_package ->
-  (Work_node.key list, Error.t) result
+  (Work_request.t list, Error.t) result
 
 val execute: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result
 

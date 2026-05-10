@@ -1,5 +1,7 @@
 type t =
   | WorkQueued of { node: Work_node.t }
+  | WorkPlanningStarted of { node: Work_node.t }
+  | WorkPlanningCompleted of { node: Work_node.t }
   | WorkStarted of { node: Work_node.t }
   | WorkCompleted of { node: Work_node.t }
   | WorkFailed of { node: Work_node.t; error: Error.t }

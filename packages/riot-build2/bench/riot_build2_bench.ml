@@ -18,6 +18,10 @@ let kernel_package = package "kernel"
 
 let build2_package = package "riot-build2"
 
+let available_parallelism = Std.Thread.available_parallelism
+
+let available_parallelism_label = Int.to_string available_parallelism
+
 let executor_workspace =
   Riot_model.Workspace.make
     ~root:(Path.v ".")
@@ -70,6 +74,8 @@ let seed = fun () ->
     (User_intent.run ~runnable:(User_intent.ByName "server") ~target:linux ())
 
 let goal_seed = fun id action -> Work_node.goal ~id:(node_id id) action
+
+let goal_request = fun action -> Work_request.existing (Work_node.GoalKey action)
 
 let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~target_dir ->
   Riot_model.Workspace.make
@@ -347,7 +353,7 @@ let make_executor_spawn_actions_bench = fun ~count ~parallelism ->
         ~execute:(fun _context node ->
           match Work_node.kind node with
           | Work_node.UserIntent _ ->
-              let spawned = List.map goal_list ~fn:(fun action -> Work_node.GoalKey action) in
+              let spawned = List.map goal_list ~fn:goal_request in
               Ok (Work_result.Complete spawned)
           | Work_node.Goal _ -> Ok (Work_result.Complete [])
           | _ -> unexpected_node node)
@@ -361,7 +367,7 @@ let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
     let plan_dependencies _registry node =
       match Work_node.kind node with
       | Work_node.UserIntent _ ->
-          Ok (List.map goal_list ~fn:(fun action -> Work_node.GoalKey action))
+          Ok (List.map goal_list ~fn:goal_request)
       | Work_node.Goal _ -> Ok []
       | _ -> unexpected_node node
     in
@@ -380,7 +386,7 @@ let make_executor_dependency_fanout_bench = fun ~count ~parallelism ->
     in
     expect_no_failures "dependency fanout" summary (Int.succ count)
 
-let make_executor_dependency_chain_bench = fun ~count ->
+let make_executor_dependency_chain_bench = fun ~count ~parallelism ->
   let goal_list = actions count in
   let rec next_dependency = fun action actions ->
     match actions with
@@ -390,12 +396,12 @@ let make_executor_dependency_chain_bench = fun ~count ->
   in
   let intent_dependencies =
     match goal_list with
-    | first :: _ -> Ok [ Work_node.GoalKey first ]
+    | first :: _ -> Ok [ goal_request first ]
     | [] -> Ok []
   in
   let action_dependencies = fun action ->
     match next_dependency action goal_list with
-    | Some dependency -> Ok [ Work_node.GoalKey dependency ]
+    | Some dependency -> Ok [ goal_request dependency ]
     | None -> Ok []
   in
   fun () ->
@@ -407,7 +413,7 @@ let make_executor_dependency_chain_bench = fun ~count ->
     in
     let summary =
       Executor.Runner.run_with_handlers
-        ~config:(executor_config 1)
+        ~config:(executor_config parallelism)
         ~execution_mode:concrete_execution_mode
         ~plan_dependencies
         ~seeds:[ seed () ]
@@ -487,7 +493,7 @@ let make_module_provider_registry_lookup_bench = fun () ->
     | Error error -> panic ("module provider registry benchmark failed: " ^ Error.message error)
 
 let execute_module_plan_to_cache = fun workspace ->
-  let config = Config.make ~workspace ~parallelism:1 () in
+  let config = Config.make ~workspace ~parallelism:available_parallelism () in
   let services = Build_services.create ~config () in
   let registry = Work_registry.create () in
   let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
@@ -497,7 +503,7 @@ let execute_module_plan_to_cache = fun workspace ->
         List.filter
           keys
           ~fn:(fun __tmp1 ->
-            match __tmp1 with
+            match Work_request.key __tmp1 with
             | Work_node.SourceAnalysisKey _ -> true
             | _ -> false)
     | Ok _ -> panic "module plan cache setup expected source analysis dependencies"
@@ -505,10 +511,16 @@ let execute_module_plan_to_cache = fun workspace ->
   in
   List.for_each
     source_keys
-    ~fn:(fun key ->
-      match Work_registry.find registry key with
-      | None -> panic "module plan cache setup missed source analysis node"
-      | Some source_node ->
+    ~fn:(fun request ->
+      match Work_request.kind request with
+      | None -> panic "module plan cache setup missed materialized source analysis request"
+      | Some kind ->
+          let source_node =
+            Work_registry.intern
+              registry
+              ~key:(Work_request.key request)
+              ~make:(fun () -> kind)
+          in
           Build_services.execute_node services registry source_node
           |> Result.expect ~msg:"source analysis cache setup failed"
           |> ignore);
@@ -524,7 +536,7 @@ let make_module_plan_cache_hit_bench = fun () ->
   in
   execute_module_plan_to_cache workspace;
   fun () ->
-    let config = Config.make ~workspace ~parallelism:1 () in
+    let config = Config.make ~workspace ~parallelism:available_parallelism () in
     let services = Build_services.create ~config () in
     let registry = Work_registry.create () in
     let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
@@ -540,7 +552,7 @@ let make_action_plan_from_cached_module_plan_bench = fun () ->
   in
   execute_module_plan_to_cache workspace;
   fun () ->
-    let config = Config.make ~workspace ~parallelism:1 () in
+    let config = Config.make ~workspace ~parallelism:available_parallelism () in
     let services = Build_services.create ~config () in
     let registry = Work_registry.create () in
     let build = source_build () in
@@ -553,8 +565,12 @@ let make_action_plan_from_cached_module_plan_bench = fun () ->
       | Error error -> panic ("action plan benchmark module plan failed: " ^ Error.message error)
     );
     match Build_services.execute_node services registry action_node with
-    | Ok (Work_result.Complete []) -> ()
-    | Ok _ -> panic "action plan benchmark requested dependencies"
+    | Ok (Work_result.Complete action_requests) -> (
+        match action_requests with
+        | [] -> panic "action plan benchmark produced no action nodes"
+        | _ :: _ -> ()
+      )
+    | Ok (Work_result.RequeueWithDependencies _) -> panic "action plan benchmark requested dependencies"
     | Error error -> panic ("action plan benchmark failed: " ^ Error.message error)
 
 let make_native_compile_library_action_hash_bench = fun ~source_count ->
@@ -961,6 +977,80 @@ let make_kernel_partial_event_change_bench = fun ~parallelism ->
     expect_kernel_package_result result;
     expect_kernel_partial_event_action_results executor
 
+let report_duration_json = fun duration ->
+  Data.Json.obj [
+    ("nanos", Data.Json.int (Int64.to_int (Time.Duration.to_nanos duration)));
+    ("millis", Data.Json.float (Int64.to_float (Time.Duration.to_nanos duration) /. 1_000_000.0));
+  ]
+
+let kernel_action_timing_report = fun ~scenario ~parallelism ~wall_time executor ->
+  let results =
+    Build_services.action_results executor
+    |> Action_timing_summary.for_package kernel_package
+  in
+  Data.Json.obj [
+    ("type", Data.Json.string "RiotBuild2ActionTimingSummary");
+    ("scenario", Data.Json.string scenario);
+    ("package", Data.Json.string (Riot_model.Package_name.to_string kernel_package));
+    ("parallelism", Data.Json.int parallelism);
+    ("wall_time", report_duration_json wall_time);
+    ("actions", Action_timing_summary.to_json (Action_timing_summary.of_results results));
+  ]
+
+let print_kernel_action_timing_report = fun ~scenario ~parallelism ~wall_time executor ->
+  kernel_action_timing_report ~scenario ~parallelism ~wall_time executor
+  |> Data.Json.to_string_pretty
+  |> println
+
+let run_kernel_cold_action_timing_summary = fun ~parallelism ->
+  let workspace =
+    clone_workspace_with_target (load_repo_workspace ()) ~target_dir:(kernel_cold_target_dir ())
+  in
+  let (executor_and_result, wall_time) =
+    Timer.measure (fun () -> run_kernel_build_with_executor ~workspace ~parallelism)
+  in
+  let (executor, result) = executor_and_result in
+  expect_kernel_package_result result;
+  print_kernel_action_timing_report ~scenario:"kernel-cold" ~parallelism ~wall_time executor;
+  Ok ()
+
+let run_kernel_partial_event_action_timing_summary = fun ~parallelism ->
+  let root =
+    Path.(Path.v "_bench" / Path.v ("kernel-timing-partial-" ^ UUID.to_string (UUID.v4 ())))
+  in
+  let workspace = isolated_kernel_workspace root in
+  run_kernel_build ~workspace ~parallelism
+  |> expect_kernel_package_result;
+  mutate_kernel_event_source workspace 1;
+  let (executor_and_result, wall_time) =
+    Timer.measure (fun () -> run_kernel_build_with_executor ~workspace ~parallelism)
+  in
+  let (executor, result) = executor_and_result in
+  expect_kernel_package_result result;
+  expect_kernel_partial_event_action_results executor;
+  print_kernel_action_timing_report ~scenario:"kernel-partial-event" ~parallelism ~wall_time executor;
+  Ok ()
+
+let rec find_action_timing_summary = fun __tmp1 ->
+  match __tmp1 with
+  | "action-timing-summary" :: scenario :: _ -> Some scenario
+  | _ :: rest -> find_action_timing_summary rest
+  | [] -> None
+
+let run_action_timing_summary = fun scenario ->
+  let parallelism = Std.Thread.available_parallelism in
+  match scenario with
+  | "kernel-cold"
+  | "cold" -> run_kernel_cold_action_timing_summary ~parallelism
+  | "kernel-partial-event"
+  | "partial-event" -> run_kernel_partial_event_action_timing_summary ~parallelism
+  | other ->
+      Error (Failure (
+        "unknown action timing summary scenario "
+        ^ other
+        ^ " (expected kernel-cold or kernel-partial-event)"
+      ))
+
 let pure_config: Bench.bench_config = { iterations = 160; warmup = 20 }
 
 let registry_config: Bench.bench_config = { iterations = 120; warmup = 16 }
@@ -1003,20 +1093,25 @@ let benchmarks = fun () ->
       (make_registry_find_goal_hits_bench ~count:1_000);
     with_config
       ~config:executor_bench_config
-      "riot-build2 executor drain 64 independent goals parallelism 4"
-      (make_executor_independent_actions_bench ~count:64 ~parallelism:4);
+      ("riot-build2 executor drain 64 independent goals parallelism "
+      ^ available_parallelism_label)
+      (make_executor_independent_actions_bench
+        ~count:64
+        ~parallelism:available_parallelism);
     with_config
       ~config:executor_bench_config
-      "riot-build2 executor spawn 64 actions parallelism 4"
-      (make_executor_spawn_actions_bench ~count:64 ~parallelism:4);
+      ("riot-build2 executor spawn 64 actions parallelism " ^ available_parallelism_label)
+      (make_executor_spawn_actions_bench ~count:64 ~parallelism:available_parallelism);
     with_config
       ~config:executor_bench_config
-      "riot-build2 executor dependency fanout 64 parallelism 4"
-      (make_executor_dependency_fanout_bench ~count:64 ~parallelism:4);
+      ("riot-build2 executor dependency fanout 64 parallelism "
+      ^ available_parallelism_label)
+      (make_executor_dependency_fanout_bench ~count:64 ~parallelism:available_parallelism);
     with_config
       ~config:runner_heavy_config
-      "riot-build2 executor planned dependency chain 32 parallelism 1"
-      (make_executor_dependency_chain_bench ~count:32);
+      ("riot-build2 executor planned dependency chain 32 parallelism "
+      ^ available_parallelism_label)
+      (make_executor_dependency_chain_bench ~count:32 ~parallelism:available_parallelism);
     with_config
       ~config:workspace_load_config
       "riot-build2 workspace load repo through workspace manager"
@@ -1080,17 +1175,20 @@ let benchmarks = fun () ->
     with_config
       ~config:kernel_cold_build_config
       "riot-build2 kernel cold boot + cold cache graph execution available parallelism"
-      (make_kernel_build_cold_bench ~parallelism:Std.Thread.available_parallelism);
+      (make_kernel_build_cold_bench ~parallelism:available_parallelism);
     with_config
       ~config:kernel_warm_cache_config
-      "riot-build2 kernel cold boot + warm cache graph execution parallelism 4"
-      (make_kernel_build_warm_cache_bench ~parallelism:Std.Thread.available_parallelism);
+      "riot-build2 kernel cold boot + warm cache graph execution available parallelism"
+      (make_kernel_build_warm_cache_bench ~parallelism:available_parallelism);
     with_config
       ~config:kernel_partial_event_config
       "riot-build2 kernel partial rebuild after async event source change"
-      (make_kernel_partial_event_change_bench ~parallelism:Std.Thread.available_parallelism);
+      (make_kernel_partial_event_change_bench ~parallelism:available_parallelism);
   ]
 
-let main ~args = Bench.Cli.main ~name:"riot-build2 benchmarks" ~benchmarks:(benchmarks ()) ~args
+let main ~args =
+  match find_action_timing_summary args with
+  | Some scenario -> run_action_timing_summary scenario
+  | None -> Bench.Cli.main ~name:"riot-build2 benchmarks" ~benchmarks:(benchmarks ()) ~args
 
 let () = Runtime.run ~main ~args:Env.args ()

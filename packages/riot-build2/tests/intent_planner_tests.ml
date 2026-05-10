@@ -74,7 +74,10 @@ let test_executor_drains_spawned_nodes = fun _ctx ->
           target = linux;
         }
         in
-        Ok (Work_result.Complete [ Work_node.GoalKey child; Work_node.GoalKey second ])
+        Ok (Work_result.Complete [
+          Work_request.existing (Work_node.GoalKey child);
+          Work_request.existing (Work_node.GoalKey second);
+        ])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in

@@ -5,9 +5,26 @@ module DynamicWorkerPool = WorkerPool.DynamicWorkerPool
 module ConcurrentHashMap = Collections.ConcurrentHashMap
 module Queue = Collections.Queue
 
-type task_result = {
+type worker_task =
+  | PlanNode of Work_node.t
+  | ExecuteNode of Work_node.t
+
+type plan_result = {
+  node: Work_node.t;
+  outcome: (Work_request.t list, Error.t) result;
+}
+
+type execute_result = {
   node: Work_node.t;
   outcome: (Work_result.t, Error.t) result;
+}
+
+type task_result = {
+  task: worker_task;
+  outcome: [
+    | `Planned of (Work_request.t list, Error.t) result
+    | `Executed of (Work_result.t, Error.t) result
+  ];
 }
 
 type worker_result = {
@@ -19,17 +36,17 @@ type Message.t +=
   | WorkNodeResult of worker_result
 
 type dispatcher_event =
-  | WorkerReady of Work_node.t DynamicWorkerPool.worker
+  | WorkerReady of worker_task DynamicWorkerPool.worker
   | NodeResult of task_result
 
 type state = {
-  pool: Work_node.t DynamicWorkerPool.t;
+  pool: worker_task DynamicWorkerPool.t;
   ready: Node_queue.t;
-  idle_workers: Work_node.t DynamicWorkerPool.worker Queue.t;
+  idle_workers: worker_task DynamicWorkerPool.worker Queue.t;
   result_ref: task_result Ref.t;
   on_event: Event.t -> unit;
   registry: Work_registry.t;
-  plan_dependencies: Work_registry.t -> Work_node.t -> (Work_node.key list, Error.t) result;
+  plan_dependencies: Work_registry.t -> Work_node.t -> (Work_request.t list, Error.t) result;
   execution_mode: Work_node.t -> Work_node.execution_mode;
   execute: Work_registry.t -> Work_node.t -> (Work_result.t, Error.t) result;
   mutable tasks_in_flight: int;
@@ -53,6 +70,7 @@ let record_result = fun state node status error ->
   | Work_node.Completed -> state.completed_count <- Int.succ state.completed_count
   | Failed -> state.failed_count <- Int.succ state.failed_count
   | Unplanned
+  | Planning
   | Waiting
   | Ready
   | Running -> ()
@@ -88,8 +106,15 @@ let canonical_node_for_key = fun state key ->
       | None -> Error (unsupported_key_error key)
     )
 
-let canonical_nodes_for_keys = fun state keys ->
-  let seen = ConcurrentHashMap.with_capacity ~size:(List.length keys) in
+let canonical_node_for_request = fun state request ->
+  match request with
+  | Work_request.Existing key -> canonical_node_for_key state key
+  | Materialize kind ->
+      let key = Work_node.key_from_kind kind in
+      Ok (Work_registry.intern state.registry ~key ~make:(fun () -> kind))
+
+let canonical_nodes_for_requests = fun state requests ->
+  let seen = ConcurrentHashMap.with_capacity ~size:(List.length requests) in
   let add_once node =
     ConcurrentHashMap.compute
       seen
@@ -102,8 +127,8 @@ let canonical_nodes_for_keys = fun state keys ->
   let rec loop acc = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok (List.reverse acc)
-    | key :: rest -> (
-        match canonical_node_for_key state key with
+    | request :: rest -> (
+        match canonical_node_for_request state request with
         | Ok node ->
             if add_once node then
               loop (node :: acc) rest
@@ -112,7 +137,7 @@ let canonical_nodes_for_keys = fun state keys ->
         | Error error -> Error error
       )
   in
-  loop [] keys
+  loop [] requests
 
 let is_complete = fun state -> Int.equal state.tasks_in_flight 0 && Node_queue.is_empty state.ready
 
@@ -121,6 +146,7 @@ let rec fail_node = fun state node error ->
   | Failed
   | Completed -> ()
   | Unplanned
+  | Planning
   | Waiting
   | Ready
   | Running ->
@@ -154,11 +180,13 @@ and settle_dependents = fun state node ->
                     queue_node state dependent
                   )
               | Unplanned
+              | Planning
               | Waiting
               | Ready
               | Running -> ()
             )
           | Unplanned
+          | Planning
           | Ready
           | Running
           | Completed
@@ -177,6 +205,7 @@ let register_dependencies = fun state node dependencies ->
         ignore (Work_node.add_dependent dependency node_id);
         match Work_node.status dependency with
         | Work_node.Unplanned
+        | Planning
         | Waiting
         | Ready
         | Running ->
@@ -213,6 +242,7 @@ let complete_node = fun state node ->
   | Work_node.Completed
   | Failed -> ()
   | Unplanned
+  | Planning
   | Waiting
   | Ready
   | Running ->
@@ -221,12 +251,12 @@ let complete_node = fun state node ->
       record_result state node Completed None;
       settle_dependents state node
 
-let register_dependency_keys = fun state node dependency_keys ->
-  if List.is_empty dependency_keys then
+let register_dependency_requests = fun state node dependency_requests ->
+  if List.is_empty dependency_requests then
     Ok ()
   else
     (
-      match canonical_nodes_for_keys state dependency_keys with
+      match canonical_nodes_for_requests state dependency_requests with
       | Error error -> Error error
       | Ok dependencies ->
           let registered = register_dependencies state node dependencies in
@@ -244,6 +274,7 @@ let register_dependency_keys = fun state node dependency_keys ->
                   match Work_node.status dependency with
                   | Unplanned -> queue_node state dependency
                   | Ready when Work_node.dependencies_ready dependency -> queue_node state dependency
+                  | Planning
                   | Waiting
                   | Ready
                   | Running
@@ -268,38 +299,21 @@ let dispatch_ready_node = fun state worker node ->
         Work_node.mark_as_running node;
         state.tasks_in_flight <- Int.succ state.tasks_in_flight;
         state.on_event (Event.WorkStarted { node });
-        DynamicWorkerPool.send_task state.pool worker node;
+        DynamicWorkerPool.send_task state.pool worker (ExecuteNode node);
         Dispatched
 
-let plan_node = fun state node ->
-  match state.plan_dependencies state.registry node with
-  | Error error -> Error error
-  | Ok dependency_keys ->
-      let* () = register_dependency_keys state node dependency_keys in
-      if Work_node.dependencies_ready node then
-        Work_node.mark_as_ready node
-      else
-        Work_node.mark_as_waiting node;
-      Ok ()
+let dispatch_plan_node = fun state worker node ->
+  Work_node.mark_as_planning node;
+  state.tasks_in_flight <- Int.succ state.tasks_in_flight;
+  state.on_event (Event.WorkPlanningStarted { node });
+  DynamicWorkerPool.send_task state.pool worker (PlanNode node);
+  Dispatched
 
 let prepare_node_for_dispatch = fun state worker node ->
   match Work_node.status node with
-  | Work_node.Unplanned -> (
-      match plan_node state node with
-      | Error error ->
-          fail_node state node error;
-          NotDispatched
-      | Ok () -> (
-          match Work_node.status node with
-          | Ready -> dispatch_ready_node state worker node
-          | Waiting
-          | Failed -> NotDispatched
-          | Unplanned
-          | Running
-          | Completed -> NotDispatched
-        )
-    )
+  | Work_node.Unplanned -> dispatch_plan_node state worker node
   | Ready -> dispatch_ready_node state worker node
+  | Planning
   | Waiting -> NotDispatched
   | Running
   | Completed
@@ -323,11 +337,28 @@ let dispatch_available = fun state ->
   in
   loop ()
 
-let complete_result = fun state result ->
+let complete_plan_result = fun state (result: plan_result) ->
   state.tasks_in_flight <- state.tasks_in_flight - 1;
   match result.outcome with
-  | Ok (Work_result.Complete spawned_keys) -> (
-      match canonical_nodes_for_keys state spawned_keys with
+  | Error error -> fail_node state result.node error
+  | Ok dependency_requests -> (
+      match register_dependency_requests state result.node dependency_requests with
+      | Error error -> fail_node state result.node error
+      | Ok () ->
+          state.on_event (Event.WorkPlanningCompleted { node = result.node });
+          if Work_node.dependencies_ready result.node then (
+            Work_node.mark_as_ready result.node;
+            queue_node state result.node
+          )
+          else
+            Work_node.mark_as_waiting result.node
+    )
+
+let complete_execute_result = fun state (result: execute_result) ->
+  state.tasks_in_flight <- state.tasks_in_flight - 1;
+  match result.outcome with
+  | Ok (Work_result.Complete spawned_requests) -> (
+      match canonical_nodes_for_requests state spawned_requests with
       | Error error -> fail_node state result.node error
       | Ok spawned ->
           Work_node.mark_as_completed result.node;
@@ -338,8 +369,8 @@ let complete_result = fun state result ->
           record_result state result.node Completed None;
           settle_dependents state result.node
     )
-  | Ok (Work_result.RequeueWithDependencies dependency_keys) -> (
-      match register_dependency_keys state result.node dependency_keys with
+  | Ok (Work_result.RequeueWithDependencies dependency_requests) -> (
+      match register_dependency_requests state result.node dependency_requests with
       | Error error -> fail_node state result.node error
       | Ok () ->
           state.on_event (Event.WorkRequeued { node = result.node });
@@ -351,6 +382,21 @@ let complete_result = fun state result ->
             Work_node.mark_as_waiting result.node
     )
   | Error error -> fail_node state result.node error
+
+let complete_result = fun state result ->
+  match result.outcome with
+  | `Planned outcome ->
+      complete_plan_result state { node = (
+        match result.task with
+        | PlanNode node
+        | ExecuteNode node -> node
+      ); outcome }
+  | `Executed outcome ->
+      complete_execute_result state { node = (
+        match result.task with
+        | PlanNode node
+        | ExecuteNode node -> node
+      ); outcome }
 
 let rec loop = fun state ->
   dispatch_available state;
@@ -385,13 +431,27 @@ let rec loop = fun state ->
 
 let default_plan_dependencies = fun (_registry: Work_registry.t) (_node: Work_node.t) -> Ok []
 
-let worker_fn registry result_ref execute ~owner ~task:node =
+let worker_fn registry result_ref plan_dependencies execute ~owner ~task =
   let result =
-    match execute registry node with
-    | Ok execution -> { node; outcome = Ok execution }
-    | Error error -> { node; outcome = Error error }
-    | exception exn ->
-        { node; outcome = Error (Error.WorkerFailed { message = Exception.to_string exn }) }
+    match task with
+    | PlanNode node ->
+        let outcome =
+          match plan_dependencies registry node with
+          | Ok planned -> Ok planned
+          | Error error -> Error error
+          | exception exn ->
+              Error (Error.WorkerFailed { message = Exception.to_string exn })
+        in
+        { task; outcome = `Planned outcome }
+    | ExecuteNode node ->
+        let outcome =
+          match execute registry node with
+          | Ok execution -> Ok execution
+          | Error error -> Error error
+          | exception exn ->
+              Error (Error.WorkerFailed { message = Exception.to_string exn })
+        in
+        { task; outcome = `Executed outcome }
   in
   send owner (WorkNodeResult { result; result_ref })
 
@@ -419,7 +479,7 @@ let run_with_handlers = fun
         DynamicWorkerPool.start
           ~concurrency:Build_config.(config.parallelism)
           ~owner
-          ~worker_fn:(worker_fn registry result_ref execute)
+          ~worker_fn:(worker_fn registry result_ref plan_dependencies execute)
           ()
       in
       let state = {

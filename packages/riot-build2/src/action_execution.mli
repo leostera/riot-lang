@@ -21,11 +21,28 @@ type status =
   | Executed of Riot_store.Artifact.t
   | Failed of string
 
+type timing = {
+  dependency_hashing: Time.Duration.t;
+  input_hashing: Time.Duration.t;
+  store_lookup: Time.Duration.t;
+  cache_promotion: Time.Duration.t;
+  sandbox_prepare: Time.Duration.t;
+  source_staging: Time.Duration.t;
+  command_execution: Time.Duration.t;
+  output_verification: Time.Duration.t;
+  store_save: Time.Duration.t;
+  total: Time.Duration.t;
+}
+
 type result = {
   ref_: ref_;
+  action_kind: string;
   status: status;
   ocamlc_warnings: string list;
+  timing: timing;
 }
+
+val empty_timing: timing
 
 val ref_from_action:
   package:Riot_model.Package.t ->

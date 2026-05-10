@@ -441,6 +441,10 @@ let prepare_artifact_destination = fun store ~hash_dir ~temp_dir ->
         }
       )
 
+let copy_without_permissions = fun ~src ~dst ~copy_error ->
+  Fs.copy ~src ~dst
+  |> Result.map_err ~fn:copy_error
+
 let copy_with_permissions = fun ~src ~dst ~copy_error ->
   let* metadata =
     Fs.metadata src
@@ -493,6 +497,32 @@ let exists = fun store hash ->
   artifact_dir_is_reusable store hash_dir
 
 (** Promote artifacts from store to target directory *)
+let promote_files = fun ~preserve_permissions ~hash_dir ~files ~target_dir ->
+  let* () =
+    Fs.create_dir_all target_dir
+    |> Result.map_err ~fn:(fun cause -> CreateTargetDirFailed { path = target_dir; cause })
+  in
+  let promote_one (entry: Manifest.file_entry) =
+    let src = Path.(hash_dir / entry.path) in
+    let dst = Path.(target_dir / entry.path) in
+    let dst_parent = Path.dirname dst in
+    let* () =
+      Fs.create_dir_all dst_parent
+      |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
+    in
+    let copy_error cause = CopyArtifactFailed { src; dst; cause } in
+    if preserve_permissions then
+      copy_with_permissions ~src ~dst ~copy_error
+    else
+      copy_without_permissions ~src ~dst ~copy_error
+  in
+  List.fold_left
+    files
+    ~init:(Ok ())
+    ~fn:(fun acc entry ->
+      let* () = acc in
+      promote_one entry)
+
 let promote = fun store input_hash ~target_dir ->
   let hash_dir = get_package_hash_dir store input_hash in
   let manifest_path = manifest_path hash_dir in
@@ -506,29 +536,7 @@ let promote = fun store input_hash ~target_dir ->
         | Error _ -> Error (HashNotFound { hash = input_hash })
       )
   in
-  let* () =
-    Fs.create_dir_all target_dir
-    |> Result.map_err ~fn:(fun cause -> CreateTargetDirFailed { path = target_dir; cause })
-  in
-  let promote_one (entry: Manifest.file_entry) =
-    let src = Path.(hash_dir / entry.path) in
-    let dst = Path.(target_dir / entry.path) in
-    let dst_parent = Path.dirname dst in
-    let* () =
-      Fs.create_dir_all dst_parent
-      |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
-    in
-    copy_with_permissions
-      ~src
-      ~dst
-      ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause })
-  in
-  List.fold_left
-    manifest.files
-    ~init:(Ok ())
-    ~fn:(fun acc entry ->
-      let* () = acc in
-      promote_one entry)
+  promote_files ~preserve_permissions:true ~hash_dir ~files:manifest.files ~target_dir
 
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts = fun
@@ -892,7 +900,7 @@ let promote_artifact = fun store artifact ~target_dir ->
     Artifact.(artifact.input_hash)
     ~target_dir
 
-let promote_action = fun store input_hash ~target_dir ->
+let promote_action = fun ?(preserve_permissions = true) store input_hash ~target_dir ->
   let hash_dir = get_action_hash_dir store input_hash in
   let manifest_path = manifest_path hash_dir in
   let* manifest =
@@ -905,29 +913,12 @@ let promote_action = fun store input_hash ~target_dir ->
         | Error _ -> Error (HashNotFound { hash = input_hash })
       )
   in
-  let* () =
-    Fs.create_dir_all target_dir
-    |> Result.map_err ~fn:(fun cause -> CreateTargetDirFailed { path = target_dir; cause })
-  in
-  let promote_one (entry: Manifest.file_entry) =
-    let src = Path.(hash_dir / entry.path) in
-    let dst = Path.(target_dir / entry.path) in
-    let dst_parent = Path.dirname dst in
-    let* () =
-      Fs.create_dir_all dst_parent
-      |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
-    in
-    copy_with_permissions
-      ~src
-      ~dst
-      ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause })
-  in
-  List.fold_left
-    manifest.files
-    ~init:(Ok ())
-    ~fn:(fun acc entry ->
-      let* () = acc in
-      promote_one entry)
+  promote_files ~preserve_permissions ~hash_dir ~files:manifest.files ~target_dir
+
+let promote_action_artifact = fun
+  ?(preserve_permissions = true) store (artifact: Artifact.t) ~target_dir ->
+  let hash_dir = get_action_hash_dir store artifact.input_hash in
+  promote_files ~preserve_permissions ~hash_dir ~files:artifact.files ~target_dir
 
 (** Get absolute paths to artifact files in immutable cache *)
 let get_artifact_paths = fun store artifact ->

@@ -73,6 +73,40 @@ let ocamlc_success = fun message -> Riot_toolchain.Ocamlc.Success { message; dia
 
 let ocamlc_failed = fun message -> Riot_toolchain.Ocamlc.Failed { message; diagnostics = [] }
 
+type action_run = {
+  result: Riot_toolchain.Ocamlc.result;
+  source_staging_duration: Time.Duration.t;
+  command_execution_duration: Time.Duration.t;
+}
+
+let measured_duration = fun duration ->
+  if Time.Duration.is_zero duration then
+    Time.Duration.from_nanos 1
+  else
+    duration
+
+let timed = fun fn ->
+  let result, duration = Timer.measure fn in
+  (result, measured_duration duration)
+
+let action_run_result = fun
+  ?(source_staging_duration = Time.Duration.zero)
+  ?(command_execution_duration = Time.Duration.zero)
+  result -> {
+  result;
+  source_staging_duration;
+  command_execution_duration;
+}
+
+let action_run_failed = fun
+  ?(source_staging_duration = Time.Duration.zero)
+  ?(command_execution_duration = Time.Duration.zero)
+  message ->
+  action_run_result
+    ~source_staging_duration
+    ~command_execution_duration
+    (ocamlc_failed message)
+
 let ensure_parent_dir = fun path ->
   match Path.parent path with
   | Some dir -> Fs.create_dir_all dir
@@ -82,7 +116,7 @@ let requires_toolchain = fun (action: Action_execution.t) -> Action.requires_too
 
 let with_toolchain = fun ocamlc fn ->
   match ocamlc with
-  | None -> ocamlc_failed "toolchain was not ready before compiler action execution"
+  | None -> action_run_failed "toolchain was not ready before compiler action execution"
   | Some ocamlc -> fn ocamlc
 
 let path_error_message = fun __tmp1 ->
@@ -166,6 +200,20 @@ let stage_compile_library_source = fun ~package ~package_root ~sandbox_dir sourc
         ^ IO.error_message error;
       })
 
+let stage_compile_library_sources = fun ~package ~package_root ~sandbox_dir sources ->
+  if List.is_empty sources then
+    (Ok [], Time.Duration.zero)
+  else
+    timed
+      (fun () ->
+        sources
+        |> List.fold_left
+          ~init:(Ok [])
+          ~fn:(fun acc source ->
+            let* acc = acc in
+            let* () = stage_compile_library_source ~package ~package_root ~sandbox_dir source in
+            Ok (source.Action.staged :: acc)))
+
 let run_action = fun
   ~(package:Riot_model.Package_name.t)
   ~(package_root:Path.t)
@@ -180,15 +228,20 @@ let run_action = fun
         (fun ocamlc ->
           let source = resolve_source ~package_root ~sandbox_dir source in
           let source_dir = [ source_include_dir source ] in
-          Riot_toolchain.Ocamlc.compile_c
-            ocamlc
-            ~cwd:sandbox_dir
-            ~includes:source_dir
-            ?cc:c_compiler
-            ~ccflags
-            ~output:(Path.join sandbox_dir output)
-            source
-          |> Riot_toolchain.Ocamlc.run)
+          let invocation =
+            Riot_toolchain.Ocamlc.compile_c
+              ocamlc
+              ~cwd:sandbox_dir
+              ~includes:source_dir
+              ?cc:c_compiler
+              ~ccflags
+              ~output:(Path.join sandbox_dir output)
+              source
+          in
+          let result, command_execution_duration =
+            timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
+          in
+          action_run_result ~command_execution_duration result)
   | Action.CompileSource {
       source;
       outputs = _ :: _;
@@ -199,10 +252,15 @@ let run_action = fun
       with_toolchain
         ocamlc
         (fun ocamlc ->
-          match stage_compile_library_source ~package ~package_root ~sandbox_dir source with
-          | Error (Error.ExecutorInvariantViolated { message }) -> ocamlc_failed message
-          | Error (Error.ActionExecutionFailed { reason; _ }) -> ocamlc_failed reason
-          | Error error -> ocamlc_failed (Error.message error)
+          let stage_result, source_staging_duration =
+            timed (fun () -> stage_compile_library_source ~package ~package_root ~sandbox_dir source)
+          in
+          match stage_result with
+          | Error (Error.ExecutorInvariantViolated { message }) ->
+              action_run_failed ~source_staging_duration message
+          | Error (Error.ActionExecutionFailed { reason; _ }) ->
+              action_run_failed ~source_staging_duration reason
+          | Error error -> action_run_failed ~source_staging_duration (Error.message error)
           | Ok () ->
               let invocation =
                 match source.kind with
@@ -223,7 +281,10 @@ let run_action = fun
                       ~output
                       source.staged
               in
-              Riot_toolchain.Ocamlc.run invocation)
+              let result, command_execution_duration =
+                timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
+              in
+              action_run_result ~source_staging_duration ~command_execution_duration result)
   | Action.CompileSources {
       sources;
       outputs = _ :: _;
@@ -233,27 +294,28 @@ let run_action = fun
       with_toolchain
         ocamlc
         (fun ocamlc ->
-          let staged =
-            sources
-            |> List.fold_left
-              ~init:(Ok [])
-              ~fn:(fun acc source ->
-                let* acc = acc in
-                let* () = stage_compile_library_source ~package ~package_root ~sandbox_dir source in
-                Ok (source.Action.staged :: acc))
+          let staged, source_staging_duration =
+            stage_compile_library_sources ~package ~package_root ~sandbox_dir sources
           in
           match staged with
-          | Error (Error.ExecutorInvariantViolated { message }) -> ocamlc_failed message
-          | Error (Error.ActionExecutionFailed { reason; _ }) -> ocamlc_failed reason
-          | Error error -> ocamlc_failed (Error.message error)
+          | Error (Error.ExecutorInvariantViolated { message }) ->
+              action_run_failed ~source_staging_duration message
+          | Error (Error.ActionExecutionFailed { reason; _ }) ->
+              action_run_failed ~source_staging_duration reason
+          | Error error -> action_run_failed ~source_staging_duration (Error.message error)
           | Ok staged ->
-              Riot_toolchain.Ocamlc.compile_sources
-                ocamlc
-                ~cwd:sandbox_dir
-                ~includes:(resolve_include_paths sandbox_dir includes)
-                ~flags:(make_flags_absolute sandbox_dir flags)
-                (List.reverse staged)
-              |> Riot_toolchain.Ocamlc.run)
+              let invocation =
+                Riot_toolchain.Ocamlc.compile_sources
+                  ocamlc
+                  ~cwd:sandbox_dir
+                  ~includes:(resolve_include_paths sandbox_dir includes)
+                  ~flags:(make_flags_absolute sandbox_dir flags)
+                  (List.reverse staged)
+              in
+              let result, command_execution_duration =
+                timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
+              in
+              action_run_result ~source_staging_duration ~command_execution_duration result)
   | Action.CompileLibrary {
       sources;
       objects;
@@ -265,47 +327,58 @@ let run_action = fun
       with_toolchain
         ocamlc
         (fun ocamlc ->
-          let staged =
-            sources
-            |> List.fold_left
-              ~init:(Ok [])
-              ~fn:(fun acc source ->
-                let* acc = acc in
-                let* () = stage_compile_library_source ~package ~package_root ~sandbox_dir source in
-                Ok (source.Action.staged :: acc))
+          let staged, source_staging_duration =
+            stage_compile_library_sources ~package ~package_root ~sandbox_dir sources
           in
           match staged with
-          | Error (Error.ExecutorInvariantViolated { message }) -> ocamlc_failed message
-          | Error (Error.ActionExecutionFailed { reason; _ }) -> ocamlc_failed reason
-          | Error error -> ocamlc_failed (Error.message error)
+          | Error (Error.ExecutorInvariantViolated { message }) ->
+              action_run_failed ~source_staging_duration message
+          | Error (Error.ActionExecutionFailed { reason; _ }) ->
+              action_run_failed ~source_staging_duration reason
+          | Error error -> action_run_failed ~source_staging_duration (Error.message error)
           | Ok staged ->
-              Riot_toolchain.Ocamlc.compile_library
-                ocamlc
-                ~cwd:sandbox_dir
-                ~includes:(resolve_include_paths sandbox_dir includes)
-                ~flags:(make_flags_absolute sandbox_dir flags)
-                ~output
-                (List.reverse staged @ objects)
-              |> Riot_toolchain.Ocamlc.run)
+              let invocation =
+                Riot_toolchain.Ocamlc.compile_library
+                  ocamlc
+                  ~cwd:sandbox_dir
+                  ~includes:(resolve_include_paths sandbox_dir includes)
+                  ~flags:(make_flags_absolute sandbox_dir flags)
+                  ~output
+                  (List.reverse staged @ objects)
+              in
+              let result, command_execution_duration =
+                timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
+              in
+              action_run_result ~source_staging_duration ~command_execution_duration result)
   | Action.CopyFile { source; destination } ->
       let src = resolve_source ~package_root ~sandbox_dir source in
       let dst = Path.join sandbox_dir destination in
       let _ = ensure_parent_dir dst in
-      Fs.copy ~src ~dst
-      |> Result.fold
-        ~ok:(fun () -> ocamlc_success "copied")
-        ~error:(fun error -> ocamlc_failed ("copy failed: " ^ IO.error_message error))
+      let result, command_execution_duration =
+        timed
+          (fun () ->
+            Fs.copy ~src ~dst
+            |> Result.fold
+              ~ok:(fun () -> ocamlc_success "copied")
+              ~error:(fun error -> ocamlc_failed ("copy failed: " ^ IO.error_message error)))
+      in
+      action_run_result ~command_execution_duration result
   | Action.WriteFile { destination; content } ->
       let dst = Path.join sandbox_dir destination in
       let _ = ensure_parent_dir dst in
-      Fs.write content dst
-      |> Result.fold
-        ~ok:(fun () -> ocamlc_success "written")
-        ~error:(fun error -> ocamlc_failed ("write failed: " ^ IO.error_message error))
+      let result, command_execution_duration =
+        timed
+          (fun () ->
+            Fs.write content dst
+            |> Result.fold
+              ~ok:(fun () -> ocamlc_success "written")
+              ~error:(fun error -> ocamlc_failed ("write failed: " ^ IO.error_message error)))
+      in
+      action_run_result ~command_execution_duration result
   | Action.CompileC { outputs = []; _ }
   | Action.CompileSource { outputs = []; _ }
   | Action.CompileSources { outputs = []; _ }
-  | Action.CompileLibrary { outputs = []; _ } -> ocamlc_failed "action has no outputs"
+  | Action.CompileLibrary { outputs = []; _ } -> action_run_failed "action has no outputs"
 
 let verify_outputs = fun outputs ->
   let missing =
@@ -322,21 +395,46 @@ let verify_outputs = fun outputs ->
   else
     Error missing
 
-let execute_uncached = fun t (action: Action_execution.t) toolchain action_input_hash ->
+let finish_timing = fun started_at (timing: Action_execution.timing) ->
+  { timing with total = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) }
+
+let execute_uncached = fun
+  t
+  (action: Action_execution.t)
+  toolchain
+  action_input_hash
+  ~started_at
+  ~(timing: Action_execution.timing) ->
   let package = action.package in
-  let* sandbox_dir = absolute_path action.sandbox_dir in
-  let _ = Fs.create_dir_all sandbox_dir in
-  let* package_root = absolute_path package.path in
+  let sandbox_result, sandbox_prepare_duration =
+    timed
+      (fun () ->
+        let* sandbox_dir = absolute_path action.sandbox_dir in
+        let _ = Fs.create_dir_all sandbox_dir in
+        let* package_root = absolute_path package.path in
+        Ok (sandbox_dir, package_root))
+  in
+  let* (sandbox_dir, package_root) = sandbox_result in
   let ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
   let c_compiler = Option.and_then toolchain ~fn:Riot_toolchain.c_compiler in
-  let* warnings =
-    match run_action
+  let action_run =
+    run_action
       ~package:package.name
       ~package_root
       ?c_compiler
       ocamlc
       sandbox_dir
-      action.action with
+      action.action
+  in
+  let timing: Action_execution.timing = {
+    timing with
+    sandbox_prepare = sandbox_prepare_duration;
+    source_staging = action_run.source_staging_duration;
+    command_execution = action_run.command_execution_duration;
+  }
+  in
+  let* warnings =
+    match action_run.result with
     | Riot_toolchain.Ocamlc.Success _ as result ->
         Ok (Riot_toolchain.Ocamlc.get_ocamlc_warnings result)
     | Riot_toolchain.Ocamlc.Failed _ as result ->
@@ -346,41 +444,89 @@ let execute_uncached = fun t (action: Action_execution.t) toolchain action_input
         })
   in
   let abs_outputs = List.map (Action.outputs action.action) ~fn:(Path.join sandbox_dir) in
+  let output_result, output_verification_duration =
+    timed (fun () -> verify_outputs abs_outputs)
+  in
+  let timing: Action_execution.timing =
+    { timing with output_verification = output_verification_duration }
+  in
   let* () =
-    verify_outputs abs_outputs
+    output_result
     |> Result.map_err
       ~fn:(fun missing -> Error.ActionOutputsNotCreated { package = package.name; missing })
   in
-  match Riot_store.Store.save_action
-    t.store
-    ~package:(Riot_model.Package_name.to_string package.name)
-    ~ocamlc_warnings:warnings
-    ~input_hash:action_input_hash
-    ~sandbox_dir
-    ~outs:abs_outputs with
+  let save_result, store_save_duration =
+    timed
+      (fun () ->
+        Riot_store.Store.save_action
+          t.store
+          ~package:(Riot_model.Package_name.to_string package.name)
+          ~ocamlc_warnings:warnings
+          ~input_hash:action_input_hash
+          ~sandbox_dir
+          ~outs:abs_outputs)
+  in
+  let timing: Action_execution.timing = { timing with store_save = store_save_duration } in
+  match save_result with
   | Error error -> Error (store_error ~package:package.name (Riot_store.Store.error_message error))
   | Ok saved_artifact ->
+      let timing = finish_timing started_at timing in
       store_result
         t
         {
           Action_execution.ref_ = action.ref_;
+          action_kind = Action.kind action.action;
           status = Action_execution.Executed saved_artifact;
           ocamlc_warnings = warnings;
+          timing;
         };
       Ok (Work_result.Complete [])
 
-let promote_cached = fun t (action: Action_execution.t) (artifact: Riot_store.Artifact.t) ->
-  let* target_dir = absolute_path action.sandbox_dir in
-  match Riot_store.Store.promote_action t.store artifact.input_hash ~target_dir with
-  | Error error ->
-      Error (store_error ~package:action.ref_.package (Riot_store.Store.error_message error))
+let promote_cached = fun
+  t
+  (action: Action_execution.t)
+  (artifact: Riot_store.Artifact.t)
+  ~started_at
+  ~(timing: Action_execution.timing) ->
+  let preserve_permissions =
+    match action.action with
+    | Action.CompileC _
+    | Action.CompileSource _
+    | Action.CompileSources _
+    | Action.CompileLibrary _ -> false
+    | Action.CopyFile _
+    | Action.WriteFile _ -> true
+  in
+  let promote_result, cache_promotion_duration =
+    timed
+      (fun () ->
+        match absolute_path action.sandbox_dir with
+        | Error error -> Error error
+        | Ok target_dir ->
+            Riot_store.Store.promote_action_artifact
+              ~preserve_permissions
+              t.store
+              artifact
+              ~target_dir
+            |> Result.map_err
+              ~fn:(fun error ->
+                store_error ~package:action.ref_.package (Riot_store.Store.error_message error)))
+  in
+  let timing: Action_execution.timing =
+    { timing with cache_promotion = cache_promotion_duration }
+  in
+  match promote_result with
+  | Error error -> Error error
   | Ok () ->
+      let timing = finish_timing started_at timing in
       store_result
         t
         {
           Action_execution.ref_ = action.ref_;
+          action_kind = Action.kind action.action;
           status = Action_execution.Cached artifact;
           ocamlc_warnings = artifact.ocamlc_warnings;
+          timing;
         };
       Ok (Work_result.Complete [])
 
@@ -418,21 +564,46 @@ let execute = fun t (action: Action_execution.t) ->
         |> List.filter ~fn:(fun ref_ -> Option.is_none (find_result t ref_))
       in
       if not (List.is_empty missing) then
-        Ok (Work_result.RequeueWithDependencies (List.map missing ~fn:action_dependency_key))
+        Ok (
+          Work_result.RequeueWithDependencies (
+            missing
+            |> List.map ~fn:action_dependency_key
+            |> Work_request.from_keys
+          )
+        )
       else
-        let* dependency_output_hashes = dependency_output_hashes t action in
-        let action_input_hash =
-          compute_action_input_hash ~planned_hash:action.ref_.hash ~dependency_output_hashes
+        let started_at = Time.Instant.now () in
+        let dependency_hashes_result, dependency_hashing =
+          timed (fun () -> dependency_output_hashes t action)
         in
-        match Riot_store.Store.get_action t.store action_input_hash with
-        | Some artifact -> promote_cached t action artifact
+        let* dependency_output_hashes = dependency_hashes_result in
+        let action_input_hash, input_hashing =
+          timed
+            (fun () ->
+              compute_action_input_hash ~planned_hash:action.ref_.hash ~dependency_output_hashes)
+        in
+        let artifact, store_lookup =
+          timed (fun () -> Riot_store.Store.get_action t.store action_input_hash)
+        in
+        let timing: Action_execution.timing = {
+          Action_execution.empty_timing with
+          dependency_hashing;
+          input_hashing;
+          store_lookup;
+        }
+        in
+        match artifact with
+        | Some artifact -> promote_cached t action artifact ~started_at ~timing
         | None ->
             if Action.requires_toolchain action.action then
               match Toolchain_service.find t.toolchains action.ref_.target with
-              | Some toolchain -> execute_uncached t action (Some toolchain) action_input_hash
+              | Some toolchain ->
+                  execute_uncached t action (Some toolchain) action_input_hash ~started_at ~timing
               | None ->
                   Ok (Work_result.RequeueWithDependencies [
-                    Work_node.ToolchainReadyKey { target = action.ref_.target };
+                    Work_request.existing (
+                      Work_node.ToolchainReadyKey { target = action.ref_.target }
+                    );
                   ])
             else
-              execute_uncached t action None action_input_hash
+              execute_uncached t action None action_input_hash ~started_at ~timing

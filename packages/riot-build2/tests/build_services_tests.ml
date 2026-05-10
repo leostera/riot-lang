@@ -54,32 +54,34 @@ let build_package = fun name ->
 
 let build_goal = fun name -> Goal.BuildPackage (build_package name)
 
-let has_goal_key = fun keys goal ->
+let request_key = Work_request.key
+
+let has_goal_key = fun requests goal ->
   List.any
-    keys
-    ~fn:(fun __tmp1 ->
-      match __tmp1 with
+    requests
+    ~fn:(fun request ->
+      match request_key request with
       | Work_node.GoalKey got -> got = goal
       | _ -> false)
 
-let has_toolchain_key = fun keys target ->
+let has_toolchain_key = fun requests target ->
   List.any
-    keys
-    ~fn:(fun __tmp1 ->
-      match __tmp1 with
+    requests
+    ~fn:(fun request ->
+      match request_key request with
       | Work_node.ToolchainReadyKey toolchain -> Riot_model.Target.equal toolchain.target target
       | _ -> false)
 
-let has_package_artifact_key = fun keys build ->
+let has_package_artifact_key = fun requests build ->
   List.any
-    keys
-    ~fn:(fun __tmp1 ->
-      match __tmp1 with
+    requests
+    ~fn:(fun request ->
+      match request_key request with
       | Work_node.PackageArtifactKey got -> got = build
       | _ -> false)
 
-let key_name = fun __tmp1 ->
-  match __tmp1 with
+let key_name = fun request ->
+  match request_key request with
   | Work_node.Intent _ -> "Intent"
   | Package _ -> "Package"
   | Module _ -> "Module"
@@ -94,6 +96,12 @@ let key_name = fun __tmp1 ->
   | OCamlLibraryKey _ -> "OCamlLibraryKey"
   | OCamlArchiveKey _ -> "OCamlArchiveKey"
   | ActionExecutionKey _ -> "ActionExecutionKey"
+
+let materialize_request = fun registry request ->
+  match Work_request.kind request with
+  | Some kind ->
+      Ok (Work_registry.intern registry ~key:(Work_request.key request) ~make:(fun () -> kind))
+  | None -> Error ("request cannot be materialized: " ^ key_name request)
 
 let source_package_workspace = fun root ->
   let package_name = package "sourcepkg" in
@@ -197,11 +205,19 @@ let test_module_plan_dependencies_are_stable_without_source_analysis_state = fun
         |> Result.map_err ~fn:Error.message
       in
       let* () =
-        if List.is_empty first then
+        let has_source_analysis =
+          List.any
+            first
+            ~fn:(fun request ->
+              match request_key request with
+              | Work_node.SourceAnalysisKey _ -> true
+              | _ -> false)
+        in
+        if has_source_analysis then
           Ok ()
         else
           Error (
-            "expected module planning to avoid source analysis during stable dependency planning, got "
+            "expected stable module planning to declare source analysis dependencies, got "
             ^ Int.to_string (List.length first)
             ^ ": "
             ^ (
@@ -218,7 +234,7 @@ let test_module_plan_dependencies_are_stable_without_source_analysis_state = fun
         Build_services.plan_dependencies services registry node
         |> Result.map_err ~fn:Error.message
       in
-      if first = second then
+      if List.map first ~fn:request_key = List.map second ~fn:request_key then
         Ok ()
       else
         Error "expected module planning dependencies to ignore source-analysis cache state") with
@@ -257,7 +273,7 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
               List.filter
                 keys
                 ~fn:(fun __tmp1 ->
-                  match __tmp1 with
+                  match request_key __tmp1 with
                   | Work_node.SourceAnalysisKey _ -> true
                   | _ -> false)
             in
@@ -271,10 +287,10 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
       let rec execute_sources = fun __tmp1 ->
         match __tmp1 with
         | [] -> Ok ()
-        | key :: rest ->
-            match Work_registry.find registry key with
-            | None -> Error "expected source analysis dependency to be registered"
-            | Some source_node ->
+        | request :: rest ->
+            match materialize_request registry request with
+            | Error error -> Error error
+            | Ok source_node ->
                 let* _ =
                   Build_services.execute_node services registry source_node
                   |> Result.map_err ~fn:Error.message
@@ -296,7 +312,8 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
           if
             List.any
               source_keys
-              ~fn:(fun key -> Option.is_some (Work_registry.find cached_registry key))
+              ~fn:(fun request ->
+                Option.is_some (Work_registry.find cached_registry (request_key request)))
           then
             Error "expected module plan cache hit not to register source analysis dependencies"
           else
@@ -440,10 +457,10 @@ let test_uncached_action_reads_concrete_package_sources_without_sandbox_copy = f
       let action = copy_file_action_execution root in
       match Action_executor.execute executor action with
       | Ok (Work_result.Complete []) ->
-          match Fs.read Path.(action.sandbox_dir / Path.v "copied.txt") with
+          (match Fs.read Path.(action.sandbox_dir / Path.v "copied.txt") with
           | Ok "package-source\n" -> Ok ()
           | Ok _ -> Error "expected copied package source content"
-          | Error error -> Error ("expected copied package source: " ^ IO.error_message error)
+          | Error error -> Error ("expected copied package source: " ^ IO.error_message error))
       | Ok _ -> Error "expected package-source copy action not to request dependencies"
       | Error error -> Error (Error.message error)) with
   | Ok result -> result
@@ -461,9 +478,13 @@ let test_uncached_compiler_action_requests_toolchain_readiness_at_execution = fu
       let executor = Action_executor.create ~store ~toolchains () in
       let action = compile_action_execution root in
       match Action_executor.execute executor action with
-      | Ok (Work_result.RequeueWithDependencies [ Work_node.ToolchainReadyKey toolchain ]) when Riot_model.Target.equal
-        toolchain.target
-        action.ref_.target -> Ok ()
+      | Ok (Work_result.RequeueWithDependencies [ request ]) -> (
+          match request_key request with
+          | Work_node.ToolchainReadyKey toolchain when Riot_model.Target.equal
+            toolchain.target
+            action.ref_.target -> Ok ()
+          | _ -> Error "expected uncached action to request toolchain readiness"
+        )
       | Ok _ -> Error "expected uncached action to request toolchain readiness"
       | Error error -> Error (Error.message error)) with
   | Ok result -> result

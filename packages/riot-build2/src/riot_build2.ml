@@ -7,6 +7,7 @@ module Package_catalog = Package_catalog
 module Config = Build_config
 module Build_result = Build_result
 module Action_execution = Action_execution
+module Action_timing_summary = Action_timing_summary
 module Build_services = Build_services
 module Action_executor = Action_executor
 module Error = Error
@@ -25,6 +26,7 @@ module Toolchain_ready = Toolchain_ready
 module Workspace_loader = Workspace_loader
 module Work_graph = Work_graph
 module Work_node = Work_node
+module Work_request = Work_request
 module Work_result = Work_result
 module Work_registry = Work_registry
 

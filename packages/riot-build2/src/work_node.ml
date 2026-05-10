@@ -19,6 +19,7 @@ end
 
 type status =
   | Unplanned
+  | Planning
   | Waiting
   | Ready
   | Running
@@ -155,7 +156,8 @@ let kind = fun node -> node.kind
 
 let execution_mode_of_kind = fun __tmp1 ->
   match __tmp1 with
-  | UserIntent _ -> Virtual
+  | UserIntent _
+  | Goal (Goal.BuildPackage _) -> Virtual
   | Goal _
   | ToolchainReady _
   | SourceAnalysis _
@@ -174,6 +176,7 @@ let status = fun node -> Atomic.get node.status
 let status_to_string = fun __tmp1 ->
   match __tmp1 with
   | Unplanned -> "Unplanned"
+  | Planning -> "Planning"
   | Waiting -> "Waiting"
   | Ready -> "Ready"
   | Running -> "Running"
@@ -190,9 +193,13 @@ let invalid_transition_message = fun node ~from ~to_ ->
 
 let valid_transition = fun ~from ~to_ ->
   match (from, to_) with
+  | (Unplanned, Planning)
   | (Unplanned, Waiting)
   | (Unplanned, Ready)
   | (Unplanned, Failed)
+  | (Planning, Waiting)
+  | (Planning, Ready)
+  | (Planning, Failed)
   | (Waiting, Ready)
   | (Waiting, Failed)
   | (Ready, Running)
@@ -224,6 +231,8 @@ let dependents = fun node -> ConcurrentHashMap.keys node.dependents
 let pending_dependency_count = fun node -> Atomic.get node.pending_dependencies
 
 let dependencies_ready = fun node -> Int.equal (pending_dependency_count node) 0
+
+let mark_as_planning = fun node -> transition node ~to_:Planning
 
 let mark_as_waiting = fun node -> transition node ~to_:Waiting
 

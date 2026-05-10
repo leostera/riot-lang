@@ -187,9 +187,22 @@ val promote: t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) resu
    Promote cached package artifacts to the target directory. Returns error if hash not
    found.
 *)
-val promote_action: t -> Std.Crypto.hash -> target_dir:Std.Path.t -> (unit, error) result
+val promote_action:
+  ?preserve_permissions:bool ->
+  t ->
+  Std.Crypto.hash ->
+  target_dir:Std.Path.t ->
+  (unit, error) result
 
 (** Promote cached action artifacts to the target directory. *)
+val promote_action_artifact:
+  ?preserve_permissions:bool ->
+  t ->
+  Artifact.t ->
+  target_dir:Std.Path.t ->
+  (unit, error) result
+
+(** Promote a cached action artifact that has already been loaded with [get_action]. *)
 val exists: t -> Std.Crypto.hash -> bool
 
 (** Check if artifacts for a given hash exist in the store *)

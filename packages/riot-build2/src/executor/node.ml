@@ -15,6 +15,7 @@ type kind = Work_node.kind =
 
 type status = Work_node.status =
   | Unplanned
+  | Planning
   | Waiting
   | Ready
   | Running

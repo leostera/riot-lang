@@ -108,7 +108,7 @@ let package_dependency_keys = fun t build ->
     t.module_providers
     build
 
-let source_dependency_keys = fun t registry (build: Goal.build_package) ->
+let source_dependency_requests = fun t (build: Goal.build_package) ->
   let* input = Package_planning.resolve t.package_planning build in
   let package = input.package in
   let tasks =
@@ -119,13 +119,13 @@ let source_dependency_keys = fun t registry (build: Goal.build_package) ->
       tasks
       ~fn:(fun source ->
         let source = Source_analysis.make ~package:package.name ~task:source in
-        ignore (Work_registry.intern_source_analysis registry source);
-        Work_node.SourceAnalysisKey source.Source_analysis.key)
+        Work_request.materialize (Work_node.SourceAnalysis source))
   )
 
 let plan_dependencies = fun t _registry build ->
   let* package_dependencies = package_dependency_keys t build in
-  Ok package_dependencies
+  let* source_dependencies = source_dependency_requests t build in
+  Ok (Work_request.from_keys package_dependencies @ source_dependencies)
 
 let sandbox_dir = fun t (input: Package_planning.input) ->
   Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace
@@ -369,7 +369,7 @@ let execute = fun t registry (build: Goal.build_package) ->
       | Error _ as error -> error
       | Ok (Some _) -> Ok (Work_result.Complete [])
       | Ok None ->
-          let source_dependencies = source_dependency_keys t registry build in
+          let source_dependencies = source_dependency_requests t build in
           let* source_dependencies = source_dependencies in
           let package = input.package in
           let tasks =

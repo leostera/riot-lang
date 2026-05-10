@@ -16,6 +16,7 @@ end
 
 type status =
   | Unplanned
+  | Planning
   | Waiting
   | Ready
   | Running
@@ -115,6 +116,8 @@ val dependents: t -> Node_id.t list
 val pending_dependency_count: t -> int
 
 val dependencies_ready: t -> bool
+
+val mark_as_planning: t -> unit
 
 val mark_as_waiting: t -> unit
 

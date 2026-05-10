@@ -21,10 +21,38 @@ type status =
   | Executed of Riot_store.Artifact.t
   | Failed of string
 
+type timing = {
+  dependency_hashing: Time.Duration.t;
+  input_hashing: Time.Duration.t;
+  store_lookup: Time.Duration.t;
+  cache_promotion: Time.Duration.t;
+  sandbox_prepare: Time.Duration.t;
+  source_staging: Time.Duration.t;
+  command_execution: Time.Duration.t;
+  output_verification: Time.Duration.t;
+  store_save: Time.Duration.t;
+  total: Time.Duration.t;
+}
+
 type result = {
   ref_: ref_;
+  action_kind: string;
   status: status;
   ocamlc_warnings: string list;
+  timing: timing;
+}
+
+let empty_timing = {
+  dependency_hashing = Time.Duration.zero;
+  input_hashing = Time.Duration.zero;
+  store_lookup = Time.Duration.zero;
+  cache_promotion = Time.Duration.zero;
+  sandbox_prepare = Time.Duration.zero;
+  source_staging = Time.Duration.zero;
+  command_execution = Time.Duration.zero;
+  output_verification = Time.Duration.zero;
+  store_save = Time.Duration.zero;
+  total = Time.Duration.zero;
 }
 
 let ref_from_action = fun ~package ~profile ~target ~toolchain action ->

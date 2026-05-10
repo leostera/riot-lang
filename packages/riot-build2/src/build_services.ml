@@ -87,16 +87,19 @@ let action_dependencies = fun registry action ->
   let action_dependencies =
     List.map action.Action_execution.dependencies ~fn:(action_dependency_key registry)
   in
-  if Action_executor.requires_toolchain action then
-    Work_node.ToolchainReadyKey { target = action.ref_.target } :: action_dependencies
-  else
-    action_dependencies
-
+  let keys =
+    if Action_executor.requires_toolchain action then
+      Work_node.ToolchainReadyKey { target = action.ref_.target } :: action_dependencies
+    else
+      action_dependencies
+  in
+  Work_request.from_keys keys
 let plan_dependencies = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
       Intent_planner.expand t.catalog intent
-      |> Result.map ~fn:(fun goals -> List.map goals ~fn:(fun goal -> Work_node.GoalKey goal))
+      |> Result.map ~fn:(fun goals ->
+        List.map goals ~fn:(fun goal -> Work_request.existing (Work_node.GoalKey goal)))
   | Goal (BuildPackage build) ->
       Package_finalizer.plan_dependencies t.package_finalizer registry build
   | Goal _
@@ -112,14 +115,13 @@ let plan_dependencies = fun t registry node ->
   | OCamlLibrary action
   | OCamlArchive action -> Ok (action_dependencies registry action)
   | ActionExecution action -> Ok (action_dependencies registry action)
-
 let execute_node = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent _ ->
       Error (Error.ExecutorInvariantViolated {
         message = "virtual work node reached concrete execution";
       })
-  | Goal (BuildPackage build) -> Package_finalizer.execute t.package_finalizer registry build
+  | Goal (BuildPackage _build) -> Ok (Work_result.Complete [])
   | Goal goal -> Error (Error.UnsupportedGoal { goal })
   | ToolchainReady toolchain ->
       Toolchain_service.ensure t.toolchains toolchain

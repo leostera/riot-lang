@@ -91,6 +91,8 @@ let event_kind_present = fun events ~fn ->
 let event_kind = fun __tmp1 ->
   match __tmp1 with
   | Event.WorkQueued _ -> "queued"
+  | WorkPlanningStarted _ -> "planning_started"
+  | WorkPlanningCompleted _ -> "planning_completed"
   | WorkStarted _ -> "started"
   | WorkCompleted _ -> "completed"
   | WorkFailed _ -> "failed"
@@ -101,6 +103,8 @@ let event_kind = fun __tmp1 ->
 let event_node = fun __tmp1 ->
   match __tmp1 with
   | Event.WorkQueued { node }
+  | WorkPlanningStarted { node }
+  | WorkPlanningCompleted { node }
   | WorkStarted { node }
   | WorkCompleted { node }
   | WorkFailed { node; _ }
@@ -129,7 +133,7 @@ let result_ids = fun summary ->
       |> Work_node.Node_id.to_int)
   |> List.sort ~compare:Int.compare
 
-let goal_key = fun action -> Work_node.GoalKey action
+let goal_request = fun action -> Work_request.existing (Work_node.GoalKey action)
 
 let find_goal_node = fun summary action ->
   summary.Executor.Summary.results
@@ -206,7 +210,12 @@ let test_registry_finds_packages_and_modules = fun _ctx ->
 
 let test_work_node_accepts_valid_status_transitions = fun _ctx ->
   let ready_node = sample_seed () in
+  let planned_node = sample_intent_seed 3 in
   let waiting_node = sample_intent_seed 2 in
+  Work_node.mark_as_planning planned_node;
+  Work_node.mark_as_ready planned_node;
+  Work_node.mark_as_running planned_node;
+  Work_node.mark_as_completed planned_node;
   Work_node.mark_as_ready ready_node;
   Work_node.mark_as_running ready_node;
   Work_node.mark_as_completed ready_node;
@@ -219,6 +228,7 @@ let test_work_node_accepts_valid_status_transitions = fun _ctx ->
   Work_node.mark_as_completed waiting_node;
   if
     Work_node.status ready_node = Work_node.Completed
+    && Work_node.status planned_node = Work_node.Completed
     && Work_node.status waiting_node = Work_node.Completed
   then
     Ok ()
@@ -255,7 +265,7 @@ let test_registry_nodes_get_fresh_ids_after_seed_ids = fun _ctx ->
   let child_action = sample_goal "child" in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_key child_action ])
+    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_request child_action ])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
@@ -271,7 +281,7 @@ let test_complete_spawned_canonicalizes_returned_nodes = fun _ctx ->
   let events = Queue.create () in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_key action; goal_key action ])
+    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_request action; goal_request action ])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
@@ -325,7 +335,9 @@ let test_parallel_event_coverage_without_ordering = fun _ctx ->
   in
   if
     Int.equal summary.Executor.Summary.completed_count 2
-    && event_ids_by_kind events "queued" = [ 10; 11 ]
+    && event_ids_by_kind events "queued" = [ 10; 10; 11; 11 ]
+    && event_ids_by_kind events "planning_started" = [ 10; 11 ]
+    && event_ids_by_kind events "planning_completed" = [ 10; 11 ]
     && event_ids_by_kind events "started" = [ 10; 11 ]
     && event_ids_by_kind events "completed" = [ 10; 11 ]
   then
@@ -338,7 +350,7 @@ let test_parallelism_one_event_sequence_is_deterministic = fun _ctx ->
   let events = Queue.create () in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_key action ])
+    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_request action ])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
@@ -354,7 +366,21 @@ let test_parallelism_one_event_sequence_is_deterministic = fun _ctx ->
     Queue.to_list events
     |> List.map ~fn:event_kind
   in
-  let expected = [ "queued"; "started"; "completed"; "spawned"; "queued"; "started"; "completed"; ]
+  let expected = [
+    "queued";
+    "planning_started";
+    "planning_completed";
+    "queued";
+    "started";
+    "completed";
+    "spawned";
+    "queued";
+    "planning_started";
+    "planning_completed";
+    "queued";
+    "started";
+    "completed";
+  ]
   in
   if kinds = expected then
     Ok ()
@@ -367,7 +393,7 @@ let test_virtual_node_declares_dependencies_and_completes_without_execution = fu
   let seed = sample_seed () in
   let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok [ goal_key child_action ]
+    | Work_node.UserIntent _ -> Ok [ goal_request child_action ]
     | Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -403,7 +429,8 @@ let test_virtual_parent_fails_when_declared_dependency_fails = fun _ctx ->
   let linux = target "x86_64-unknown-linux-gnu" in
   let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok [ Work_node.ToolchainReadyKey { target = linux } ]
+    | Work_node.UserIntent _ ->
+        Ok [ Work_request.existing (Work_node.ToolchainReadyKey { target = linux }) ]
     | ToolchainReady _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -432,7 +459,7 @@ let test_concrete_node_waits_for_planned_dependencies_before_execution = fun _ct
   let parent_runs = Sync.Atomic.make 0 in
   let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.Goal action when action = parent_action -> Ok [ goal_key child_action ]
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_request child_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -481,7 +508,7 @@ let test_planned_dependency_runs_dependent_after_dependency_completes = fun _ctx
     match Work_node.kind node with
     | Work_node.Goal action when action = parent_action ->
         ignore (Sync.Atomic.fetch_and_add parent_plan_calls 1);
-        Ok [ goal_key dependency_action ]
+        Ok [ goal_request dependency_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -568,7 +595,7 @@ let test_multiple_dependencies_wait_for_all_to_complete = fun _ctx ->
   let plan_dependencies _registry node =
     match Work_node.kind node with
     | Work_node.Goal action when action = parent_action ->
-        Ok [ goal_key first_action; goal_key second_action ]
+        Ok [ goal_request first_action; goal_request second_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -615,7 +642,7 @@ let test_waiting_node_is_not_planned_again = fun _ctx ->
     match Work_node.kind node with
     | Work_node.Goal action when action = parent_action ->
         ignore (Sync.Atomic.fetch_and_add plan_calls 1);
-        Ok [ goal_key dependency_action ]
+        Ok [ goal_request dependency_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -649,7 +676,7 @@ let test_completed_dependency_makes_node_ready_immediately = fun _ctx ->
   mark_completed dependency;
   let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.Goal action when action = parent_action -> Ok [ goal_key dependency_action ]
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_request dependency_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -685,7 +712,7 @@ let test_duplicate_dependencies_do_not_duplicate_edges_or_runs = fun _ctx ->
   let plan_dependencies _registry node =
     match Work_node.kind node with
     | Work_node.Goal action when action = parent_action ->
-        Ok [ goal_key dependency_action; goal_key dependency_action ]
+        Ok [ goal_request dependency_action; goal_request dependency_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -718,7 +745,7 @@ let test_failed_dependency_fails_dependent = fun _ctx ->
   let dependency_action = sample_goal "dependency" in
   let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.Goal action when action = parent_action -> Ok [ goal_key dependency_action ]
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_request dependency_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -756,7 +783,7 @@ let test_execution_time_dependency_requeue_waits_for_dependencies = fun _ctx ->
     | Work_node.Goal _ ->
         let attempt = Sync.Atomic.fetch_and_add attempts 1 in
         if Int.equal attempt 0 then
-          Ok (Work_result.RequeueWithDependencies [ goal_key dependency_action ])
+          Ok (Work_result.RequeueWithDependencies [ goal_request dependency_action ])
         else
           Ok (Work_result.Complete [])
     | _ -> unexpected_node node
@@ -839,7 +866,7 @@ let test_no_node_remains_running_after_return = fun _ctx ->
   let dependency_action = sample_goal "state-dependency" in
   let plan_dependencies _registry node =
     match Work_node.kind node with
-    | Work_node.Goal action when action = parent_action -> Ok [ goal_key dependency_action ]
+    | Work_node.Goal action when action = parent_action -> Ok [ goal_request dependency_action ]
     | Work_node.Goal _ -> Ok []
     | _ -> unexpected_node node
   in
@@ -856,7 +883,9 @@ let test_no_node_remains_running_after_return = fun _ctx ->
   | None -> Error "expected dependency to be interned"
   | Some dependency ->
       if
-        Work_node.status seed != Work_node.Running
+        Work_node.status seed != Work_node.Planning
+        && Work_node.status seed != Work_node.Running
+        && Work_node.status dependency != Work_node.Planning
         && Work_node.status dependency != Work_node.Running
       then
         Ok ()
@@ -885,7 +914,8 @@ let test_unsupported_spawned_key_fails_node = fun _ctx ->
   let seed = sample_seed () in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ Work_node.Package (package "std") ])
+    | Work_node.UserIntent _ ->
+        Ok (Work_result.Complete [ Work_request.existing (Work_node.Package (package "std")) ])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in
