@@ -12,6 +12,8 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior
 - `packages/blink/AGENTS.md`: streaming HTTP client built on actors
 - `packages/suri/AGENTS.md`: web framework, middleware, routing, liveview, server integration
+- `packages/suri-mailer/AGENTS.md`: Suri mail composition, local mailbox delivery, and development routes
+- `packages/suri-jobs/AGENTS.md`: Suri background jobs, supervised runners, SQL persistence, and dashboard routes
 - `packages/jsonrpc/AGENTS.md`: JSON-RPC framing and codec behavior
 - `packages/lsp/AGENTS.md`: Language Server Protocol types, codecs, and typed method descriptors
 - `packages/mcp/AGENTS.md`: MCP transport and protocol types
@@ -29,6 +31,7 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/riot-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
 - `packages/riot-planner/AGENTS.md`: build planning and dependency graph construction
 - `packages/contentstore/AGENTS.md`: generic content-addressable storage primitives and namespaced bundle persistence
+- `packages/dotenv/AGENTS.md`: dotenv parsing, .env profile loading, and environment application helpers
 - `packages/riot-store/AGENTS.md`: artifact store and cache layout
 - `packages/riot-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
 - `packages/riot-build/AGENTS.md`: in-process build session/runtime entrypoints
