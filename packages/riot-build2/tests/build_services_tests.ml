@@ -103,6 +103,27 @@ let materialize_request = fun registry request ->
       Ok (Work_registry.intern registry ~key:(Work_request.key request) ~make:(fun () -> kind))
   | None -> Error ("request cannot be materialized: " ^ key_name request)
 
+let source_analysis_requests = fun requests ->
+  List.filter
+    requests
+    ~fn:(fun request ->
+      match request_key request with
+      | Work_node.SourceAnalysisKey _ -> true
+      | _ -> false)
+
+let rec execute_source_requests = fun services registry requests ->
+  match requests with
+  | [] -> Ok ()
+  | request :: rest ->
+      match materialize_request registry request with
+      | Error error -> Error error
+      | Ok source_node ->
+          let* _ =
+            Build_services.execute_node services registry source_node
+            |> Result.map_err ~fn:Error.message
+          in
+          execute_source_requests services registry rest
+
 let source_package_workspace = fun root ->
   let package_name = package "sourcepkg" in
   let package_path = Path.(root / Path.v "sourcepkg") in
@@ -139,6 +160,22 @@ let source_package_workspace = fun root ->
     ~target_dir:Path.(root / Path.v "target")
     ~packages:[ package ]
     ())
+
+let source_analysis_task = fun ~source ~source_path ->
+  Riot_planner.Module_graph.{
+    task_node_id = G.Node_id.next ();
+    task_file = Riot_planner.Module_node.Concrete source;
+    task_path = source;
+    task_display_path = source_path;
+    task_module_path = Some [ "Sourcepkg" ];
+    task_implicit_opens = [];
+    task_implicit_open_paths = [];
+  }
+
+let require_module_plan = fun services build ->
+  match Build_services.module_plan services build with
+  | Some plan -> Ok plan
+  | None -> Error "expected module plan to be stored"
 
 let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in
@@ -256,9 +293,9 @@ let test_module_plan_declares_package_dependency_provider_nodes = fun _ctx ->
       else
         Error "expected module planning to depend on declared package provider")
 
-let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
+let test_module_plan_cache_key_uses_source_summary_not_package_hash = fun _ctx ->
   match Fs.with_tempdir
-    ~prefix:"riot_build2_module_plan_cache"
+    ~prefix:"riot_build2_module_plan_summary_cache"
     (fun root ->
       let* workspace = source_package_workspace root in
       let build = build_package "sourcepkg" in
@@ -269,14 +306,7 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
       let* source_keys =
         match Build_services.execute_node services registry node with
         | Ok (Work_result.RequeueWithDependencies keys) ->
-            let source_keys =
-              List.filter
-                keys
-                ~fn:(fun __tmp1 ->
-                  match request_key __tmp1 with
-                  | Work_node.SourceAnalysisKey _ -> true
-                  | _ -> false)
-            in
+            let source_keys = source_analysis_requests keys in
             if List.is_empty source_keys then
               Error "expected cold module planning to request source analysis dependencies"
             else
@@ -284,42 +314,54 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
         | Ok _ -> Error "expected cold module planning to request source analysis dependencies"
         | Error error -> Error (Error.message error)
       in
-      let rec execute_sources = fun __tmp1 ->
-        match __tmp1 with
-        | [] -> Ok ()
-        | request :: rest ->
-            match materialize_request registry request with
-            | Error error -> Error error
-            | Ok source_node ->
-                let* _ =
-                  Build_services.execute_node services registry source_node
-                  |> Result.map_err ~fn:Error.message
-                in
-                execute_sources rest
-      in
-      let* () = execute_sources source_keys in
+      let* () = execute_source_requests services registry source_keys in
       let* () =
         match Build_services.execute_node services registry node with
         | Ok (Work_result.Complete []) -> Ok ()
         | Ok _ -> Error "expected module plan to complete after source analysis"
         | Error error -> Error (Error.message error)
       in
+      let* first_plan = require_module_plan services build in
+      let* () =
+        Fs.write "let value = 2\n" Path.(root / Path.v "sourcepkg/src/sourcepkg.ml")
+        |> Result.map_err ~fn:IO.error_message
+      in
       let cached_services = Build_services.create ~config () in
       let cached_registry = Work_registry.create () in
       let cached_node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
-      match Build_services.execute_node cached_services cached_registry cached_node with
-      | Ok (Work_result.Complete []) ->
+      let* cached_source_keys =
+        match Build_services.execute_node cached_services cached_registry cached_node with
+        | Ok (Work_result.RequeueWithDependencies keys) ->
+            let source_keys = source_analysis_requests keys in
+            if List.is_empty source_keys then
+              Error "expected cached module planning to request source summaries"
+            else
+              Ok source_keys
+        | Ok _ -> Error "expected cached module planning to request source summaries first"
+        | Error error -> Error (Error.message error)
+      in
+      let* () = execute_source_requests cached_services cached_registry cached_source_keys in
+      let* () =
+        match Build_services.execute_node cached_services cached_registry cached_node with
+        | Ok (Work_result.Complete []) -> Ok ()
+        | Ok _ -> Error "expected cached module plan to complete after source summaries"
+        | Error error -> Error (Error.message error)
+      in
+      let* second_plan = require_module_plan cached_services build in
+      if not (Crypto.Hash.equal first_plan.package_hash second_plan.package_hash) then
+        if Crypto.Hash.equal first_plan.module_plan_hash second_plan.module_plan_hash then
           if
-            List.any
-              source_keys
-              ~fn:(fun request ->
-                Option.is_some (Work_registry.find cached_registry (request_key request)))
+            Int.equal
+              (List.length first_plan.action_executions)
+              (List.length second_plan.action_executions)
           then
-            Error "expected module plan cache hit not to register source analysis dependencies"
-          else
             Ok ()
-      | Ok _ -> Error "expected module plan cache hit to complete without dynamic dependencies"
-      | Error error -> Error (Error.message error)) with
+          else
+            Error "expected cached module plan action count to stay stable"
+        else
+          Error "expected body-only source edit to keep the module plan cache key stable"
+      else
+        Error "expected body-only source edit to change the raw package hash") with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -379,6 +421,122 @@ let test_source_analyzer_refreshes_changed_source = fun _ctx ->
           Ok ()
       | Some _ -> Error "expected changed source to refresh the stored source analysis"
       | None -> Error "expected refreshed source analysis to be stored") with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_source_analysis_cache_roundtrips_reusable_summary = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_source_analysis_cache_roundtrip"
+    (fun root ->
+      let package = package "sourcepkg" in
+      let package_path = Path.(root / Path.v "sourcepkg") in
+      let source = Path.v "src/sourcepkg.ml" in
+      let source_path = Path.(package_path / source) in
+      let* () =
+        Fs.create_dir_all Path.(package_path / Path.v "src")
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.write "let value = 1\n" source_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let store = Riot_store.Store.create ~workspace in
+      let cache = Source_analysis_cache.create_cache ~store in
+      let task = source_analysis_task ~source ~source_path in
+      let* analysis =
+        Riot_planner.Module_graph.analyze_source task
+        |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+      in
+      let* payload =
+        match Source_analysis_cache.payload ~package analysis with
+        | Some payload -> Ok payload
+        | None -> Error "expected successful source analysis payload"
+      in
+      let input_hash = Source_analysis_cache.input_hash ~package analysis in
+      let* () =
+        Graph_cache.put cache input_hash payload
+        |> Result.map_err ~fn:Error.message
+      in
+      match Graph_cache.get cache input_hash with
+      | Some (Ok loaded_payload) ->
+          let* loaded_analysis =
+            Source_analysis_cache.analysis ~task loaded_payload
+            |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+          in
+          let* original_summary_hash =
+            Source_analysis_cache.summary_hash_of_analysis analysis
+            |> Result.map_err ~fn:Error.message
+          in
+          let* loaded_summary_hash =
+            Source_analysis_cache.summary_hash_of_analysis loaded_analysis
+            |> Result.map_err ~fn:Error.message
+          in
+          if
+            Crypto.Hash.equal
+              analysis.Riot_planner.Module_graph.analysis_source_hash
+              (Source_analysis_cache.source_hash loaded_payload)
+            && Crypto.Hash.equal
+              analysis.Riot_planner.Module_graph.analysis_source_hash
+              loaded_analysis.Riot_planner.Module_graph.analysis_source_hash
+            && Crypto.Hash.equal original_summary_hash loaded_summary_hash
+          then
+            Ok ()
+          else
+            Error "expected source analysis cache to restore the full reusable summary"
+      | Some (Error error) -> Error (Error.message error)
+      | None -> Error "expected source analysis payload cache hit") with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_source_summary_hash_ignores_body_only_source_changes = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_source_summary_hash"
+    (fun root ->
+      let package_path = Path.(root / Path.v "sourcepkg") in
+      let source = Path.v "src/sourcepkg.ml" in
+      let source_path = Path.(package_path / source) in
+      let* () =
+        Fs.create_dir_all Path.(package_path / Path.v "src")
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.write "let value = 1\n" source_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let task = source_analysis_task ~source ~source_path in
+      let* first =
+        Riot_planner.Module_graph.analyze_source task
+        |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+      in
+      let* first_summary_hash =
+        Source_analysis_cache.summary_hash_of_analysis first
+        |> Result.map_err ~fn:Error.message
+      in
+      let* () =
+        Fs.write "let value = 2\n" source_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* second =
+        Riot_planner.Module_graph.analyze_source task
+        |> Result.map_err ~fn:Riot_planner.Planning_error.to_string
+      in
+      let* second_summary_hash =
+        Source_analysis_cache.summary_hash_of_analysis second
+        |> Result.map_err ~fn:Error.message
+      in
+      if
+        Crypto.Hash.equal
+          first.Riot_planner.Module_graph.analysis_source_hash
+          second.Riot_planner.Module_graph.analysis_source_hash
+      then
+        Error "expected body-only source edit to change source analysis input hash"
+      else if Crypto.Hash.equal first_summary_hash second_summary_hash then
+        Ok ()
+      else
+        Error "expected body-only source edit to keep source summary hash stable") with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -567,11 +725,17 @@ let tests =
       "module plan declares package dependency provider nodes"
       test_module_plan_declares_package_dependency_provider_nodes;
     case
-      "module plan cache hit skips dynamic source dependencies"
-      test_module_plan_cache_hit_skips_dynamic_source_dependencies;
+      "module plan cache key uses source summary not package hash"
+      test_module_plan_cache_key_uses_source_summary_not_package_hash;
     case
       "source analyzer refreshes changed source"
       test_source_analyzer_refreshes_changed_source;
+    case
+      "source analysis cache roundtrips reusable summary"
+      test_source_analysis_cache_roundtrips_reusable_summary;
+    case
+      "source summary hash ignores body-only source changes"
+      test_source_summary_hash_ignores_body_only_source_changes;
     case
       "action execution plans toolchain readiness for compiler action"
       test_action_execution_plans_toolchain_readiness_for_compiler_action;

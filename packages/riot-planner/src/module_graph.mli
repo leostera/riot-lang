@@ -63,6 +63,13 @@ val add_direct_dependency_package: t -> Package.t -> unit
 
 val source_tasks: t -> source_analysis_task list
 
+val source_hash_for_task: source_analysis_task -> (Crypto.hash, Planning_error.t) result
+
+val source_analysis_of_summary:
+  source_analysis_task ->
+  Dep_analyzer.source_summary ->
+  (source_analysis, Planning_error.t) result
+
 val analyze_source: source_analysis_task -> (source_analysis, Planning_error.t) result
 
 val analyze_source_tasks: source_analyzer

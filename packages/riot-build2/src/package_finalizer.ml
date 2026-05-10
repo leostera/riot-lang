@@ -329,13 +329,13 @@ let execute_action_plan = fun t _registry (build: Goal.build_package) ->
       ])
   | Some plan ->
       let* () =
-        match Graph_cache.get t.action_plan_cache plan.package_hash with
+        match Graph_cache.get t.action_plan_cache plan.module_plan_hash with
         | Some (Error error) -> Error error
         | Some (Ok _) -> Ok ()
         | None ->
             Graph_cache.put
               t.action_plan_cache
-              plan.package_hash
+              plan.module_plan_hash
               (Action_plan_cache.payload_of_plan plan)
       in
       Ok (Work_result.Complete (action_node_requests plan))

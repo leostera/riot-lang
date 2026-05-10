@@ -68,6 +68,8 @@ module Item: sig
     | Scope of t list
 
   val serializer: t Serde.Ser.t
+
+  val deserializer: t Serde.De.t
 end
 
 type source_kind =
@@ -83,7 +85,11 @@ type source_summary = {
 
 val source_kind_serializer: source_kind Serde.Ser.t
 
+val source_kind_deserializer: source_kind Serde.De.t
+
 val source_summary_serializer: source_summary Serde.Ser.t
+
+val source_summary_deserializer: source_summary Serde.De.t
 
 type provider = {
   path: string list;
@@ -185,7 +191,11 @@ module Ir: sig
 
   val source_kind_serializer: source_kind Serde.Ser.t
 
+  val source_kind_deserializer: source_kind Serde.De.t
+
   val source_summary_serializer: source_summary Serde.Ser.t
+
+  val source_summary_deserializer: source_summary Serde.De.t
 
   val analyze:
     ?implicit_opens:string list list ->

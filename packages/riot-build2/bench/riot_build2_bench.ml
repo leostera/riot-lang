@@ -492,42 +492,57 @@ let make_module_provider_registry_lookup_bench = fun () ->
     | Ok _ -> panic "module provider registry benchmark produced no providers"
     | Error error -> panic ("module provider registry benchmark failed: " ^ Error.message error)
 
+let source_analysis_requests = fun requests ->
+  List.filter
+    requests
+    ~fn:(fun request ->
+      match Work_request.key request with
+      | Work_node.SourceAnalysisKey _ -> true
+      | _ -> false)
+
+let materialize_request = fun registry request ->
+  match Work_request.kind request with
+  | Some kind -> Work_registry.intern registry ~key:(Work_request.key request) ~make:(fun () -> kind)
+  | None -> panic "benchmark request could not be materialized"
+
+let execute_source_analysis_requests = fun services registry requests ->
+  List.for_each
+    requests
+    ~fn:(fun request ->
+      let source_node = materialize_request registry request in
+      match Build_services.execute_node services registry source_node with
+      | Ok (Work_result.Complete []) -> ()
+      | Ok (Work_result.Complete _) -> panic "source analysis benchmark produced unexpected requests"
+      | Ok (Work_result.RequeueWithDependencies _) ->
+          panic "source analysis benchmark requested dependencies"
+      | Error error -> panic ("source analysis benchmark failed: " ^ Error.message error))
+
+let execute_module_plan_with_source_summaries = fun services registry node ->
+  match Build_services.execute_node services registry node with
+  | Ok (Work_result.Complete []) -> ()
+  | Ok (Work_result.Complete _) -> panic "module plan benchmark produced unexpected requests"
+  | Ok (Work_result.RequeueWithDependencies keys) ->
+      let source_keys = source_analysis_requests keys in
+      if List.is_empty source_keys then
+        panic "module plan benchmark requested no source analysis dependencies"
+      else
+        execute_source_analysis_requests services registry source_keys;
+      (
+        match Build_services.execute_node services registry node with
+        | Ok (Work_result.Complete []) -> ()
+        | Ok (Work_result.Complete _) -> panic "module plan benchmark produced unexpected requests"
+        | Ok (Work_result.RequeueWithDependencies _) ->
+            panic "module plan benchmark requested dependencies after source summaries"
+        | Error error -> panic ("module plan benchmark failed: " ^ Error.message error)
+      )
+  | Error error -> panic ("module plan benchmark failed: " ^ Error.message error)
+
 let execute_module_plan_to_cache = fun workspace ->
   let config = Config.make ~workspace ~parallelism:available_parallelism () in
   let services = Build_services.create ~config () in
   let registry = Work_registry.create () in
   let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
-  let source_keys =
-    match Build_services.execute_node services registry node with
-    | Ok (Work_result.RequeueWithDependencies keys) ->
-        List.filter
-          keys
-          ~fn:(fun __tmp1 ->
-            match Work_request.key __tmp1 with
-            | Work_node.SourceAnalysisKey _ -> true
-            | _ -> false)
-    | Ok _ -> panic "module plan cache setup expected source analysis dependencies"
-    | Error error -> panic ("module plan cache setup failed: " ^ Error.message error)
-  in
-  List.for_each
-    source_keys
-    ~fn:(fun request ->
-      match Work_request.kind request with
-      | None -> panic "module plan cache setup missed materialized source analysis request"
-      | Some kind ->
-          let source_node =
-            Work_registry.intern
-              registry
-              ~key:(Work_request.key request)
-              ~make:(fun () -> kind)
-          in
-          Build_services.execute_node services registry source_node
-          |> Result.expect ~msg:"source analysis cache setup failed"
-          |> ignore);
-  match Build_services.execute_node services registry node with
-  | Ok (Work_result.Complete []) -> ()
-  | Ok _ -> panic "module plan cache setup did not complete module plan"
-  | Error error -> panic ("module plan cache setup failed: " ^ Error.message error)
+  execute_module_plan_with_source_summaries services registry node
 
 let make_module_plan_cache_hit_bench = fun () ->
   let workspace =
@@ -540,10 +555,7 @@ let make_module_plan_cache_hit_bench = fun () ->
     let services = Build_services.create ~config () in
     let registry = Work_registry.create () in
     let node = Work_node.module_plan ~id:(node_id 1) (source_build ()) in
-    match Build_services.execute_node services registry node with
-    | Ok (Work_result.Complete []) -> ()
-    | Ok _ -> panic "module plan cache hit benchmark requested dependencies"
-    | Error error -> panic ("module plan cache hit benchmark failed: " ^ Error.message error)
+    execute_module_plan_with_source_summaries services registry node
 
 let make_action_plan_from_cached_module_plan_bench = fun () ->
   let workspace =
@@ -558,12 +570,7 @@ let make_action_plan_from_cached_module_plan_bench = fun () ->
     let build = source_build () in
     let module_node = Work_node.module_plan ~id:(node_id 1) build in
     let action_node = Work_node.action_plan ~id:(node_id 2) build in
-    (
-      match Build_services.execute_node services registry module_node with
-      | Ok (Work_result.Complete []) -> ()
-      | Ok _ -> panic "action plan benchmark module plan cache hit requested dependencies"
-      | Error error -> panic ("action plan benchmark module plan failed: " ^ Error.message error)
-    );
+    execute_module_plan_with_source_summaries services registry module_node;
     match Build_services.execute_node services registry action_node with
     | Ok (Work_result.Complete action_requests) -> (
         match action_requests with

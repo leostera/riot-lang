@@ -70,6 +70,8 @@ let catalog = fun t -> t.catalog
 
 let action_results = fun t -> Action_executor.results t.action_executor
 
+let module_plan = fun t build -> Module_planning.find t.module_planning build
+
 let package_results = fun t -> Package_finalizer.results t.package_finalizer
 
 let action_dependency_key = fun registry ref_ ->

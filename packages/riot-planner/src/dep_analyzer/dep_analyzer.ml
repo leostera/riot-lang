@@ -19,7 +19,11 @@ type source_summary = Ir.source_summary = {
 
 let source_kind_serializer = Ir.source_kind_serializer
 
+let source_kind_deserializer = Ir.source_kind_deserializer
+
 let source_summary_serializer = Ir.source_summary_serializer
+
+let source_summary_deserializer = Ir.source_summary_deserializer
 
 type provider = Resolver.provider = {
   path: string list;

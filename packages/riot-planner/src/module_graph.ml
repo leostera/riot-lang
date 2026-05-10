@@ -1064,8 +1064,28 @@ let read_task_source = fun task ->
             ^ Module_node.file_to_string task.task_file
             ^ " for dependency analysis: "
             ^ IO.error_message err;
-          })
+        })
   | Module_node.Generated { contents; _ } -> Ok contents
+
+let source_hash_for_task = fun task ->
+  let* raw_text = read_task_source task in
+  Ok (source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text)
+
+let source_analysis_of_summary = fun task summary ->
+  let* raw_text = read_task_source task in
+  let parse_result = Syn.parse ~filename:task.task_display_path (source_slice raw_text) in
+  let source_hash = source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text in
+  if Crypto.Hash.equal source_hash summary.Dep_analyzer.source_hash then
+    Ok {
+      analysis_task = task;
+      analysis_parse_result = parse_result;
+      analysis_source_hash = source_hash;
+      analysis_summary = Ok summary;
+    }
+  else
+    Error (Planning_error.DependencyAnalysisFailed {
+      reason = "cached source summary does not match current source hash";
+    })
 
 let analyze_source = fun task ->
   let* raw_text = read_task_source task in

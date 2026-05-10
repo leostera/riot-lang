@@ -2,7 +2,19 @@ open Std
 open Std.Collections
 
 module A = Syn.Ast
+module De = Serde.De
 module Ser = Serde.Ser
+
+let vector_to_list = fun values ->
+  let rec loop index items =
+    if index < 0 then
+      items
+    else
+      loop (Int.sub index 1) (Vector.get_unchecked values ~at:index :: items)
+  in
+  loop (Int.sub (Vector.length values) 1) []
+
+let de_list = fun decode -> De.map (De.list decode) vector_to_list
 
 let ser_list = fun encode -> Ser.contramap Vector.from_list (Ser.list encode)
 
@@ -160,6 +172,20 @@ module Item = struct
     bind_modules_scope: t list;
   }
 
+  let required = fun value ->
+    match value with
+    | Some value -> value
+    | None -> De.missing_field ()
+
+  let ident_deserializer = De.map (de_list De.string) Ident.of_strings
+
+  let include_mode_deserializer =
+    De.variant
+      [
+        De.Variant.unit "Structure" Structure;
+        De.Variant.unit "Signature" Signature;
+      ]
+
   let include_mode_serializer =
     Ser.variant
       [
@@ -178,6 +204,391 @@ module Item = struct
       ]
 
   let ident_serializer = Ser.contramap Ident.to_strings (ser_list Ser.string)
+
+  type functor_arg_field =
+    | Functor_arg_name
+    | Functor_arg_ascription
+
+  type bound_module_field =
+    | Bound_module_name
+    | Bound_module_ascription
+
+  type include_payload_field =
+    | Include_mode
+    | Include_expr
+
+  type module_payload_field =
+    | Module_name
+    | Module_signature
+    | Module_body
+
+  type module_alias_payload_field =
+    | Module_alias_name
+    | Module_alias_target
+
+  type functor_payload_field =
+    | Functor_name
+    | Functor_args
+    | Functor_body
+
+  type module_type_payload_field =
+    | Module_type_name
+    | Module_type_body
+
+  type functor_apply_payload_field =
+    | Functor_apply_callee
+    | Functor_apply_argument
+
+  type constraint_payload_field =
+    | Constraint_expr
+    | Constraint_signature
+
+  type with_constraint_payload_field =
+    | With_base
+    | With_constraints
+
+  type bind_modules_payload_field =
+    | Bind_modules_modules
+    | Bind_modules_scope
+
+  let rec deserializer = {
+    De.run =
+      (fun backend state ->
+        let item_list_deserializer = de_list deserializer in
+        let functor_arg_fields =
+          De.fields
+            [
+              De.field "name" Functor_arg_name;
+              De.field "ascription" Functor_arg_ascription;
+            ]
+        in
+        let functor_arg_deserializer =
+          De.record
+            ~fields:functor_arg_fields
+            ~init:(Some None, None)
+            ~step:(fun reader (name, ascription) field ->
+              match field with
+              | Some Functor_arg_name -> (Some (De.read reader (De.option De.string)), ascription)
+              | Some Functor_arg_ascription -> (name, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (name, ascription))
+            ~finish:(fun (name, ascription) ->
+              ({ name = required name; ascription = required ascription }: functor_arg))
+        in
+        let bound_module_fields =
+          De.fields
+            [
+              De.field "name" Bound_module_name;
+              De.field "ascription" Bound_module_ascription;
+            ]
+        in
+        let bound_module_deserializer =
+          De.record
+            ~fields:bound_module_fields
+            ~init:(None, None)
+            ~step:(fun reader (name, ascription) field ->
+              match field with
+              | Some Bound_module_name -> (Some (De.read reader De.string), ascription)
+              | Some Bound_module_ascription -> (name, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (name, ascription))
+            ~finish:(fun (name, ascription) ->
+              ({ name = required name; ascription = required ascription }: bound_module))
+        in
+        let include_payload_fields =
+          De.fields [ De.field "mode" Include_mode; De.field "expr" Include_expr ]
+        in
+        let include_payload_deserializer =
+          De.record
+            ~fields:include_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (mode, expr) field ->
+              match field with
+              | Some Include_mode -> (Some (De.read reader include_mode_deserializer), expr)
+              | Some Include_expr -> (mode, Some (De.read reader deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (mode, expr))
+            ~finish:(fun (include_mode, include_expr) ->
+              { include_mode = required include_mode; include_expr = required include_expr })
+        in
+        let module_payload_fields =
+          De.fields
+            [
+              De.field "name" Module_name;
+              De.field "signature" Module_signature;
+              De.field "body" Module_body;
+            ]
+        in
+        let module_payload_deserializer =
+          De.record
+            ~fields:module_payload_fields
+            ~init:(None, None, None)
+            ~step:(fun reader (name, signature, body) field ->
+              match field with
+              | Some Module_name -> (Some (De.read reader De.string), signature, body)
+              | Some Module_signature -> (name, Some (De.read reader item_list_deserializer), body)
+              | Some Module_body -> (name, signature, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (name, signature, body))
+            ~finish:(fun (module_name, module_signature, module_body) ->
+              {
+                module_name = required module_name;
+                module_signature = required module_signature;
+                module_body = required module_body;
+              })
+        in
+        let module_alias_payload_fields =
+          De.fields
+            [
+              De.field "name" Module_alias_name;
+              De.field "target" Module_alias_target;
+            ]
+        in
+        let module_alias_payload_deserializer =
+          De.record
+            ~fields:module_alias_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (name, target) field ->
+              match field with
+              | Some Module_alias_name -> (Some (De.read reader De.string), target)
+              | Some Module_alias_target -> (name, Some (De.read reader deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (name, target))
+            ~finish:(fun (module_alias_name, module_alias_target) ->
+              {
+                module_alias_name = required module_alias_name;
+                module_alias_target = required module_alias_target;
+              })
+        in
+        let functor_payload_fields =
+          De.fields
+            [
+              De.field "name" Functor_name;
+              De.field "args" Functor_args;
+              De.field "body" Functor_body;
+            ]
+        in
+        let functor_payload_deserializer =
+          De.record
+            ~fields:functor_payload_fields
+            ~init:(None, None, None)
+            ~step:(fun reader (name, args, body) field ->
+              match field with
+              | Some Functor_name -> (Some (De.read reader De.string), args, body)
+              | Some Functor_args ->
+                  (name, Some (De.read reader (de_list functor_arg_deserializer)), body)
+              | Some Functor_body -> (name, args, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (name, args, body))
+            ~finish:(fun (functor_name, functor_args, functor_body) ->
+              {
+                functor_name = required functor_name;
+                functor_args = required functor_args;
+                functor_body = required functor_body;
+              })
+        in
+        let module_type_payload_fields =
+          De.fields [ De.field "name" Module_type_name; De.field "body" Module_type_body ]
+        in
+        let module_type_payload_deserializer =
+          De.record
+            ~fields:module_type_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (name, body) field ->
+              match field with
+              | Some Module_type_name -> (Some (De.read reader De.string), body)
+              | Some Module_type_body -> (name, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (name, body))
+            ~finish:(fun (module_type_name, module_type_body) ->
+              {
+                module_type_name = required module_type_name;
+                module_type_body = required module_type_body;
+              })
+        in
+        let functor_apply_payload_fields =
+          De.fields
+            [
+              De.field "callee" Functor_apply_callee;
+              De.field "argument" Functor_apply_argument;
+            ]
+        in
+        let functor_apply_payload_deserializer =
+          De.record
+            ~fields:functor_apply_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (callee, argument) field ->
+              match field with
+              | Some Functor_apply_callee -> (Some (De.read reader deserializer), argument)
+              | Some Functor_apply_argument -> (callee, Some (De.read reader deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (callee, argument))
+            ~finish:(fun (functor_apply_callee, functor_apply_argument) ->
+              {
+                functor_apply_callee = required functor_apply_callee;
+                functor_apply_argument = required functor_apply_argument;
+              })
+        in
+        let constraint_payload_fields =
+          De.fields
+            [
+              De.field "expr" Constraint_expr;
+              De.field "signature" Constraint_signature;
+            ]
+        in
+        let constraint_payload_deserializer =
+          De.record
+            ~fields:constraint_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (expr, signature) field ->
+              match field with
+              | Some Constraint_expr -> (Some (De.read reader deserializer), signature)
+              | Some Constraint_signature -> (expr, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (expr, signature))
+            ~finish:(fun (constraint_expr, constraint_signature) ->
+              {
+                constraint_expr = required constraint_expr;
+                constraint_signature = required constraint_signature;
+              })
+        in
+        let with_constraint_payload_fields =
+          De.fields
+            [
+              De.field "base" With_base;
+              De.field "constraints" With_constraints;
+            ]
+        in
+        let with_constraint_payload_deserializer =
+          De.record
+            ~fields:with_constraint_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (base, constraints) field ->
+              match field with
+              | Some With_base -> (Some (De.read reader deserializer), constraints)
+              | Some With_constraints -> (base, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (base, constraints))
+            ~finish:(fun (with_base, with_constraints) ->
+              {
+                with_base = required with_base;
+                with_constraints = required with_constraints;
+              })
+        in
+        let bind_modules_payload_fields =
+          De.fields
+            [
+              De.field "modules" Bind_modules_modules;
+              De.field "scope" Bind_modules_scope;
+            ]
+        in
+        let bind_modules_payload_deserializer =
+          De.record
+            ~fields:bind_modules_payload_fields
+            ~init:(None, None)
+            ~step:(fun reader (modules, scope) field ->
+              match field with
+              | Some Bind_modules_modules ->
+                  (Some (De.read reader (de_list bound_module_deserializer)), scope)
+              | Some Bind_modules_scope -> (modules, Some (De.read reader item_list_deserializer))
+              | None ->
+                  ignore (De.read reader De.skip_any);
+                  (modules, scope))
+            ~finish:(fun (bind_modules_modules, bind_modules_scope) ->
+              {
+                bind_modules_modules = required bind_modules_modules;
+                bind_modules_scope = required bind_modules_scope;
+              })
+        in
+        let decode =
+          De.variant
+            [
+              De.Variant.newtype "Use" ident_deserializer (fun ident -> Use ident);
+              De.Variant.newtype "Open" deserializer (fun expr -> Open expr);
+              De.Variant.newtype "ImplicitOpen" deserializer (fun expr -> ImplicitOpen expr);
+              De.Variant.newtype
+                "Include"
+                include_payload_deserializer
+                (fun payload -> Include (payload.include_mode, payload.include_expr));
+              De.Variant.newtype
+                "Module"
+                module_payload_deserializer
+                (fun payload ->
+                  Module {
+                    name = payload.module_name;
+                    signature = payload.module_signature;
+                    body = payload.module_body;
+                  });
+              De.Variant.newtype
+                "ModuleAlias"
+                module_alias_payload_deserializer
+                (fun payload ->
+                  ModuleAlias {
+                    name = payload.module_alias_name;
+                    target = payload.module_alias_target;
+                  });
+              De.Variant.newtype
+                "Functor"
+                functor_payload_deserializer
+                (fun payload ->
+                  Functor {
+                    name = payload.functor_name;
+                    args = payload.functor_args;
+                    body = payload.functor_body;
+                  });
+              De.Variant.newtype
+                "ModuleType"
+                module_type_payload_deserializer
+                (fun payload ->
+                  ModuleType { name = payload.module_type_name; body = payload.module_type_body });
+              De.Variant.newtype
+                "FunctorApply"
+                functor_apply_payload_deserializer
+                (fun payload ->
+                  FunctorApply {
+                    callee = payload.functor_apply_callee;
+                    argument = payload.functor_apply_argument;
+                  });
+              De.Variant.newtype
+                "Constraint"
+                constraint_payload_deserializer
+                (fun payload ->
+                  Constraint {
+                    expr = payload.constraint_expr;
+                    signature = payload.constraint_signature;
+                  });
+              De.Variant.newtype "Typeof" deserializer (fun expr -> Typeof expr);
+              De.Variant.newtype
+                "WithConstraint"
+                with_constraint_payload_deserializer
+                (fun payload ->
+                  WithConstraint {
+                    base = payload.with_base;
+                    constraints = payload.with_constraints;
+                  });
+              De.Variant.newtype
+                "BindModules"
+                bind_modules_payload_deserializer
+                (fun payload ->
+                  BindModules {
+                    modules = payload.bind_modules_modules;
+                    scope = payload.bind_modules_scope;
+                  });
+              De.Variant.newtype "Scope" item_list_deserializer (fun body -> Scope body);
+            ]
+        in
+        decode.run backend state);
+  }
 
   let rec serializer = {
     Ser.run =
@@ -504,6 +915,118 @@ let source_kind_serializer =
           | Interface -> true
           | Implementation -> false);
     ]
+
+let source_kind_deserializer =
+  De.variant
+    [
+      De.Variant.unit "Implementation" Implementation;
+      De.Variant.unit "Interface" Interface;
+    ]
+
+let hash_of_hex = fun hex ->
+  let hex_nibble ch =
+    match ch with
+    | '0' .. '9' -> Some (Char.code ch - Char.code '0')
+    | 'a' .. 'f' -> Some (10 + Char.code ch - Char.code 'a')
+    | 'A' .. 'F' -> Some (10 + Char.code ch - Char.code 'A')
+    | _ -> None
+  in
+  let len = String.length hex in
+  if len = 0 || len mod 2 != 0 then
+    None
+  else
+    let bytes = IO.Bytes.create ~size:(len / 2) in
+    let rec loop index =
+      if index >= len then
+        Some (Crypto.Hash.from_bytes bytes)
+      else
+        match (
+          hex_nibble (String.get_unchecked hex ~at:index),
+          hex_nibble (String.get_unchecked hex ~at:(index + 1))
+        ) with
+        | (Some hi, Some lo) ->
+            IO.Bytes.set_unchecked
+              bytes
+              ~at:(index / 2)
+              ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
+            loop (index + 2)
+        | _ -> None
+    in
+    loop 0
+
+let hash_deserializer =
+  De.map
+    De.string
+    (fun hex ->
+      match hash_of_hex hex with
+      | Some hash -> hash
+      | None -> De.raise_error (`Msg "invalid hash hex"))
+
+type source_summary_field =
+  | Source
+  | Source_hash
+  | Module_path
+  | Kind
+  | Items
+
+let source_summary_fields =
+  De.fields
+    [
+      De.field "source" Source;
+      De.field "source_hash" Source_hash;
+      De.field "module_path" Module_path;
+      De.field "kind" Kind;
+      De.field "items" Items;
+    ]
+
+let source_summary_deserializer =
+  De.record
+    ~fields:source_summary_fields
+    ~init:(None, None, Some None, None, None)
+    ~step:(fun reader (source, source_hash, module_path, kind, items) field ->
+      match field with
+      | Some Source -> (Some (Path.v (De.read reader De.string)), source_hash, module_path, kind, items)
+      | Some Source_hash -> (source, Some (De.read reader hash_deserializer), module_path, kind, items)
+      | Some Module_path ->
+          (source, source_hash, Some (De.read reader (De.option (de_list De.string))), kind, items)
+      | Some Kind -> (source, source_hash, module_path, Some (De.read reader source_kind_deserializer), items)
+      | Some Items -> (source, source_hash, module_path, kind, Some (De.read reader (de_list Item.deserializer)))
+      | None ->
+          ignore (De.read reader De.skip_any);
+          (source, source_hash, module_path, kind, items))
+    ~finish:(fun (source, source_hash, module_path, kind, items) ->
+      {
+        source =
+          (
+            match source with
+            | Some source -> source
+            | None -> De.missing_field ()
+          );
+        source_hash =
+          (
+            match source_hash with
+            | Some source_hash -> source_hash
+            | None -> De.missing_field ()
+          );
+        module_path =
+          (
+            match module_path with
+            | Some module_path -> module_path
+            | None -> De.missing_field ()
+          );
+        kind =
+          (
+            match kind with
+            | Some kind -> kind
+            | None -> De.missing_field ()
+          );
+        items =
+          (
+            match items with
+            | Some items -> items
+            | None -> De.missing_field ()
+          );
+      })
 
 let source_summary_serializer =
   Ser.record

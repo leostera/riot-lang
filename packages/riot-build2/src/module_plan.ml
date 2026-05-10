@@ -12,4 +12,5 @@ type t = {
   ocaml_archive: Action_execution.t option;
   sandbox_dir: Path.t;
   package_hash: Crypto.hash;
+  module_plan_hash: Crypto.hash;
 }
