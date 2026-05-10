@@ -34,17 +34,25 @@ let protocol_equal = fun left right ->
 let equal = fun left right ->
   Int.equal left.port right.port && protocol_equal left.protocol right.protocol
 
+let valid_number = fun port -> port > 0 && port <= 65_535
+
+let parse_number = fun value port ->
+  match Int.parse port with
+  | Some port when valid_number port -> Ok port
+  | Some _
+  | None -> Error (Error.JsonError ("invalid Docker port: " ^ value))
+
 let of_string = fun value ->
   match String.split_on_char '/' value with
   | [ port ] -> (
-      match Int.parse port with
-      | Some port -> Ok (tcp port)
-      | None -> Error (Error.JsonError ("invalid Docker port: " ^ value))
+      match parse_number value port with
+      | Ok port -> Ok (tcp port)
+      | Error error -> Error error
     )
   | [ port; protocol ] -> (
-      match Int.parse port with
-      | None -> Error (Error.JsonError ("invalid Docker port: " ^ value))
-      | Some port -> (
+      match parse_number value port with
+      | Error error -> Error error
+      | Ok port -> (
           match String.lowercase_ascii protocol with
           | "tcp" -> Ok (tcp port)
           | "udp" -> Ok (udp port)

@@ -8,6 +8,12 @@ All notable changes to `testcontainers` are documented here.
 
 - Added `Testcontainers.docker_available` for packages that need to skip container-backed tests when Docker is unavailable.
 
+### Changed
+
+- Kept `Testcontainers.docker_available` top-level safe by limiting it to configuration and Unix socket checks.
+- Improved readiness timeout messages by preserving the last polling error.
+- Treated Docker 404 responses during container removal as successful cleanup.
+
 ## 0.0.1 - 2026-05-10
 
 ### Added

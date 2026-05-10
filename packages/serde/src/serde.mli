@@ -88,6 +88,7 @@ module De: sig
     option: 'value. 'state -> 'value t -> 'value option;
     list: 'value. 'state -> 'value t -> 'value vec;
     array: 'value. 'state -> 'value t -> 'value array;
+    map: 'value. 'state -> 'value t -> (string * 'value) vec;
     record:
       'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
@@ -190,6 +191,9 @@ module De: sig
   (** Decode a sequence of values into an array. *)
   val array: 'value t -> 'value array t
 
+  (** Decode a string-keyed map into key/value entries. *)
+  val map: 'value t -> (string * 'value) vec t
+
   (** Decode a record-shaped value. *)
   val record:
     fields:'field Fields.t ->
@@ -253,6 +257,7 @@ module Ser: sig
     option: 'value. 'state -> 'value t -> 'value option -> unit;
     list: 'value. 'state -> 'value t -> 'value vec -> unit;
     array: 'value. 'state -> 'value t -> 'value array -> unit;
+    map: 'value. 'state -> 'value t -> (string * 'value) vec -> unit;
     record: 'value. 'state -> 'value fields -> 'value -> unit;
     variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
@@ -313,6 +318,9 @@ module Ser: sig
 
   (** Serialize an array of values. *)
   val array: 'value t -> 'value array t
+
+  (** Serialize key/value entries as a string-keyed map. *)
+  val map: 'value t -> (string * 'value) vec t
 
   (** Declare a single record field encoder. *)
   val field: string -> 'field t -> ('value -> 'field) -> 'value field

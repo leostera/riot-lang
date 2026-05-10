@@ -11,3 +11,5 @@ path = "src/docker_client.ml"
 [dependencies]
 std = { path = "../std", version = "*" }
 blink = { path = "../blink", version = "*" }
+serde = { path = "../serde", version = "*" }
+serde-json = { path = "../serde-json", version = "*" }

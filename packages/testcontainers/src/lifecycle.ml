@@ -11,18 +11,25 @@ let timeout = fun message -> Error (Error.StartupTimeout message)
 
 let retry_policy = fun policy check ->
   let interval = ReadinessPolicy.interval policy in
-  let rec loop remaining =
+  let timeout_message = fun last_error ->
+    match last_error with
+    | None -> "readiness policy did not pass"
+    | Some error -> "readiness policy did not pass; last error: " ^ error
+  in
+  let rec loop last_error remaining =
     if remaining <= 0 then
-      timeout "readiness policy did not pass"
+      timeout (timeout_message last_error)
     else
       match check () with
       | Ok true -> Ok ()
-      | Ok false
-      | Error _ ->
+      | Ok false ->
           sleep interval;
-          loop (remaining - 1)
+          loop last_error (remaining - 1)
+      | Error error ->
+          sleep interval;
+          loop (Some (Error.to_string error)) (remaining - 1)
   in
-  loop (ReadinessPolicy.retry policy)
+  loop None (ReadinessPolicy.retry policy)
 
 let running = fun container ->
   match Docker_client.Container.inspect container.Container.client ~id:(Container.id container) with

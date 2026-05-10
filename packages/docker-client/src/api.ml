@@ -2,7 +2,6 @@ open Std
 
 let ( let* ) value fn = Result.and_then value ~fn
 
-module Json = Data.Json
 module Config = Super.Config
 
 let uri_error_to_string = fun error ->
@@ -75,41 +74,6 @@ let request = fun config method_ path ?body ?(headers = []) () ->
   in
   Blink.Connection.close conn;
   response_result
-
-let json_field = fun field json ->
-  match Json.get_field field json with
-  | Some value -> Ok value
-  | None -> Error (Error.MissingField field)
-
-let json_string_field = fun field json ->
-  let* value = json_field field json in
-  match Json.get_string value with
-  | Some value -> Ok value
-  | None -> Error (Error.JsonError ("field " ^ field ^ " is not a string"))
-
-let json_int_field_opt = fun field json ->
-  match Json.get_field field json with
-  | None
-  | Some Json.Null -> Ok None
-  | Some value -> (
-      match Json.get_int value with
-      | Some value -> Ok (Some value)
-      | None -> Error (Error.JsonError ("field " ^ field ^ " is not an int"))
-    )
-
-let json_bool_field_opt = fun field json ->
-  match Json.get_field field json with
-  | None
-  | Some Json.Null -> Ok None
-  | Some value -> (
-      match Json.get_bool value with
-      | Some value -> Ok (Some value)
-      | None -> Error (Error.JsonError ("field " ^ field ^ " is not a bool"))
-    )
-
-let parse_json = fun body ->
-  Json.from_string body
-  |> Result.map_err ~fn:(fun error -> Error.JsonError (Json.error_to_string error))
 
 let query = fun params ->
   match params with

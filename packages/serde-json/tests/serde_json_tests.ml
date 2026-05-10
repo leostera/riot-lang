@@ -208,7 +208,7 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
       "tags":["riot","serde"],
       "nickname":null,
       "pet":{"Dog":"Chouchou"},
-      "unknown":{"nested":[1,2,3],"more":{"answer":42}}
+      "unknown":{"nested":[1,2,3], "more":{"answer":42}}
     }|}
   in
   let expected: person = {
@@ -251,7 +251,7 @@ let test_decodes_unit_variant = fun _ctx ->
 
 let test_decodes_from_reader = fun _ctx ->
   let input =
-    {|{"name":"Luffy","age":19,"active":true,"tags":["riot"],"nickname":"strawhat","pet":"Cat"}|}
+    {|{"name":"Luffy","age":19,"active":true,"tags":["riot"],"nickname":"strawhat","pet":"Cat","unknown":{"nested":"value", "more":[1,2]}}|}
   in
   let expected: person = {
     name = "Luffy";
@@ -399,6 +399,24 @@ let test_roundtrips_arrays = fun _ctx ->
   | Ok _ -> Error "expected serde-json array roundtrip to preserve elements"
   | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)
 
+let test_roundtrips_maps = fun _ctx ->
+  let values = Vector.from_list [ ("alpha", 1); ("beta", 2); ] in
+  let* encoded =
+    match Serde_json.to_string (Ser.map Ser.int) values with
+    | Ok encoded -> Ok encoded
+    | Error err -> Error ("map encode failed: " ^ Serde.Error.to_string err)
+  in
+  let* () =
+    expect_equal
+      ~expected:{|{"alpha":1,"beta":2}|}
+      ~actual:encoded
+      ~message:"expected serde-json map encoder to emit JSON objects"
+  in
+  match Serde_json.from_string (De.map De.int) encoded with
+  | Ok actual when vec_to_list actual = vec_to_list values -> Ok ()
+  | Ok _ -> Error "expected serde-json map roundtrip to preserve entries"
+  | Error err -> Error ("map decode failed: " ^ Serde.Error.to_string err)
+
 let test_roundtrips_large_float = fun _ctx ->
   let value = 907_309_392_156.125 in
   let* encoded =
@@ -438,6 +456,7 @@ let tests =
     case "serde-json writes to writers" test_writes_to_writer;
     case "serde-json roundtrips records" test_roundtrips_record;
     case "serde-json roundtrips arrays" test_roundtrips_arrays;
+    case "serde-json roundtrips maps" test_roundtrips_maps;
     case "serde-json roundtrips large floats" test_roundtrips_large_float;
     case
       "serde-json decodes negative int64 across reader chunk boundary"

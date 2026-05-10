@@ -1,8 +1,9 @@
 open Std
 
 module Docker = Docker_client
-module Json = Data.Json
+module De = Serde.De
 module Test = Std.Test
+module Vector = Collections.Vector
 
 let ( let* ) value fn = Result.and_then value ~fn
 
@@ -69,6 +70,37 @@ let test_config_from_env_tcp_default_port = fun _ctx ->
         )
       | Error error -> Error (Docker.error_to_string error))
 
+let test_config_from_env_trims_docker_host = fun _ctx ->
+  with_env
+    [ ("DOCKER_HOST", Some "  tcp://docker.example:2375  "); ("DOCKER_DEFAULT_PLATFORM", None); ]
+    (fun () ->
+      match Docker.Config.from_env () with
+      | Ok config -> (
+          match config.Docker.Config.transport with
+          | Docker.Config.Tcp { host = "docker.example"; port = 2_375 } -> Ok ()
+          | _ -> Error ("unexpected config: " ^ config_to_string config)
+        )
+      | Error error -> Error (Docker.error_to_string error))
+
+let test_config_from_env_rejects_invalid_tcp_port = fun _ctx ->
+  with_env
+    [ ("DOCKER_HOST", Some "tcp://docker.example:70000"); ("DOCKER_DEFAULT_PLATFORM", None); ]
+    (fun () ->
+      match Docker.Config.from_env () with
+      | Error (Docker.ConfigError message) when String.contains message "invalid Docker TCP port" ->
+          Ok ()
+      | Error error -> Error ("unexpected error: " ^ Docker.error_to_string error)
+      | Ok config -> Error ("expected invalid TCP port, got " ^ config_to_string config))
+
+let test_config_from_env_rejects_empty_unix_socket = fun _ctx ->
+  with_env
+    [ ("DOCKER_HOST", Some "unix://"); ("DOCKER_DEFAULT_PLATFORM", None); ]
+    (fun () ->
+      match Docker.Config.from_env () with
+      | Error (Docker.ConfigError message) when String.contains message "Unix socket path" -> Ok ()
+      | Error error -> Error ("unexpected error: " ^ Docker.error_to_string error)
+      | Ok config -> Error ("expected invalid Unix socket path, got " ^ config_to_string config))
+
 let test_config_from_env_unix_socket = fun _ctx ->
   with_env
     [ ("DOCKER_HOST", Some "unix:///tmp/riot-docker.sock"); ("DOCKER_DEFAULT_PLATFORM", None); ]
@@ -130,43 +162,141 @@ let test_image_create_path_explicit_platform_wins = fun _ctx ->
   else
     Error ("unexpected image create path: " ^ actual)
 
-let get_field = fun field json ->
-  match Json.get_field field json with
-  | Some value -> Ok value
-  | None -> Error ("missing JSON field " ^ field)
+type create_body_field =
+  | Body_cmd
+  | Body_image
+  | Body_env
+  | Body_labels
+  | Body_exposed_ports
+  | Body_host_config
 
-let expect_string_field = fun field expected json ->
-  let* value = get_field field json in
-  match Json.get_string value with
-  | Some actual when String.equal actual expected -> Ok ()
-  | Some actual -> Error ("field " ^ field ^ " expected " ^ expected ^ ", got " ^ actual)
-  | None -> Error ("field " ^ field ^ " is not a string")
+type host_config_field =
+  | Host_publish_all_ports
+  | Host_port_bindings
 
-let expect_bool_field = fun field expected json ->
-  let* value = get_field field json in
-  match Json.get_bool value with
-  | Some actual when Bool.equal actual expected -> Ok ()
-  | Some _ -> Error ("field " ^ field ^ " has wrong boolean value")
-  | None -> Error ("field " ^ field ^ " is not a bool")
+type host_binding = (string * string) vec
 
-let expect_string_array_field = fun field expected json ->
-  let* value = get_field field json in
-  match Json.get_array value with
-  | None -> Error ("field " ^ field ^ " is not an array")
-  | Some values ->
-      let actual = List.filter_map values ~fn:Json.get_string in
-      if
-        Int.equal (List.length actual) (List.length expected)
-        && List.all (List.zip actual expected) ~fn:(fun (left, right) -> String.equal left right)
-      then
-        Ok ()
-      else
-        Error ("field " ^ field ^ " had unexpected string array contents")
+type host_config = {
+  publish_all_ports: bool option;
+  port_bindings: (string * host_binding vec) vec option;
+}
 
-let object_has_field = fun field json ->
-  match Json.get_object json with
-  | Some fields -> List.any fields ~fn:(fun (name, _) -> String.equal name field)
-  | None -> false
+type create_body = {
+  cmd: string vec option;
+  image: string option;
+  env: string vec option;
+  labels: (string * string) vec option;
+  exposed_ports: (string * unit) vec option;
+  host_config: host_config option;
+}
+
+type host_config_builder = {
+  mutable publish_all_ports: bool option;
+  mutable port_bindings: (string * host_binding vec) vec option;
+}
+
+type create_body_builder = {
+  mutable cmd: string vec option;
+  mutable image: string option;
+  mutable env: string vec option;
+  mutable labels: (string * string) vec option;
+  mutable exposed_ports: (string * unit) vec option;
+  mutable host_config: host_config option;
+}
+
+let vec_to_list = fun values ->
+  let items = ref [] in
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
+  List.rev !items
+
+let map_has_key = fun key values ->
+  let found = ref false in
+  Vector.for_each
+    values
+    ~fn:(fun (name, _) ->
+      if String.equal name key then
+        found := true);
+  !found
+
+let map_field_count = fun key values ->
+  let count = ref 0 in
+  Vector.for_each
+    values
+    ~fn:(fun (name, _) ->
+      if String.equal name key then
+        count := !count + 1);
+  !count
+
+let string_vec_equal = fun actual expected ->
+  let actual = vec_to_list actual in
+  Int.equal (List.length actual) (List.length expected)
+  && List.all (List.zip actual expected) ~fn:(fun (left, right) -> String.equal left right)
+
+let create_body_fields =
+  De.fields
+    [
+      De.field "Cmd" Body_cmd;
+      De.field "Image" Body_image;
+      De.field "Env" Body_env;
+      De.field "Labels" Body_labels;
+      De.field "ExposedPorts" Body_exposed_ports;
+      De.field "HostConfig" Body_host_config;
+    ]
+
+let host_config_fields =
+  De.fields
+    [
+      De.field "PublishAllPorts" Host_publish_all_ports;
+      De.field "PortBindings" Host_port_bindings;
+    ]
+
+let host_binding_decode = De.map De.string
+
+let host_config_decode =
+  De.record_mut
+    ~fields:host_config_fields
+    ~create:(fun () -> { publish_all_ports = None; port_bindings = None })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Host_publish_all_ports -> builder.publish_all_ports <- Some (De.read reader De.bool)
+      | Some Host_port_bindings ->
+          builder.port_bindings <- Some (De.read reader (De.map (De.list host_binding_decode)))
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: host_config_builder) ->
+      ({ publish_all_ports = builder.publish_all_ports; port_bindings = builder.port_bindings }:
+        host_config))
+
+let create_body_decode =
+  De.record_mut
+    ~fields:create_body_fields
+    ~create:(fun () ->
+      {
+        cmd = None;
+        image = None;
+        env = None;
+        labels = None;
+        exposed_ports = None;
+        host_config = None;
+      })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Body_cmd -> builder.cmd <- Some (De.read reader (De.list De.string))
+      | Some Body_image -> builder.image <- Some (De.read reader De.string)
+      | Some Body_env -> builder.env <- Some (De.read reader (De.list De.string))
+      | Some Body_labels -> builder.labels <- Some (De.read reader (De.map De.string))
+      | Some Body_exposed_ports ->
+          builder.exposed_ports <- Some (De.read reader (De.map De.skip_any))
+      | Some Body_host_config -> builder.host_config <- Some (De.read reader host_config_decode)
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun (builder: create_body_builder) ->
+      ({
+        cmd = builder.cmd;
+        image = builder.image;
+        env = builder.env;
+        labels = builder.labels;
+        exposed_ports = builder.exposed_ports;
+        host_config = builder.host_config;
+      }: create_body))
 
 let test_container_create_path_encodes_name_and_platform = fun _ctx ->
   let request =
@@ -188,26 +318,56 @@ let test_container_create_body_is_structured_json = fun _ctx ->
       ~exposed_ports:[ Docker.Port.tcp 6_379 ]
       ~port_mappings:[
         { Docker.Container.host_port = 0; container_port = Docker.Port.tcp 6_379 };
+        { Docker.Container.host_port = 6_380; container_port = Docker.Port.tcp 6_379 };
       ]
       ~image:"redis:7"
       ()
   in
-  let body = Docker.Testing.container_create_body request in
-  let* json =
-    Json.from_string body
-    |> Result.map_err ~fn:(fun error -> Json.error_to_string error)
+  let* body =
+    Docker.Testing.container_create_body request
+    |> Result.map_err ~fn:Docker.error_to_string
   in
-  let* () = expect_string_field "Image" "redis:7" json in
-  let* () = expect_string_array_field "Cmd" [ "redis-server"; "--save"; "" ] json in
-  let* () = expect_string_array_field "Env" [ "REDIS_PASSWORD=secret" ] json in
-  let* exposed = get_field "ExposedPorts" json in
-  let* host_config = get_field "HostConfig" json in
-  let* () = expect_bool_field "PublishAllPorts" false host_config in
-  let* port_bindings = get_field "PortBindings" host_config in
-  if object_has_field "6379/tcp" exposed && object_has_field "6379/tcp" port_bindings then
-    Ok ()
-  else
-    Error "expected exposed ports and port bindings to include 6379/tcp"
+  let* decoded =
+    Serde_json.from_string create_body_decode body
+    |> Result.map_err ~fn:Serde.Error.to_string
+  in
+  match (
+    decoded.image,
+    decoded.cmd,
+    decoded.env,
+    decoded.labels,
+    decoded.exposed_ports,
+    decoded.host_config
+  ) with
+  | (Some "redis:7", Some cmd, Some env, Some labels, Some exposed, Some host_config) when string_vec_equal
+    cmd
+    [ "redis-server"; "--save"; "" ]
+  && string_vec_equal env [ "REDIS_PASSWORD=secret" ]
+  && map_has_key "suite" labels
+  && map_has_key "6379/tcp" exposed -> (
+      match host_config.port_bindings with
+      | Some port_bindings when Bool.equal
+        (Option.unwrap_or host_config.publish_all_ports ~default:true)
+        false
+      && map_has_key "6379/tcp" port_bindings ->
+          if not (Int.equal (map_field_count "6379/tcp" exposed) 1) then
+            Error "expected duplicate exposed Docker ports to be collapsed"
+          else if not (Int.equal (map_field_count "6379/tcp" port_bindings) 1) then
+            Error "expected duplicate Docker port bindings to be grouped"
+          else
+            let bindings =
+              vec_to_list port_bindings
+              |> List.find ~fn:(fun (name, _) -> String.equal name "6379/tcp")
+            in
+            (
+              match bindings with
+              | Some (_, bindings) when Int.equal (Vector.len bindings) 2 -> Ok ()
+              | Some _ -> Error "expected grouped Docker port binding to keep both host ports"
+              | None -> Error "expected Docker port binding to include 6379/tcp"
+            )
+      | _ -> Error "expected Docker host config to include grouped port bindings"
+    )
+  | _ -> Error "unexpected Docker create body"
 
 let has_port_mapping = fun mappings port host_port ->
   List.any
@@ -261,6 +421,42 @@ let test_parse_container_inspect_rejects_invalid_host_port = fun _ctx ->
       Ok ()
   | Error error -> Error ("unexpected error: " ^ Docker.error_to_string error)
   | Ok _ -> Error "expected invalid host port to be rejected"
+
+let test_parse_container_inspect_rejects_out_of_range_host_port = fun _ctx ->
+  let source =
+    {|{
+  "Id": "abc123",
+  "State": { "Running": false, "ExitCode": 1 },
+  "NetworkSettings": {
+    "Ports": {
+      "6379/tcp": [{ "HostPort": "70000" }]
+    }
+  }
+}|}
+  in
+  match Docker.Testing.parse_container_inspect source with
+  | Error (Docker.JsonError message) when String.contains message "invalid Docker host port" ->
+      Ok ()
+  | Error error -> Error ("unexpected error: " ^ Docker.error_to_string error)
+  | Ok _ -> Error "expected out-of-range host port to be rejected"
+
+let test_parse_container_inspect_rejects_invalid_binding_shape = fun _ctx ->
+  let source =
+    {|{
+  "Id": "abc123",
+  "State": { "Running": false, "ExitCode": 1 },
+  "NetworkSettings": {
+    "Ports": {
+      "6379/tcp": ["not-an-object"]
+    }
+  }
+}|}
+  in
+  match Docker.Testing.parse_container_inspect source with
+  | Error (Docker.JsonError message) when String.contains message "invalid Docker port binding" ->
+      Ok ()
+  | Error error -> Error ("unexpected error: " ^ Docker.error_to_string error)
+  | Ok _ -> Error "expected malformed port binding to be rejected"
 
 let docker_result = fun result -> Result.map_err result ~fn:Docker.error_to_string
 
@@ -372,6 +568,11 @@ let tests =
   Test.[
     case "Config.from_env parses TCP host and platform" test_config_from_env_tcp_with_platform;
     case "Config.from_env applies Docker TCP default port" test_config_from_env_tcp_default_port;
+    case "Config.from_env trims Docker host" test_config_from_env_trims_docker_host;
+    case "Config.from_env rejects invalid TCP ports" test_config_from_env_rejects_invalid_tcp_port;
+    case
+      "Config.from_env rejects empty Unix socket paths"
+      test_config_from_env_rejects_empty_unix_socket;
     case "Config.from_env parses Unix socket host" test_config_from_env_unix_socket;
     case "Config.from_env rejects TLS transport" test_config_from_env_rejects_tls_transport;
     case "Port rendering and equality are deterministic" test_port_rendering_and_equality;
@@ -389,6 +590,12 @@ let tests =
     case
       "Container inspect parsing rejects invalid host ports"
       test_parse_container_inspect_rejects_invalid_host_port;
+    case
+      "Container inspect parsing rejects out-of-range host ports"
+      test_parse_container_inspect_rejects_out_of_range_host_port;
+    case
+      "Container inspect parsing rejects malformed port bindings"
+      test_parse_container_inspect_rejects_invalid_binding_shape;
     live_case "live Docker ping" test_live_docker_ping;
     live_case "live Docker container lifecycle" test_live_container_lifecycle;
   ]

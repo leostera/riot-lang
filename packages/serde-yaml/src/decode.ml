@@ -90,6 +90,17 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
       items := with_current state value (fun () -> decode.run backend state) :: !items);
   Array.from_list (List.rev !items)
 
+and map_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
+  let values = expect_map state.current in
+  let result = Vector.with_capacity ~size:(List.length values) in
+  List.for_each
+    values
+    ~fn:(fun (key, value) ->
+      Vector.push
+        result
+        ~value:(key, with_current state value (fun () -> decode.run backend state)));
+  result
+
 and record_backend:
   'field 'acc 'value. state ->
   fields:'field De.Fields.t ->
@@ -202,6 +213,7 @@ and backend: state De.backend = {
   option = option_backend;
   list = list_backend;
   array = array_backend;
+  map = map_backend;
   record = record_backend;
   record_mut = record_mut_backend;
   variant = variant_backend;

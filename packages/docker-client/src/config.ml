@@ -49,6 +49,14 @@ let first_existing_socket = fun () ->
   in
   loop candidates (Path.v "/var/run/docker.sock")
 
+let valid_tcp_port = fun port -> port > 0 && port <= 65_535
+
+let parse_tcp_port = fun raw port_text ->
+  match Int.parse port_text with
+  | Some port when valid_tcp_port port -> Ok port
+  | Some _ -> Error (Error.ConfigError ("invalid Docker TCP port in " ^ raw))
+  | None -> Error (Error.ConfigError ("invalid Docker TCP port in " ^ raw))
+
 let parse_tcp_host = fun raw ->
   let rest =
     String.sub
@@ -58,11 +66,19 @@ let parse_tcp_host = fun raw ->
   in
   match String.split_on_char ':' rest with
   | [ host; port ] -> (
-      match Int.parse port with
-      | Some port -> Ok (Tcp { host; port })
-      | None -> Error (Error.ConfigError ("invalid Docker TCP port in " ^ raw))
+      let host = String.trim host in
+      if String.equal host "" then
+        Error (Error.ConfigError ("invalid Docker TCP host in " ^ raw))
+      else
+        let* port = parse_tcp_port raw port in
+        Ok (Tcp { host; port })
     )
-  | [ host ] -> Ok (Tcp { host; port = 2_375 })
+  | [ host ] ->
+      let host = String.trim host in
+      if String.equal host "" then
+        Error (Error.ConfigError ("invalid Docker TCP host in " ^ raw))
+      else
+        Ok (Tcp { host; port = 2_375 })
   | _ -> Error (Error.ConfigError ("invalid Docker TCP host in " ^ raw))
 
 let parse_docker_host = fun raw ->
@@ -73,7 +89,10 @@ let parse_docker_host = fun raw ->
         ~offset:(String.length "unix://")
         ~len:(String.length raw - String.length "unix://")
     in
-    Ok (Unix (Path.v path))
+    if String.equal (String.trim path) "" then
+      Error (Error.ConfigError ("invalid Docker Unix socket path in " ^ raw))
+    else
+      Ok (Unix (Path.v path))
   else if String.starts_with ~prefix:"tcp://" raw then
     parse_tcp_host raw
   else if
@@ -96,6 +115,7 @@ let from_env = fun () ->
   in
   match Env.var Env.String ~name:"DOCKER_HOST" with
   | Some raw when not (String.equal (String.trim raw) "") ->
+      let raw = String.trim raw in
       let* transport = parse_docker_host raw in
       Ok { transport; platform }
   | _ -> Ok { transport = Unix (first_existing_socket ()); platform }

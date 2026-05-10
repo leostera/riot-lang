@@ -11,7 +11,11 @@ type error =
 
 val error_to_string: error -> string
 
-(** Return `true` when a local Docker endpoint is configured and appears reachable. *)
+(**
+   Return `true` when a local Docker endpoint is configured for test registration.
+
+   This check is intentionally cheap and top-level safe; it does not ping the daemon.
+*)
 val docker_available: unit -> bool
 
 module ReadinessPolicy: sig

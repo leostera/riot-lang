@@ -45,6 +45,19 @@ and encode_array: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = 
   done;
   set state (Toml_value.Array (List.rev !items))
 
+and encode_map: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
+  state encode values ->
+  let items = ref [] in
+  Vector.for_each
+    values
+    ~fn:(fun (name, value) ->
+      let child = child_state ~allow_omit:true () in
+      encode.run backend child value;
+      match child.value with
+      | Some map_value -> items := (name, map_value) :: !items
+      | None -> ());
+  set state (Toml_value.Table (List.rev !items))
+
 and encode_record: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun
   state fields value ->
   let items = ref [] in
@@ -100,6 +113,7 @@ and backend: state Ser.backend = {
       | Some payload -> encode.run backend state payload);
   list = encode_list;
   array = encode_array;
+  map = encode_map;
   record = encode_record;
   variant = encode_variant;
 }

@@ -1360,6 +1360,7 @@ let rec skip_value_reader = fun state reader ->
                 ()
               else
                 reader_expect_char state reader ',' "object delimiter";
+              reader_skip_whitespace reader;
               skip_string_reader state reader;
               reader_skip_whitespace reader;
               reader_expect_char state reader ':' "':' after object key";
@@ -1419,6 +1420,7 @@ let rec skip_value = fun state ->
                     ()
                   else
                     expect_char state ',' "object delimiter";
+                  Input.skip_whitespace state.input;
                   skip_string state;
                   expect_char state ':' "':' after object key";
                   skip_value state;
@@ -1535,6 +1537,75 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let values = list_backend state decode in
   Vector.to_array values
+
+and map_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
+  match state.input with
+  | Input.Reader_input reader ->
+      reader_skip_whitespace reader;
+      reader_expect_char state reader '{' "object";
+      reader_skip_whitespace reader;
+      (
+        match reader_current_char reader with
+        | Some '}' ->
+            reader_advance reader;
+            Vector.create ()
+        | _ ->
+            let acc = Vector.with_capacity ~size:8 in
+            let first = ref true in
+            let finished = ref false in
+            while not !finished do
+              if !first then
+                first := false
+              else (
+                reader_skip_whitespace reader;
+                reader_expect_char state reader ',' "object delimiter"
+              );
+              let key = parse_string_reader state reader in
+              reader_skip_whitespace reader;
+              reader_expect_char state reader ':' "':' after object key";
+              let value = decode.run backend state in
+              Vector.push acc ~value:(key, value);
+              reader_skip_whitespace reader;
+              match reader_current_char reader with
+              | Some '}' ->
+                  reader_advance reader;
+                  finished := true
+              | Some _ -> ()
+              | None -> unexpected_end state "object"
+            done;
+            acc
+      )
+  | Input.String_input _ ->
+      skip_then_expect_char state '{' "object";
+      Input.skip_whitespace state.input;
+      match Input.current_char state.input with
+      | Some '}' ->
+          Input.advance state.input;
+          Vector.create ()
+      | _ ->
+          let acc = Vector.with_capacity ~size:8 in
+          let first = ref true in
+          let finished = ref false in
+          while not !finished do
+            if !first then
+              first := false
+            else (
+              Input.skip_whitespace state.input;
+              expect_char state ',' "object delimiter"
+            );
+            let key = parse_string state in
+            skip_then_expect_char state ':' "':' after object key";
+            let value = decode.run backend state in
+            Vector.push acc ~value:(key, value);
+            Input.skip_whitespace state.input;
+            match Input.current_char state.input with
+            | Some '}' ->
+                Input.advance state.input;
+                finished := true
+            | Some _ -> ()
+            | None -> unexpected_end state "object"
+          done;
+          acc
 
 and record_backend:
   'field 'acc 'value. state ->
@@ -1757,6 +1828,7 @@ and backend: state De.backend = {
   option = option_backend;
   list = list_backend;
   array = array_backend;
+  map = map_backend;
   record = record_backend;
   record_mut = record_mut_backend;
   variant = variant_backend;

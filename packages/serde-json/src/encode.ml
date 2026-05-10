@@ -162,6 +162,22 @@ and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit =
   done;
   write_char state ']'
 
+and map_backend: 'value. state -> 'value Serde.Ser.t -> (string * 'value) vec -> unit = fun
+  state encode values ->
+  write_char state '{';
+  let first = ref true in
+  Vector.for_each
+    values
+    ~fn:(fun (name, value) ->
+      if !first then
+        first := false
+      else
+        write_char state ',';
+      write_cached_escaped_literal state name;
+      write_char state ':';
+      encode.run backend state value);
+  write_char state '}'
+
 and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun
   state fields value ->
   write_char state '{';
@@ -221,6 +237,7 @@ and backend: state Serde.Ser.backend = {
       | Some payload -> encode.run backend state payload);
   list = list_backend;
   array = array_backend;
+  map = map_backend;
   record = record_backend;
   variant = variant_backend;
 }

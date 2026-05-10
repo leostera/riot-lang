@@ -115,7 +115,7 @@ module Container: sig
 end
 
 module Testing: sig
-  val container_create_body: Container.create_request -> string
+  val container_create_body: Container.create_request -> (string, error) result
 
   val container_create_path: Container.create_request -> string
 

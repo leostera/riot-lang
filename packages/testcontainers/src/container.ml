@@ -123,7 +123,11 @@ let remove = fun container ->
     in
     (
       match result with
-      | Ok () -> container.removed <- true
+      | Ok ()
+      | Error (Error.Docker (Docker_client.DockerError { status = 404; _ })) ->
+          container.removed <- true
       | Error _ -> ()
     );
-  result
+  match result with
+  | Error (Error.Docker (Docker_client.DockerError { status = 404; _ })) -> Ok ()
+  | _ -> result
