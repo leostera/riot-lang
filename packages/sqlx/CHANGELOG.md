@@ -2,6 +2,12 @@
 
 All notable changes to `sqlx` are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Accepted MySQL `TEXT` migration-table fields returned by drivers as byte values when validating applied checksums.
+
 ## 0.0.33 - 2026-05-10
 
 ### Changed

@@ -553,9 +553,13 @@ let string_field = fun field row ->
       match Value.to_string_value value with
       | Some value -> Ok value
       | None -> (
-          match Value.to_json value with
-          | Some value -> Ok value
-          | None -> Error (SourceError (QueryFieldTypeMismatch { field; expected = "text" }))
+          match Value.to_bytes value with
+          | Some value -> Ok (Std.IO.Bytes.to_string value)
+          | None -> (
+              match Value.to_json value with
+              | Some value -> Ok value
+              | None -> Error (SourceError (QueryFieldTypeMismatch { field; expected = "text" }))
+            )
         )
     )
 

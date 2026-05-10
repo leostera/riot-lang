@@ -111,7 +111,8 @@ explicitly opts out of the missing-file check.
 Backend-specific migration config controls placeholders, migration-table DDL,
 locking, and transaction defaults. PostgreSQL uses advisory locks and `$1`
 placeholders. MySQL uses `GET_LOCK`/`RELEASE_LOCK`, `?` placeholders, and an
-InnoDB migration table.
+InnoDB migration table. Migration-table text fields are decoded from either
+driver text values or byte values, which matches MySQL's `TEXT` wire metadata.
 
 ## Which driver should you use?
 

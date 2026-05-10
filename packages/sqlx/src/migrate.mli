@@ -150,6 +150,7 @@ type run_report = {
   applied: applied Collections.Vector.t;
   already_applied: AppliedMigration.t Collections.Vector.t;
 }
+(** Errors raised while resolving migration sources or reading migration metadata. *)
 type source_error =
   | ReadMigrationFileFailed of {
       path: Path.t;

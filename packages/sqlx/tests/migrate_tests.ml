@@ -15,13 +15,16 @@ type fake_state = {
   applied: fake_applied Vector.t;
   executed: string Vector.t;
   transactions: string Vector.t;
+  checksum_as_bytes: bool;
 }
 
-let fake_state = fun () -> {
-  applied = Vector.create ();
-  executed = Vector.create ();
-  transactions = Vector.create ();
-}
+let fake_state = fun () ->
+  {
+    applied = Vector.create ();
+    executed = Vector.create ();
+    transactions = Vector.create ();
+    checksum_as_bytes = false;
+  }
 
 let starts_with = fun prefix sql -> String.starts_with ~prefix sql
 
@@ -80,6 +83,12 @@ module FakeDriver: Driver.Intf with type config = fake_state = struct
 
   let prepare = fun conn sql -> Ok { conn; sql }
 
+  let checksum_value = fun conn checksum ->
+    if conn.checksum_as_bytes then
+      Value.bytes (Std.IO.Bytes.from_string checksum)
+    else
+      Value.string checksum
+
   let rows = fun rows -> { rows = Queue.from_list rows; rows_affected = List.length rows }
 
   let execute = fun statement params ->
@@ -102,7 +111,7 @@ module FakeDriver: Driver.Intf with type config = fake_state = struct
         |> List.map
           ~fn:(fun applied -> [
             ("version", Value.int64 applied.version);
-            ("checksum", Value.string applied.checksum);
+            ("checksum", checksum_value statement.conn applied.checksum);
           ])
       in
       Ok (rows applied_rows)
@@ -406,6 +415,32 @@ let test_migrator_rejects_modified_applied_migration = fun _ctx ->
         | Ok _ -> Error "expected version mismatch"
       )
 
+let test_migrator_reads_mysql_text_columns_as_bytes = fun _ctx ->
+  let state = { (fake_state ()) with checksum_as_bytes = true } in
+  match require_pool state with
+  | Error _ as error -> error
+  | Ok pool ->
+      let migration =
+        M.Migration.make
+          ~version:(M.Version.from_int64_unchecked 1L)
+          ~description:"create users"
+          ~migration_type:M.Simple
+          ~sql:"CREATE TABLE users (id BIGINT);"
+          ()
+      in
+      Vector.push
+        state.applied
+        ~value:{ version = 1L; checksum = M.Migration.(migration.checksum); success = true };
+      let source = M.Source.from_migrations (Vector.from_list [ migration ]) in
+      match M.run pool source with
+      | Error error ->
+          Sqlx.shutdown pool;
+          Error (M.error_to_string error)
+      | Ok report ->
+          Sqlx.shutdown pool;
+          Test.assert_equal ~expected:0 ~actual:(Vector.length report.applied);
+          Ok ()
+
 let tests =
   Test.[
     case "directory source resolves sqlx filenames" test_directory_source_resolves_sqlx_filenames;
@@ -422,6 +457,9 @@ let tests =
     case
       "migrator rejects modified applied migration"
       test_migrator_rejects_modified_applied_migration;
+    case
+      "migrator reads mysql text columns as bytes"
+      test_migrator_reads_mysql_text_columns_as_bytes;
   ]
 
 let main ~args = Test.Cli.main ~name:"sqlx_migrate_tests" ~tests ~args ()
