@@ -140,7 +140,9 @@ module Config = struct
     | Ok uri when Net.Uri.scheme uri = Some "mysql" -> (
         let path = Net.Uri.path uri in
         let database =
-          if String.length path > 1 && String.get_unchecked path ~at:0 = '/' then
+          if String.length path <= 1 then
+            None
+          else if String.get_unchecked path ~at:0 = '/' then
             Some (
               String.sub path ~offset:1 ~len:(String.length path - 1)
               |> Net.Uri.percent_decode
@@ -180,6 +182,7 @@ end
 module Driver = struct
   module Queue = Collections.Queue
   module Row = Sqlx_driver.Row
+  module Ser = Serde.Ser
   module Value = Sqlx_driver.Value
 
   type config = Config.t
@@ -397,48 +400,85 @@ module Driver = struct
     | UnexpectedMessage message -> "Unexpected MySQL message: " ^ message
     | UnsupportedOperation message -> "Unsupported MySQL operation: " ^ message
 
-  let error_to_json = fun error ->
+  type error_report = {
+    kind: string;
+    message: string option;
+    code: int option;
+    sql_state: string option;
+    plugin: string option;
+  }
+
+  let error_report_serializer =
+    Ser.record
+      (
+        Ser.fields
+          [
+            Ser.field "type" Ser.string (fun (report: error_report) -> report.kind);
+            Ser.field
+              "message"
+              (Ser.option Ser.string)
+              (fun (report: error_report) -> report.message);
+            Ser.field "code" (Ser.option Ser.int) (fun (report: error_report) -> report.code);
+            Ser.field
+              "sql_state"
+              (Ser.option Ser.string)
+              (fun (report: error_report) -> report.sql_state);
+            Ser.field "plugin" (Ser.option Ser.string) (fun (report: error_report) -> report.plugin);
+          ]
+      )
+
+  let error_to_report = fun error ->
+    let report ?message ?code ?sql_state ?plugin kind = {
+      kind;
+      message;
+      code;
+      sql_state;
+      plugin;
+    }
+    in
     match error with
-    | TransportError message ->
-        Data.Json.obj
-          [ ("type", Data.Json.string "transport_error"); ("message", Data.Json.string message); ]
-    | ProtocolError error ->
-        Data.Json.obj
-          [
-            ("type", Data.Json.string "protocol_error");
-            ("message", Data.Json.string (Protocol.parse_error_to_string error));
-          ]
-    | ServerError error -> Protocol.Error.to_json error
-    | ConnectionClosed ->
-        Data.Json.obj
-          [
-            ("type", Data.Json.string "connection_closed");
-            ("message", Data.Json.string "Connection is closed");
-          ]
-    | AuthenticationNotSupported plugin ->
-        Data.Json.obj
-          [
-            ("type", Data.Json.string "authentication_not_supported");
-            ("plugin", Data.Json.string plugin);
-          ]
-    | TlsNotSupported message ->
-        Data.Json.obj
-          [ ("type", Data.Json.string "tls_not_supported"); ("message", Data.Json.string message); ]
-    | TlsError message ->
-        Data.Json.obj
-          [ ("type", Data.Json.string "tls_error"); ("message", Data.Json.string message); ]
-    | UnexpectedMessage message ->
-        Data.Json.obj
-          [
-            ("type", Data.Json.string "unexpected_message");
-            ("message", Data.Json.string message);
-          ]
-    | UnsupportedOperation message ->
-        Data.Json.obj
-          [
-            ("type", Data.Json.string "unsupported_operation");
-            ("message", Data.Json.string message);
-          ]
+    | TransportError message -> report ~message "transport_error"
+    | ProtocolError error -> report ~message:(Protocol.parse_error_to_string error) "protocol_error"
+    | ServerError error ->
+        report ~message:error.message ~code:error.code ?sql_state:error.sql_state "mysql_error"
+    | ConnectionClosed -> report ~message:"Connection is closed" "connection_closed"
+    | AuthenticationNotSupported plugin -> report ~plugin "authentication_not_supported"
+    | TlsNotSupported message -> report ~message "tls_not_supported"
+    | TlsError message -> report ~message "tls_error"
+    | UnexpectedMessage message -> report ~message "unexpected_message"
+    | UnsupportedOperation message -> report ~message "unsupported_operation"
+
+  let error_serializer = Ser.contramap error_to_report error_report_serializer
+
+  let error_to_json_string = fun error -> Serde_json.to_string error_serializer error
+
+  let error_report_to_json = fun report ->
+    let fields = [ ("type", Data.Json.string report.kind) ] in
+    let fields =
+      match report.message with
+      | Some message -> fields @ [ ("message", Data.Json.string message) ]
+      | None -> fields
+    in
+    let fields =
+      match report.code with
+      | Some code -> fields @ [ ("code", Data.Json.int code) ]
+      | None -> fields
+    in
+    let fields =
+      match report.sql_state with
+      | Some sql_state -> fields @ [ ("sql_state", Data.Json.string sql_state) ]
+      | None -> fields
+    in
+    let fields =
+      match report.plugin with
+      | Some plugin -> fields @ [ ("plugin", Data.Json.string plugin) ]
+      | None -> fields
+    in
+    Data.Json.obj fields
+
+  let error_to_json = fun error ->
+    error_to_report error
+    |> error_report_to_json
 
   let byte_at = fun text index -> Char.code (String.get_unchecked text ~at:index)
 
@@ -504,10 +544,18 @@ module Driver = struct
     in
     loop frames
 
-  let is_error_packet = fun payload -> String.length payload > 0 && byte_at payload 0 = 0xff
+  let is_error_packet = fun payload ->
+    if String.length payload = 0 then
+      false
+    else
+      byte_at payload 0 = 0xff
 
   let is_result_terminator = fun payload ->
-    String.length payload <= 5 && String.length payload > 0 && byte_at payload 0 = 0xfe
+    let length = String.length payload in
+    if length = 0 || length > 5 then
+      false
+    else
+      byte_at payload 0 = 0xfe
 
   let update_status_from_ok = fun conn ok ->
     conn.server_status <- Protocol.(ok.status);
@@ -676,7 +724,9 @@ module Driver = struct
     | plugin -> Error (AuthenticationNotSupported plugin)
 
   let parse_auth_switch = fun payload ->
-    if String.length payload = 0 || byte_at payload 0 != 0xfe then
+    if String.length payload = 0 then
+      Error (UnexpectedMessage "expected auth switch request")
+    else if byte_at payload 0 != 0xfe then
       Error (UnexpectedMessage "expected auth switch request")
     else
       let rec find_nul index =

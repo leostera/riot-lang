@@ -331,6 +331,8 @@ module ServerStatus = struct
 end
 
 module Error = struct
+  module Ser = Serde.Ser
+
   type t = {
     code: int;
     sql_state: string option;
@@ -344,6 +346,20 @@ module Error = struct
       | None -> "MySQL error " ^ Int.to_string error.code
     in
     prefix ^ ": " ^ error.message
+
+  let serialize =
+    Ser.record
+      (
+        Ser.fields
+          [
+            Ser.field "type" Ser.string (fun (_: t) -> "mysql_error");
+            Ser.field "code" Ser.int (fun (error: t) -> error.code);
+            Ser.field "sql_state" (Ser.option Ser.string) (fun (error: t) -> error.sql_state);
+            Ser.field "message" Ser.string (fun (error: t) -> error.message);
+          ]
+      )
+
+  let to_json_string = fun error -> Serde_json.to_string serialize error
 
   let to_json = fun error ->
     let fields = [
@@ -563,7 +579,9 @@ module Reader = struct
         | Error _ as error -> error
         | Ok code ->
             let (sql_state, message_offset) =
-              if remaining cursor >= 6 && byte_at cursor.data cursor.pos = Char.code '#' then (
+              if remaining cursor < 6 then
+                (None, cursor.pos)
+              else if byte_at cursor.data cursor.pos = Char.code '#' then (
                 cursor.pos <- cursor.pos + 1;
                 let state = String.sub cursor.data ~offset:cursor.pos ~len:5 in
                 (Some state, cursor.pos + 5)
@@ -1144,7 +1162,10 @@ module Reader = struct
     let bit = index + 2 in
     let byte_index = bit / 8 in
     let bit_index = bit mod 8 in
-    byte_index < String.length bitmap && byte_at bitmap byte_index land (1 lsl bit_index) != 0
+    if byte_index >= String.length bitmap then
+      false
+    else
+      byte_at bitmap byte_index land (1 lsl bit_index) != 0
 
   let parse_binary_row = fun columns payload ->
     let cursor = cursor payload in

@@ -113,6 +113,10 @@ module Error: sig
 
   val to_string: t -> string
 
+  val serialize: t Serde.Ser.t
+
+  val to_json_string: t -> (string, Serde.error) result
+
   val to_json: t -> Data.Json.t
 end
 

@@ -14,6 +14,7 @@ All notable changes to `mysql` are documented here.
 - Added live MySQL coverage through `testcontainers` using a disposable MySQL container.
 - Added property-style live coverage for scalar values, prepared parameters, NULLs, temporal values, blobs, InnoDB CRUD, and rollback behavior.
 - Added fuzz coverage for protocol packets, handshake/result parsers, row decoders, statement parameter encoding, and connection-string parsing.
+- Added serde-json serializers for MySQL protocol and driver errors while keeping the current `sqlx-driver` JSON adapter.
 
 ### Changed
 
@@ -29,3 +30,4 @@ All notable changes to `mysql` are documented here.
 - Rejected invalid length-encoded string sizes before converting them to platform integers.
 - Decoded signed binary integer values correctly.
 - Returned unsigned 64-bit binary integer values that exceed signed `int64` as numeric strings.
+- Hardened short error packet parsing and binary-row null bitmap checks found by fuzzing.

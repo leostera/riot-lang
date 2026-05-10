@@ -1,6 +1,6 @@
 [package]
 name = "mysql"
-version = "0.0.32"
+version = "0.0.33"
 description = "MySQL adapter for sqlx"
 license = "Apache-2.0"
 public = true
@@ -12,6 +12,8 @@ path = "src/mysql.ml"
 std = "*"
 kernel = "*"
 sqlx-driver = "*"
+serde = "*"
+serde-json = "*"
 
 [dev-dependencies]
 dotenv = { path = "../dotenv", version = "*" }

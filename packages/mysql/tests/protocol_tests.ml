@@ -97,6 +97,21 @@ let test_reader_parses_error_packet = fun _ctx ->
       Test.assert_equal ~expected:"syntax error" ~actual:error.message;
       Ok ()
 
+let test_error_packet_serde_json = fun _ctx ->
+  let error: Protocol.Error.t = {
+    code = 1_064;
+    sql_state = Some "42000";
+    message = "syntax error";
+  }
+  in
+  match Protocol.Error.to_json_string error with
+  | Error error -> Error (Serde.Error.to_string error)
+  | Ok encoded ->
+      Test.assert_equal
+        ~expected:{|{"type":"mysql_error","code":1064,"sql_state":"42000","message":"syntax error"}|}
+        ~actual:encoded;
+      Ok ()
+
 let test_reader_parses_column_definition = fun _ctx ->
   let payload = Buffer.create ~size:96 in
   add_lenenc_string payload "def";
@@ -174,6 +189,7 @@ let tests =
     case "packet roundtrips header and payload" test_packet_roundtrips_header_and_payload;
     case "reader parses handshake v10" test_reader_parses_handshake_v10;
     case "reader parses error packet" test_reader_parses_error_packet;
+    case "error packet serializes with serde json" test_error_packet_serde_json;
     case "reader parses column definition" test_reader_parses_column_definition;
     case "config parses uri and legacy forms" test_config_parses_uri_and_legacy_forms;
     case "config rejects invalid uri port" test_config_rejects_invalid_uri_port;

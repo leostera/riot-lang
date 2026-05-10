@@ -272,7 +272,7 @@ let tests =
       test_ok_packet_parser_fuzz;
     fuzz
       "error packet parser accepts arbitrary payloads"
-      ~seeds:[ ""; "\xff\x28\x04#42000syntax error"; "\x00not error"; ]
+      ~seeds:[ ""; "\xffoz"; "\xff\x28\x04#42000syntax error"; "\x00not error"; ]
       ~mutator:byte_mutator
       test_error_packet_parser_fuzz;
     fuzz
