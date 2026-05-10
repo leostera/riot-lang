@@ -450,36 +450,6 @@ module Driver = struct
 
   let error_serializer = Ser.contramap error_to_report error_report_serializer
 
-  let error_to_json_string = fun error -> Serde_json.to_string error_serializer error
-
-  let error_report_to_json = fun report ->
-    let fields = [ ("type", Data.Json.string report.kind) ] in
-    let fields =
-      match report.message with
-      | Some message -> fields @ [ ("message", Data.Json.string message) ]
-      | None -> fields
-    in
-    let fields =
-      match report.code with
-      | Some code -> fields @ [ ("code", Data.Json.int code) ]
-      | None -> fields
-    in
-    let fields =
-      match report.sql_state with
-      | Some sql_state -> fields @ [ ("sql_state", Data.Json.string sql_state) ]
-      | None -> fields
-    in
-    let fields =
-      match report.plugin with
-      | Some plugin -> fields @ [ ("plugin", Data.Json.string plugin) ]
-      | None -> fields
-    in
-    Data.Json.obj fields
-
-  let error_to_json = fun error ->
-    error_to_report error
-    |> error_report_to_json
-
   let byte_at = fun text index -> Char.code (String.get_unchecked text ~at:index)
 
   let read_exact = fun transport len ->

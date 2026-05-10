@@ -358,22 +358,6 @@ module Error = struct
             Ser.field "message" Ser.string (fun (error: t) -> error.message);
           ]
       )
-
-  let to_json_string = fun error -> Serde_json.to_string serialize error
-
-  let to_json = fun error ->
-    let fields = [
-      ("type", Data.Json.string "mysql_error");
-      ("code", Data.Json.int error.code);
-      ("message", Data.Json.string error.message);
-    ]
-    in
-    let fields =
-      match error.sql_state with
-      | Some state -> fields @ [ ("sql_state", Data.Json.string state) ]
-      | None -> fields
-    in
-    Data.Json.obj fields
 end
 
 type ok_packet = {

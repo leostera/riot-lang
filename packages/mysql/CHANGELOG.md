@@ -14,7 +14,7 @@ All notable changes to `mysql` are documented here.
 - Added live MySQL coverage through `testcontainers` using a disposable MySQL container.
 - Added property-style live coverage for scalar values, prepared parameters, NULLs, temporal values, blobs, InnoDB CRUD, and rollback behavior.
 - Added fuzz coverage for protocol packets, handshake/result parsers, row decoders, statement parameter encoding, and connection-string parsing.
-- Added serde-json serializers for MySQL protocol and driver errors while keeping the current `sqlx-driver` JSON adapter.
+- Added serde serializers for MySQL protocol and driver errors.
 
 ### Changed
 

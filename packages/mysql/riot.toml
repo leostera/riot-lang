@@ -13,7 +13,6 @@ std = "*"
 kernel = "*"
 sqlx-driver = "*"
 serde = "*"
-serde-json = "*"
 
 [dev-dependencies]
 dotenv = { path = "../dotenv", version = "*" }
