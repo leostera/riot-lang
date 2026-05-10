@@ -634,23 +634,27 @@ let make_native_compile_sources_execution = fun ~root ~source_count ~revision ~t
 
 let expect_native_compile_sources_executed = fun executor action ->
   match Action_executor.execute executor action with
-  | Ok (Work_result.Complete []) -> (
-      match Action_executor.find_result executor action.Action_execution.ref_ with
-      | Some { Action_execution.status = Action_execution.Executed _; _ } -> ()
-      | Some _ -> panic "native compile-sources action benchmark expected executed result"
-      | None -> panic "native compile-sources action benchmark missed action result"
-    )
+  | Ok (Work_result.Complete []) ->
+      let result = Action_executor.find_result executor action.Action_execution.ref_ in
+      (
+        match result with
+        | Some { Action_execution.status = Action_execution.Executed _; _ } -> ()
+        | Some _ -> panic "native compile-sources action benchmark expected executed result"
+        | None -> panic "native compile-sources action benchmark missed action result"
+      )
   | Ok _ -> panic "native compile-sources action benchmark requested dependencies"
   | Error error -> panic ("native compile-sources action benchmark failed: " ^ Error.message error)
 
 let expect_native_compile_sources_cached = fun executor action ->
   match Action_executor.execute executor action with
-  | Ok (Work_result.Complete []) -> (
-      match Action_executor.find_result executor action.Action_execution.ref_ with
-      | Some { Action_execution.status = Action_execution.Cached _; _ } -> ()
-      | Some _ -> panic "native compile-sources cache benchmark expected cached result"
-      | None -> panic "native compile-sources cache benchmark missed action result"
-    )
+  | Ok (Work_result.Complete []) ->
+      let result = Action_executor.find_result executor action.Action_execution.ref_ in
+      (
+        match result with
+        | Some { Action_execution.status = Action_execution.Cached _; _ } -> ()
+        | Some _ -> panic "native compile-sources cache benchmark expected cached result"
+        | None -> panic "native compile-sources cache benchmark missed action result"
+      )
   | Ok _ -> panic "native compile-sources cache benchmark requested dependencies"
   | Error error -> panic ("native compile-sources cache benchmark failed: " ^ Error.message error)
 
@@ -764,14 +768,96 @@ let kernel_warm_cache_target_dir = fun () ->
   / Path.v "riot-build2-bench"
   / Path.v ("kernel-warm-cache-" ^ UUID.to_string (UUID.v4 ())))
 
-let run_kernel_build = fun ~workspace ~parallelism ->
+let rec copy_tree = fun ~src ~dst ->
+  Fs.create_dir_all dst
+  |> Result.expect ~msg:"failed to create benchmark copy destination";
+  let entries =
+    Fs.read_dir src
+    |> Result.expect ~msg:"failed to read benchmark copy source"
+  in
+  let rec loop () =
+    match Iter.MutIterator.next entries with
+    | None -> ()
+    | Some entry ->
+        let entry_name = Path.v (Path.basename entry) in
+        let src_entry =
+          if Path.is_absolute entry then
+            entry
+          else
+            Path.(src / entry)
+        in
+        let dst_entry = Path.(dst / entry_name) in
+        let is_dir =
+          Fs.is_dir src_entry
+          |> Result.expect ~msg:"failed to inspect benchmark copy source"
+        in
+        if is_dir then
+          copy_tree ~src:src_entry ~dst:dst_entry
+        else
+          Fs.copy ~src:src_entry ~dst:dst_entry
+          |> Result.expect ~msg:"failed to copy benchmark source file";
+        loop ()
+  in
+  loop ()
+
+let isolated_kernel_workspace = fun root ->
+  let workspace = load_repo_workspace () in
+  let manifest =
+    List.find
+      workspace.packages
+      ~fn:(fun (manifest: Riot_model.Package_manifest.t) ->
+        Riot_model.Package_name.equal
+          manifest.name
+          kernel_package)
+    |> Option.expect ~msg:"repo workspace should contain kernel package"
+  in
+  let package_root = Path.(root / Path.v "kernel") in
+  copy_tree ~src:manifest.path ~dst:package_root;
+  Riot_model.Workspace.make
+    ?name:workspace.name
+    ~root
+    ~packages:[ { manifest with path = package_root; relative_path = Path.v "kernel" } ]
+    ~dependencies:workspace.dependencies
+    ~dev_dependencies:workspace.dev_dependencies
+    ~build_dependencies:workspace.build_dependencies
+    ~profile_overrides:workspace.profile_overrides
+    ~source_ignore_patterns:workspace.source_ignore_patterns
+    ~target_dir:Path.(root / Path.v "target")
+    ()
+
+let mutate_kernel_event_source = fun workspace revision ->
+  let path =
+    Path.(workspace.Riot_model.Workspace.root / Path.v "kernel" / Path.v "src/async/event.ml")
+  in
+  let content =
+    Fs.read_to_string path
+    |> Result.expect ~msg:"failed to read benchmark kernel async event source"
+  in
+  let marker =
+    "\nlet __riot_build2_partial_rebuild_marker_"
+    ^ Int.to_string revision
+    ^ " = "
+    ^ Int.to_string revision
+    ^ "\n"
+  in
+  Fs.write (content ^ marker) path
+  |> Result.expect ~msg:"failed to mutate benchmark kernel async event source"
+
+let run_kernel_build_with_executor = fun ~workspace ~parallelism ->
   let config = Config.make ~workspace ~parallelism () in
   let executor =
     Riot_build2.create_executor ~config ()
     |> Result.expect ~msg:"failed to create riot-build2 executor"
   in
-  Riot_build2.execute executor (kernel_build_intent ())
-  |> Result.expect ~msg:"failed to execute riot-build2 intent"
+  let result =
+    Riot_build2.execute executor (kernel_build_intent ())
+    |> Result.expect ~msg:"failed to execute riot-build2 intent"
+  in
+  (executor, result)
+
+let run_kernel_build = fun ~workspace ~parallelism ->
+  let (_executor, result) = run_kernel_build_with_executor ~workspace ~parallelism in
+  result
 
 let make_kernel_build_cold_bench = fun ~parallelism ->
   let workspace = load_repo_workspace () in
@@ -801,6 +887,80 @@ let make_kernel_build_warm_cache_bench = fun ~parallelism ->
     run_kernel_build ~workspace ~parallelism
     |> expect_kernel_cached_package_result
 
+type kernel_partial_event_state = {
+  workspace: Riot_model.Workspace.t;
+  mutable revision: int;
+}
+
+let expect_kernel_partial_event_action_results = fun executor ->
+  let results =
+    Build_services.action_results executor
+    |> List.filter
+      ~fn:(fun result ->
+        Riot_model.Package_name.equal
+          result.Action_execution.ref_.package
+          kernel_package)
+  in
+  let count_status status =
+    results
+    |> List.filter
+      ~fn:(fun result ->
+        match (result.Action_execution.status, status) with
+        | (Action_execution.Cached _, `Cached)
+        | (Executed _, `Executed)
+        | (Failed _, `Failed) -> true
+        | (Cached _, _)
+        | (Executed _, _)
+        | (Failed _, _) -> false)
+    |> List.length
+  in
+  let cached = count_status `Cached in
+  let executed = count_status `Executed in
+  let failed = count_status `Failed in
+  if
+    Int.equal (List.length results) 216
+    && Int.equal cached 163
+    && Int.equal executed 53
+    && Int.equal failed 0
+  then
+    ()
+  else
+    panic
+      ("kernel partial event benchmark expected actions total=216 cached=163 executed=53 failed=0, got total="
+      ^ Int.to_string (List.length results)
+      ^ " cached="
+      ^ Int.to_string cached
+      ^ " executed="
+      ^ Int.to_string executed
+      ^ " failed="
+      ^ Int.to_string failed)
+
+let make_kernel_partial_event_change_bench = fun ~parallelism ->
+  let state = ref None in
+  let state_or_create = fun () ->
+    match !state with
+    | Some state -> state
+    | None ->
+        let root =
+          Path.(Path.v "_bench" / Path.v ("kernel-partial-event-" ^ UUID.to_string (UUID.v4 ())))
+        in
+        let workspace = isolated_kernel_workspace root in
+        run_kernel_build ~workspace ~parallelism
+        |> expect_kernel_package_result;
+        let created = { workspace; revision = 0 } in
+        state := Some created;
+        created
+  in
+  fun () ->
+    let state = state_or_create () in
+    state.revision <- Int.succ state.revision;
+    mutate_kernel_event_source state.workspace state.revision;
+    let (executor, result) =
+      run_kernel_build_with_executor ~workspace:state.workspace ~parallelism
+    in
+    expect_kernel_package_result result;
+    expect_kernel_partial_event_action_results executor
+
 let pure_config: Bench.bench_config = { iterations = 160; warmup = 20 }
 
 let registry_config: Bench.bench_config = { iterations = 120; warmup = 16 }
@@ -824,6 +984,8 @@ let action_cached_config: Bench.bench_config = { iterations = 30; warmup = 4 }
 let kernel_cold_build_config: Bench.bench_config = { iterations = 4; warmup = 1 }
 
 let kernel_warm_cache_config: Bench.bench_config = { iterations = 20; warmup = 4 }
+
+let kernel_partial_event_config: Bench.bench_config = { iterations = 6; warmup = 1 }
 
 let benchmarks = fun () ->
   Bench.[
@@ -923,6 +1085,10 @@ let benchmarks = fun () ->
       ~config:kernel_warm_cache_config
       "riot-build2 kernel cold boot + warm cache graph execution parallelism 4"
       (make_kernel_build_warm_cache_bench ~parallelism:Std.Thread.available_parallelism);
+    with_config
+      ~config:kernel_partial_event_config
+      "riot-build2 kernel partial rebuild after async event source change"
+      (make_kernel_partial_event_change_bench ~parallelism:Std.Thread.available_parallelism);
   ]
 
 let main ~args = Bench.Cli.main ~name:"riot-build2 benchmarks" ~benchmarks:(benchmarks ()) ~args

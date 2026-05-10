@@ -4,6 +4,8 @@ type t
 
 val create: store:Riot_store.Store.t -> toolchains:Toolchain_service.t -> unit -> t
 
+val results: t -> Action_execution.result list
+
 val find_result: t -> Action_execution.ref_ -> Action_execution.result option
 
 val artifact: t -> Action_execution.ref_ -> Riot_store.Artifact.t option

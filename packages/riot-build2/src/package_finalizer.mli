@@ -46,4 +46,8 @@ val execute_artifact: t -> Work_registry.t -> Goal.build_package -> (Work_result
 
 val execute_finalize: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result
 
-val execute_action_plan: t -> Work_registry.t -> Goal.build_package -> (Work_result.t, Error.t) result
+val execute_action_plan:
+  t ->
+  Work_registry.t ->
+  Goal.build_package ->
+  (Work_result.t, Error.t) result

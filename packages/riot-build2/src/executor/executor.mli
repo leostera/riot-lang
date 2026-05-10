@@ -16,8 +16,4 @@ type node_result = ExecutionSummary.node_result
 
 val has_failures: summary -> bool
 
-val run:
-  services:Build_services.t ->
-  seeds:Work_node.t list ->
-  unit ->
-  summary
+val run: services:Build_services.t -> seeds:Work_node.t list -> unit -> summary

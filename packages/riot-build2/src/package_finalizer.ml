@@ -70,21 +70,20 @@ let action_dependency_key = fun (plan: Module_plan.t) action_ref ->
     Work_node.ActionExecutionKey action_ref
 
 let action_node_key = fun (plan: Module_plan.t) (action: Action_execution.t) ->
-  action_dependency_key plan action.Action_execution.ref_
+  action_dependency_key
+    plan
+    action.Action_execution.ref_
 
 let register_action_nodes = fun t registry (plan: Module_plan.t) ->
   List.for_each
     plan.action_executions
     ~fn:(fun (action: Action_execution.t) ->
       match action_node_key plan action with
-      | Work_node.OCamlLibraryKey _ ->
-          ignore (Work_registry.intern_ocaml_library registry action)
-      | Work_node.OCamlArchiveKey _ ->
-          ignore (Work_registry.intern_ocaml_archive registry action)
+      | Work_node.OCamlLibraryKey _ -> ignore (Work_registry.intern_ocaml_library registry action)
+      | Work_node.OCamlArchiveKey _ -> ignore (Work_registry.intern_ocaml_archive registry action)
       | Work_node.ActionExecutionKey _ ->
           ignore (Work_registry.intern_action_execution registry action)
-      | _ ->
-          ignore (Work_registry.intern_action_execution registry action));
+      | _ -> ignore (Work_registry.intern_action_execution registry action));
   List.map
     plan.action_executions
     ~fn:(fun (action: Action_execution.t) -> action.Action_execution.ref_)
@@ -247,7 +246,8 @@ let register_plan_nodes = fun t registry (plan: Module_plan.t) ->
   else
     ignore (register_action_nodes t registry plan)
 
-let missing_action_dependency_keys = fun t (plan: Module_plan.t) (actions: Action_execution.t list) ->
+let missing_action_dependency_keys = fun
+  t (plan: Module_plan.t) (actions: Action_execution.t list) ->
   actions
   |> List.filter
     ~fn:(fun (action: Action_execution.t) ->

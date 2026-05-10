@@ -69,7 +69,9 @@ let test_declared_dependency_becomes_module_provider = fun _ctx ->
   |> Result.and_then
     ~fn:(fun providers ->
       match providers with
-      | [ (provider: Module_provider_registry.provider) ] when Riot_model.Package_name.equal provider.package (package "dep-lib")
+      | [ (provider: Module_provider_registry.provider) ] when Riot_model.Package_name.equal
+        provider.package
+        (package "dep-lib")
       && String.equal provider.root_module "Dep_lib"
       && provider.build = expected_dep_build
       && provider.key = Work_node.GoalKey (Goal.BuildPackage expected_dep_build) -> Ok ()
@@ -78,25 +80,19 @@ let test_declared_dependency_becomes_module_provider = fun _ctx ->
 let test_find_provider_by_root_module = fun _ctx ->
   let registry = provider_registry () in
   let* provider =
-    Module_provider_registry.find_for_build
-      registry
-      (build_package "app")
-      ~root_module:"Dep_lib"
+    Module_provider_registry.find_for_build registry (build_package "app") ~root_module:"Dep_lib"
     |> Result.map_err ~fn:Error.message
   in
   match provider with
-  | Some (provider: Module_provider_registry.provider) when provider.key = Work_node.GoalKey (Goal.BuildPackage expected_dep_build) ->
-      Ok ()
+  | Some (provider: Module_provider_registry.provider) when provider.key
+  = Work_node.GoalKey (Goal.BuildPackage expected_dep_build) -> Ok ()
   | Some _ -> Error "expected provider lookup to return dependency build key"
   | None -> Error "expected provider lookup to find dependency root module"
 
 let test_missing_provider_returns_none = fun _ctx ->
   let registry = provider_registry () in
   let* provider =
-    Module_provider_registry.find_for_build
-      registry
-      (build_package "app")
-      ~root_module:"Missing"
+    Module_provider_registry.find_for_build registry (build_package "app") ~root_module:"Missing"
     |> Result.map_err ~fn:Error.message
   in
   match provider with
@@ -108,12 +104,8 @@ let tests =
     case
       "declared dependency becomes module provider"
       test_declared_dependency_becomes_module_provider;
-    case
-      "find provider by root module"
-      test_find_provider_by_root_module;
-    case
-      "missing provider returns none"
-      test_missing_provider_returns_none;
+    case "find provider by root module" test_find_provider_by_root_module;
+    case "missing provider returns none" test_missing_provider_returns_none;
   ]
 
 let main ~args = Test.Cli.main ~name:"riot_build2_module_provider_registry_tests" ~tests ~args ()

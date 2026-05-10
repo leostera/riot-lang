@@ -8,7 +8,12 @@ type 'value t = {
 }
 
 let create = fun ~store ~namespace ~serialize ~deserialize ->
-  { store; namespace; serialize; deserialize }
+  {
+    store;
+    namespace;
+    serialize;
+    deserialize;
+  }
 
 let get = fun t hash ->
   match Riot_store.Store.load_node_payload t.store ~namespace:t.namespace ~hash with
@@ -27,17 +32,12 @@ let get = fun t hash ->
 let put = fun t hash value ->
   match Serde_json.to_string t.serialize value with
   | Error error ->
-      Error (
-        Error.GraphCacheEncodeFailed {
-          namespace = t.namespace;
-          reason = Serde.Error.to_string error;
-        }
-      )
+      Error (Error.GraphCacheEncodeFailed {
+        namespace = t.namespace;
+        reason = Serde.Error.to_string error;
+      })
   | Ok payload ->
       Riot_store.Store.save_node_payload t.store ~namespace:t.namespace ~hash ~payload
       |> Result.map_err
         ~fn:(fun error ->
-          Error.StoreFailed {
-            package = None;
-            reason = Riot_store.Store.error_message error;
-          })
+          Error.StoreFailed { package = None; reason = Riot_store.Store.error_message error })

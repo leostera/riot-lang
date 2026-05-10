@@ -68,6 +68,8 @@ let config = fun t -> t.config
 
 let catalog = fun t -> t.catalog
 
+let action_results = fun t -> Action_executor.results t.action_executor
+
 let package_results = fun t -> Package_finalizer.results t.package_finalizer
 
 let action_dependency_key = fun registry ref_ ->
@@ -108,10 +110,8 @@ let plan_dependencies = fun t registry node ->
   | ActionPlan build ->
       Package_finalizer.plan_action_dependencies t.package_finalizer registry build
   | OCamlLibrary action
-  | OCamlArchive action ->
-      Ok (action_dependencies registry action)
-  | ActionExecution action ->
-      Ok (action_dependencies registry action)
+  | OCamlArchive action -> Ok (action_dependencies registry action)
+  | ActionExecution action -> Ok (action_dependencies registry action)
 
 let execute_node = fun t registry node ->
   match Work_node.kind node with
@@ -132,6 +132,5 @@ let execute_node = fun t registry node ->
   | ModulePlan build -> Module_planning.execute t.module_planning registry build
   | ActionPlan build -> Package_finalizer.execute_action_plan t.package_finalizer registry build
   | OCamlLibrary action
-  | OCamlArchive action ->
-      Action_executor.execute t.action_executor action
+  | OCamlArchive action -> Action_executor.execute t.action_executor action
   | ActionExecution action -> Action_executor.execute t.action_executor action

@@ -30,12 +30,8 @@ let execute = fun t (source: Source_analysis.t) ->
       let open Std.Result.Syntax in
       match Riot_planner.Module_graph.analyze_source source.task with
       | Ok analysis ->
-          let input_hash =
-            Source_analysis_cache.input_hash ~package:source.key.package analysis
-          in
-          let payload =
-            Source_analysis_cache.payload ~package:source.key.package analysis
-          in
+          let input_hash = Source_analysis_cache.input_hash ~package:source.key.package analysis in
+          let payload = Source_analysis_cache.payload ~package:source.key.package analysis in
           let* () = Graph_cache.put t.source_analysis_cache input_hash payload in
           ignore (ConcurrentHashMap.insert t.analyses ~key:source.key ~value:analysis);
           Ok ()

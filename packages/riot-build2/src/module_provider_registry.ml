@@ -23,10 +23,7 @@ let create = fun ~catalog () -> {
 let provider_for_dependency = fun t (build: Goal.build_package) package ->
   let provider_build = { build with package } in
   let* realized =
-    Package_catalog.realize
-      t.catalog
-      ~intent:(Goal.realization_intent build.scope)
-      package
+    Package_catalog.realize t.catalog ~intent:(Goal.realization_intent build.scope) package
   in
   Ok {
     package;
@@ -61,11 +58,7 @@ let providers_for_build = fun t (build: Goal.build_package) ->
 
 let find_for_build = fun t (build: Goal.build_package) ~root_module ->
   let* providers = providers_for_build t build in
-  Ok (
-    List.find
-      providers
-      ~fn:(fun provider -> String.equal provider.root_module root_module)
-  )
+  Ok (List.find providers ~fn:(fun provider -> String.equal provider.root_module root_module))
 
 let dependency_keys_for_build = fun t (build: Goal.build_package) ->
   providers_for_build t build

@@ -15,6 +15,8 @@ let create = fun ~store ~toolchains () -> {
   results = ConcurrentHashMap.with_capacity ~size:4_096;
 }
 
+let results = fun t -> ConcurrentHashMap.values t.results
+
 let find_result = fun t ref_ -> ConcurrentHashMap.get t.results ~key:ref_
 
 let failure = fun t ref_ ->

@@ -439,12 +439,11 @@ let test_uncached_action_reads_concrete_package_sources_without_sandbox_copy = f
       let executor = Action_executor.create ~store ~toolchains () in
       let action = copy_file_action_execution root in
       match Action_executor.execute executor action with
-      | Ok (Work_result.Complete []) -> (
+      | Ok (Work_result.Complete []) ->
           match Fs.read Path.(action.sandbox_dir / Path.v "copied.txt") with
           | Ok "package-source\n" -> Ok ()
           | Ok _ -> Error "expected copied package source content"
           | Error error -> Error ("expected copied package source: " ^ IO.error_message error)
-        )
       | Ok _ -> Error "expected package-source copy action not to request dependencies"
       | Error error -> Error (Error.message error)) with
   | Ok result -> result

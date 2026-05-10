@@ -44,18 +44,23 @@ let expand_build = fun catalog (build: Intent.build) ->
     match __tmp1 with
     | [] -> List.reverse acc
     | package :: rest ->
-      let acc =
-        List.fold_left
-          profiles
-          ~init:acc
-          ~fn:(fun acc profile ->
-            List.fold_left
-              targets
-              ~init:acc
-              ~fn:(fun acc target ->
-                Goal.BuildPackage { package; scope = build.scope; profile; target } :: acc))
-      in
-      loop_packages acc rest
+        let acc =
+          List.fold_left
+            profiles
+            ~init:acc
+            ~fn:(fun acc profile ->
+              List.fold_left
+                targets
+                ~init:acc
+                ~fn:(fun acc target ->
+                  Goal.BuildPackage {
+                    package;
+                    scope = build.scope;
+                    profile;
+                    target;
+                  } :: acc))
+        in
+        loop_packages acc rest
   in
   Ok (loop_packages [] packages)
 
@@ -67,18 +72,23 @@ let expand_test = fun catalog (test: Intent.test) ->
     match __tmp1 with
     | [] -> List.reverse acc
     | package :: rest ->
-      let acc =
-        List.fold_left
-          profiles
-          ~init:acc
-          ~fn:(fun acc profile ->
-            List.fold_left
-              targets
-              ~init:acc
-              ~fn:(fun acc target ->
-                Goal.RunTests { package; filter = test.filter; profile; target } :: acc))
-      in
-      loop_packages acc rest
+        let acc =
+          List.fold_left
+            profiles
+            ~init:acc
+            ~fn:(fun acc profile ->
+              List.fold_left
+                targets
+                ~init:acc
+                ~fn:(fun acc target ->
+                  Goal.RunTests {
+                    package;
+                    filter = test.filter;
+                    profile;
+                    target;
+                  } :: acc))
+        in
+        loop_packages acc rest
   in
   Ok (loop_packages [] packages)
 

@@ -58,8 +58,7 @@ type t = {
 }
 
 and artifact_cache = {
-  lock: Sync.Mutex.t;
-  artifacts: (string, Artifact.t) HashMap.t;
+  artifacts: (string, Artifact.t) ConcurrentHashMap.t;
 }
 
 type error =
@@ -244,30 +243,22 @@ let error_message = fun __tmp1 ->
       ^ " (cache is corrupted; try `riot clean`)"
 
 let create_artifact_cache = fun () -> {
-  lock = Sync.Mutex.create ();
-  artifacts = HashMap.create ();
+  artifacts = ConcurrentHashMap.with_capacity ~size:4_096;
 }
 
 let artifact_cache_key = fun hash -> Crypto.Digest.hex hash
 
 let cached_artifact = fun cache hash ->
   let key = artifact_cache_key hash in
-  Sync.Mutex.lock cache.lock;
-  let artifact = HashMap.get cache.artifacts ~key in
-  Sync.Mutex.unlock cache.lock;
-  artifact
+  ConcurrentHashMap.get cache.artifacts ~key
 
 let remember_artifact = fun cache (artifact: Artifact.t) ->
   let key = artifact_cache_key artifact.input_hash in
-  Sync.Mutex.lock cache.lock;
-  ignore (HashMap.insert cache.artifacts ~key ~value:artifact);
-  Sync.Mutex.unlock cache.lock
+  ignore (ConcurrentHashMap.insert cache.artifacts ~key ~value:artifact)
 
 let forget_artifact = fun cache hash ->
   let key = artifact_cache_key hash in
-  Sync.Mutex.lock cache.lock;
-  let _ = HashMap.remove cache.artifacts ~key in
-  Sync.Mutex.unlock cache.lock
+  ignore (ConcurrentHashMap.remove cache.artifacts ~key)
 
 let hash_of_hex = fun hex ->
   let hex_nibble ch =
