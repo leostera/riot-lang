@@ -1,0 +1,17 @@
+# Changelog
+
+All notable changes to `docker-client` are documented here.
+
+## 0.0.1 - 2026-05-10
+
+### Added
+
+- Added a minimal Docker Engine API client for Riot packages.
+- Added local Docker daemon configuration from `DOCKER_HOST` and `DOCKER_DEFAULT_PLATFORM`.
+- Added Unix socket and plain TCP daemon transports.
+- Added Docker image pull, container create, start, inspect, logs, remove, and ping helpers.
+- Added typed Docker port values and container port mapping helpers.
+- Added structured errors for config, transport, HTTP, Docker response, and JSON failures.
+- Added testing helpers for deterministic Docker request and inspect parser coverage.
+- Added live Docker tests for daemon ping and container lifecycle behavior.
+

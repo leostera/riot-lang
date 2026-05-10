@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "898db5d86a30f562"
+dependency_hash = "e3fa2fe39de02b2c"
 
 [[packages]]
 name = "blink"
@@ -33,6 +33,14 @@ provenance = { kind = "workspace" }
 dependencies = [{ name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
+
+[[packages]]
+name = "docker-client"
+root = "packages/docker-client"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "blink", package = { name = "blink" } }, { name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
 
 [[packages]]
 name = "dotenv"

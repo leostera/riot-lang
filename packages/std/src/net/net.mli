@@ -76,6 +76,9 @@ module Addr: module type of Addr
 (** TCP stream for connected sockets. *)
 module TcpStream: module type of Tcp_stream
 
+(** Unix-domain stream for connected sockets. *)
+module UnixStream: module type of Unix_stream
+
 (** TCP listener for accepting connections. *)
 module TcpListener: module type of Tcp_listener
 

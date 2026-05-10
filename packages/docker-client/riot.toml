@@ -1,0 +1,13 @@
+[package]
+name = "docker-client"
+version = "0.0.1"
+description = "Minimal Docker Engine API client for Riot"
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/docker_client.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+blink = { path = "../blink", version = "*" }

@@ -10,6 +10,7 @@ type t =
   | NetSocketAddr of Net.SocketAddr.error
   | NetTcpListener of Net.TcpListener.error
   | NetTcpStream of Net.TcpStream.error
+  | NetUnixStream of Net.UnixStream.error
   | NetUdpSocket of Net.UdpSocket.error
   | Process of Process.error
   | TimeSystemTime of Time.SystemTime.error
@@ -35,6 +36,8 @@ val from_net_socket_addr: Net.SocketAddr.error -> t
 val from_net_tcp_listener: Net.TcpListener.error -> t
 
 val from_net_tcp_stream: Net.TcpStream.error -> t
+
+val from_net_unix_stream: Net.UnixStream.error -> t
 
 val from_net_udp_socket: Net.UdpSocket.error -> t
 

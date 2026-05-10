@@ -31,6 +31,7 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/riot-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
 - `packages/riot-planner/AGENTS.md`: build planning and dependency graph construction
 - `packages/contentstore/AGENTS.md`: generic content-addressable storage primitives and namespaced bundle persistence
+- `packages/docker-client/AGENTS.md`: Docker Engine API client, local daemon transport, and typed Docker operations
 - `packages/dotenv/AGENTS.md`: dotenv parsing, .env profile loading, and environment application helpers
 - `packages/riot-store/AGENTS.md`: artifact store and cache layout
 - `packages/riot-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers

@@ -11,6 +11,7 @@ type t =
   | NetSocketAddr of Net.SocketAddr.error
   | NetTcpListener of Net.TcpListener.error
   | NetTcpStream of Net.TcpStream.error
+  | NetUnixStream of Net.UnixStream.error
   | NetUdpSocket of Net.UdpSocket.error
   | Process of Process.error
   | TimeSystemTime of Time.SystemTime.error
@@ -37,6 +38,8 @@ let from_net_tcp_listener = fun error -> NetTcpListener error
 
 let from_net_tcp_stream = fun error -> NetTcpStream error
 
+let from_net_unix_stream = fun error -> NetUnixStream error
+
 let from_net_udp_socket = fun error -> NetUdpSocket error
 
 let from_process = fun error -> Process error
@@ -59,6 +62,7 @@ let module_name = fun value ->
   | NetSocketAddr _ -> "net.socket_addr"
   | NetTcpListener _ -> "net.tcp_listener"
   | NetTcpStream _ -> "net.tcp_stream"
+  | NetUnixStream _ -> "net.unix_stream"
   | NetUdpSocket _ -> "net.udp_socket"
   | Process _ -> "process"
   | TimeSystemTime _ -> "time.system_time"
@@ -75,6 +79,7 @@ let system = fun value ->
   | NetAddr (Net.Addr.System error) -> Some error
   | NetTcpListener (Net.TcpListener.System error) -> Some error
   | NetTcpStream (Net.TcpStream.System error) -> Some error
+  | NetUnixStream (Net.UnixStream.System error) -> Some error
   | NetUdpSocket (Net.UdpSocket.System error) -> Some error
   | Process (Process.System error) -> Some error
   | Process (Process.File (Fs.File.System error)) -> Some error
@@ -94,6 +99,7 @@ let detail_to_string = fun value ->
   | NetSocketAddr error -> Net.SocketAddr.error_to_string error
   | NetTcpListener error -> Net.TcpListener.error_to_string error
   | NetTcpStream error -> Net.TcpStream.error_to_string error
+  | NetUnixStream error -> Net.UnixStream.error_to_string error
   | NetUdpSocket error -> Net.UdpSocket.error_to_string error
   | Process error -> Process.error_to_string error
   | TimeSystemTime error -> Time.SystemTime.error_to_string error

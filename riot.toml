@@ -10,6 +10,7 @@ members = [
   "packages/markdown",
   "packages/colors",
   "packages/contentstore",
+  "packages/docker-client",
   "packages/dotenv",
   "packages/fixme",
   "packages/gooey",

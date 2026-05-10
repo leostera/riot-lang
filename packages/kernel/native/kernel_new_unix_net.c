@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include "kernel_new_errors.h"
@@ -488,6 +489,58 @@ CAMLprim value kernel_new_net_tcp_stream_connect(value ip_val, value port_val) {
   }
 
   if (connect(fd, (struct sockaddr *)&storage, addr_len) == 0) {
+    tuple = caml_alloc_tuple(2);
+    Store_field(tuple, 0, Val_int(fd));
+    Store_field(tuple, 1, Val_int(KERNEL_NEW_NET_CONNECT_CONNECTED));
+    result = kernel_new_result_ok(tuple);
+    CAMLreturn(result);
+  }
+
+  if (errno == EINPROGRESS) {
+    tuple = caml_alloc_tuple(2);
+    Store_field(tuple, 0, Val_int(fd));
+    Store_field(tuple, 1, Val_int(KERNEL_NEW_NET_CONNECT_IN_PROGRESS));
+    result = kernel_new_result_ok(tuple);
+    CAMLreturn(result);
+  }
+
+  {
+    int saved_errno = errno;
+    close(fd);
+    errno = saved_errno;
+    CAMLreturn(kernel_new_result_errno());
+  }
+}
+
+CAMLprim value kernel_new_net_unix_stream_connect(value path_val) {
+  CAMLparam1(path_val);
+  CAMLlocal2(tuple, result);
+
+  const char *path = String_val(path_val);
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+
+  size_t path_len = strlen(path);
+  if (path_len >= sizeof(addr.sun_path)) {
+    errno = ENAMETOOLONG;
+    CAMLreturn(kernel_new_result_errno());
+  }
+  memcpy(addr.sun_path, path, path_len + 1);
+
+  int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (fd == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  if (kernel_new_net_configure_socket(fd) == -1) {
+    int saved_errno = errno;
+    close(fd);
+    errno = saved_errno;
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
     tuple = caml_alloc_tuple(2);
     Store_field(tuple, 0, Val_int(fd));
     Store_field(tuple, 1, Val_int(KERNEL_NEW_NET_CONNECT_CONNECTED));
