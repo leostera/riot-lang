@@ -28,7 +28,6 @@
    Extensible variant type for telemetry events. Any module can extend this
    with their own events.
 *)
-
 module Event: sig
   type t = ..
 end
@@ -41,10 +40,8 @@ module Span: sig
 
   module Attributes: sig
     type 'a key = 'a Collections.TypedKeyHashMap.key
-
     type binding = Collections.TypedKeyHashMap.binding =
       | Binding: 'a key * 'a -> binding
-
     type t
 
     val create: unit -> t
@@ -71,13 +68,10 @@ module Span: sig
   (** Extra span metadata stored in a typed-key map. *)
   type attribute = Attributes.binding
   type attributes = Attributes.t
-
   type status =
     | Succeeded
     | Failed of exn
-
   type t
-
   type lifecycle =
     | Started of t
     | Completed of {
@@ -88,9 +82,13 @@ module Span: sig
       }
 
   val id: t -> id
+
   val id_to_string: id -> string
+
   val equal_id: id -> id -> bool
+
   val parent_id: t -> id option
+
   val name: t -> string
 
   (** Return a copy of the span attributes. *)

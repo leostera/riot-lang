@@ -7,9 +7,7 @@ open Riot_model
 module Manifest = Manifest
 
 type t
-
 (** Abstract type representing a store *)
-
 type node_payload_namespace =
   | DependencyResolution
   | ExternalDependencyReady
@@ -133,9 +131,12 @@ val get: t -> Std.Crypto.hash -> Artifact.t option
 val get_package: t -> Std.Crypto.hash -> Artifact.t option
 
 (** Check if we have a cached package artifact for this hash and validate stored files/exports. *)
-(** Load cached package artifact metadata without validating stored files/exports.
-    Use this for planning-only cache checks. Materialization paths should use
-    [get_package] so corrupt cache entries are detected before copying. *)
+
+(**
+   Load cached package artifact metadata without validating stored files/exports.
+   Use this for planning-only cache checks. Materialization paths should use
+   [get_package] so corrupt cache entries are detected before copying.
+*)
 val get_package_metadata: t -> Std.Crypto.hash -> Artifact.t option
 
 (** Check if we have a cached action artifact for this hash. *)

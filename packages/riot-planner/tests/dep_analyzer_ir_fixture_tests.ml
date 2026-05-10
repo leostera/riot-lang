@@ -41,10 +41,11 @@ let render_actual = fun ~fixture_path ~fixture_relpath ->
     ~source:fixture_relpath
     ~source_hash:(Crypto.hash_string source)
     parse_result with
-  | Ok summary ->
-      (match Serde_json.to_string Dep_analyzer.source_summary_serializer summary with
+  | Ok summary -> (
+      match Serde_json.to_string Dep_analyzer.source_summary_serializer summary with
       | Ok json -> pretty_json json
-      | Error err -> "IR serialization failed: " ^ Serde.Error.to_string err ^ "\n")
+      | Error err -> "IR serialization failed: " ^ Serde.Error.to_string err ^ "\n"
+    )
   | Error (Dep_analyzer.Parse_diagnostics diagnostics) -> diagnostics_to_string diagnostics
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->

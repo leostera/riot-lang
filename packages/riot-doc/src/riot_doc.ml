@@ -373,8 +373,7 @@ let dependency_packages_for = fun request (package: Package.t) ->
     ~fn:(fun (dependency: Package.dependency) ->
       request.workspace.Workspace.packages
       |> List.find
-        ~fn:(fun (manifest: Package_manifest.t) ->
-          Package_name.equal manifest.name dependency.name)
+        ~fn:(fun (manifest: Package_manifest.t) -> Package_name.equal manifest.name dependency.name)
       |> Option.map ~fn:(Package_manifest.realize ~intent:Package.Runtime))
 
 let shared_assets_dir = fun request -> Path.(output_root_for_request request / Path.v "_shared")
@@ -638,12 +637,7 @@ let package_doc_of_sources = fun ~package ~version ~dependencies sources ->
       loop [] sources
 
 let run_for_package = fun
-  ~on_event
-  ~store
-  ~cache_allowed
-  ~request
-  ~(package:Riot_model.Package.t)
-  ~lockfile_opt ->
+  ~on_event ~store ~cache_allowed ~request ~(package:Riot_model.Package.t) ~lockfile_opt ->
   let* version = output_version ~release:request.release package in
   let dependency_packages = dependency_packages_for request package in
   let output_dir =
@@ -788,14 +782,6 @@ let run = fun ?on_event (request: request) ->
     ~init:(Ok [])
     ~fn:(fun acc package ->
       let* summaries = acc in
-      let* summary =
-        run_for_package
-          ~on_event
-          ~store
-          ~cache_allowed
-          ~request
-          ~package
-          ~lockfile_opt
-      in
+      let* summary = run_for_package ~on_event ~store ~cache_allowed ~request ~package ~lockfile_opt in
       Ok (summary :: summaries))
   |> Result.map ~fn:List.reverse

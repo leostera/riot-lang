@@ -766,21 +766,23 @@ public = true
             Fs.canonicalize root
             |> Result.expect ~msg:"expected temp repo root to canonicalize"
           in
-          (match Riot_deps.Git_provenance.discover ~package_root with
-          | Error err ->
-              Error ("expected git provenance discovery to succeed: "
-              ^ Riot_deps.Git_provenance.message err)
-          | Ok provenance ->
-              if
-                String.equal provenance.locator "github.com/example/riot/packages/demo"
-                && Path.equal provenance.repository_root canonical_root
-                && provenance.package_subdir = Some (Path.v "packages/demo")
-                && String.equal provenance.origin_url "https://github.com/example/riot.git"
-                && String.length provenance.selector = 40
-              then
-                Ok ()
-              else
-                Error "unexpected nested git provenance")
+          (
+            match Riot_deps.Git_provenance.discover ~package_root with
+            | Error err ->
+                Error ("expected git provenance discovery to succeed: "
+                ^ Riot_deps.Git_provenance.message err)
+            | Ok provenance ->
+                if
+                  String.equal provenance.locator "github.com/example/riot/packages/demo"
+                  && Path.equal provenance.repository_root canonical_root
+                  && provenance.package_subdir = Some (Path.v "packages/demo")
+                  && String.equal provenance.origin_url "https://github.com/example/riot.git"
+                  && String.length provenance.selector = 40
+                then
+                  Ok ()
+                else
+                  Error "unexpected nested git provenance"
+          )
       | Error err -> Error err)
 
 let test_git_provenance_discovers_repo_root_locator = fun _ctx ->
@@ -813,21 +815,23 @@ public = true
             Fs.canonicalize root
             |> Result.expect ~msg:"expected temp repo root to canonicalize"
           in
-          (match Riot_deps.Git_provenance.discover ~package_root:root with
-          | Error err ->
-              Error ("expected git provenance discovery to succeed: "
-              ^ Riot_deps.Git_provenance.message err)
-          | Ok provenance ->
-              if
-                String.equal provenance.locator "github.com/example/demo"
-                && Path.equal provenance.repository_root canonical_root
-                && provenance.package_subdir = None
-                && String.equal provenance.origin_url "git@github.com:example/demo.git"
-                && String.length provenance.selector = 40
-              then
-                Ok ()
-              else
-                Error "unexpected root git provenance")
+          (
+            match Riot_deps.Git_provenance.discover ~package_root:root with
+            | Error err ->
+                Error ("expected git provenance discovery to succeed: "
+                ^ Riot_deps.Git_provenance.message err)
+            | Ok provenance ->
+                if
+                  String.equal provenance.locator "github.com/example/demo"
+                  && Path.equal provenance.repository_root canonical_root
+                  && provenance.package_subdir = None
+                  && String.equal provenance.origin_url "git@github.com:example/demo.git"
+                  && String.length provenance.selector = 40
+                then
+                  Ok ()
+                else
+                  Error "unexpected root git provenance"
+          )
       | Error err -> Error err)
 
 let test_git_provenance_reports_non_git_repository = fun _ctx ->
@@ -874,8 +878,8 @@ public = true
           [ "add"; "." ];
           [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init"; ];
         ] with
-      | Ok _ ->
-          (match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
+      | Ok _ -> (
+          match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
           | Error err -> Error err
           | Ok selector ->
               let package = make_package ~name:"demo" ~path:package_root () in
@@ -913,26 +917,28 @@ public = true
                   (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
               in
               let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-              (match Riot_deps.Publisher.publish
-                ~registry
-                ~target_dir_root:root
-                ~publishing_workspace_packages:[]
-                ~package
-                ~api_token:"root-secret" with
-              | Error err ->
-                  Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
-              | Ok published ->
-                  if
-                    String.equal published.package_name "demo"
-                    && List.any
-                      !requests
-                      ~fn:(fun request ->
-                        String.equal request.method_ "POST" && String.length request.url > 0)
-                  then
-                    Ok ()
-                  else
-                    Error "unexpected publish request discovered from git provenance")
-          )
+              (
+                match Riot_deps.Publisher.publish
+                  ~registry
+                  ~target_dir_root:root
+                  ~publishing_workspace_packages:[]
+                  ~package
+                  ~api_token:"root-secret" with
+                | Error err ->
+                    Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
+                | Ok published ->
+                    if
+                      String.equal published.package_name "demo"
+                      && List.any
+                        !requests
+                        ~fn:(fun request ->
+                          String.equal request.method_ "POST" && String.length request.url > 0)
+                    then
+                      Ok ()
+                    else
+                      Error "unexpected publish request discovered from git provenance"
+              )
+        )
       | Error err -> Error err)
 
 let test_publisher_prepare_publish_discovers_git_provenance_without_registry = fun _ctx ->
@@ -960,31 +966,34 @@ public = true
           [ "remote"; "add"; "origin"; "https://github.com/example/riot.git"; ];
           [ "add"; "." ];
           [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init"; ];
-	        ] with
-	      | Ok _ ->
-	          (match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
-	          | Error err -> Error err
-	          | Ok selector ->
-	              let package = make_package ~name:"demo" ~path:package_root () in
-	              let registry = Pkgs_ml.Registry.filesystem (make_registry_cache ()) in
-	              (match Riot_deps.Publisher.prepare_publish
-	                ~registry
-	                ~target_dir_root:root
-	                ~publishing_workspace_packages:[]
-	                ~package with
-              | Error err ->
-                  Error ("expected prepare_publish to succeed: " ^ Riot_deps.Publisher.message err)
-              | Ok prepared ->
-                  if
-                    has_name "demo" prepared.package.name
-                    && String.equal prepared.locator "github.com/example/riot/packages/demo"
-                    && String.equal prepared.selector selector
-	                    && String.length (Path.to_string prepared.artifact_path) > 0
-	                  then
-	                    Ok ()
-	                  else
-	                    Error "unexpected prepared publish payload"))
-	      | Error err -> Error err)
+        ] with
+      | Ok _ -> (
+          match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
+          | Error err -> Error err
+          | Ok selector ->
+              let package = make_package ~name:"demo" ~path:package_root () in
+              let registry = Pkgs_ml.Registry.filesystem (make_registry_cache ()) in
+              (
+                match Riot_deps.Publisher.prepare_publish
+                  ~registry
+                  ~target_dir_root:root
+                  ~publishing_workspace_packages:[]
+                  ~package with
+                | Error err ->
+                    Error ("expected prepare_publish to succeed: " ^ Riot_deps.Publisher.message err)
+                | Ok prepared ->
+                    if
+                      has_name "demo" prepared.package.name
+                      && String.equal prepared.locator "github.com/example/riot/packages/demo"
+                      && String.equal prepared.selector selector
+                      && String.length (Path.to_string prepared.artifact_path) > 0
+                    then
+                      Ok ()
+                    else
+                      Error "unexpected prepared publish payload"
+              )
+        )
+      | Error err -> Error err)
 
 let test_lock_deps_projects_workspace_packages = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in

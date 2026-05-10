@@ -136,15 +136,17 @@ let test_cache_promotion_workflow = fun _ctx ->
       | Ok () ->
           let promoted1 = Path.(target_dir / Path.v "lib.cma") in
           let promoted2 = Path.(target_dir / Path.v "lib.cmxa") in
-          (match (Fs.exists promoted1, Fs.exists promoted2) with
-          | (Ok true, Ok true) ->
-              let content1 = Result.expect (Fs.read_to_string promoted1) ~msg:"Read 1 failed" in
-              let content2 = Result.expect (Fs.read_to_string promoted2) ~msg:"Read 2 failed" in
-              if String.equal content1 "archive1" && String.equal content2 "archive2" then
-                Ok ()
-              else
-                Error "Promoted content mismatch"
-          | _ -> Error "Promoted files not found")
+          (
+            match (Fs.exists promoted1, Fs.exists promoted2) with
+            | (Ok true, Ok true) ->
+                let content1 = Result.expect (Fs.read_to_string promoted1) ~msg:"Read 1 failed" in
+                let content2 = Result.expect (Fs.read_to_string promoted2) ~msg:"Read 2 failed" in
+                if String.equal content1 "archive1" && String.equal content2 "archive2" then
+                  Ok ()
+                else
+                  Error "Promoted content mismatch"
+            | _ -> Error "Promoted files not found"
+          )
       | Error e -> Error ("Promotion failed: " ^ Riot_store.Store.error_message e)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

@@ -49,7 +49,6 @@ and planning_breakdown = {
   plan_bundle_cache_hit: bool;
   module_plan_duration: Time.Duration.t;
 }
-
 type input_hash_cache
 
 val create_input_hash_cache: unit -> input_hash_cache

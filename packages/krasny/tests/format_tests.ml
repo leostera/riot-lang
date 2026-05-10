@@ -164,7 +164,18 @@ let test_format_returns_the_original_source_for_a_simple_implementation = fun _c
     |> Krasny.format
     |> Result.expect ~msg:"simple implementations should format"
   in
-  Test.assert_equal ~expected:source ~actual;
+  let expected =
+    {ocaml|let keep value =
+  match value with
+  | Some body when (
+    match ExprView.view body with
+    | LocalOpen _ -> true
+    | _ -> false
+  ) -> true
+  | _ -> false
+|ocaml}
+  in
+  Test.assert_equal ~expected ~actual;
   Ok ()
 
 let test_format_source_uses_the_public_krasny_parse_facade = fun _ctx ->
@@ -196,6 +207,61 @@ let check=(pos+pattern_len)>(String.length str)
     |> Krasny.syntax_hash
   in
   Test.assert_equal ~expected ~actual;
+  Ok ()
+
+let test_syntax_hash_normalizes_literal_separators = fun _ctx ->
+  let compact =
+    parse_ml
+      {ocaml|let small_cache_file_threshold = 64 * 1024
+let render_duration_compact ms = if ms >= 1000.0 then ms /. 1000.0 else ms
+|ocaml}
+    |> Krasny.syntax_hash
+  in
+  let grouped =
+    parse_ml
+      {ocaml|let small_cache_file_threshold = 64 * 1_024
+let render_duration_compact ms = if ms >= 1_000.0 then ms /. 1_000.0 else ms
+|ocaml}
+    |> Krasny.syntax_hash
+  in
+  Test.assert_equal ~expected:compact ~actual:grouped;
+  Ok ()
+
+let test_syntax_hash_normalizes_comment_layout = fun _ctx ->
+  let compact =
+    parse_ml
+      {ocaml|(** Hash package metadata and source file fingerprints into a Sha256 hasher state.
+    Source file fingerprints use filesystem metadata instead of reading file contents. *)
+let hash = ()
+
+let wait = fun () ->
+  (* Queue operations are lock-free. The sleep lock only protects the
+     condition-variable transition: after publishing [sleeping], the worker
+     rechecks the queue so an enqueue either becomes visible here or signals
+     the parked worker. *)
+  ()
+|ocaml}
+    |> Krasny.syntax_hash
+  in
+  let expanded =
+    parse_ml
+      {ocaml|(**
+   Hash package metadata and source file fingerprints into a Sha256 hasher state.
+   Source file fingerprints use filesystem metadata instead of reading file contents.
+*)
+let hash = ()
+
+let wait = fun () ->
+  (* Queue operations are lock-free. The sleep lock only protects the
+     condition-variable transition: after publishing [sleeping], the worker
+     rechecks the queue so an enqueue either becomes visible here or signals
+     the parked worker.
+  *)
+  ()
+|ocaml}
+    |> Krasny.syntax_hash
+  in
+  Test.assert_equal ~expected:compact ~actual:expanded;
   Ok ()
 
 let test_format_adds_a_final_newline_to_non_empty_output = fun _ctx ->
@@ -1397,6 +1463,20 @@ let event = fun state -> `Paste state.paste_buffer
 let constrained = fun state -> `Constrained state.ranges
 
 let events = fun state events -> (`Paste state.paste_buffer) :: events
+|ocaml}
+
+let test_write_keeps_deref_field_access_bare = fun ctx ->
+  let source = {ocaml|let update node =
+  !node.self_samples <- !node.self_samples + 1
+|ocaml}
+  in
+  let parsed = parse_ml source in
+  let actual = capture_write parsed in
+  Test.Snapshot.assert_inline_text
+    ~ctx
+    ~actual
+    ~expected:{ocaml|let update node =
+  !node.self_samples <- !node.self_samples + 1
 |ocaml}
 
 let test_write_keeps_qualified_record_field_accesses = fun ctx ->
@@ -3890,6 +3970,125 @@ Ok())
   Test.assert_equal ~expected:(Krasny.syntax_hash original) ~actual:(Krasny.syntax_hash with_parens);
   Ok ()
 
+let test_format_preserves_multiline_match_branch_parens = fun _ctx ->
+  let source =
+    {ocaml|let parse headers =
+  match headers with
+  | [] -> Error "missing"
+  | header :: rest -> (
+      match String.split_on_char ':' header with
+      | name :: value -> Ok (name, value)
+      | _ -> parse rest
+    )
+  | [] -> Error "unreachable"
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"multiline match branch parens should format"
+  in
+  let expected =
+    {ocaml|let parse headers =
+  match headers with
+  | [] -> Error "missing"
+  | header :: rest -> (
+      match String.split_on_char ':' header with
+      | name :: value -> Ok (name, value)
+      | _ -> parse rest
+    )
+  | [] -> Error "unreachable"
+|ocaml}
+  in
+  Test.assert_equal ~expected ~actual;
+  Ok ()
+
+let test_format_preserves_parenthesized_match_branch_comments = fun _ctx ->
+  let source =
+    {ocaml|let parse json =
+  match decode json with
+  | Ok value ->
+      (* Verify it has expected structure. *)
+      (match value with
+      | Data.Json.Object fields -> Ok fields
+      | _ -> Error "not an object")
+  | Error err -> Error err
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"parenthesized match branch comments should format"
+  in
+  Test.assert_true (String.contains actual "Verify it has expected structure");
+  Test.assert_equal
+    ~expected:(
+      parse_ml source
+      |> Krasny.syntax_hash
+    )
+    ~actual:(
+      parse_ml actual
+      |> Krasny.syntax_hash
+    );
+  Ok ()
+
+let test_syntax_hash_keeps_match_branch_parens_significant = fun _ctx ->
+  let bare =
+    parse_ml
+      {ocaml|let parse headers =
+  match headers with
+  | [] -> Error "missing"
+  | header :: rest ->
+      match String.split_on_char ':' header with
+      | name :: value -> Ok (name, value)
+      | _ -> parse rest
+|ocaml}
+  in
+  let parenthesized =
+    parse_ml
+      {ocaml|let parse headers =
+  match headers with
+  | [] -> Error "missing"
+  | header :: rest -> (
+      match String.split_on_char ':' header with
+      | name :: value -> Ok (name, value)
+      | _ -> parse rest
+    )
+|ocaml}
+  in
+  Test.assert_false (String.equal (Krasny.syntax_hash bare) (Krasny.syntax_hash parenthesized));
+  Ok ()
+
+let test_format_preserves_multiline_match_guard_parens = fun _ctx ->
+  let source =
+    {ocaml|let keep value =
+  match value with
+  | Some body when (
+      match ExprView.view body with
+      | LocalOpen _ -> true
+      | _ -> false
+    ) -> true
+  | _ -> false
+|ocaml}
+  in
+  let actual =
+    parse_ml source
+    |> Krasny.format
+    |> Result.expect ~msg:"multiline match guard parens should format"
+  in
+  Test.assert_true (String.contains actual "when (");
+  Test.assert_true (String.contains actual "\n  ) -> true");
+  Test.assert_equal
+    ~expected:(
+      parse_ml source
+      |> Krasny.syntax_hash
+    )
+    ~actual:(
+      parse_ml actual
+      |> Krasny.syntax_hash
+    );
+  Ok ()
+
 let test_syntax_hash_normalizes_tuple_edge_parens = fun _ctx ->
   let parenthesized = parse_ml {ocaml|let pair=(left,right)
 |ocaml}
@@ -4960,6 +5159,8 @@ let tests =
     case
       "syntax hash normalizes formatter-safe punctuation"
       test_syntax_hash_normalizes_formatter_safe_punctuation;
+    case "syntax hash normalizes literal separators" test_syntax_hash_normalizes_literal_separators;
+    case "syntax hash normalizes comment layout" test_syntax_hash_normalizes_comment_layout;
     case
       "format adds a final newline to non-empty output"
       test_format_adds_a_final_newline_to_non_empty_output;
@@ -5105,6 +5306,7 @@ let tests =
     case
       "write keeps field access bound to polyvariant payloads"
       test_write_keeps_field_access_bound_to_polyvariant_payloads;
+    case "write keeps deref field access bare" test_write_keeps_deref_field_access_bare;
     case
       "write keeps qualified record field accesses"
       test_write_keeps_qualified_record_field_accesses;
@@ -5490,6 +5692,18 @@ let tests =
     case
       "syntax hash normalizes commented pipeline parens"
       test_syntax_hash_normalizes_commented_pipeline_parens;
+    case
+      "format preserves multiline match branch parens"
+      test_format_preserves_multiline_match_branch_parens;
+    case
+      "format preserves parenthesized match branch comments"
+      test_format_preserves_parenthesized_match_branch_comments;
+    case
+      "syntax hash keeps match branch parens significant"
+      test_syntax_hash_keeps_match_branch_parens_significant;
+    case
+      "format preserves multiline match guard parens"
+      test_format_preserves_multiline_match_guard_parens;
     case "syntax hash normalizes tuple edge parens" test_syntax_hash_normalizes_tuple_edge_parens;
     case
       "syntax hash normalizes leading variant pipes"

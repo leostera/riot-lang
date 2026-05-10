@@ -55,7 +55,9 @@ and 'ctx enter_type_declaration = 'ctx t -> A.TypeDeclaration.t -> 'ctx t * acti
 and 'ctx enter_module_declaration = 'ctx t -> A.ModuleDeclaration.t -> 'ctx t * action
 
 and 'ctx enter_module_functor_parameter =
-  'ctx t -> A.ModuleDeclaration.Member.functor_parameter -> 'ctx t * action
+  'ctx t ->
+  A.ModuleDeclaration.Member.functor_parameter ->
+  'ctx t * action
 
 and 'ctx enter_module_type_declaration = 'ctx t -> A.ModuleTypeDeclaration.t -> 'ctx t * action
 

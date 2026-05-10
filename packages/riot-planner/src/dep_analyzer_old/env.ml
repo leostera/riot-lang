@@ -45,14 +45,12 @@ let merge = fun left right ->
   List.fold_left
     right
     ~init:left
-    ~fn:(fun env (name, node) -> add name node env)
+    ~fn:(fun env (name, node) ->
+      add name node env)
 
 let rec rebind = fun free_names ->
   fun (Node (_, children)) ->
-    Node (
-      free_names,
-      List.map children ~fn:(fun (name, child) -> (name, rebind free_names child))
-    )
+    Node (free_names, List.map children ~fn:(fun (name, child) -> (name, rebind free_names child)))
 
 let rebind_exports = fun free_names exports ->
   List.map

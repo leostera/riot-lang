@@ -4,7 +4,6 @@ type mode =
   | Reference
   | Link
   | Copy
-
 type t = {
   source: Path.t;
   destination: Path.t;

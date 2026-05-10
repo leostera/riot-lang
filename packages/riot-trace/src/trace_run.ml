@@ -6,15 +6,18 @@ type perf_options = Riot_model.Workspace_operational_config.perf_trace_policy = 
   call_graph: string option;
   call_graph_stack_size: int option;
 }
+
 type xctrace_options = Riot_model.Workspace_operational_config.xctrace_trace_policy = {
   template_: string option;
   time_limit: string option;
   window: string option;
 }
+
 type trace_options = {
   perf: perf_options;
   xctrace: xctrace_options;
 }
+
 type output_policy =
   | Fail_if_exists
   | Overwrite
@@ -64,15 +67,8 @@ type error =
       path: Path.t;
       reason: string;
     }
-  | ProfilerUnavailable of {
-      profiler: string;
-      reason: string;
-    }
-  | UnsupportedProfilerOption of {
-      profiler: string;
-      option: string;
-      reason: string;
-    }
+  | ProfilerUnavailable of { profiler: string; reason: string }
+  | UnsupportedProfilerOption of { profiler: string; option: string; reason: string }
   | OutputAlreadyExists of Path.t
   | ProcessExited of int
   | SystemError of string
@@ -85,10 +81,7 @@ let default_options = {
 }
 
 let unavailable_error = fun (unavailable: Profiler.unavailable) ->
-  ProfilerUnavailable {
-    profiler = unavailable.profiler;
-    reason = unavailable.reason;
-  }
+  ProfilerUnavailable { profiler = unavailable.profiler; reason = unavailable.reason }
 
 let error_message = fun __tmp1 ->
   match __tmp1 with
@@ -109,7 +102,12 @@ let error_message = fun __tmp1 ->
 let event_to_json = fun __tmp1 ->
   match __tmp1 with
   | Build event -> Riot_build.Event.to_json event
-  | TracingBinary { package; binary; profiler; output } ->
+  | TracingBinary {
+      package;
+      binary;
+      profiler;
+      output;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "TracingBinary");
         ("package", Data.Json.String (Riot_model.Package_name.to_string package));
@@ -117,7 +115,12 @@ let event_to_json = fun __tmp1 ->
         ("profiler", Data.Json.String profiler);
         ("output", Data.Json.String (Path.to_string output));
       ])
-  | TracingExternalBinary { path; binary; profiler; output } ->
+  | TracingExternalBinary {
+      path;
+      binary;
+      profiler;
+      output;
+    } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "TracingExternalBinary");
         ("path", Data.Json.String (Path.to_string path));
@@ -133,11 +136,10 @@ let ensure_trace_output_parent = fun output ->
       Fs.create_dir_all parent
       |> Result.map_err
         ~fn:(fun err ->
-          SystemError
-            ("failed to create trace output directory '"
-            ^ Path.to_string parent
-            ^ "': "
-            ^ IO.error_message err))
+          SystemError ("failed to create trace output directory '"
+          ^ Path.to_string parent
+          ^ "': "
+          ^ IO.error_message err))
 
 let option_arg = fun name value ->
   match value with
@@ -166,11 +168,10 @@ let inspect_output_exists = fun output ->
   Fs.exists output
   |> Result.map_err
     ~fn:(fun err ->
-      SystemError
-        ("failed to inspect trace output path '"
-        ^ Path.to_string output
-        ^ "': "
-        ^ IO.error_message err))
+      SystemError ("failed to inspect trace output path '"
+      ^ Path.to_string output
+      ^ "': "
+      ^ IO.error_message err))
 
 let remove_existing_output = fun output ->
   let remove metadata =
@@ -183,11 +184,10 @@ let remove_existing_output = fun output ->
   |> Result.and_then ~fn:remove
   |> Result.map_err
     ~fn:(fun err ->
-      SystemError
-        ("failed to remove existing trace output '"
-        ^ Path.to_string output
-        ^ "': "
-        ^ IO.error_message err))
+      SystemError ("failed to remove existing trace output '"
+      ^ Path.to_string output
+      ^ "': "
+      ^ IO.error_message err))
 
 let prepare_trace_output = fun ~profiler trace ->
   let* exists = inspect_output_exists trace.output in
@@ -207,12 +207,11 @@ let prepare_trace_output = fun ~profiler trace ->
       match profiler with
       | Profiler.Xctrace -> Ok exists
       | Profiler.Perf ->
-          Error
-            (UnsupportedProfilerOption {
-              profiler = "perf";
-              option = "--append";
-              reason = "perf traces are written as a single perf.data file";
-            })
+          Error (UnsupportedProfilerOption {
+            profiler = "perf";
+            option = "--append";
+            reason = "perf traces are written as a single perf.data file";
+          })
       | Profiler.Auto ->
           Error (ProfilerUnavailable { profiler = "auto"; reason = "unresolved profiler" })
     )
@@ -221,17 +220,15 @@ let ensure_profiler_supported_on_host = fun profiler ->
   let host = Riot_model.Riot_dirs.host_target () in
   match profiler with
   | Profiler.Perf when not (String.equal host.Riot_model.Target.os "linux") ->
-      Error
-        (ProfilerUnavailable {
-          profiler = "perf";
-          reason = "perf recording is only supported on Linux hosts in this prototype";
-        })
+      Error (ProfilerUnavailable {
+        profiler = "perf";
+        reason = "perf recording is only supported on Linux hosts in this prototype";
+      })
   | Profiler.Xctrace when not (String.equal host.Riot_model.Target.os "darwin") ->
-      Error
-        (ProfilerUnavailable {
-          profiler = "xctrace";
-          reason = "xctrace recording is only supported on Darwin hosts";
-        })
+      Error (ProfilerUnavailable {
+        profiler = "xctrace";
+        reason = "xctrace recording is only supported on Darwin hosts";
+      })
   | Profiler.Auto ->
       Error (ProfilerUnavailable { profiler = "auto"; reason = "unresolved profiler" })
   | Profiler.Perf
@@ -249,12 +246,11 @@ let preflight_output = fun ~profiler trace ->
       match profiler with
       | Profiler.Xctrace -> Ok ()
       | Profiler.Perf ->
-          Error
-            (UnsupportedProfilerOption {
-              profiler = "perf";
-              option = "--append";
-              reason = "perf traces are written as a single perf.data file";
-            })
+          Error (UnsupportedProfilerOption {
+            profiler = "perf";
+            option = "--append";
+            reason = "perf traces are written as a single perf.data file";
+          })
       | Profiler.Auto ->
           Error (ProfilerUnavailable { profiler = "auto"; reason = "unresolved profiler" })
     )
@@ -268,7 +264,7 @@ let preflight = fun (trace: trace_request) ->
   let* () = ensure_profiler_supported_on_host profiler in
   preflight_output ~profiler trace
 
-let profiler_command = fun ~(binary_path:Path.t) ~(args:string list) (trace:trace_request) ->
+let profiler_command = fun ~(binary_path:Path.t) ~(args:string list) (trace: trace_request) ->
   let* () = ensure_trace_output_parent trace.output in
   let output = Path.to_string trace.output in
   let* profiler =
@@ -283,20 +279,18 @@ let profiler_command = fun ~(binary_path:Path.t) ~(args:string list) (trace:trac
         Profiler.to_string profiler,
         Command.make
           "perf"
-          ~args:(
-            [
-              "record";
-              "--freq";
-              perf_frequency trace.options.perf;
-              "--call-graph";
-              perf_call_graph trace.options.perf;
-              "--output";
-              output;
-              "--";
-              Path.to_string binary_path;
-            ]
-            @ args
-          )
+          ~args:([
+            "record";
+            "--freq";
+            perf_frequency trace.options.perf;
+            "--call-graph";
+            perf_call_graph trace.options.perf;
+            "--output";
+            output;
+            "--";
+            Path.to_string binary_path;
+          ]
+          @ args)
       )
   | Profiler.Xctrace ->
       let append_args =
@@ -309,28 +303,19 @@ let profiler_command = fun ~(binary_path:Path.t) ~(args:string list) (trace:trac
         Profiler.to_string profiler,
         Command.make
           "xcrun"
-          ~args:(
-            [
-              "xctrace";
-              "record";
-              "--template";
-              xctrace_template trace.options.xctrace;
-              "--output";
-              output;
-            ]
-            @ option_arg "--time-limit" trace.options.xctrace.time_limit
-            @ option_arg "--window" trace.options.xctrace.window
-            @ append_args
-            @ [
-              "--no-prompt";
-              "--target-stdout";
-              "-";
-              "--launch";
-              "--";
-              Path.to_string binary_path;
-            ]
-            @ args
-          )
+          ~args:([
+            "xctrace";
+            "record";
+            "--template";
+            xctrace_template trace.options.xctrace;
+            "--output";
+            output;
+          ]
+          @ option_arg "--time-limit" trace.options.xctrace.time_limit
+          @ option_arg "--window" trace.options.xctrace.window
+          @ append_args
+          @ [ "--no-prompt"; "--target-stdout"; "-"; "--launch"; "--"; Path.to_string binary_path; ]
+          @ args)
       )
   | Profiler.Auto ->
       Error (ProfilerUnavailable { profiler = "auto"; reason = "unresolved profiler" })
@@ -353,32 +338,36 @@ let ensure_external_binary_path = fun path ->
       else
         Error (BinaryPathInvalid { path; reason = "file is not executable" })
 
-let run_built_binary = fun ~on_event ~(trace:trace_request) (built:Riot_run.built_binary) ->
+let run_built_binary = fun ~on_event ~(trace:trace_request) (built: Riot_run.built_binary) ->
   let* (profiler, cmd) = profiler_command ~binary_path:built.path ~args:built.args trace in
   on_event
-    (TracingBinary {
-      package = built.package_name;
-      binary = built.binary_name;
-      profiler;
-      output = trace.output;
-    });
+    (
+      TracingBinary {
+        package = built.package_name;
+        binary = built.binary_name;
+        profiler;
+        output = trace.output;
+      }
+    );
   match Command.status cmd with
   | Ok 0 -> Ok ()
   | Ok code -> Error (ProcessExited code)
   | Error (Command.SystemError msg) -> Error (SystemError msg)
 
-let run_external_binary = fun ~on_event (request:binary_run_request) ->
+let run_external_binary = fun ~on_event (request: binary_run_request) ->
   let* () = ensure_external_binary_path request.binary_path in
   let* (profiler, cmd) =
     profiler_command ~binary_path:request.binary_path ~args:request.args request.trace
   in
   on_event
-    (TracingExternalBinary {
-      path = request.binary_path;
-      binary = request.binary_name;
-      profiler;
-      output = request.trace.output;
-    });
+    (
+      TracingExternalBinary {
+        path = request.binary_path;
+        binary = request.binary_name;
+        profiler;
+        output = request.trace.output;
+      }
+    );
   match Command.status cmd with
   | Ok 0 -> Ok ()
   | Ok code -> Error (ProcessExited code)
@@ -404,5 +393,4 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
   in
   run_built_binary ~on_event ~trace:request.trace built
 
-let run_binary = fun ?(on_event = no_event) request ->
-  run_external_binary ~on_event request
+let run_binary = fun ?(on_event = no_event) request -> run_external_binary ~on_event request

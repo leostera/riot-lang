@@ -254,8 +254,8 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
       let store = Riot_store.Store.create ~workspace in
       let first_build = build_package ~workspace ~toolchain ~store package in
       match first_build with
-      | Ok first_result ->
-          (match first_result.Package_builder.status with
+      | Ok first_result -> (
+          match first_result.Package_builder.status with
           | Cached _ -> Error "first build should not be cached"
           | Skipped { reason } -> Error ("first build was unexpectedly skipped: " ^ reason)
           | Failed err ->
@@ -313,7 +313,8 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
                   Error (name ^ " build failed: " ^ err)
               | (_, BuildCompleteWithCache (name, _, Error err)) ->
                   Error (name ^ " build failed: " ^ err)
-              | _ -> Error "Unexpected message")
+              | _ -> Error "Unexpected message"
+        )
       | Error err -> Error ("First build failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

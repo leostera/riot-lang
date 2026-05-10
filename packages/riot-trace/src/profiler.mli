@@ -4,11 +4,7 @@ type t =
   | Auto
   | Perf
   | Xctrace
-
-type unavailable = {
-  profiler: string;
-  reason: string;
-}
+type unavailable = { profiler: string; reason: string }
 
 val from_string: string -> (t, string) result
 

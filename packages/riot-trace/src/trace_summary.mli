@@ -6,7 +6,6 @@ type t = {
   format: string option;
   profile: Profile.t option;
 }
-
 type error =
   | SummarySystemError of {
       path: Path.t;

@@ -200,8 +200,8 @@ let test_save_suite_run_writes_self_contained_json = fun _ctx ->
       in
       let json = read_json path in
       match json with
-      | Data.Json.Object fields ->
-          (match (
+      | Data.Json.Object fields -> (
+          match (
             field "schema_version" fields,
             field "run_id" fields,
             field "suite" fields,
@@ -240,7 +240,8 @@ let test_save_suite_run_writes_self_contained_json = fun _ctx ->
               else
                 Error "expected saved bench history json to contain suite metadata and benchmark results"
           | _ ->
-              Error "expected saved bench history json to expose the top-level schema, suite, selection, and suite_run fields")
+              Error "expected saved bench history json to expose the top-level schema, suite, selection, and suite_run fields"
+        )
       | _ -> Error "expected saved bench history file to be a json object")
 
 let test_save_suite_run_skips_empty_suite = fun _ctx ->

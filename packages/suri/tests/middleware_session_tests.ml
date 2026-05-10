@@ -203,19 +203,21 @@ let test_session_cookie_payload_is_signed_plaintext_json = fun _ctx ->
       match String.split_on_char '.' cookie with
       | [ payload; signature ] ->
           Test.assert_true (Session.verify ~secret payload signature);
-          (match Encoding.Base64.decode payload with
-          | Ok json ->
-              Test.assert_true (String.starts_with ~prefix:"{" json);
-              Test.assert_true (String.contains json "\"values\"");
-              Test.assert_true (String.contains json "\"user_id\"");
-              let tampered_cookie = Encoding.Base64.encode "{}" ^ "." ^ signature in
-              (
-                match Session.from_cookie_value ~cookie_name:"_test" ~secret tampered_cookie with
-                | Error Session.InvalidSignature -> Ok ()
-                | Error err -> Error (Session.decode_error_to_string err)
-                | Ok _ -> Error "expected tampered session payload to fail verification"
-              )
-          | Error _ -> Error "expected session cookie payload to be valid base64")
+          (
+            match Encoding.Base64.decode payload with
+            | Ok json ->
+                Test.assert_true (String.starts_with ~prefix:"{" json);
+                Test.assert_true (String.contains json "\"values\"");
+                Test.assert_true (String.contains json "\"user_id\"");
+                let tampered_cookie = Encoding.Base64.encode "{}" ^ "." ^ signature in
+                (
+                  match Session.from_cookie_value ~cookie_name:"_test" ~secret tampered_cookie with
+                  | Error Session.InvalidSignature -> Ok ()
+                  | Error err -> Error (Session.decode_error_to_string err)
+                  | Ok _ -> Error "expected tampered session payload to fail verification"
+                )
+            | Error _ -> Error "expected session cookie payload to be valid base64"
+          )
       | parts ->
           Error ("expected cookie payload and signature, got " ^ Int.to_string (List.length parts))
 

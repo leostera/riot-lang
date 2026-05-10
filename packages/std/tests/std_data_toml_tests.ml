@@ -40,107 +40,116 @@ let test_simple_string =
   Test.case "parse simple string value" @@ fun _ctx ->
     let input = {|name = "hello"|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "name" with
+    | Ok (Toml.Table items) -> (
+        match find_value items "name" with
         | Some (Toml.String "hello") -> Ok ()
         | Some _ -> Error "Expected string value"
-        | None -> Error "Missing 'name' key")
+        | None -> Error "Missing 'name' key"
+      )
     | _ -> Error "Parse failed"
 
 let test_quoted_string_with_escapes =
   Test.case "parse string with escapes" @@ fun _ctx ->
     let input = {|text = "hello\nworld\t\"quoted\""|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "text"
+    | Ok (Toml.Table items) -> (
+        match find_value items "text"
         |> Option.and_then ~fn:get_string with
         | Some s when String.contains s "\n" && String.contains s "\t" -> Ok ()
         | Some s -> Error ("String escapes not handled: " ^ s)
-        | None -> Error "Expected string")
+        | None -> Error "Expected string"
+      )
     | _ -> Error "Parse failed"
 
 let test_boolean_true =
   Test.case "parse boolean true" @@ fun _ctx ->
     let input = {|enabled = true|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "enabled"
+    | Ok (Toml.Table items) -> (
+        match find_value items "enabled"
         |> Option.and_then ~fn:get_bool with
         | Some true -> Ok ()
         | Some false -> Error "Got false, expected true"
-        | None -> Error "Expected boolean")
+        | None -> Error "Expected boolean"
+      )
     | _ -> Error "Parse failed"
 
 let test_boolean_false =
   Test.case "parse boolean false" @@ fun _ctx ->
     let input = {|enabled = false|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "enabled"
+    | Ok (Toml.Table items) -> (
+        match find_value items "enabled"
         |> Option.and_then ~fn:get_bool with
         | Some false -> Ok ()
         | Some true -> Error "Got true, expected false"
-        | None -> Error "Expected boolean")
+        | None -> Error "Expected boolean"
+      )
     | _ -> Error "Parse failed"
 
 let test_integer_positive =
   Test.case "parse positive integer" @@ fun _ctx ->
     let input = {|port = 2112|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "port"
+    | Ok (Toml.Table items) -> (
+        match find_value items "port"
         |> Option.and_then ~fn:get_int with
         | Some 2_112 -> Ok ()
         | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected 2112")
-        | None -> Error "Expected integer")
+        | None -> Error "Expected integer"
+      )
     | _ -> Error "Parse failed"
 
 let test_integer_negative =
   Test.case "parse negative integer" @@ fun _ctx ->
     let input = {|offset = -42|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "offset"
+    | Ok (Toml.Table items) -> (
+        match find_value items "offset"
         |> Option.and_then ~fn:get_int with
         | Some -42 -> Ok ()
         | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected -42")
-        | None -> Error "Expected integer")
+        | None -> Error "Expected integer"
+      )
     | _ -> Error "Parse failed"
 
 let test_integer_zero =
   Test.case "parse zero" @@ fun _ctx ->
     let input = {|count = 0|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "count"
+    | Ok (Toml.Table items) -> (
+        match find_value items "count"
         |> Option.and_then ~fn:get_int with
         | Some 0 -> Ok ()
         | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected 0")
-        | None -> Error "Expected integer")
+        | None -> Error "Expected integer"
+      )
     | _ -> Error "Parse failed"
 
 let test_integer_in_array =
   Test.case "parse array of integers" @@ fun _ctx ->
     let input = {|ports = [8080, 8081, 8082]|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "ports"
+    | Ok (Toml.Table items) -> (
+        match find_value items "ports"
         |> Option.and_then ~fn:get_array with
         | Some [ Toml.Int 8_080; Toml.Int 8_081; Toml.Int 8_082 ] -> Ok ()
         | Some arr -> Error ("Got array with " ^ Int.to_string (List.length arr) ^ " items")
-        | None -> Error "Expected array")
+        | None -> Error "Expected array"
+      )
     | _ -> Error "Parse failed"
 
 let test_bare_string =
   Test.case "parse bare string value" @@ fun _ctx ->
     let input = {|version = release-1|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "version"
+    | Ok (Toml.Table items) -> (
+        match find_value items "version"
         |> Option.and_then ~fn:get_string with
         | Some "release-1" -> Ok ()
         | Some s -> Error ("Got '" ^ s ^ "', expected 'release-1'")
-        | None -> Error "Expected string")
+        | None -> Error "Expected string"
+      )
     | _ -> Error "Parse failed"
 
 (* === ARRAY TESTS === *)
@@ -149,49 +158,53 @@ let test_simple_array =
   Test.case "parse simple array" @@ fun _ctx ->
     let input = {|numbers = [1, 2, 3]|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "numbers"
+    | Ok (Toml.Table items) -> (
+        match find_value items "numbers"
         |> Option.and_then ~fn:get_array with
         | Some arr when List.length arr = 3 -> Ok ()
         | Some arr -> Error ("Expected 3 items, got " ^ Int.to_string (List.length arr))
-        | None -> Error "Expected array")
+        | None -> Error "Expected array"
+      )
     | _ -> Error "Parse failed"
 
 let test_string_array =
   Test.case "parse string array" @@ fun _ctx ->
     let input = {|tags = ["foo", "bar", "baz"]|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "tags"
+    | Ok (Toml.Table items) -> (
+        match find_value items "tags"
         |> Option.and_then ~fn:get_array with
         | Some [ Toml.String "foo"; Toml.String "bar"; Toml.String "baz" ] -> Ok ()
         | Some _ -> Error "Array contents don't match"
-        | None -> Error "Expected array")
+        | None -> Error "Expected array"
+      )
     | _ -> Error "Parse failed"
 
 let test_empty_array =
   Test.case "parse empty array" @@ fun _ctx ->
     let input = {|empty = []|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "empty"
+    | Ok (Toml.Table items) -> (
+        match find_value items "empty"
         |> Option.and_then ~fn:get_array with
         | Some [] -> Ok ()
         | Some arr ->
             Error ("Expected empty array, got " ^ Int.to_string (List.length arr) ^ " items")
-        | None -> Error "Expected array")
+        | None -> Error "Expected array"
+      )
     | _ -> Error "Parse failed"
 
 let test_nested_array =
   Test.case "parse nested array" @@ fun _ctx ->
     let input = {|matrix = [[1, 2], [3, 4]]|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "matrix"
+    | Ok (Toml.Table items) -> (
+        match find_value items "matrix"
         |> Option.and_then ~fn:get_array with
         | Some [ Toml.Array _; Toml.Array _ ] -> Ok ()
         | Some _ -> Error "Expected nested arrays"
-        | None -> Error "Expected array")
+        | None -> Error "Expected array"
+      )
     | _ -> Error "Parse failed"
 
 (* === INLINE TABLE TESTS === *)
@@ -204,20 +217,23 @@ std = { path = "../std" }
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "dependencies"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "dependencies"
         |> Option.and_then ~fn:get_table with
-        | Some deps ->
-            (match find_value deps "std"
+        | Some deps -> (
+            match find_value deps "std"
             |> Option.and_then ~fn:get_table with
-            | Some std_attrs ->
-                (match find_value std_attrs "path"
+            | Some std_attrs -> (
+                match find_value std_attrs "path"
                 |> Option.and_then ~fn:get_string with
                 | Some "../std" -> Ok ()
                 | Some s -> Error ("Wrong path: " ^ s)
-                | None -> Error "Missing path")
-            | None -> Error "std is not a table")
-        | None -> Error "dependencies is not a table")
+                | None -> Error "Missing path"
+              )
+            | None -> Error "std is not a table"
+          )
+        | None -> Error "dependencies is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let test_multiple_inline_tables =
@@ -231,23 +247,24 @@ actors = { path = "../actors" }
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "dependencies"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "dependencies"
         |> Option.and_then ~fn:get_table with
         | Some deps when List.length deps = 3 -> Ok ()
         | Some deps -> Error ("Expected 3 deps, got " ^ Int.to_string (List.length deps))
-        | None -> Error "dependencies is not a table")
+        | None -> Error "dependencies is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let test_inline_table_multiple_keys =
   Test.case "parse inline table with multiple keys" @@ fun _ctx ->
     let input = {|person = { name = "John", age = "30", city = "NYC" }|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "person"
+    | Ok (Toml.Table items) -> (
+        match find_value items "person"
         |> Option.and_then ~fn:get_table with
-        | Some attrs when List.length attrs = 3 ->
-            (match (
+        | Some attrs when List.length attrs = 3 -> (
+            match (
               find_value attrs "name"
               |> Option.and_then ~fn:get_string,
               find_value attrs "age"
@@ -256,47 +273,54 @@ let test_inline_table_multiple_keys =
               |> Option.and_then ~fn:get_string
             ) with
             | (Some "John", Some "30", Some "NYC") -> Ok ()
-            | _ -> Error "Values don't match")
+            | _ -> Error "Values don't match"
+          )
         | Some attrs -> Error ("Expected 3 keys, got " ^ Int.to_string (List.length attrs))
-        | None -> Error "person is not a table")
+        | None -> Error "person is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let test_inline_table_with_bool =
   Test.case "parse inline table with boolean" @@ fun _ctx ->
     let input = {|config = { enabled = true, debug = false }|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "config"
+    | Ok (Toml.Table items) -> (
+        match find_value items "config"
         |> Option.and_then ~fn:get_table with
-        | Some attrs ->
-            (match (
+        | Some attrs -> (
+            match (
               find_value attrs "enabled"
               |> Option.and_then ~fn:get_bool,
               find_value attrs "debug"
               |> Option.and_then ~fn:get_bool
             ) with
             | (Some true, Some false) -> Ok ()
-            | _ -> Error "Boolean values don't match")
-        | None -> Error "config is not a table")
+            | _ -> Error "Boolean values don't match"
+          )
+        | None -> Error "config is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let test_nested_inline_tables =
   Test.case "parse nested inline tables" @@ fun _ctx ->
     let input = {|server = { host = { ip = "127.0.0.1", port = "8080" } }|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "server"
+    | Ok (Toml.Table items) -> (
+        match find_value items "server"
         |> Option.and_then ~fn:get_table with
-        | Some server ->
-            (match find_value server "host"
+        | Some server -> (
+            match find_value server "host"
             |> Option.and_then ~fn:get_table with
-            | Some host ->
-                (match find_value host "ip"
+            | Some host -> (
+                match find_value host "ip"
                 |> Option.and_then ~fn:get_string with
                 | Some "127.0.0.1" -> Ok ()
-                | _ -> Error "Nested value doesn't match")
-            | None -> Error "host is not a table")
-        | None -> Error "server is not a table")
+                | _ -> Error "Nested value doesn't match"
+              )
+            | None -> Error "host is not a table"
+          )
+        | None -> Error "server is not a table"
+      )
     | _ -> Error "Parse failed"
 
 (* === SECTION TESTS === *)
@@ -310,12 +334,13 @@ version = "1.0.0"
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "package"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "package"
         |> Option.and_then ~fn:get_table with
         | Some pkg when List.length pkg = 2 -> Ok ()
         | Some pkg -> Error ("Expected 2 keys, got " ^ Int.to_string (List.length pkg))
-        | None -> Error "package is not a table")
+        | None -> Error "package is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let test_multiple_sections =
@@ -342,24 +367,28 @@ port = "8080"
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "server" with
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "server" with
         | None -> Error "Nested section root not found"
-        | Some server ->
-            (match get_table server with
+        | Some server -> (
+            match get_table server with
             | None -> Error "server is not a table"
-            | Some server_fields ->
-                (match find_value server_fields "config" with
+            | Some server_fields -> (
+                match find_value server_fields "config" with
                 | None -> Error "config table not found"
-                | Some config ->
-                    (match get_table config with
-                    | Some fields ->
-                        (match find_value fields "port"
+                | Some config -> (
+                    match get_table config with
+                    | Some fields -> (
+                        match find_value fields "port"
                         |> Option.and_then ~fn:get_string with
                         | Some "8080" -> Ok ()
-                        | _ -> Error "Nested port value doesn't match")
-                    | None -> Error "config is not a table"))
-            ))
+                        | _ -> Error "Nested port value doesn't match"
+                      )
+                    | None -> Error "config is not a table"
+                  )
+              )
+          )
+      )
     | _ -> Error "Parse failed"
 
 (* === ARRAY OF TABLES TESTS === *)
@@ -378,14 +407,14 @@ path = "src/server.ml"
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "bin" with
-        | Some value ->
-            (match get_array value with
-            | Some bins when List.length bins = 2 ->
-                (match bins with
-                | [ Toml.Table bin1; Toml.Table bin2 ] ->
-                    (match (
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "bin" with
+        | Some value -> (
+            match get_array value with
+            | Some bins when List.length bins = 2 -> (
+                match bins with
+                | [ Toml.Table bin1; Toml.Table bin2 ] -> (
+                    match (
                       find_value bin1 "name"
                       |> Option.and_then ~fn:get_string,
                       find_value bin1 "path"
@@ -394,11 +423,15 @@ path = "src/server.ml"
                     | (Some "riot", Some "src/main.ml") -> Ok ()
                     | (Some n, Some p) ->
                         Error ("First binary values wrong: name=" ^ n ^ " path=" ^ p)
-                    | _ -> Error "Missing name or path in first binary")
-                | _ -> Error "Expected array of 2 tables, got something else")
+                    | _ -> Error "Missing name or path in first binary"
+                  )
+                | _ -> Error "Expected array of 2 tables, got something else"
+              )
             | Some bins -> Error ("Expected 2 bins, got " ^ Int.to_string (List.length bins))
-            | None -> Error "bin value is not an array")
-        | None -> Error "bin key not found in parsed TOML")
+            | None -> Error "bin value is not an array"
+          )
+        | None -> Error "bin key not found in parsed TOML"
+      )
     | Ok _ -> Error "Expected Table at top level"
     | Error err -> Error ("Parse failed: " ^ (Toml.error_to_string err))
 
@@ -425,13 +458,14 @@ tasty = true
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "fruits"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "fruits"
         |> Option.and_then ~fn:get_array with
         | Some [ Toml.Table f1; Toml.Table f2 ] when List.length f1 = 3 && List.length f2 = 3 ->
             Ok ()
         | Some arr -> Error ("Array structure wrong: " ^ Int.to_string (List.length arr) ^ " items")
-        | None -> Error "fruits is not an array")
+        | None -> Error "fruits is not an array"
+      )
     | _ -> Error "Parse failed"
 
 let test_array_of_tables_dotted_path =
@@ -448,23 +482,27 @@ path = "./app.log"
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-      (* Should create nested structure: { "log": { "handler": [...] } } *)
-        (match find_value sections "log" with
+    | Ok (Toml.Table sections) -> (* Should create nested structure: { "log": { "handler": [...] } } *)
+    (
+        match find_value sections "log" with
         | None -> Error "No 'log' key found (bug: dotted paths not nested)"
-        | Some log_value ->
-            (match get_table log_value with
+        | Some log_value -> (
+            match get_table log_value with
             | None -> Error "'log' is not a table"
-            | Some log_fields ->
-                (match find_value log_fields "handler" with
+            | Some log_fields -> (
+                match find_value log_fields "handler" with
                 | None -> Error "No 'handler' key in 'log' table"
-                | Some handler_value ->
-                    (match get_array handler_value with
+                | Some handler_value -> (
+                    match get_array handler_value with
                     | None -> Error "'handler' is not an array"
                     | Some [ Toml.Table h1; Toml.Table h2 ] when List.length h1 = 2
                     && List.length h2 = 2 -> Ok ()
                     | Some arr ->
-                        Error ("Expected 2 handlers, got " ^ Int.to_string (List.length arr))))))
+                        Error ("Expected 2 handlers, got " ^ Int.to_string (List.length arr))
+                  )
+              )
+          )
+      )
     | _ -> Error "Parse failed"
 
 (* === COMMENT TESTS === *)
@@ -477,22 +515,24 @@ name = "test"
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "name"
+    | Ok (Toml.Table items) -> (
+        match find_value items "name"
         |> Option.and_then ~fn:get_string with
         | Some "test" -> Ok ()
-        | _ -> Error "Value doesn't match")
+        | _ -> Error "Value doesn't match"
+      )
     | _ -> Error "Parse failed"
 
 let test_inline_comment =
   Test.case "parse with inline comment" @@ fun _ctx ->
     let input = {|name = "test" # inline comment|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "name"
+    | Ok (Toml.Table items) -> (
+        match find_value items "name"
         |> Option.and_then ~fn:get_string with
         | Some "test" -> Ok ()
-        | _ -> Error "Value doesn't match")
+        | _ -> Error "Value doesn't match"
+      )
     | _ -> Error "Parse failed"
 
 let test_comment_in_section =
@@ -503,15 +543,17 @@ name = "test" # package name
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "package"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "package"
         |> Option.and_then ~fn:get_table with
-        | Some pkg ->
-            (match find_value pkg "name"
+        | Some pkg -> (
+            match find_value pkg "name"
             |> Option.and_then ~fn:get_string with
             | Some "test" -> Ok ()
-            | _ -> Error "Value doesn't match")
-        | None -> Error "package is not a table")
+            | _ -> Error "Value doesn't match"
+          )
+        | None -> Error "package is not a table"
+      )
     | _ -> Error "Parse failed"
 
 (* === WHITESPACE TESTS === *)
@@ -520,33 +562,36 @@ let test_leading_whitespace =
   Test.case "parse with leading whitespace" @@ fun _ctx ->
     let input = {|  name = "test"|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "name"
+    | Ok (Toml.Table items) -> (
+        match find_value items "name"
         |> Option.and_then ~fn:get_string with
         | Some "test" -> Ok ()
-        | _ -> Error "Value doesn't match")
+        | _ -> Error "Value doesn't match"
+      )
     | _ -> Error "Parse failed"
 
 let test_trailing_whitespace =
   Test.case "parse with trailing whitespace" @@ fun _ctx ->
     let input = {|name = "test"   |} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "name"
+    | Ok (Toml.Table items) -> (
+        match find_value items "name"
         |> Option.and_then ~fn:get_string with
         | Some "test" -> Ok ()
-        | _ -> Error "Value doesn't match")
+        | _ -> Error "Value doesn't match"
+      )
     | _ -> Error "Parse failed"
 
 let test_whitespace_around_equals =
   Test.case "parse with whitespace around =" @@ fun _ctx ->
     let input = {|name   =   "test"|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "name"
+    | Ok (Toml.Table items) -> (
+        match find_value items "name"
         |> Option.and_then ~fn:get_string with
         | Some "test" -> Ok ()
-        | _ -> Error "Value doesn't match")
+        | _ -> Error "Value doesn't match"
+      )
     | _ -> Error "Parse failed"
 
 let test_empty_lines =
@@ -571,24 +616,26 @@ let test_empty_string =
   Test.case "parse empty string value" @@ fun _ctx ->
     let input = {|text = ""|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "text"
+    | Ok (Toml.Table items) -> (
+        match find_value items "text"
         |> Option.and_then ~fn:get_string with
         | Some "" -> Ok ()
         | Some s -> Error ("Expected empty string, got '" ^ s ^ "'")
-        | None -> Error "Expected string")
+        | None -> Error "Expected string"
+      )
     | _ -> Error "Parse failed"
 
 let test_empty_inline_table =
   Test.case "parse empty inline table" @@ fun _ctx ->
     let input = {|empty = {}|} in
     match Toml.parse input with
-    | Ok (Toml.Table items) ->
-        (match find_value items "empty"
+    | Ok (Toml.Table items) -> (
+        match find_value items "empty"
         |> Option.and_then ~fn:get_table with
         | Some [] -> Ok ()
         | Some t -> Error ("Expected empty table, got " ^ Int.to_string (List.length t) ^ " items")
-        | None -> Error "Expected table")
+        | None -> Error "Expected table"
+      )
     | _ -> Error "Parse failed"
 
 let test_empty_document =
@@ -635,13 +682,14 @@ std = { path = "../std" }
 |}
     in
     match Toml.parse content with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "bin" with
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "bin" with
         | Some (Toml.Array bins) when List.length bins = 1 -> Ok ()
         | Some (Toml.Array bins) ->
             Error ("Expected 1 bin, got " ^ Int.to_string (List.length bins))
         | Some _ -> Error "bin is not an array"
-        | None -> Error "No bin section found in riot.toml")
+        | None -> Error "No bin section found in riot.toml"
+      )
     | Ok _ -> Error "Expected Table at top level"
     | Error err -> Error ("Parse error: " ^ (Toml.error_to_string err))
 
@@ -681,17 +729,19 @@ kernel = { path = "../riot/packages/kernel" }
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "workspace"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "workspace"
         |> Option.and_then ~fn:get_table with
-        | Some ws ->
-            (match find_value ws "members"
+        | Some ws -> (
+            match find_value ws "members"
             |> Option.and_then ~fn:get_array with
             | Some members when List.length members = 3 -> Ok ()
             | Some members ->
                 Error ("Expected 3 members, got " ^ Int.to_string (List.length members))
-            | None -> Error "members is not an array")
-        | None -> Error "workspace is not a table")
+            | None -> Error "members is not an array"
+          )
+        | None -> Error "workspace is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let test_mixed_inline_and_section_tables =
@@ -749,16 +799,18 @@ port = "9090"
 |}
     in
     match Toml.parse input with
-    | Ok (Toml.Table sections) ->
-        (match find_value sections "config"
+    | Ok (Toml.Table sections) -> (
+        match find_value sections "config"
         |> Option.and_then ~fn:get_table with
-        | Some cfg ->
-            (match find_value cfg "port"
+        | Some cfg -> (
+            match find_value cfg "port"
             |> Option.and_then ~fn:get_string with
             | Some "9090" -> Ok ()
             | Some p -> Error ("Expected last value '9090', got '" ^ p ^ "'")
-            | None -> Error "Missing port")
-        | None -> Error "config is not a table")
+            | None -> Error "Missing port"
+          )
+        | None -> Error "config is not a table"
+      )
     | _ -> Error "Parse failed"
 
 let main ~args =

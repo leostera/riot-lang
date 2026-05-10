@@ -1042,7 +1042,8 @@ let wait_for_local_work = fun t (worker: worker) ->
       (* Queue operations are lock-free. The sleep lock only protects the
          condition-variable transition: after publishing [sleeping], the worker
          rechecks the queue so an enqueue either becomes visible here or signals
-         the parked worker. *)
+         the parked worker.
+      *)
       let rec wait () =
         match Queue.pop worker.queue with
         | Some slot -> Some slot

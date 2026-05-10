@@ -13,10 +13,7 @@ type t =
   | CData of string
 
 type error =
-  | Parse_error of {
-      message: string;
-      offset: int;
-    }
+  | Parse_error of { message: string; offset: int }
 
 let escape_xml = fun str ->
   let buf = Buffer.create ~size:(String.length str) in
@@ -37,11 +34,13 @@ let text = fun str -> Text (escape_xml str)
 
 let cdata = fun str -> CData str
 
-let attr = fun key -> function
-  | Element { attrs; _ } ->
-      List.find attrs ~fn:(fun (name, _value) -> String.equal name key)
-      |> Option.map ~fn:(fun (_name, value) -> value)
-  | _ -> None
+let attr = fun key ->
+  fun __tmp1 ->
+    match __tmp1 with
+    | Element { attrs; _ } ->
+        List.find attrs ~fn:(fun (name, _value) -> String.equal name key)
+        |> Option.map ~fn:(fun (_name, value) -> value)
+    | _ -> None
 
 let children = fun __tmp1 ->
   match __tmp1 with
@@ -163,8 +162,7 @@ type parser = {
   mutable offset: int;
 }
 
-let parse_error = fun parser message ->
-  Error (Parse_error { message; offset = parser.offset })
+let parse_error = fun parser message -> Error (Parse_error { message; offset = parser.offset })
 
 let at_end = fun parser -> parser.offset >= parser.length
 
@@ -187,11 +185,11 @@ let is_space = fun __tmp1 ->
   | _ -> false
 
 let skip_spaces = fun parser ->
-  while
-    match current parser with
-    | Some char when is_space char -> advance parser 1; true
-    | _ -> false
-  do
+  while match current parser with
+  | Some char when is_space char ->
+      advance parser 1;
+      true
+  | _ -> false do
     ()
   done
 
@@ -357,5 +355,4 @@ let from_string = fun source ->
 
 let error_message = fun __tmp1 ->
   match __tmp1 with
-  | Parse_error { message; offset } ->
-      message ^ " at byte offset " ^ Int.to_string offset
+  | Parse_error { message; offset } -> message ^ " at byte offset " ^ Int.to_string offset

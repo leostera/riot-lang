@@ -178,13 +178,15 @@ let test_reader_parses_row_description_and_data_row = fun _ctx ->
   | Error error -> Error (Protocol.Reader.parse_error_to_string error)
   | Ok (Protocol.RowDescription fields) ->
       Test.assert_equal ~expected:2 ~actual:(List.length fields);
-      (match Protocol.Reader.parse_backend_message_result
-        (Char.code 'D')
-        (Buffer.length data + 4)
-        (bytes_of_buffer data) with
-      | Error error -> Error (Protocol.Reader.parse_error_to_string error)
-      | Ok (Protocol.DataRow [ Protocol.Row.Value "42"; Protocol.Row.Null ]) -> Ok ()
-      | Ok _ -> Error "expected data row with one value and one null")
+      (
+        match Protocol.Reader.parse_backend_message_result
+          (Char.code 'D')
+          (Buffer.length data + 4)
+          (bytes_of_buffer data) with
+        | Error error -> Error (Protocol.Reader.parse_error_to_string error)
+        | Ok (Protocol.DataRow [ Protocol.Row.Value "42"; Protocol.Row.Null ]) -> Ok ()
+        | Ok _ -> Error "expected data row with one value and one null"
+      )
   | Ok _ -> Error "expected RowDescription"
 
 let test_config_parses_uri_and_legacy_forms = fun _ctx ->

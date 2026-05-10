@@ -8,10 +8,7 @@ type t = {
   workspace: Workspace.t;
 }
 
-type dependency_prepare_stats = {
-  dependency_count: int;
-  object_count: int;
-}
+type dependency_prepare_stats = { dependency_count: int; object_count: int }
 
 type dependency_prepare_error =
   | DependencyArtifactUnavailable of {
@@ -26,17 +23,9 @@ type dependency_prepare_error =
       message: string;
     }
 
-type prepare_stats = {
-  input_count: int;
-  dependency_count: int;
-  dependency_object_count: int;
-}
+type prepare_stats = { input_count: int; dependency_count: int; dependency_object_count: int }
 
-type materialize_stats = {
-  copy_count: int;
-  link_count: int;
-  reference_count: int;
-}
+type materialize_stats = { copy_count: int; link_count: int; reference_count: int }
 
 type materialize_error =
   | SandboxFileMaterializeFailed of {
@@ -60,7 +49,12 @@ let dependency_prepare_error_to_string = fun __tmp1 ->
       ^ Path.to_string artifact_dir
       ^ ": "
       ^ message
-  | DependencyObjectMaterializeFailed { package; src; dst; message } ->
+  | DependencyObjectMaterializeFailed {
+      package;
+      src;
+      dst;
+      message;
+    } ->
       "Failed to materialize dependency object for "
       ^ Package_name.to_string package
       ^ " from "
@@ -74,7 +68,9 @@ let prepare_error_to_string = fun __tmp1 ->
   match __tmp1 with
   | InputCopyFailed { message } -> "Failed to copy package inputs: " ^ message
   | DependencyPreparationFailed err -> dependency_prepare_error_to_string err
-  | SandboxMaterializationFailed (SandboxFileMaterializeFailed { src; dst; message; _ }) ->
+  | SandboxMaterializationFailed (
+    SandboxFileMaterializeFailed { src; dst; message; _ }
+  ) ->
       "Failed to materialize sandbox file "
       ^ Path.to_string src
       ^ " to "
@@ -139,11 +135,7 @@ let create = fun
 
 let get_dir = fun t -> t.dir
 
-let empty_materialize_stats = {
-  copy_count = 0;
-  link_count = 0;
-  reference_count = 0;
-}
+let empty_materialize_stats = { copy_count = 0; link_count = 0; reference_count = 0 }
 
 let destination_path = fun sandbox (file: Riot_planner.Sandbox_file.t) ->
   if Path.is_absolute file.destination then
@@ -162,13 +154,10 @@ let materialize_link = fun ~src ~dst ->
       match Fs.copy ~src ~dst with
       | Ok () -> Ok ()
       | Error copy_err ->
-          Error
-            (
-              "symlink failed: "
-              ^ IO.error_message link_err
-              ^ "; copy fallback failed: "
-              ^ IO.error_message copy_err
-            )
+          Error ("symlink failed: "
+          ^ IO.error_message link_err
+          ^ "; copy fallback failed: "
+          ^ IO.error_message copy_err)
     )
 
 let materialize_file = fun ~sandbox (file: Riot_planner.Sandbox_file.t) ->
@@ -178,55 +167,51 @@ let materialize_file = fun ~sandbox (file: Riot_planner.Sandbox_file.t) ->
   | Copy -> (
       match create_parent dst with
       | Error err ->
-          Error
-            (
-              SandboxFileMaterializeFailed {
-                mode = file.mode;
-                src = file.source;
-                dst;
-                message = IO.error_message err;
-              }
-            )
+          Error (
+            SandboxFileMaterializeFailed {
+              mode = file.mode;
+              src = file.source;
+              dst;
+              message = IO.error_message err;
+            }
+          )
       | Ok () -> (
           match Fs.copy ~src:file.source ~dst with
           | Ok () -> Ok `Copy
           | Error err ->
-              Error
-                (
-                  SandboxFileMaterializeFailed {
-                    mode = file.mode;
-                    src = file.source;
-                    dst;
-                    message = IO.error_message err;
-                  }
-                )
+              Error (
+                SandboxFileMaterializeFailed {
+                  mode = file.mode;
+                  src = file.source;
+                  dst;
+                  message = IO.error_message err;
+                }
+              )
         )
     )
   | Link -> (
       match create_parent dst with
       | Error err ->
-          Error
-            (
-              SandboxFileMaterializeFailed {
-                mode = file.mode;
-                src = file.source;
-                dst;
-                message = IO.error_message err;
-              }
-            )
+          Error (
+            SandboxFileMaterializeFailed {
+              mode = file.mode;
+              src = file.source;
+              dst;
+              message = IO.error_message err;
+            }
+          )
       | Ok () -> (
           match materialize_link ~src:file.source ~dst with
           | Ok () -> Ok `Link
           | Error message ->
-              Error
-                (
-                  SandboxFileMaterializeFailed {
-                    mode = file.mode;
-                    src = file.source;
-                    dst;
-                    message;
-                  }
-                )
+              Error (
+                SandboxFileMaterializeFailed {
+                  mode = file.mode;
+                  src = file.source;
+                  dst;
+                  message;
+                }
+              )
         )
     )
 
@@ -252,19 +237,17 @@ let materialize_dependency_objects = fun ~store ~sandbox ~package ~depset ->
         match Fs.copy ~src ~dst with
         | Ok () -> Ok ()
         | Error copy_err ->
-            Error
-              (
-                DependencyObjectMaterializeFailed {
-                  package = dep_package;
-                  src;
-                  dst;
-                  message =
-                    "symlink failed: "
-                    ^ IO.error_message link_err
-                    ^ "; copy fallback failed: "
-                    ^ IO.error_message copy_err;
-                }
-              )
+            Error (
+              DependencyObjectMaterializeFailed {
+                package = dep_package;
+                src;
+                dst;
+                message = "symlink failed: "
+                ^ IO.error_message link_err
+                ^ "; copy fallback failed: "
+                ^ IO.error_message copy_err;
+              }
+            )
       )
   in
   let materialize_dependency = fun copied dep ->
@@ -272,14 +255,11 @@ let materialize_dependency_objects = fun ~store ~sandbox ~package ~depset ->
     let artifact_dir = dep.Riot_planner.Dependency.artifact_dir in
     match Riot_store.Store.get_package store dep.Riot_planner.Dependency.input_hash with
     | None ->
-        Error
-          (
-            DependencyArtifactUnavailable {
-              package = dep_package;
-              artifact_dir;
-              message = "package artifact manifest is missing or incomplete";
-            }
-          )
+        Error (DependencyArtifactUnavailable {
+          package = dep_package;
+          artifact_dir;
+          message = "package artifact manifest is missing or incomplete";
+        })
     | Some artifact ->
         let entries = artifact.Riot_store.Artifact.files in
         let materialize_entry = fun copied (entry: Riot_store.Manifest.file_entry) ->
@@ -301,15 +281,13 @@ let materialize_dependency_objects = fun ~store ~sandbox ~package ~depset ->
             | Error _ as err -> err
             | Ok copied -> materialize_entry copied entry)
   in
-  match
-    List.fold_left
-      depset
-      ~init:(Ok 0)
-      ~fn:(fun result dep ->
-        match result with
-        | Error _ as err -> err
-        | Ok copied -> materialize_dependency copied dep)
-  with
+  match List.fold_left
+    depset
+    ~init:(Ok 0)
+    ~fn:(fun result dep ->
+      match result with
+      | Error _ as err -> err
+      | Ok copied -> materialize_dependency copied dep) with
   | Error _ as err -> err
   | Ok object_count -> Ok { dependency_count = List.length depset; object_count }
 
@@ -332,7 +310,8 @@ let copy_inputs = fun ~sandbox ~package ~inputs ->
 let prepare = fun ~sandbox ~package ~inputs ~depset ~store ->
   (* Dependencies are resolved through immutable store include/library paths.
      OCaml library metadata still names native objects by basename, so those
-     objects are materialized as sandbox-local links for linker compatibility. *)
+     objects are materialized as sandbox-local links for linker compatibility.
+  *)
   match copy_inputs ~sandbox ~package ~inputs with
   | exception exn -> Error (InputCopyFailed { message = Exception.to_string exn })
   | input_count -> (
@@ -363,14 +342,7 @@ let with_sandbox = fun
   ~expected_outputs
   f ->
   let sandbox =
-    create
-      ~workspace
-      ?id_seed
-      ?session_id
-      ~profile
-      ~target
-      ()
-      ~package_name:package.Package.name
+    create ~workspace ?id_seed ?session_id ~profile ~target () ~package_name:package.Package.name
   in
   let _ = expected_outputs in
   match prepare ~sandbox ~package ~inputs ~depset ~store with

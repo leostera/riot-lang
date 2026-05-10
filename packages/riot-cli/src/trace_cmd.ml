@@ -146,7 +146,10 @@ type target =
       package_name: Riot_model.Package_name.t option;
       binary_name: string;
     }
-  | External_binary of { binary_path: Path.t; binary_name: string }
+  | External_binary of {
+      binary_path: Path.t;
+      binary_name: string;
+    }
 
 type implicit_local_target = {
   package_name: Riot_model.Package_name.t;
@@ -200,10 +203,7 @@ let parse_external_binary_target = fun name ->
   |> Result.map_err ~fn:(fun _ -> Failure ("invalid binary path: " ^ name))
   |> Result.map
     ~fn:(fun binary_path ->
-      External_binary {
-        binary_path;
-        binary_name = Path.basename binary_path;
-      })
+      External_binary { binary_path; binary_name = Path.basename binary_path })
 
 let parse_target = fun ?package_filter name ->
   if looks_like_binary_path name then
@@ -278,7 +278,8 @@ let output_policy_of_matches = fun matches ->
   | (false, true) -> Ok Trace_runtime.Append
   | (false, false) -> Ok Trace_runtime.Fail_if_exists
 
-let trace_request_of_matches = fun ~binary_name ~(operational_config:Riot_model.Workspace_operational_config.t) matches ->
+let trace_request_of_matches = fun
+  ~binary_name ~(operational_config:Riot_model.Workspace_operational_config.t) matches ->
   let trace_config = operational_config.trace in
   let* profiler =
     match Option.or_ (optional_cli_string matches "profiler") trace_config.profiler with
@@ -303,7 +304,9 @@ let trace_request_of_matches = fun ~binary_name ~(operational_config:Riot_model.
     Trace_runtime.{
       perf = {
         sample_rate_hz = Option.or_ sample_rate_hz trace_config.perf.sample_rate_hz;
-        call_graph = Option.or_ (optional_cli_string matches "perf-call-graph") trace_config.perf.call_graph;
+        call_graph = Option.or_
+          (optional_cli_string matches "perf-call-graph")
+          trace_config.perf.call_graph;
         call_graph_stack_size = Option.or_
           perf_call_graph_stack_size
           trace_config.perf.call_graph_stack_size;
@@ -315,13 +318,19 @@ let trace_request_of_matches = fun ~binary_name ~(operational_config:Riot_model.
         time_limit = Option.or_
           (optional_cli_string matches "time-limit")
           trace_config.xctrace.time_limit;
-        window = Option.or_
-          (optional_cli_string matches "window")
-          trace_config.xctrace.window;
+        window = Option.or_ (optional_cli_string matches "window") trace_config.xctrace.window;
       };
     }
   in
-  Result.map output ~fn:(fun output -> Trace_runtime.{ output; output_policy; profiler; options })
+  Result.map
+    output
+    ~fn:(fun output ->
+      Trace_runtime.{
+        output;
+        output_policy;
+        profiler;
+        options;
+      })
 
 let json_requested_for_child = fun args -> List.any args ~fn:(fun arg -> String.equal arg "--json")
 
@@ -379,7 +388,12 @@ let write_trace_event = fun ~mode (event: Trace_runtime.trace_event) ->
   | Build.Human -> (
       match event with
       | Trace_runtime.Build _ -> ()
-      | Trace_runtime.TracingBinary { package; binary; profiler; output } ->
+      | Trace_runtime.TracingBinary {
+          package;
+          binary;
+          profiler;
+          output;
+        } ->
           out
             ("    \027[1;32mTracing\027[0m "
             ^ Riot_model.Package_name.to_string package
@@ -471,8 +485,8 @@ let render_ms = fun weight_ns ->
 
 let render_duration_compact = fun weight_ns ->
   let ms = Float.from_int weight_ns /. 1_000_000.0 in
-  if ms >= 1000.0 then
-    Float.to_string ~precision:2 (ms /. 1000.0) ^ "s"
+  if ms >= 1_000.0 then
+    Float.to_string ~precision:2 (ms /. 1_000.0) ^ "s"
   else
     Float.to_string ~precision:2 ms ^ "ms"
 
@@ -489,9 +503,14 @@ let trace_gray_style =
   |> Tty.Style.fg (Tty.Color.ansi256 245)
 
 let percent_style = fun color ->
-  let style = Tty.Style.default |> Tty.Style.bold in
+  let style =
+    Tty.Style.default
+    |> Tty.Style.bold
+  in
   match color with
-  | Some color -> style |> Tty.Style.fg color
+  | Some color ->
+      style
+      |> Tty.Style.fg color
   | None -> style
 
 let percent_color = fun percent ->
@@ -517,7 +536,10 @@ let truncate_cell = fun ~width value ->
   else if String.width value <= width then
     value
   else if width <= 1 then
-    String.truncate_width ~width:(Int.max 0 width) ~tail:"" value
+    String.truncate_width
+      ~width:(Int.max 0 width)
+      ~tail:""
+      value
   else
     String.truncate_width ~width ~tail:"~" value
 
@@ -532,9 +554,7 @@ let cell_right = fun width value ->
 let color_percent_cell = fun ~total_weight_ns ~width weight_ns ->
   let percent = percent_value ~total_weight_ns weight_ns in
   let rendered = Float.to_string ~precision:1 percent ^ "%" in
-  style_text
-    (percent_style (percent_color percent))
-    (cell_right width rendered)
+  style_text (percent_style (percent_color percent)) (cell_right width rendered)
 
 type frame_filter = {
   pattern: string;
@@ -549,15 +569,9 @@ let glob_error_message = fun __tmp1 ->
   match __tmp1 with
   | Glob.Empty -> "empty frame filter"
   | Glob.Invalid_glob { input; message; offset } ->
-      "invalid frame filter '"
-      ^ input
-      ^ "': "
-      ^ message
-      ^ offset_suffix offset
+      "invalid frame filter '" ^ input ^ "': " ^ message ^ offset_suffix offset
   | Glob.Invalid_regex { message; offset } ->
-      "invalid frame filter regex: "
-      ^ message
-      ^ offset_suffix offset
+      "invalid frame filter regex: " ^ message ^ offset_suffix offset
 
 let frame_filter_from_string = fun pattern ->
   Glob.create [ pattern ]
@@ -567,7 +581,9 @@ let frame_filter_from_string = fun pattern ->
 let frame_filter_of_matches = fun matches ->
   match ArgParser.get_one matches "filter" with
   | None -> Ok None
-  | Some pattern -> frame_filter_from_string pattern |> Result.map ~fn:Option.some
+  | Some pattern ->
+      frame_filter_from_string pattern
+      |> Result.map ~fn:Option.some
 
 let glob_matches = fun filter value ->
   match Glob.matches filter.matcher ~str:value with
@@ -579,8 +595,7 @@ let cost_matches_filter = fun filter (cost: Trace_runtime.call_cost) ->
   | None -> true
   | Some filter -> glob_matches filter cost.name
 
-let filter_costs = fun filter costs ->
-  List.filter costs ~fn:(cost_matches_filter filter)
+let filter_costs = fun filter costs -> List.filter costs ~fn:(cost_matches_filter filter)
 
 let table_limit = 40
 
@@ -611,10 +626,7 @@ let summary_table_rule = fun ~left ~join ~right widths ->
   )
   ^ right
 
-let summary_table_row = fun cells ->
-  "  │ "
-  ^ String.concat " │ " cells
-  ^ " │"
+let summary_table_row = fun cells -> "  │ " ^ String.concat " │ " cells ^ " │"
 
 let write_function_table = fun ~title ~total_weight_ns ~filter costs ->
   let costs =
@@ -633,27 +645,26 @@ let write_function_table = fun ~title ~total_weight_ns ~filter costs ->
   else (
     println (summary_table_rule ~left:"┌" ~join:"┬" ~right:"┐" widths);
     println
-      (summary_table_row [
-        cell_right percent_width "%cpu";
-        cell_right total_width "total";
-        cell_right samples_width "samp";
-        cell_left function_width "function";
-      ]);
+      (summary_table_row
+        [
+          cell_right percent_width "%cpu";
+          cell_right total_width "total";
+          cell_right samples_width "samp";
+          cell_left function_width "function";
+        ]);
     println (summary_table_rule ~left:"├" ~join:"┼" ~right:"┤" widths);
     let rec loop index = fun __tmp1 ->
       match __tmp1 with
       | [] -> println (summary_table_rule ~left:"└" ~join:"┴" ~right:"┘" widths)
       | (cost: Trace_runtime.call_cost) :: rest ->
           println
-            (summary_table_row [
-              color_percent_cell
-                ~total_weight_ns
-                ~width:percent_width
-                cost.total_weight_ns;
-              cell_right total_width (render_duration_compact cost.total_weight_ns);
-              cell_right samples_width (Int.to_string cost.samples);
-              cell_left function_width cost.name;
-            ]);
+            (summary_table_row
+              [
+                color_percent_cell ~total_weight_ns ~width:percent_width cost.total_weight_ns;
+                cell_right total_width (render_duration_compact cost.total_weight_ns);
+                cell_right samples_width (Int.to_string cost.samples);
+                cell_left function_width cost.name;
+              ]);
           loop (index + 1) rest
     in
     loop 1 costs
@@ -672,13 +683,10 @@ let rec filter_call_tree_node = fun filter (node: Trace_runtime.call_tree_node) 
 let filter_call_tree = fun filter (profile: Trace_runtime.profile_summary) ->
   match filter with
   | None -> (profile.call_tree, profile.hidden_call_tree_roots)
-  | Some filter ->
-      (
-        List.filter_map profile.call_tree ~fn:(filter_call_tree_node filter),
-        0
-      )
+  | Some filter -> (List.filter_map profile.call_tree ~fn:(filter_call_tree_node filter), 0)
 
-let rec write_call_tree_node = fun ~root_total_ns ~prefix ~is_last (node: Trace_runtime.call_tree_node) ->
+let rec write_call_tree_node = fun
+  ~root_total_ns ~prefix ~is_last (node: Trace_runtime.call_tree_node) ->
   let branch =
     if is_last then
       "└── "
@@ -693,15 +701,9 @@ let rec write_call_tree_node = fun ~root_total_ns ~prefix ~is_last (node: Trace_
     ^ color_percent ~total_weight_ns:root_total_ns node.total_weight_ns
     ^ " "
     ^ dim_gray
-      ("[total="
-      ^ render_ms node.total_weight_ns
-      ^ " self="
-      ^ render_ms node.self_weight_ns
-      ^ "]"));
+      ("[total=" ^ render_ms node.total_weight_ns ^ " self=" ^ render_ms node.self_weight_ns ^ "]"));
   let next_prefix =
-    prefix
-    ^
-    if is_last then
+    prefix ^ if is_last then
       "    "
     else
       "│   "
@@ -723,7 +725,9 @@ let write_call_tree = fun ~filter (profile: Trace_runtime.profile_summary) ->
   let (call_tree, hidden_call_tree_roots) = filter_call_tree filter profile in
   println "";
   println "call tree";
-  println ("  total_cpu_ms=" ^ Float.to_string ~precision:2 (Trace_runtime.Profile.weight_ms profile.total_weight_ns));
+  println
+    ("  total_cpu_ms="
+    ^ Float.to_string ~precision:2 (Trace_runtime.Profile.weight_ms profile.total_weight_ns));
   if List.is_empty call_tree then
     match filter with
     | Some filter -> println ("  no frames matched " ^ filter.pattern)
@@ -744,13 +748,13 @@ let write_call_tree = fun ~filter (profile: Trace_runtime.profile_summary) ->
 
 let limit_costs = fun costs -> List.take costs ~len:table_limit
 
-let summary_for_table = fun ~filter (summary: Trace_runtime.summary) ->
-  {
-    summary with
-    profile =
-      Option.map
-        summary.profile
-        ~fn:(fun (profile: Trace_runtime.profile_summary) -> {
+let summary_for_table = fun ~filter (summary: Trace_runtime.summary) -> {
+  summary with
+  profile =
+    Option.map
+      summary.profile
+      ~fn:(fun (profile: Trace_runtime.profile_summary) ->
+        {
           profile with
           top_self =
             filter_costs filter profile.top_self
@@ -759,18 +763,17 @@ let summary_for_table = fun ~filter (summary: Trace_runtime.summary) ->
             filter_costs filter profile.top_total
             |> limit_costs;
         });
-  }
+}
 
-let summary_for_call_tree = fun ~filter (summary: Trace_runtime.summary) ->
-  {
-    summary with
-    profile =
-      Option.map
-        summary.profile
-        ~fn:(fun (profile: Trace_runtime.profile_summary) ->
-          let (call_tree, hidden_call_tree_roots) = filter_call_tree filter profile in
-          { profile with call_tree; hidden_call_tree_roots });
-  }
+let summary_for_call_tree = fun ~filter (summary: Trace_runtime.summary) -> {
+  summary with
+  profile =
+    Option.map
+      summary.profile
+      ~fn:(fun (profile: Trace_runtime.profile_summary) ->
+        let (call_tree, hidden_call_tree_roots) = filter_call_tree filter profile in
+        { profile with call_tree; hidden_call_tree_roots });
+}
 
 let write_call_tree_summary = fun ~json ~filter (summary: Trace_runtime.summary) ->
   let summary = summary_for_call_tree ~filter summary in
@@ -781,19 +784,24 @@ let write_call_tree_summary = fun ~json ~filter (summary: Trace_runtime.summary)
         write_json_event
           (Data.Json.Object [
             ("type", Data.Json.String "trace.call_tree.error");
-            ("message", Data.Json.String ("failed to encode trace call tree JSON: " ^ Serde.Error.to_string err));
+            (
+              "message",
+              Data.Json.String ("failed to encode trace call tree JSON: "
+              ^ Serde.Error.to_string err)
+            );
           ])
   else (
     println ("trace: " ^ Path.to_string summary.path);
     println
-      ("exists: "
-      ^ (if summary.exists then
-          "true"
-        else
-          "false"));
-    println
-      ("format: "
-      ^ Option.unwrap_or ~default:"unknown" summary.format);
+      (
+        "exists: " ^ (
+          if summary.exists then
+            "true"
+          else
+            "false"
+        )
+      );
+    println ("format: " ^ Option.unwrap_or ~default:"unknown" summary.format);
     match summary.profile with
     | None -> ()
     | Some profile ->
@@ -810,7 +818,10 @@ let write_summary_json = fun ~filter summary ->
       write_json_event
         (Data.Json.Object [
           ("type", Data.Json.String "trace.summary.error");
-          ("message", Data.Json.String ("failed to encode trace summary JSON: " ^ Serde.Error.to_string err));
+          (
+            "message",
+            Data.Json.String ("failed to encode trace summary JSON: " ^ Serde.Error.to_string err)
+          );
         ])
 
 let write_summary = fun ~json ~filter (summary: Trace_runtime.summary) ->
@@ -819,14 +830,15 @@ let write_summary = fun ~json ~filter (summary: Trace_runtime.summary) ->
   else (
     println ("trace: " ^ Path.to_string summary.path);
     println
-      ("exists: "
-      ^ (if summary.exists then
-          "true"
-        else
-          "false"));
-    println
-      ("format: "
-      ^ Option.unwrap_or ~default:"unknown" summary.format);
+      (
+        "exists: " ^ (
+          if summary.exists then
+            "true"
+          else
+            "false"
+        )
+      );
+    println ("format: " ^ Option.unwrap_or ~default:"unknown" summary.format);
     match summary.profile with
     | None -> ()
     | Some profile ->
@@ -881,26 +893,26 @@ let run_summary = fun matches ->
         |> Option.unwrap_or ~default:""
       in
       match Path.from_string path with
-  | Error _ ->
-      let message = "invalid trace path: " ^ path in
-      if json then
-        write_json_event
-          (Data.Json.Object [
-            ("type", Data.Json.String "trace.summary.error");
-            ("message", Data.Json.String message);
-          ])
-      else
-        out ("error: " ^ message);
-      Error (Failure message)
-  | Ok path -> (
-      match Trace_runtime.summarize path with
-      | Ok summary ->
-          write_summary ~json ~filter summary;
-          Ok ()
-      | Error err ->
-          write_summary_error ~json err;
-          Error (Failure (Trace_runtime.summary_error_message err))
-    )
+      | Error _ ->
+          let message = "invalid trace path: " ^ path in
+          if json then
+            write_json_event
+              (Data.Json.Object [
+                ("type", Data.Json.String "trace.summary.error");
+                ("message", Data.Json.String message);
+              ])
+          else
+            out ("error: " ^ message);
+          Error (Failure message)
+      | Ok path -> (
+          match Trace_runtime.summarize path with
+          | Ok summary ->
+              write_summary ~json ~filter summary;
+              Ok ()
+          | Error err ->
+              write_summary_error ~json err;
+              Error (Failure (Trace_runtime.summary_error_message err))
+        )
 
 let run_call_tree = fun matches ->
   let json = ArgParser.get_flag matches "json" in
@@ -922,26 +934,26 @@ let run_call_tree = fun matches ->
         |> Option.unwrap_or ~default:""
       in
       match Path.from_string path with
-  | Error _ ->
-      let message = "invalid trace path: " ^ path in
-      if json then
-        write_json_event
-          (Data.Json.Object [
-            ("type", Data.Json.String "trace.call_tree.error");
-            ("message", Data.Json.String message);
-          ])
-      else
-        out ("error: " ^ message);
-      Error (Failure message)
-  | Ok path -> (
-      match Trace_runtime.summarize path with
-      | Ok summary ->
-          write_call_tree_summary ~json ~filter summary;
-          Ok ()
-      | Error err ->
-          write_call_tree_error ~json err;
-          Error (Failure (Trace_runtime.summary_error_message err))
-    )
+      | Error _ ->
+          let message = "invalid trace path: " ^ path in
+          if json then
+            write_json_event
+              (Data.Json.Object [
+                ("type", Data.Json.String "trace.call_tree.error");
+                ("message", Data.Json.String message);
+              ])
+          else
+            out ("error: " ^ message);
+          Error (Failure message)
+      | Ok path -> (
+          match Trace_runtime.summarize path with
+          | Ok summary ->
+              write_call_tree_summary ~json ~filter summary;
+              Ok ()
+          | Error err ->
+              write_call_tree_error ~json err;
+              Error (Failure (Trace_runtime.summary_error_message err))
+        )
 
 let load_operational_config = fun workspace ->
   match workspace with
@@ -1007,91 +1019,93 @@ let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
         write_workspace_error ~mode:output_mode message;
         Error (Failure message)
     | Ok operational_config ->
-    let on_event (event: Trace_runtime.trace_event) =
-      match event with
-      | Trace_runtime.Build build_event ->
-          Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
-      | _ -> write_trace_event ~mode:output_mode event
-    in
-    let resolved_target =
-      match ArgParser.get_one matches "name" with
-      | Some name -> parse_target ?package_filter:pkg_filter name
-      | None -> (
-          match workspace with
-          | Some workspace ->
-              resolve_implicit_local_target ?package_filter:pkg_filter workspace
-              |> Result.map
-                ~fn:(fun { package_name; binary_name } ->
-                  Local { package_name = Some package_name; binary_name })
-              |> Result.map_err ~fn:(fun err -> Failure err)
-          | None ->
-              Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
-        )
-    in
-    match resolved_target with
-    | Error (Failure message as err) ->
-        write_workspace_error ~mode:output_mode message;
-        Error err
-    | Error _ as err -> err
-    | Ok target ->
-        let result =
-          match target with
-          | External_binary { binary_path; binary_name } -> (
-              match trace_request_of_matches ~binary_name ~operational_config matches with
-              | Error (Failure message) -> Error (`Cli message)
-              | Error err -> Error (`Cli (Exception.to_string err))
-              | Ok trace ->
-                  let* () =
-                    Trace_runtime.preflight trace
-                    |> Result.map_err ~fn:(fun err -> `Trace err)
-                  in
-                  Trace_runtime.run_binary
-                    ~on_event
-                    {
-                      binary_path;
-                      binary_name;
-                      trace;
-                      args = extra;
-                    }
-                  |> Result.map_err ~fn:(fun err -> `Trace err)
+        let on_event (event: Trace_runtime.trace_event) =
+          match event with
+          | Trace_runtime.Build build_event ->
+              Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
+          | _ -> write_trace_event ~mode:output_mode event
+        in
+        let resolved_target =
+          match ArgParser.get_one matches "name" with
+          | Some name -> parse_target ?package_filter:pkg_filter name
+          | None -> (
+              match workspace with
+              | Some workspace ->
+                  resolve_implicit_local_target ?package_filter:pkg_filter workspace
+                  |> Result.map
+                    ~fn:(fun { package_name; binary_name } ->
+                      Local { package_name = Some package_name; binary_name })
+                  |> Result.map_err ~fn:(fun err -> Failure err)
+              | None ->
+                  Error (Failure (Option.unwrap_or
+                    ~default:"Not in a riot workspace"
+                    workspace_error))
             )
-          | Local { package_name; binary_name } -> (
-              match trace_request_of_matches ~binary_name ~operational_config matches with
-              | Error (Failure message) -> Error (`Cli message)
-              | Error err -> Error (`Cli (Exception.to_string err))
-              | Ok trace -> (
-                  let* () =
-                    Trace_runtime.preflight trace
-                    |> Result.map_err ~fn:(fun err -> `Trace err)
-                  in
-                  match workspace with
-                  | Some workspace ->
-                      Trace_runtime.run
+        in
+        match resolved_target with
+        | Error (Failure message as err) ->
+            write_workspace_error ~mode:output_mode message;
+            Error err
+        | Error _ as err -> err
+        | Ok target ->
+            let result =
+              match target with
+              | External_binary { binary_path; binary_name } -> (
+                  match trace_request_of_matches ~binary_name ~operational_config matches with
+                  | Error (Failure message) -> Error (`Cli message)
+                  | Error err -> Error (`Cli (Exception.to_string err))
+                  | Ok trace ->
+                      let* () =
+                        Trace_runtime.preflight trace
+                        |> Result.map_err ~fn:(fun err -> `Trace err)
+                      in
+                      Trace_runtime.run_binary
                         ~on_event
                         {
-                          workspace;
-                          package_name;
+                          binary_path;
                           binary_name;
-                          profile;
                           trace;
                           args = extra;
                         }
                       |> Result.map_err ~fn:(fun err -> `Trace err)
-                  | None ->
-                      Error (`Cli (Option.unwrap_or
-                        ~default:"Not in a riot workspace"
-                        workspace_error))
                 )
-            )
-        in
-        match result with
-        | Ok () -> Ok ()
-        | Error (`Cli message) ->
-            write_workspace_error ~mode:output_mode message;
-            Error (Failure message)
-        | Error (`Trace err) ->
-            write_trace_error ~mode:output_mode err;
-            Error (Failure (Trace_runtime.trace_error_message err))
+              | Local { package_name; binary_name } -> (
+                  match trace_request_of_matches ~binary_name ~operational_config matches with
+                  | Error (Failure message) -> Error (`Cli message)
+                  | Error err -> Error (`Cli (Exception.to_string err))
+                  | Ok trace -> (
+                      let* () =
+                        Trace_runtime.preflight trace
+                        |> Result.map_err ~fn:(fun err -> `Trace err)
+                      in
+                      match workspace with
+                      | Some workspace ->
+                          Trace_runtime.run
+                            ~on_event
+                            {
+                              workspace;
+                              package_name;
+                              binary_name;
+                              profile;
+                              trace;
+                              args = extra;
+                            }
+                          |> Result.map_err ~fn:(fun err -> `Trace err)
+                      | None ->
+                          Error (`Cli (Option.unwrap_or
+                            ~default:"Not in a riot workspace"
+                            workspace_error))
+                    )
+                )
+            in
+            match result with
+            | Ok () -> Ok ()
+            | Error (`Cli message) ->
+                write_workspace_error ~mode:output_mode message;
+                Error (Failure message)
+            | Error (`Trace err) ->
+                write_trace_error ~mode:output_mode err;
+                Error (Failure (Trace_runtime.trace_error_message err))
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   match ArgParser.get_subcommand matches with

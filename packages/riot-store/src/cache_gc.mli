@@ -86,12 +86,10 @@ type event =
       build_root: Path.t;
       error: string;
     }
-
 type receipt = {
   hash: string;
   lanes: generation_lane list;
 }
-
 type cache_state = {
   tracked_size_bytes: int64;
   generation_hashes: string list option;

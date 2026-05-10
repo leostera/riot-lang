@@ -35,10 +35,11 @@ let test_contains_span _ctx =
 
 let test_compare_uses_span_length _ctx =
   match Syn.Span.compare (span 10 12) (span 50 55) with
-  | Order.LT ->
-      (match Syn.Span.compare (span 10 15) (span 50 55) with
+  | Order.LT -> (
+      match Syn.Span.compare (span 10 15) (span 50 55) with
       | Order.EQ -> Ok ()
-      | _ -> Error "expected same-width spans to compare equal")
+      | _ -> Error "expected same-width spans to compare equal"
+    )
   | _ -> Error "expected shorter span to compare before longer span"
 
 let test_relative_order_helpers _ctx =

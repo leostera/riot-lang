@@ -18,14 +18,12 @@ type output_policy =
   | Fail_if_exists
   | Overwrite
   | Append
-
 type trace_request = {
   output: Path.t;
   output_policy: output_policy;
   profiler: Profiler.t;
   options: trace_options;
 }
-
 type run_request = {
   workspace: Riot_model.Workspace.t;
   package_name: Riot_model.Package_name.t option;
@@ -34,14 +32,12 @@ type run_request = {
   trace: trace_request;
   args: string list;
 }
-
 type binary_run_request = {
   binary_path: Path.t;
   binary_name: string;
   trace: trace_request;
   args: string list;
 }
-
 type event =
   | Build of Riot_build.Event.t
   | TracingBinary of {
@@ -56,22 +52,14 @@ type event =
       profiler: string;
       output: Path.t;
     }
-
 type error =
   | Run of Riot_run.run_error
   | BinaryPathInvalid of {
       path: Path.t;
       reason: string;
     }
-  | ProfilerUnavailable of {
-      profiler: string;
-      reason: string;
-    }
-  | UnsupportedProfilerOption of {
-      profiler: string;
-      option: string;
-      reason: string;
-    }
+  | ProfilerUnavailable of { profiler: string; reason: string }
+  | UnsupportedProfilerOption of { profiler: string; option: string; reason: string }
   | OutputAlreadyExists of Path.t
   | ProcessExited of int
   | SystemError of string

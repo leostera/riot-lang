@@ -167,7 +167,7 @@ let serde_error = fun context err -> context ^ ": " ^ Serde.Error.to_string err
 let file_error = fun context path err ->
   context ^ " " ^ Path.to_string path ^ ": " ^ Fs.File.error_to_string err
 
-let small_cache_file_threshold = 64 * 1024
+let small_cache_file_threshold = 64 * 1_024
 
 let write_cache_file = fun ~path ~context serializer value ->
   match Fs.File.create path with
@@ -189,8 +189,8 @@ let read_cache_file = fun ~path ~context deserializer ->
   let read_small_file = fun () ->
     let* content =
       Fs.read path
-      |> Result.map_err ~fn:(fun err ->
-        "failed to read " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+      |> Result.map_err
+        ~fn:(fun err -> "failed to read " ^ Path.to_string path ^ ": " ^ IO.error_message err)
     in
     Serde_bin.from_string deserializer content
     |> Result.map_err ~fn:(serde_error context)
@@ -283,23 +283,24 @@ let short_hash = fun hash ->
 let summary_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "ran_gc" Ser.bool (fun (summary: summary) -> summary.ran_gc);
-        Ser.field "kept_generations" Ser.int (fun (summary: summary) -> summary.kept_generations);
-        Ser.field
-          "deleted_generations"
-          Ser.int
-          (fun (summary: summary) -> summary.deleted_generations);
-        Ser.field "deleted_entries" Ser.int (fun (summary: summary) -> summary.deleted_entries);
-        Ser.field
-          "size_before_bytes"
-          int64_string_serializer
-          (fun (summary: summary) -> summary.size_before_bytes);
-        Ser.field
-          "size_after_bytes"
-          int64_string_serializer
-          (fun (summary: summary) -> summary.size_after_bytes);
-      ]
+      Ser.fields
+        [
+          Ser.field "ran_gc" Ser.bool (fun (summary: summary) -> summary.ran_gc);
+          Ser.field "kept_generations" Ser.int (fun (summary: summary) -> summary.kept_generations);
+          Ser.field
+            "deleted_generations"
+            Ser.int
+            (fun (summary: summary) -> summary.deleted_generations);
+          Ser.field "deleted_entries" Ser.int (fun (summary: summary) -> summary.deleted_entries);
+          Ser.field
+            "size_before_bytes"
+            int64_string_serializer
+            (fun (summary: summary) -> summary.size_before_bytes);
+          Ser.field
+            "size_after_bytes"
+            int64_string_serializer
+            (fun (summary: summary) -> summary.size_after_bytes);
+        ]
     )
 
 let path_serializer = Ser.contramap Path.to_string Ser.string
@@ -308,218 +309,341 @@ let trigger_serializer = Ser.contramap trigger_to_string Ser.string
 
 let event_type_field name = Ser.field "type" Ser.string (fun (_: event) -> name)
 
-let trigger_field get =
-  Ser.field "trigger" trigger_serializer get
+let trigger_field get = Ser.field "trigger" trigger_serializer get
 
 let gc_started_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcStarted";
-        trigger_field (function GcStarted { trigger } -> trigger | _ -> panic "invalid CacheGcStarted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcStarted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcStarted { trigger } -> trigger
+              | _ -> panic "invalid CacheGcStarted event");
+        ]
     )
 
 let gc_cache_scan_started_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcScanStarted";
-        trigger_field (function GcCacheScanStarted { trigger; _ } -> trigger | _ -> panic "invalid CacheGcScanStarted event");
-        Ser.field
-          "build_root"
-          path_serializer
-          (function GcCacheScanStarted { build_root; _ } -> build_root | _ -> panic "invalid CacheGcScanStarted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcScanStarted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheScanStarted { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcScanStarted event");
+          Ser.field
+            "build_root"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheScanStarted { build_root; _ } -> build_root
+              | _ -> panic "invalid CacheGcScanStarted event");
+        ]
     )
 
 let gc_cache_entry_scan_started_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcEntryScanStarted";
-        trigger_field (function GcCacheEntryScanStarted { trigger; _ } -> trigger | _ -> panic "invalid CacheGcEntryScanStarted event");
-        Ser.field
-          "hash"
-          Ser.string
-          (function GcCacheEntryScanStarted { hash; _ } -> hash | _ -> panic "invalid CacheGcEntryScanStarted event");
-        Ser.field
-          "path"
-          path_serializer
-          (function GcCacheEntryScanStarted { path; _ } -> path | _ -> panic "invalid CacheGcEntryScanStarted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcEntryScanStarted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanStarted { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcEntryScanStarted event");
+          Ser.field
+            "hash"
+            Ser.string
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanStarted { hash; _ } -> hash
+              | _ -> panic "invalid CacheGcEntryScanStarted event");
+          Ser.field
+            "path"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanStarted { path; _ } -> path
+              | _ -> panic "invalid CacheGcEntryScanStarted event");
+        ]
     )
 
 let gc_cache_entry_scanned_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcEntryScanned";
-        trigger_field (function GcCacheEntryScanned { trigger; _ } -> trigger | _ -> panic "invalid CacheGcEntryScanned event");
-        Ser.field
-          "hash"
-          Ser.string
-          (function GcCacheEntryScanned { hash; _ } -> hash | _ -> panic "invalid CacheGcEntryScanned event");
-        Ser.field
-          "path"
-          path_serializer
-          (function GcCacheEntryScanned { path; _ } -> path | _ -> panic "invalid CacheGcEntryScanned event");
-        Ser.field
-          "size_bytes"
-          int64_string_serializer
-          (function GcCacheEntryScanned { size_bytes; _ } -> size_bytes | _ -> panic "invalid CacheGcEntryScanned event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcEntryScanned";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanned { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcEntryScanned event");
+          Ser.field
+            "hash"
+            Ser.string
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanned { hash; _ } -> hash
+              | _ -> panic "invalid CacheGcEntryScanned event");
+          Ser.field
+            "path"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanned { path; _ } -> path
+              | _ -> panic "invalid CacheGcEntryScanned event");
+          Ser.field
+            "size_bytes"
+            int64_string_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryScanned { size_bytes; _ } -> size_bytes
+              | _ -> panic "invalid CacheGcEntryScanned event");
+        ]
     )
 
 let gc_cache_scan_completed_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcScanCompleted";
-        trigger_field (function GcCacheScanCompleted { trigger; _ } -> trigger | _ -> panic "invalid CacheGcScanCompleted event");
-        Ser.field
-          "entry_count"
-          Ser.int
-          (function GcCacheScanCompleted { entry_count; _ } -> entry_count | _ -> panic "invalid CacheGcScanCompleted event");
-        Ser.field
-          "total_size_bytes"
-          int64_string_serializer
-          (function GcCacheScanCompleted { total_size_bytes; _ } -> total_size_bytes | _ -> panic "invalid CacheGcScanCompleted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcScanCompleted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheScanCompleted { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcScanCompleted event");
+          Ser.field
+            "entry_count"
+            Ser.int
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheScanCompleted { entry_count; _ } -> entry_count
+              | _ -> panic "invalid CacheGcScanCompleted event");
+          Ser.field
+            "total_size_bytes"
+            int64_string_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheScanCompleted { total_size_bytes; _ } -> total_size_bytes
+              | _ -> panic "invalid CacheGcScanCompleted event");
+        ]
     )
 
 let gc_plan_computed_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcPlanComputed";
-        trigger_field (function GcPlanComputed { trigger; _ } -> trigger | _ -> panic "invalid CacheGcPlanComputed event");
-        Ser.field
-          "deleted_entries"
-          Ser.int
-          (function GcPlanComputed { deleted_entries; _ } -> deleted_entries | _ -> panic "invalid CacheGcPlanComputed event");
-        Ser.field
-          "deleted_generations"
-          Ser.int
-          (function GcPlanComputed { deleted_generations; _ } -> deleted_generations | _ -> panic "invalid CacheGcPlanComputed event");
-        Ser.field
-          "reclaimable_bytes"
-          int64_string_serializer
-          (function GcPlanComputed { reclaimable_bytes; _ } -> reclaimable_bytes | _ -> panic "invalid CacheGcPlanComputed event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcPlanComputed";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcPlanComputed { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcPlanComputed event");
+          Ser.field
+            "deleted_entries"
+            Ser.int
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcPlanComputed { deleted_entries; _ } -> deleted_entries
+              | _ -> panic "invalid CacheGcPlanComputed event");
+          Ser.field
+            "deleted_generations"
+            Ser.int
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcPlanComputed { deleted_generations; _ } -> deleted_generations
+              | _ -> panic "invalid CacheGcPlanComputed event");
+          Ser.field
+            "reclaimable_bytes"
+            int64_string_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcPlanComputed { reclaimable_bytes; _ } -> reclaimable_bytes
+              | _ -> panic "invalid CacheGcPlanComputed event");
+        ]
     )
 
 let gc_cache_entry_delete_started_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcEntryDeleteStarted";
-        trigger_field (function GcCacheEntryDeleteStarted { trigger; _ } -> trigger | _ -> panic "invalid CacheGcEntryDeleteStarted event");
-        Ser.field
-          "hash"
-          Ser.string
-          (function GcCacheEntryDeleteStarted { hash; _ } -> hash | _ -> panic "invalid CacheGcEntryDeleteStarted event");
-        Ser.field
-          "path"
-          path_serializer
-          (function GcCacheEntryDeleteStarted { path; _ } -> path | _ -> panic "invalid CacheGcEntryDeleteStarted event");
-        Ser.field
-          "size_bytes"
-          int64_string_serializer
-          (function GcCacheEntryDeleteStarted { size_bytes; _ } -> size_bytes | _ -> panic "invalid CacheGcEntryDeleteStarted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcEntryDeleteStarted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryDeleteStarted { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcEntryDeleteStarted event");
+          Ser.field
+            "hash"
+            Ser.string
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryDeleteStarted { hash; _ } -> hash
+              | _ -> panic "invalid CacheGcEntryDeleteStarted event");
+          Ser.field
+            "path"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryDeleteStarted { path; _ } -> path
+              | _ -> panic "invalid CacheGcEntryDeleteStarted event");
+          Ser.field
+            "size_bytes"
+            int64_string_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCacheEntryDeleteStarted { size_bytes; _ } -> size_bytes
+              | _ -> panic "invalid CacheGcEntryDeleteStarted event");
+        ]
     )
 
 let gc_generation_delete_started_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcGenerationDeleteStarted";
-        trigger_field (function GcGenerationDeleteStarted { trigger; _ } -> trigger | _ -> panic "invalid CacheGcGenerationDeleteStarted event");
-        Ser.field
-          "path"
-          path_serializer
-          (function GcGenerationDeleteStarted { path; _ } -> path | _ -> panic "invalid CacheGcGenerationDeleteStarted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcGenerationDeleteStarted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcGenerationDeleteStarted { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcGenerationDeleteStarted event");
+          Ser.field
+            "path"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcGenerationDeleteStarted { path; _ } -> path
+              | _ -> panic "invalid CacheGcGenerationDeleteStarted event");
+        ]
     )
 
 let gc_skipped_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcSkipped";
-        trigger_field (function GcSkipped { trigger; _ } -> trigger | _ -> panic "invalid CacheGcSkipped event");
-        Ser.field
-          "summary"
-          summary_serializer
-          (function GcSkipped { summary; _ } -> summary | _ -> panic "invalid CacheGcSkipped event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcSkipped";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcSkipped { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcSkipped event");
+          Ser.field
+            "summary"
+            summary_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcSkipped { summary; _ } -> summary
+              | _ -> panic "invalid CacheGcSkipped event");
+        ]
     )
 
 let gc_completed_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcCompleted";
-        trigger_field (function GcCompleted { trigger; _ } -> trigger | _ -> panic "invalid CacheGcCompleted event");
-        Ser.field
-          "summary"
-          summary_serializer
-          (function GcCompleted { summary; _ } -> summary | _ -> panic "invalid CacheGcCompleted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcCompleted";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCompleted { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcCompleted event");
+          Ser.field
+            "summary"
+            summary_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcCompleted { summary; _ } -> summary
+              | _ -> panic "invalid CacheGcCompleted event");
+        ]
     )
 
 let gc_failed_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "CacheGcFailed";
-        trigger_field (function GcFailed { trigger; _ } -> trigger | _ -> panic "invalid CacheGcFailed event");
-        Ser.field
-          "error"
-          Ser.string
-          (function GcFailed { error; _ } -> error | _ -> panic "invalid CacheGcFailed event");
-      ]
+      Ser.fields
+        [
+          event_type_field "CacheGcFailed";
+          trigger_field
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcFailed { trigger; _ } -> trigger
+              | _ -> panic "invalid CacheGcFailed event");
+          Ser.field
+            "error"
+            Ser.string
+            (fun __tmp1 ->
+              match __tmp1 with
+              | GcFailed { error; _ } -> error
+              | _ -> panic "invalid CacheGcFailed event");
+        ]
     )
 
 let force_clean_started_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "ForceCleanStarted";
-        Ser.field
-          "build_root"
-          path_serializer
-          (function ForceCleanStarted { build_root } -> build_root | _ -> panic "invalid ForceCleanStarted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "ForceCleanStarted";
+          Ser.field
+            "build_root"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | ForceCleanStarted { build_root } -> build_root
+              | _ -> panic "invalid ForceCleanStarted event");
+        ]
     )
 
 let force_clean_completed_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "ForceCleanCompleted";
-        Ser.field
-          "build_root"
-          path_serializer
-          (function ForceCleanCompleted { build_root } -> build_root | _ -> panic "invalid ForceCleanCompleted event");
-      ]
+      Ser.fields
+        [
+          event_type_field "ForceCleanCompleted";
+          Ser.field
+            "build_root"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | ForceCleanCompleted { build_root } -> build_root
+              | _ -> panic "invalid ForceCleanCompleted event");
+        ]
     )
 
 let force_clean_failed_serializer =
   Ser.record
     (
-      Ser.fields [
-        event_type_field "ForceCleanFailed";
-        Ser.field
-          "build_root"
-          path_serializer
-          (function ForceCleanFailed { build_root; _ } -> build_root | _ -> panic "invalid ForceCleanFailed event");
-        Ser.field
-          "error"
-          Ser.string
-          (function ForceCleanFailed { error; _ } -> error | _ -> panic "invalid ForceCleanFailed event");
-      ]
+      Ser.fields
+        [
+          event_type_field "ForceCleanFailed";
+          Ser.field
+            "build_root"
+            path_serializer
+            (fun __tmp1 ->
+              match __tmp1 with
+              | ForceCleanFailed { build_root; _ } -> build_root
+              | _ -> panic "invalid ForceCleanFailed event");
+          Ser.field
+            "error"
+            Ser.string
+            (fun __tmp1 ->
+              match __tmp1 with
+              | ForceCleanFailed { error; _ } -> error
+              | _ -> panic "invalid ForceCleanFailed event");
+        ]
     )
 
 let event_message = fun __tmp1 ->
@@ -555,29 +679,28 @@ let event_message = fun __tmp1 ->
   | ForceCleanFailed { build_root; error } ->
       "failed to remove build root " ^ Path.to_string build_root ^ ": " ^ error
 
-let event_serializer =
-  {
-    Ser.run =
-      (fun backend state event ->
-        let serializer =
-          match event with
-          | GcStarted _ -> gc_started_serializer
-          | GcCacheScanStarted _ -> gc_cache_scan_started_serializer
-          | GcCacheEntryScanStarted _ -> gc_cache_entry_scan_started_serializer
-          | GcCacheEntryScanned _ -> gc_cache_entry_scanned_serializer
-          | GcCacheScanCompleted _ -> gc_cache_scan_completed_serializer
-          | GcPlanComputed _ -> gc_plan_computed_serializer
-          | GcCacheEntryDeleteStarted _ -> gc_cache_entry_delete_started_serializer
-          | GcGenerationDeleteStarted _ -> gc_generation_delete_started_serializer
-          | GcSkipped _ -> gc_skipped_serializer
-          | GcCompleted _ -> gc_completed_serializer
-          | GcFailed _ -> gc_failed_serializer
-          | ForceCleanStarted _ -> force_clean_started_serializer
-          | ForceCleanCompleted _ -> force_clean_completed_serializer
-          | ForceCleanFailed _ -> force_clean_failed_serializer
-        in
-        serializer.run backend state event);
-  }
+let event_serializer = {
+  Ser.run =
+    (fun backend state event ->
+      let serializer =
+        match event with
+        | GcStarted _ -> gc_started_serializer
+        | GcCacheScanStarted _ -> gc_cache_scan_started_serializer
+        | GcCacheEntryScanStarted _ -> gc_cache_entry_scan_started_serializer
+        | GcCacheEntryScanned _ -> gc_cache_entry_scanned_serializer
+        | GcCacheScanCompleted _ -> gc_cache_scan_completed_serializer
+        | GcPlanComputed _ -> gc_plan_computed_serializer
+        | GcCacheEntryDeleteStarted _ -> gc_cache_entry_delete_started_serializer
+        | GcGenerationDeleteStarted _ -> gc_generation_delete_started_serializer
+        | GcSkipped _ -> gc_skipped_serializer
+        | GcCompleted _ -> gc_completed_serializer
+        | GcFailed _ -> gc_failed_serializer
+        | ForceCleanStarted _ -> force_clean_started_serializer
+        | ForceCleanCompleted _ -> force_clean_completed_serializer
+        | ForceCleanFailed _ -> force_clean_failed_serializer
+      in
+      serializer.run backend state event);
+}
 
 let sort_uniq_strings = fun values ->
   let rec dedupe acc = fun __tmp1 ->
@@ -660,40 +783,41 @@ type cache_state_builder = {
 }
 
 let generation_lane_fields =
-  De.fields [
-    De.field "profile" Generation_lane_profile;
-    De.field "target" Generation_lane_target;
-    De.field "hashes" Generation_lane_hashes;
-  ]
+  De.fields
+    [
+      De.field "profile" Generation_lane_profile;
+      De.field "target" Generation_lane_target;
+      De.field "hashes" Generation_lane_hashes;
+    ]
 
 let receipt_fields =
-  De.fields [
-    De.field "schema_version" Receipt_schema_version;
-    De.field "hash" Receipt_hash;
-    De.field "lanes" Receipt_lanes;
-  ]
+  De.fields
+    [
+      De.field "schema_version" Receipt_schema_version;
+      De.field "hash" Receipt_hash;
+      De.field "lanes" Receipt_lanes;
+    ]
 
 let cache_state_fields =
-  De.fields [
-    De.field "schema_version" Cache_state_schema_version;
-    De.field "tracked_size_bytes" Cache_state_tracked_size_bytes;
-    De.field "generation_hashes" Cache_state_generation_hashes;
-    De.field "receipt_count" Cache_state_receipt_count;
-  ]
+  De.fields
+    [
+      De.field "schema_version" Cache_state_schema_version;
+      De.field "tracked_size_bytes" Cache_state_tracked_size_bytes;
+      De.field "generation_hashes" Cache_state_generation_hashes;
+      De.field "receipt_count" Cache_state_receipt_count;
+    ]
 
 let generation_lane_deserializer =
   De.record_mut
     ~fields:generation_lane_fields
-    ~create:(fun () -> {
-      lane_profile = None;
-      lane_target = None;
-      lane_hashes = None;
-    })
+    ~create:(fun () -> { lane_profile = None; lane_target = None; lane_hashes = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Generation_lane_profile -> builder.lane_profile <- Some (De.read reader De.string)
-      | Some Generation_lane_target -> builder.lane_target <- Some (De.read reader target_deserializer)
-      | Some Generation_lane_hashes -> builder.lane_hashes <- Some (De.read reader (de_list De.string))
+      | Some Generation_lane_target ->
+          builder.lane_target <- Some (De.read reader target_deserializer)
+      | Some Generation_lane_hashes ->
+          builder.lane_hashes <- Some (De.read reader (de_list De.string))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.lane_profile, builder.lane_target, builder.lane_hashes) with
@@ -703,25 +827,24 @@ let generation_lane_deserializer =
 let generation_lane_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "profile" Ser.string (fun (lane: generation_lane) -> lane.profile);
-        Ser.field "target" target_serializer (fun (lane: generation_lane) -> lane.target);
-        Ser.field "hashes" (ser_list Ser.string) (fun (lane: generation_lane) -> lane.hashes);
-      ]
+      Ser.fields
+        [
+          Ser.field "profile" Ser.string (fun (lane: generation_lane) -> lane.profile);
+          Ser.field "target" target_serializer (fun (lane: generation_lane) -> lane.target);
+          Ser.field "hashes" (ser_list Ser.string) (fun (lane: generation_lane) -> lane.hashes);
+        ]
     )
 
 let receipt_deserializer =
   De.record_mut
     ~fields:receipt_fields
-    ~create:(fun () -> {
-      receipt_hash = None;
-      receipt_lanes = None;
-    })
+    ~create:(fun () -> { receipt_hash = None; receipt_lanes = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Receipt_schema_version -> ignore (De.read reader De.int)
       | Some Receipt_hash -> builder.receipt_hash <- Some (De.read reader De.string)
-      | Some Receipt_lanes -> builder.receipt_lanes <- Some (De.read reader (de_list generation_lane_deserializer))
+      | Some Receipt_lanes ->
+          builder.receipt_lanes <- Some (De.read reader (de_list generation_lane_deserializer))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match builder.receipt_lanes with
@@ -737,11 +860,15 @@ let receipt_deserializer =
 let receipt_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "schema_version" Ser.int (fun (_: receipt) -> 2);
-        Ser.field "hash" Ser.string (fun (receipt: receipt) -> receipt.hash);
-        Ser.field "lanes" (ser_list generation_lane_serializer) (fun (receipt: receipt) -> receipt.lanes);
-      ]
+      Ser.fields
+        [
+          Ser.field "schema_version" Ser.int (fun (_: receipt) -> 2);
+          Ser.field "hash" Ser.string (fun (receipt: receipt) -> receipt.hash);
+          Ser.field
+            "lanes"
+            (ser_list generation_lane_serializer)
+            (fun (receipt: receipt) -> receipt.lanes);
+        ]
     )
 
 let cache_state_deserializer =
@@ -758,7 +885,9 @@ let cache_state_deserializer =
       | Some Cache_state_tracked_size_bytes ->
           builder.cache_state_tracked_size_bytes <- Some (De.read reader int64_string_deserializer)
       | Some Cache_state_generation_hashes ->
-          builder.cache_state_generation_hashes <- Some (De.read reader (De.option (de_list De.string)))
+          builder.cache_state_generation_hashes <- Some (De.read
+            reader
+            (De.option (de_list De.string)))
       | Some Cache_state_receipt_count ->
           builder.cache_state_receipt_count <- Some (De.read reader (De.option De.int))
       | None -> ignore (De.read reader De.skip_any))
@@ -775,27 +904,28 @@ let cache_state_deserializer =
             | Some receipt_count -> receipt_count
             | None -> None
           in
-          ({ tracked_size_bytes; generation_hashes; receipt_count }:cache_state)
+          ({ tracked_size_bytes; generation_hashes; receipt_count }: cache_state)
       | None -> De.missing_field ())
 
 let cache_state_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "schema_version" Ser.int (fun (_: cache_state) -> 2);
-        Ser.field
-          "tracked_size_bytes"
-          int64_string_serializer
-          (fun (state: cache_state) -> state.tracked_size_bytes);
-        Ser.field
-          "generation_hashes"
-          (Ser.option (ser_list Ser.string))
-          (fun (state: cache_state) -> state.generation_hashes);
-        Ser.field
-          "receipt_count"
-          (Ser.option Ser.int)
-          (fun (state: cache_state) -> state.receipt_count);
-      ]
+      Ser.fields
+        [
+          Ser.field "schema_version" Ser.int (fun (_: cache_state) -> 2);
+          Ser.field
+            "tracked_size_bytes"
+            int64_string_serializer
+            (fun (state: cache_state) -> state.tracked_size_bytes);
+          Ser.field
+            "generation_hashes"
+            (Ser.option (ser_list Ser.string))
+            (fun (state: cache_state) -> state.generation_hashes);
+          Ser.field
+            "receipt_count"
+            (Ser.option Ser.int)
+            (fun (state: cache_state) -> state.receipt_count);
+        ]
     )
 
 let path_exists = fun path ->
@@ -875,10 +1005,7 @@ let read_state = fun ~(workspace:Workspace.t) ->
     Ok None
   else
     let* state =
-      read_cache_file
-        ~path
-        ~context:"failed to parse cache state"
-        cache_state_deserializer
+      read_cache_file ~path ~context:"failed to parse cache state" cache_state_deserializer
     in
     Ok (Some state)
 
@@ -904,10 +1031,7 @@ let write_receipt = fun ~(workspace:Workspace.t) receipt ->
 
 let read_receipt_file = fun path ->
   let* receipt =
-    read_cache_file
-      ~path
-      ~context:"failed to parse generation receipt"
-      receipt_deserializer
+    read_cache_file ~path ~context:"failed to parse generation receipt" receipt_deserializer
   in
   Ok { path; receipt }
 
@@ -1390,8 +1514,8 @@ let added_size_for_new_entries = fun new_entries ->
         acc
       else
         (
-        let _ = HashSet.insert seen ~value:key in
-        Int64.add acc entry.size_bytes
+          let _ = HashSet.insert seen ~value:key in
+          Int64.add acc entry.size_bytes
         ))
 
 let record_successful_build_with_events = fun

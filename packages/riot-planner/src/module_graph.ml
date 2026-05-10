@@ -1070,9 +1070,7 @@ let read_task_source = fun task ->
 let analyze_source = fun task ->
   let* raw_text = read_task_source task in
   let parse_result = Syn.parse ~filename:task.task_display_path (source_slice raw_text) in
-  let source_hash =
-    source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text
-  in
+  let source_hash = source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text in
   let summary =
     Dep_analyzer.analyze
       ?module_path:task.task_module_path

@@ -7,7 +7,6 @@ open Std
    serial phase replays that IR against package/module providers to produce the
    module roots a source depends on.
 *)
-
 module Item: sig
   module Ident: sig
     type t = string list
@@ -16,7 +15,6 @@ module Item: sig
   type include_mode =
     | Structure
     | Signature
-
   type functor_arg = {
     name: string option;
     ascription: t list;
@@ -36,10 +34,7 @@ module Item: sig
         signature: t list;
         body: t list;
       }
-    | ModuleAlias of {
-        name: string;
-        target: t;
-      }
+    | ModuleAlias of { name: string; target: t }
     | Functor of {
         name: string;
         args: functor_arg list;
@@ -49,10 +44,7 @@ module Item: sig
         name: string;
         body: t list;
       }
-    | FunctorApply of {
-        callee: t;
-        argument: t;
-      }
+    | FunctorApply of { callee: t; argument: t }
     | Constraint of {
         expr: t;
         signature: t list;
@@ -74,7 +66,6 @@ end
 type source_kind =
   | Implementation
   | Interface
-
 type source_summary = {
   source: Path.t;
   source_hash: Crypto.hash;
@@ -148,7 +139,6 @@ end
 
 type parse_error =
   | Parse_diagnostics of Syn.Diagnostic.t list
-
 type resolve_error =
   | Invalid_provider of string
 
@@ -176,7 +166,6 @@ module Ir: sig
   type nonrec source_kind = source_kind =
     | Implementation
     | Interface
-
   type nonrec source_summary = source_summary = {
     source: Path.t;
     source_hash: Crypto.hash;
@@ -184,7 +173,6 @@ module Ir: sig
     kind: source_kind;
     items: Item.t list;
   }
-
   type nonrec parse_error = parse_error =
     | Parse_diagnostics of Syn.Diagnostic.t list
 

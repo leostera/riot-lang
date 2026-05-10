@@ -568,12 +568,13 @@ let find_compile_cmx = fun actions source ->
         match action with
         | Riot_planner.Action.CompileImplementation { source = compile_source; outputs; _ } when Path.equal
           compile_source
-          source ->
-            (match List.find
+          source -> (
+            match List.find
               outputs
               ~fn:(fun output -> String.ends_with ~suffix:".cmx" (Path.to_string output)) with
             | Some _ as output -> output
-            | None -> loop rest)
+            | None -> loop rest
+          )
         | _ -> loop rest
   in
   loop actions
@@ -655,7 +656,7 @@ let plan_dev_package_actions_with_library = fun ~library ~tmpdir ~package_name ~
         match binary_unit package binary_name with
         | Error _ as err -> err
         | Ok unit ->
-	      match plan_build_unit_from_graph
+            match plan_build_unit_from_graph
               ~workspace
               ~store
               ~unit_graph
@@ -718,20 +719,23 @@ let plan_runtime_package_actions = fun ~tmpdir ~package_name ~files ~binaries ->
   match package.library with
   | Some _ ->
       let unit = library_unit package in
-      (match plan_build_unit_from_graph
-        ~workspace
-        ~store
-        ~unit_graph
-        ~unit_key:(Riot_planner.Build_unit.key unit)
-        ~build_ctx with
-      | Error _ as err -> err
-      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-          (match plan_binaries [ action_graph ] runtime_binaries with
-          | Ok _ as ok -> ok
-          | Error _ as err -> err)
-      | Ok result ->
-          Error ("expected runtime library plan to return Planned, got "
-          ^ describe_plan_result result))
+      (
+        match plan_build_unit_from_graph
+          ~workspace
+          ~store
+          ~unit_graph
+          ~unit_key:(Riot_planner.Build_unit.key unit)
+          ~build_ctx with
+        | Error _ as err -> err
+        | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+            match plan_binaries [ action_graph ] runtime_binaries with
+            | Ok _ as ok -> ok
+            | Error _ as err -> err
+          )
+        | Ok result ->
+            Error ("expected runtime library plan to return Planned, got "
+            ^ describe_plan_result result)
+      )
   | None -> plan_binaries [] runtime_binaries
 
 let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
@@ -938,8 +942,8 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
   let open Std.Data.Json in
   let rewrite_action action_json =
     match action_json with
-    | Object _ ->
-        (match (
+    | Object _ -> (
+        match (
           get_field "type" action_json,
           get_field "outputs" action_json,
           get_field "objects" action_json,
@@ -960,13 +964,14 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
               ("objects", Array (List.map (rewrite objects) ~fn:(fun path -> String path)));
               ("includes", includes);
             ]
-        | _ -> action_json)
+        | _ -> action_json
+      )
     | _ -> action_json
   in
   let rewrite_node node_json =
     match node_json with
-    | Object _ ->
-        (match (
+    | Object _ -> (
+        match (
           get_field "id" node_json,
           get_field "actions" node_json,
           get_field "outputs" node_json,
@@ -999,21 +1004,23 @@ let rewrite_create_library_objects_json = fun json ~rewrite ->
               ("hash", hash);
               ("dependencies", dependencies);
             ]
-        | _ -> node_json)
+        | _ -> node_json
+      )
     | _ -> node_json
   in
   match json with
-  | Object _ ->
-      (match get_field "nodes" json with
+  | Object _ -> (
+      match get_field "nodes" json with
       | Some (Array nodes) -> Object [ ("nodes", Array (List.map nodes ~fn:rewrite_node)); ]
-      | _ -> json)
+      | _ -> json
+    )
   | _ -> json
 
 let rewrite_plan_bundle_action_graph = fun bundle ~rewrite ->
   let open Std.Data.Json in
   match bundle with
-  | Object _ ->
-      (match (
+  | Object _ -> (
+      match (
         get_field "version" bundle,
         get_field "package" bundle,
         get_field "module_graph" bundle,
@@ -1026,7 +1033,8 @@ let rewrite_plan_bundle_action_graph = fun bundle ~rewrite ->
             ("module_graph", module_graph);
             ("action_graph", rewrite_create_library_objects_json action_graph ~rewrite);
           ]
-      | _ -> bundle)
+      | _ -> bundle
+    )
   | _ -> bundle
 
 let render_module_graph_dependency_walk = fun graph ->
@@ -1871,23 +1879,25 @@ let plan_kernel_package_with_fresh_store = fun () ->
               in
               match runtime_result with
               | Error err -> Error ("kernel live plan failed: " ^ err)
-              | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) ->
-                  (match find_create_library_objects action_graph with
+              | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) -> (
+                  match find_create_library_objects action_graph with
                   | Error _ as err -> err
-                  | Ok live_objects ->
-                      (match plan_build_unit_from_graph
+                  | Ok live_objects -> (
+                      match plan_build_unit_from_graph
                         ~workspace
                         ~store
                         ~unit_graph
                         ~unit_key
                         ~build_ctx with
                       | Error err -> Error ("kernel cached plan failed: " ^ err)
-                      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-                          (match find_create_library_objects action_graph with
+                      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                          match find_create_library_objects action_graph with
                           | Error _ as err -> err
-                          | Ok cached_objects -> Ok (module_graph, live_objects, cached_objects))
-                      | Ok _ -> Error "expected cached kernel plan to return Planned")
-                  )
+                          | Ok cached_objects -> Ok (module_graph, live_objects, cached_objects)
+                        )
+                      | Ok _ -> Error "expected cached kernel plan to return Planned"
+                    )
+                )
               | Ok _ -> Error "expected live kernel plan to return Planned") with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -2401,8 +2411,8 @@ let test_runtime_plan_keeps_direct_src_files_as_library_objects = fun _ctx ->
       let unit_key = Riot_planner.Build_unit.key (library_unit package) in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error err
-      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-          (match find_create_library_objects action_graph with
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+          match find_create_library_objects action_graph with
           | Error err -> Error err
           | Ok objects ->
               if List.contains objects ~value:"Pkg.cmx" then
@@ -2410,7 +2420,8 @@ let test_runtime_plan_keeps_direct_src_files_as_library_objects = fun _ctx ->
               else
                 Error ("expected runtime library to link Pkg.cmx, got ["
                 ^ String.concat ", " objects
-                ^ "]"))
+                ^ "]")
+        )
       | Ok other -> Error ("expected Planned result, got " ^ describe_plan_result other)) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2448,8 +2459,8 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
       in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error err
-      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-          (match find_create_library_objects action_graph with
+      | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+          match find_create_library_objects action_graph with
           | Error err -> Error err
           | Ok live_objects ->
               if not (List.contains live_objects ~value:"Pkg.cmx") then
@@ -2474,8 +2485,8 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
                       ~unit_key
                       ~build_ctx with
                     | Error err -> Error err
-                    | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-                        (match find_create_library_objects action_graph with
+                    | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                        match find_create_library_objects action_graph with
                         | Error err -> Error err
                         | Ok replanned_objects ->
                             if List.contains replanned_objects ~value:"Pkg.cmx" then
@@ -2483,10 +2494,12 @@ let test_plan_bundle_with_empty_library_objects_rebuilds_plan_graphs = fun _ctx 
                             else
                               Error ("expected bad plan bundle to be ignored, got ["
                               ^ String.concat ", " replanned_objects
-                              ^ "]"))
+                              ^ "]")
+                      )
                     | Ok other ->
                         Error ("expected bad plan bundle to replan, got "
-                        ^ describe_plan_result other))
+                        ^ describe_plan_result other)
+        )
       | Ok other -> Error ("expected Planned result, got " ^ describe_plan_result other)) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2654,8 +2667,8 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
       let unit = library_unit package in
       match plan_build_unit ~workspace ~store ~unit ~depset:[] ~build_ctx with
       | Error err -> Error ("expected cache-hit plan result, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
-          (match find_library_node module_graph with
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+          match find_library_node module_graph with
           | None -> Error "expected restored library node"
           | Some library_node ->
               let actual = module_dependency_labels module_graph library_node in
@@ -2667,7 +2680,8 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
                 ^ String.concat ", " expected
                 ^ "] but got ["
                 ^ String.concat ", " actual
-                ^ "]"))
+                ^ "]")
+        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -2741,8 +2755,8 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("expected package plan to succeed, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
-          (match find_module_node_by_label module_graph "MLI(Pkg__Udp_server)" with
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+          match find_module_node_by_label module_graph "MLI(Pkg__Udp_server)" with
           | None -> Error "missing MLI(Pkg__Udp_server) in module graph"
           | Some node ->
               let deps = module_dependency_labels module_graph node in
@@ -2757,7 +2771,8 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
               else
                 Error ("expected MLI(Pkg__Udp_server) to depend on Udp_socket, got ["
                 ^ String.concat ", " deps
-                ^ "]"))
+                ^ "]")
+        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -3030,8 +3045,8 @@ let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
       let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err -> Error ("expected package plan to succeed, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
-          (match find_module_node_by_label module_graph "MLI(Pkg__Archive)" with
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+          match find_module_node_by_label module_graph "MLI(Pkg__Archive)" with
           | None -> Error "missing MLI(Pkg__Archive) in module graph"
           | Some node ->
               let deps = module_dependency_labels module_graph node in
@@ -3043,7 +3058,8 @@ let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
               else
                 Error ("expected MLI(Pkg__Archive) to depend on inherited aliases, got ["
                 ^ String.concat ", " deps
-                ^ "]"))
+                ^ "]")
+        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -3187,8 +3203,8 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
       match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
       | Error err ->
           Error ("expected nested sibling plan bundle to be ignored, got planner error: " ^ err)
-      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) ->
-          (match find_module_node_by_label module_graph "MLI(Demo__Net__Udp_server)" with
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+          match find_module_node_by_label module_graph "MLI(Demo__Net__Udp_server)" with
           | None ->
               Error "expected stale nested plan bundle to be ignored and rebuilt, but udp_server node was missing"
           | Some node ->
@@ -3204,7 +3220,8 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
               else
                 Error ("expected rebuilt nested plan graph to restore Udp_socket dependency, got ["
                 ^ String.concat ", " deps
-                ^ "]"))
+                ^ "]")
+        )
       | Ok _ -> Error "expected Planned result") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -3469,8 +3486,8 @@ let test_suri_socket_pool_implementation_depends_on_acceptor = fun _ctx ->
             let unit_key = Riot_planner.Build_unit.key (library_unit package) in
             match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
             | Error err -> Error ("suri runtime plan failed: " ^ err)
-            | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) ->
-                (match find_action_node_by_source
+            | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; _ }) -> (
+                match find_action_node_by_source
                   action_graph
                   (Path.v "src/socket_pool/socket_pool.ml") with
                 | None -> Error "expected compile action for src/socket_pool/socket_pool.ml"
@@ -3506,7 +3523,8 @@ let test_suri_socket_pool_implementation_depends_on_acceptor = fun _ctx ->
                       ^ String.concat ", " module_deps
                       ^ "]")
                     else
-                      Ok ())
+                      Ok ()
+              )
             | Ok _ -> Error "expected suri runtime plan to return Planned"
   in
   match Fs.with_tempdir ~prefix:"planner_suri_socket_pool_acceptor_deps" check with
@@ -3532,11 +3550,12 @@ let test_riot_cli_create_library_orders_run_before_install = fun _ctx ->
             let unit_key = Riot_planner.Build_unit.key (library_unit package) in
             match plan_build_unit_from_graph ~workspace ~store ~unit_graph ~unit_key ~build_ctx with
             | Error err -> Error ("riot-cli runtime plan failed: " ^ err)
-            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-                (match find_create_library_objects action_graph with
+            | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                match find_create_library_objects action_graph with
                 | Error _ as err -> err
                 | Ok objects ->
-                    require_order objects ~before:"Riot_cli__Run.cmx" ~after:"Riot_cli__Install.cmx")
+                    require_order objects ~before:"Riot_cli__Run.cmx" ~after:"Riot_cli__Install.cmx"
+              )
             | Ok _ -> Error "expected riot-cli runtime plan to return Planned"
   in
   match Fs.with_tempdir ~prefix:"planner_riot_cli_run_install_order" check with
@@ -3704,8 +3723,8 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
         ~unit_key
         ~build_ctx with
       | Error _ as err -> err
-      | Ok (Riot_planner.Package_planner.Planned { hash = current_input_hash; depset; _ }) ->
-          (match Riot_store.Store.load_plan_bundle analysis_store ~hash:current_input_hash with
+      | Ok (Riot_planner.Package_planner.Planned { hash = current_input_hash; depset; _ }) -> (
+          match Riot_store.Store.load_plan_bundle analysis_store ~hash:current_input_hash with
           | None -> Error "expected current krasny plan bundle to be persisted"
           | Some bundle ->
               let stale_bundle =
@@ -3737,8 +3756,8 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
                 ~unit_key
                 ~build_ctx with
               | Error _ as err -> err
-              | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
-                  (match find_create_library_objects action_graph with
+              | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                  match find_create_library_objects action_graph with
                   | Error _ as err -> err
                   | Ok objects ->
                       if List.contains objects ~value:"Krasny__Krasny.cmx" then
@@ -3750,8 +3769,10 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
                       else
                         Error ("expected replanned krasny bundle to include Krasny.cmx, got ["
                         ^ String.concat ", " objects
-                        ^ "]"))
-              | Ok _ -> Error "expected cached krasny plan to return Planned")
+                        ^ "]")
+                )
+              | Ok _ -> Error "expected cached krasny plan to return Planned"
+        )
       | Ok _ -> Error "expected analysis krasny plan to return Planned") with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"

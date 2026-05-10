@@ -463,15 +463,13 @@ let source_path_key = fun path -> Path.normalize (Path.to_string path)
 
 let binary_paths_under = fun ~prefix (pkg: t) ->
   pkg.binaries
-  |> List.filter
-    ~fn:(fun (bin: binary) -> String.starts_with ~prefix (source_path_key bin.path))
+  |> List.filter ~fn:(fun (bin: binary) -> String.starts_with ~prefix (source_path_key bin.path))
   |> List.map ~fn:(fun (bin: binary) -> source_path_key bin.path)
   |> HashSet.from_list
 
 let source_is_other_binary = fun ~selected_key binary_paths source ->
   let source_key = source_path_key source in
-  not (String.equal selected_key source_key)
-  && HashSet.contains binary_paths ~value:source_key
+  not (String.equal selected_key source_key) && HashSet.contains binary_paths ~value:source_key
 
 let filter_dev_sources_for_binary = fun ~selected_key ~binary_paths sources ->
   List.filter
@@ -485,12 +483,13 @@ let dev_sources_for_binary = fun ~prefix ~selected sources (pkg: t) ->
     ~binary_paths:(binary_paths_under ~prefix pkg)
     sources
 
-let make_projection_cache = fun pkg -> {
-  projection_package = pkg;
-  projection_test_binary_paths = None;
-  projection_example_binary_paths = None;
-  projection_bench_binary_paths = None;
-}
+let make_projection_cache = fun pkg ->
+  {
+    projection_package = pkg;
+    projection_test_binary_paths = None;
+    projection_example_binary_paths = None;
+    projection_bench_binary_paths = None;
+  }
 
 let projection_binary_paths = fun cache ~prefix ->
   match prefix with
@@ -624,32 +623,29 @@ let sources_for_binary_with_projection_cache = fun cache (bin: binary) ->
   if String.starts_with ~prefix:"tests/" path then
     {
       dev_sources with
-      tests =
-        dev_sources_for_binary_with_projection_cache
-          cache
-          ~prefix:"tests/"
-          ~selected:bin.path
-          pkg.sources.tests;
+      tests = dev_sources_for_binary_with_projection_cache
+        cache
+        ~prefix:"tests/"
+        ~selected:bin.path
+        pkg.sources.tests;
     }
   else if String.starts_with ~prefix:"examples/" path then
     {
       dev_sources with
-      examples =
-        dev_sources_for_binary_with_projection_cache
-          cache
-          ~prefix:"examples/"
-          ~selected:bin.path
-          pkg.sources.examples;
+      examples = dev_sources_for_binary_with_projection_cache
+        cache
+        ~prefix:"examples/"
+        ~selected:bin.path
+        pkg.sources.examples;
     }
   else if String.starts_with ~prefix:"bench/" path then
     {
       dev_sources with
-      bench =
-        dev_sources_for_binary_with_projection_cache
-          cache
-          ~prefix:"bench/"
-          ~selected:bin.path
-          pkg.sources.bench;
+      bench = dev_sources_for_binary_with_projection_cache
+        cache
+        ~prefix:"bench/"
+        ~selected:bin.path
+        pkg.sources.bench;
     }
   else
     (
@@ -660,7 +656,9 @@ let sources_for_binary_with_projection_cache = fun cache (bin: binary) ->
     )
 
 let sources_for_binary = fun (bin: binary) (pkg: t) ->
-  sources_for_binary_with_projection_cache (make_projection_cache pkg) bin
+  sources_for_binary_with_projection_cache
+    (make_projection_cache pkg)
+    bin
 
 let for_binary_with_projection_cache = fun cache ~binary_name ->
   let pkg = cache.projection_package in
@@ -691,7 +689,9 @@ let for_binary_with_projection_cache = fun cache ~binary_name ->
       })
 
 let for_binary = fun ~binary_name (pkg: t) ->
-  for_binary_with_projection_cache (make_projection_cache pkg) ~binary_name
+  for_binary_with_projection_cache
+    (make_projection_cache pkg)
+    ~binary_name
 
 let build_graph_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies
 
@@ -1842,10 +1842,7 @@ let scan_sources_for_intent
       let visited_directories = ref 0 in
       let visited_files = ref 0 in
       let walker =
-        match Ignore.Walker.create
-          ~roots:scan_roots
-          ~ignore_patterns:source_ignore_patterns
-          () with
+        match Ignore.Walker.create ~roots:scan_roots ~ignore_patterns:source_ignore_patterns () with
         | Ok walker -> walker
         | Error _ -> panic "package walker configuration should be valid"
       in
@@ -1947,12 +1944,7 @@ let scan_sources
   ?(excluded_relpaths = [])
   ?(source_ignore_patterns = [])
   () =
-  scan_sources_for_intent
-    ~intent:Dev
-    ~package_path
-    ~excluded_relpaths
-    ~source_ignore_patterns
-    ()
+  scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ~source_ignore_patterns ()
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun
@@ -2267,9 +2259,7 @@ let parse_manifest_spec:
   | _ -> Error ManifestMustBeTable
 
 let realize_manifest_spec = fun
-  ?(source_ignore_patterns = [])
-  ~(intent:realization_intent)
-  (manifest: manifest_spec) ->
+  ?(source_ignore_patterns = []) ~(intent:realization_intent) (manifest: manifest_spec) ->
   let excluded_relpaths =
     provider_excluded_relpaths ~package_path:manifest.path manifest.fix_providers
     @ executable_source_excluded_relpaths_for_intent
@@ -2620,12 +2610,11 @@ module type Hash_writer = sig
 end
 
 let hash_with_file_content:
-  type s.
-  (module Hash_writer with type state = s) ->
+  type s. (module Hash_writer with type state = s) ->
   hash_file_content:(s -> Path.t -> bool) ->
   s ->
   t ->
-unit = fun (module H) ~hash_file_content state (pkg: t) ->
+  unit = fun (module H) ~hash_file_content state (pkg: t) ->
   let hash_string_option value =
     match value with
     | Some value ->
@@ -2862,12 +2851,8 @@ unit = fun (module H) ~hash_file_content state (pkg: t) ->
           H.write state (Path.to_string input_path);
           ignore (hash_file_content state abs_path)))
 
-let hash_file_content:
-  type s.
-  (module Hash_writer with type state = s) ->
-  s ->
-  Path.t ->
-  bool = fun (module H) state abs_path ->
+let hash_file_content: type s. (module Hash_writer with type state = s) -> s -> Path.t -> bool = fun
+  (module H) state abs_path ->
   match Fs.File.open_read abs_path with
   | Error _ -> false
   | Ok file ->
@@ -2886,12 +2871,8 @@ let hash_file_content:
       let _ = Fs.File.close file in
       success
 
-let hash_file_fingerprint:
-  type s.
-  (module Hash_writer with type state = s) ->
-  s ->
-  Path.t ->
-  bool = fun (module H) state abs_path ->
+let hash_file_fingerprint: type s. (module Hash_writer with type state = s) -> s -> Path.t -> bool = fun
+  (module H) state abs_path ->
   match Fs.metadata abs_path with
   | Error _ -> false
   | Ok metadata ->

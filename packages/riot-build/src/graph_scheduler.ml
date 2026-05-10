@@ -95,7 +95,13 @@ module Graph = struct
     HashSet.to_list node.deps
 end
 
-type ('work, 'mutation, 'event, 'result, 'error) command =
+type (
+  'work,
+  'mutation,
+  'event,
+  'result,
+  'error
+) command =
   | Add_node of {
       local_id: Node_id.t;
       payload: 'work;
@@ -112,17 +118,19 @@ type ('work, 'mutation, 'event, 'result, 'error) command =
     }
 
 module Handle = struct
-  type ('work, 'mutation, 'event, 'result, 'error) t = {
+  type (
+    'work,
+    'mutation,
+    'event,
+    'result,
+    'error
+  ) t = {
     mutable next_local_id: int;
     mutable commands: ('work, 'mutation, 'event, 'result, 'error) command list;
     emit: 'event -> unit;
   }
 
-  let create = fun ~emit_event () -> {
-    next_local_id = (-1);
-    commands = [];
-    emit = emit_event;
-  }
+  let create = fun ~emit_event () -> { next_local_id = (-1); commands = []; emit = emit_event }
 
   let push = fun handle command -> handle.commands <- command :: handle.commands
 
@@ -141,8 +149,7 @@ module Handle = struct
 
   let emit_event = fun handle event -> handle.emit event
 
-  let complete_node = fun handle ~node ~outcome ->
-    push handle (Complete_node { node; outcome })
+  let complete_node = fun handle ~node ~outcome -> push handle (Complete_node { node; outcome })
 end
 
 type ('work, 'result, 'error) node_result = {
@@ -319,10 +326,10 @@ let apply_command = fun state locals touched ->
             state.runtime_nodes
             ~key:node_id
             ~value:{
-            payload;
-            unresolved_dependencies = 0;
-            status = `Pending;
-          }
+              payload;
+              unresolved_dependencies = 0;
+              status = `Pending;
+            }
         in
         node_id :: touched
     | Add_dependency { node; depends_on } ->

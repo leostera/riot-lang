@@ -50,12 +50,14 @@ let diagnostic_for_expression = fun expr ->
     match arguments with
     | [ mapped ] ->
         let (mapped_head, mapped_arguments) = H.flatten_apply mapped in
-        (match mapped_arguments with
-        | [ _fn; _collection ] when H.path_matches ~expected:"List.map" mapped_head ->
-            Some (make_diagnostic ~iter_name:"List.iter" expr)
-        | [ _fn; _collection ] when H.path_matches ~expected:"Iter.map" mapped_head ->
-            Some (make_diagnostic ~iter_name:"Iter.iter" expr)
-        | _ -> None)
+        (
+          match mapped_arguments with
+          | [ _fn; _collection ] when H.path_matches ~expected:"List.map" mapped_head ->
+              Some (make_diagnostic ~iter_name:"List.iter" expr)
+          | [ _fn; _collection ] when H.path_matches ~expected:"Iter.map" mapped_head ->
+              Some (make_diagnostic ~iter_name:"Iter.iter" expr)
+          | _ -> None
+        )
     | _ -> None
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->

@@ -72,7 +72,8 @@ let make_graph = fun completed_results action_graph ->
       let node_id =
         HashMap.get node_ids ~key:(Action_node.id node)
         |> Option.expect
-          ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string (Action_node.id node))
+          ~msg:("missing scheduler node for action "
+          ^ Graph.SimpleGraph.Node_id.to_string (Action_node.id node))
       in
       List.for_each
         (Action_node.deps node)
@@ -125,7 +126,9 @@ let find_result = fun (result: t) (node: Action_node.t) ->
   find_first_map
     result.completed_actions
     ~fn:(fun completed_action ->
-      if Graph.SimpleGraph.Node_id.eq (Action_node.id completed_action.node) (Action_node.id node) then
+      if
+        Graph.SimpleGraph.Node_id.eq (Action_node.id completed_action.node) (Action_node.id node)
+      then
         Some completed_action.result
       else
         None)
@@ -151,15 +154,10 @@ let summarize_completed = fun ~action_graph ~completed_results ->
     match first_failure_of_completed_actions completed_actions with
     | Some _ as failure -> failure
     | None when not (List.is_empty missing_actions) ->
-        Some (
-          ExecutionFailed {
-            message =
-              "action graph finished with incomplete actions: "
-              ^ String.concat
-                  ", "
-                  (List.map missing_actions ~fn:Graph.SimpleGraph.Node_id.to_string);
-          }
-        )
+        Some (ExecutionFailed {
+          message = "action graph finished with incomplete actions: "
+          ^ String.concat ", " (List.map missing_actions ~fn:Graph.SimpleGraph.Node_id.to_string);
+        })
     | None -> None
   in
   {

@@ -23,7 +23,6 @@ type build_status =
   | Built of Riot_store.Artifact.t
   | Skipped of { reason: string }
   | Failed of package_error
-
 (** Result of building a package *)
 type build_result = {
   unit_key: Build_unit.key;
@@ -33,7 +32,6 @@ type build_result = {
   ocamlc_warnings: string list;
   duration: Time.Duration.t;
 }
-
 type detailed_result = {
   result: build_result;
 }

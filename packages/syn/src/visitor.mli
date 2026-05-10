@@ -22,7 +22,9 @@ type 'ctx enter_let_binding = 'ctx t -> Ast.LetBinding.t -> 'ctx t * action
 type 'ctx enter_type_declaration = 'ctx t -> Ast.TypeDeclaration.t -> 'ctx t * action
 type 'ctx enter_module_declaration = 'ctx t -> Ast.ModuleDeclaration.t -> 'ctx t * action
 type 'ctx enter_module_functor_parameter =
-  'ctx t -> Ast.ModuleDeclaration.Member.functor_parameter -> 'ctx t * action
+  'ctx t ->
+  Ast.ModuleDeclaration.Member.functor_parameter ->
+  'ctx t * action
 type 'ctx enter_module_type_declaration = 'ctx t -> Ast.ModuleTypeDeclaration.t -> 'ctx t * action
 type 'ctx enter_open_declaration = 'ctx t -> Ast.OpenDeclaration.t -> 'ctx t * action
 type 'ctx enter_include_declaration = 'ctx t -> Ast.IncludeDeclaration.t -> 'ctx t * action

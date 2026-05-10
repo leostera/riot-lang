@@ -4962,8 +4962,7 @@ end = struct
         None
       else
         match child_node_at match_case index with
-        | Some child when node_matches child is_expr_kind ->
-            Some (normalize_expr_node child)
+        | Some child when node_matches child is_expr_kind -> Some (normalize_expr_node child)
         | _ -> loop (index + 1)
     in
     loop start_index
@@ -4983,10 +4982,7 @@ end = struct
           | None -> None
         in
         let body =
-          first_expr_child_between
-            match_case
-            ~start_index:(arrow_index + 1)
-            ~stop_index:child_count
+          first_expr_child_between match_case ~start_index:(arrow_index + 1) ~stop_index:child_count
         in
         (guard, body)
     | None ->
@@ -5457,6 +5453,7 @@ module TypeDeclaration = struct
 
   module Member = struct
     type t = member
+
     type functor_parameter = {
       name: Ident.t option;
       annotation: Ident.t option;
@@ -6093,6 +6090,7 @@ module ModuleDeclaration = struct
 
   module Member = struct
     type t = member
+
     type functor_parameter = {
       name: Ident.t option;
       annotation: Ident.t option;
@@ -6270,26 +6268,25 @@ module ModuleDeclaration = struct
       let parameter_at start =
         let stop = find_close (start + 1) in
         match find_colon (start + 1) stop with
-        | None -> {
-            name =
-              Ident.from_child_range_option
+        | None ->
+            {
+              name = Ident.from_child_range_option
                 member.node
                 ~start_index:(start + 1)
                 ~stop_index:stop;
-            annotation = None;
-          }
-        | Some colon_index -> {
-            name =
-              Ident.from_child_range_option
+              annotation = None;
+            }
+        | Some colon_index ->
+            {
+              name = Ident.from_child_range_option
                 member.node
                 ~start_index:(start + 1)
                 ~stop_index:colon_index;
-            annotation =
-              Ident.from_child_range_option
+              annotation = Ident.from_child_range_option
                 member.node
                 ~start_index:(colon_index + 1)
                 ~stop_index:stop;
-          }
+            }
       in
       let rec loop index acc =
         if index >= count then

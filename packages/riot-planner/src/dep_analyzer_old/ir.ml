@@ -35,10 +35,7 @@ module Item = struct
         signature: t list;
         body: t list;
       }
-    | ModuleAlias of {
-        name: string;
-        target: t;
-      }
+    | ModuleAlias of { name: string; target: t }
     | Functor of {
         name: string;
         args: functor_arg list;
@@ -48,10 +45,7 @@ module Item = struct
         name: string;
         body: t list;
       }
-    | FunctorApply of {
-        callee: t;
-        argument: t;
-      }
+    | FunctorApply of { callee: t; argument: t }
     | Constraint of {
         expr: t;
         signature: t list;
@@ -78,10 +72,7 @@ module Item = struct
     module_body: t list;
   }
 
-  type module_alias_payload = {
-    module_alias_name: string;
-    module_alias_target: t;
-  }
+  type module_alias_payload = { module_alias_name: string; module_alias_target: t }
 
   type functor_payload = {
     functor_name: string;
@@ -94,10 +85,7 @@ module Item = struct
     module_type_body: t list;
   }
 
-  type functor_apply_payload = {
-    functor_apply_callee: t;
-    functor_apply_argument: t;
-  }
+  type functor_apply_payload = { functor_apply_callee: t; functor_apply_argument: t }
 
   type constraint_payload = {
     constraint_expr: t;
@@ -115,303 +103,309 @@ module Item = struct
   }
 
   let include_mode_serializer =
-    Ser.variant [
-      Ser.Variant.unit "Structure" (fun __tmp1 ->
-        match __tmp1 with
-        | Structure -> true
-        | Signature -> false);
-      Ser.Variant.unit "Signature" (fun __tmp1 ->
-        match __tmp1 with
-        | Signature -> true
-        | Structure -> false);
-    ]
+    Ser.variant
+      [
+        Ser.Variant.unit
+          "Structure"
+          (fun __tmp1 ->
+            match __tmp1 with
+            | Structure -> true
+            | Signature -> false);
+        Ser.Variant.unit
+          "Signature"
+          (fun __tmp1 ->
+            match __tmp1 with
+            | Signature -> true
+            | Structure -> false);
+      ]
 
   let ident_serializer = ser_list Ser.string
 
-  let rec serializer =
-    {
-      Ser.run = (fun backend state item ->
+  let rec serializer = {
+    Ser.run =
+      (fun backend state item ->
         let item_list_serializer = ser_list serializer in
         let functor_arg_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" (Ser.option Ser.string) (fun (arg: functor_arg) -> arg.name);
-                Ser.field
-                  "ascription"
-                  item_list_serializer
-                  (fun (arg: functor_arg) -> arg.ascription);
-              ]
+              Ser.fields
+                [
+                  Ser.field "name" (Ser.option Ser.string) (fun (arg: functor_arg) -> arg.name);
+                  Ser.field
+                    "ascription"
+                    item_list_serializer
+                    (fun (arg: functor_arg) -> arg.ascription);
+                ]
             )
         in
         let bound_module_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" Ser.string (fun (module_: bound_module) -> module_.name);
-                Ser.field
-                  "ascription"
-                  item_list_serializer
-                  (fun (module_: bound_module) -> module_.ascription);
-              ]
+              Ser.fields
+                [
+                  Ser.field "name" Ser.string (fun (module_: bound_module) -> module_.name);
+                  Ser.field
+                    "ascription"
+                    item_list_serializer
+                    (fun (module_: bound_module) -> module_.ascription);
+                ]
             )
         in
         let include_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "mode"
-                  include_mode_serializer
-                  (fun (payload: include_payload) -> payload.include_mode);
-                Ser.field "expr" serializer (fun (payload: include_payload) -> payload.include_expr);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "mode"
+                    include_mode_serializer
+                    (fun (payload: include_payload) -> payload.include_mode);
+                  Ser.field
+                    "expr"
+                    serializer
+                    (fun (payload: include_payload) -> payload.include_expr);
+                ]
             )
         in
         let module_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" Ser.string (fun (payload: module_payload) -> payload.module_name);
-                Ser.field
-                  "signature"
-                  item_list_serializer
-                  (fun (payload: module_payload) -> payload.module_signature);
-                Ser.field "body" item_list_serializer (fun (payload: module_payload) -> payload.module_body);
-              ]
+              Ser.fields
+                [
+                  Ser.field "name" Ser.string (fun (payload: module_payload) -> payload.module_name);
+                  Ser.field
+                    "signature"
+                    item_list_serializer
+                    (fun (payload: module_payload) -> payload.module_signature);
+                  Ser.field
+                    "body"
+                    item_list_serializer
+                    (fun (payload: module_payload) -> payload.module_body);
+                ]
             )
         in
         let module_alias_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "name"
-                  Ser.string
-                  (fun (payload: module_alias_payload) -> payload.module_alias_name);
-                Ser.field
-                  "target"
-                  serializer
-                  (fun (payload: module_alias_payload) -> payload.module_alias_target);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "name"
+                    Ser.string
+                    (fun (payload: module_alias_payload) -> payload.module_alias_name);
+                  Ser.field
+                    "target"
+                    serializer
+                    (fun (payload: module_alias_payload) -> payload.module_alias_target);
+                ]
             )
         in
         let functor_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" Ser.string (fun (payload: functor_payload) -> payload.functor_name);
-                Ser.field
-                  "args"
-                  (ser_list functor_arg_serializer)
-                  (fun (payload: functor_payload) -> payload.functor_args);
-                Ser.field "body" item_list_serializer (fun (payload: functor_payload) -> payload.functor_body);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "name"
+                    Ser.string
+                    (fun (payload: functor_payload) -> payload.functor_name);
+                  Ser.field
+                    "args"
+                    (ser_list functor_arg_serializer)
+                    (fun (payload: functor_payload) -> payload.functor_args);
+                  Ser.field
+                    "body"
+                    item_list_serializer
+                    (fun (payload: functor_payload) -> payload.functor_body);
+                ]
             )
         in
         let module_type_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "name"
-                  Ser.string
-                  (fun (payload: module_type_payload) -> payload.module_type_name);
-                Ser.field
-                  "body"
-                  item_list_serializer
-                  (fun (payload: module_type_payload) -> payload.module_type_body);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "name"
+                    Ser.string
+                    (fun (payload: module_type_payload) -> payload.module_type_name);
+                  Ser.field
+                    "body"
+                    item_list_serializer
+                    (fun (payload: module_type_payload) -> payload.module_type_body);
+                ]
             )
         in
         let functor_apply_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "callee"
-                  serializer
-                  (fun (payload: functor_apply_payload) -> payload.functor_apply_callee);
-                Ser.field
-                  "argument"
-                  serializer
-                  (fun (payload: functor_apply_payload) -> payload.functor_apply_argument);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "callee"
+                    serializer
+                    (fun (payload: functor_apply_payload) -> payload.functor_apply_callee);
+                  Ser.field
+                    "argument"
+                    serializer
+                    (fun (payload: functor_apply_payload) -> payload.functor_apply_argument);
+                ]
             )
         in
         let constraint_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "expr"
-                  serializer
-                  (fun (payload: constraint_payload) -> payload.constraint_expr);
-                Ser.field
-                  "signature"
-                  item_list_serializer
-                  (fun (payload: constraint_payload) -> payload.constraint_signature);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "expr"
+                    serializer
+                    (fun (payload: constraint_payload) -> payload.constraint_expr);
+                  Ser.field
+                    "signature"
+                    item_list_serializer
+                    (fun (payload: constraint_payload) -> payload.constraint_signature);
+                ]
             )
         in
         let with_constraint_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "base" serializer (fun (payload: with_constraint_payload) -> payload.with_base);
-                Ser.field
-                  "constraints"
-                  item_list_serializer
-                  (fun (payload: with_constraint_payload) -> payload.with_constraints);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "base"
+                    serializer
+                    (fun (payload: with_constraint_payload) -> payload.with_base);
+                  Ser.field
+                    "constraints"
+                    item_list_serializer
+                    (fun (payload: with_constraint_payload) -> payload.with_constraints);
+                ]
             )
         in
         let bind_modules_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "modules"
-                  (ser_list bound_module_serializer)
-                  (fun (payload: bind_modules_payload) -> payload.bind_modules_modules);
-                Ser.field
-                  "scope"
-                  item_list_serializer
-                  (fun (payload: bind_modules_payload) -> payload.bind_modules_scope);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "modules"
+                    (ser_list bound_module_serializer)
+                    (fun (payload: bind_modules_payload) -> payload.bind_modules_modules);
+                  Ser.field
+                    "scope"
+                    item_list_serializer
+                    (fun (payload: bind_modules_payload) -> payload.bind_modules_scope);
+                ]
             )
         in
         let encode =
-          Ser.variant [
-            Ser.Variant.newtype
-              "Use"
-              ident_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Use ident -> Some ident
-                | _ -> None);
-            Ser.Variant.newtype
-              "Open"
-              serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Open expr -> Some expr
-                | _ -> None);
-            Ser.Variant.newtype
-              "Include"
-              include_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Include (include_mode, include_expr) -> Some { include_mode; include_expr }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Module"
-              module_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Module { name; signature; body } ->
-                    Some {
-                      module_name = name;
-                      module_signature = signature;
-                      module_body = body;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "ModuleAlias"
-              module_alias_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | ModuleAlias { name; target } ->
-                    Some {
-                      module_alias_name = name;
-                      module_alias_target = target;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Functor"
-              functor_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Functor { name; args; body } ->
-                    Some {
-                      functor_name = name;
-                      functor_args = args;
-                      functor_body = body;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "ModuleType"
-              module_type_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | ModuleType { name; body } ->
-                    Some {
-                      module_type_name = name;
-                      module_type_body = body;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "FunctorApply"
-              functor_apply_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | FunctorApply { callee; argument } ->
-                    Some {
-                      functor_apply_callee = callee;
-                      functor_apply_argument = argument;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Constraint"
-              constraint_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Constraint { expr; signature } ->
-                    Some {
-                      constraint_expr = expr;
-                      constraint_signature = signature;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Typeof"
-              serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Typeof expr -> Some expr
-                | _ -> None);
-            Ser.Variant.newtype
-              "WithConstraint"
-              with_constraint_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | WithConstraint { base; constraints } ->
-                    Some {
-                      with_base = base;
-                      with_constraints = constraints;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "BindModules"
-              bind_modules_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | BindModules { modules; scope } ->
-                    Some {
-                      bind_modules_modules = modules;
-                      bind_modules_scope = scope;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Scope"
-              item_list_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Scope body -> Some body
-                | _ -> None);
-          ]
+          Ser.variant
+            [
+              Ser.Variant.newtype
+                "Use"
+                ident_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Use ident -> Some ident
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Open"
+                serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Open expr -> Some expr
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Include"
+                include_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Include (include_mode, include_expr) -> Some { include_mode; include_expr }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Module"
+                module_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Module { name; signature; body } ->
+                      Some { module_name = name; module_signature = signature; module_body = body }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "ModuleAlias"
+                module_alias_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | ModuleAlias { name; target } ->
+                      Some { module_alias_name = name; module_alias_target = target }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Functor"
+                functor_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Functor { name; args; body } ->
+                      Some { functor_name = name; functor_args = args; functor_body = body }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "ModuleType"
+                module_type_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | ModuleType { name; body } ->
+                      Some { module_type_name = name; module_type_body = body }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "FunctorApply"
+                functor_apply_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | FunctorApply { callee; argument } ->
+                      Some { functor_apply_callee = callee; functor_apply_argument = argument }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Constraint"
+                constraint_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Constraint { expr; signature } ->
+                      Some { constraint_expr = expr; constraint_signature = signature }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Typeof"
+                serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Typeof expr -> Some expr
+                  | _ -> None);
+              Ser.Variant.newtype
+                "WithConstraint"
+                with_constraint_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | WithConstraint { base; constraints } ->
+                      Some { with_base = base; with_constraints = constraints }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "BindModules"
+                bind_modules_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | BindModules { modules; scope } ->
+                      Some { bind_modules_modules = modules; bind_modules_scope = scope }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Scope"
+                item_list_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Scope body -> Some body
+                  | _ -> None);
+            ]
         in
         encode.run backend state item);
-    }
+  }
 end
 
 type source_kind =
@@ -430,33 +424,45 @@ type parse_error =
   | Parse_diagnostics of Syn.Diagnostic.t list
 
 let source_kind_serializer =
-  Ser.variant [
-    Ser.Variant.unit "Implementation" (fun __tmp1 ->
-      match __tmp1 with
-      | Implementation -> true
-      | Interface -> false);
-    Ser.Variant.unit "Interface" (fun __tmp1 ->
-      match __tmp1 with
-      | Interface -> true
-      | Implementation -> false);
-  ]
+  Ser.variant
+    [
+      Ser.Variant.unit
+        "Implementation"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Implementation -> true
+          | Interface -> false);
+      Ser.Variant.unit
+        "Interface"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Interface -> true
+          | Implementation -> false);
+    ]
 
 let source_summary_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" (Ser.contramap Path.to_string Ser.string) (fun (summary: source_summary) -> summary.source);
-        Ser.field
-          "source_hash"
-          (Ser.contramap Crypto.Digest.hex Ser.string)
-          (fun (summary: source_summary) -> summary.source_hash);
-        Ser.field
-          "module_path"
-          (Ser.option (ser_list Ser.string))
-          (fun (summary: source_summary) -> summary.module_path);
-        Ser.field "kind" source_kind_serializer (fun (summary: source_summary) -> summary.kind);
-        Ser.field "items" (ser_list Item.serializer) (fun (summary: source_summary) -> summary.items);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "source"
+            (Ser.contramap Path.to_string Ser.string)
+            (fun (summary: source_summary) -> summary.source);
+          Ser.field
+            "source_hash"
+            (Ser.contramap Crypto.Digest.hex Ser.string)
+            (fun (summary: source_summary) -> summary.source_hash);
+          Ser.field
+            "module_path"
+            (Ser.option (ser_list Ser.string))
+            (fun (summary: source_summary) -> summary.module_path);
+          Ser.field "kind" source_kind_serializer (fun (summary: source_summary) -> summary.kind);
+          Ser.field
+            "items"
+            (ser_list Item.serializer)
+            (fun (summary: source_summary) -> summary.items);
+        ]
     )
 
 let is_uppercase_ascii = fun ch -> ch >= 'A' && ch <= 'Z'
@@ -485,10 +491,7 @@ let sorted_unique_strings = fun values ->
 let token_text = A.Token.text
 
 let ident_segments = fun ident ->
-  A.Ident.fold_segment
-    ident
-    ~init:[]
-    ~fn:(fun token acc -> A.Continue (token_text token :: acc))
+  A.Ident.fold_segment ident ~init:[] ~fn:(fun token acc -> A.Continue (token_text token :: acc))
   |> List.reverse
 
 let ident_segments_if_module_head = fun ident ->
@@ -540,11 +543,17 @@ let implicit_module_open = fun segments ->
 
 let ident_module_include = fun mode ident ->
   match ident_segments_if_module_head ident with
-  | Some segments -> [ Item.Include (mode, Item.Use segments) ]
+  | Some segments ->
+      [
+        Item.Include (mode, Item.Use segments);
+      ]
   | None -> []
 
 let prepend_all = fun values acc ->
-  List.fold_left values ~init:acc ~fn:(fun acc value -> value :: acc)
+  List.fold_left
+    values
+    ~init:acc
+    ~fn:(fun acc value -> value :: acc)
 
 let scoped_items = fun items ->
   match items with
@@ -553,9 +562,7 @@ let scoped_items = fun items ->
 
 let vector_items = fun vector ~fn ->
   let items = ref [] in
-  Vector.for_each
-    vector
-    ~fn:(fun item -> items := prepend_all (fn item) !items);
+  Vector.for_each vector ~fn:(fun item -> items := prepend_all (fn item) !items);
   List.reverse !items
 
 type container =
@@ -568,19 +575,16 @@ type collect_ctx = {
   container_restores: (int * container) list;
 }
 
-let empty_collect_ctx = {
-  items = [];
-  container = Structure_container;
-  container_restores = [];
-}
+let empty_collect_ctx = { items = []; container = Structure_container; container_restores = [] }
 
 let add_item = fun ctx item -> { ctx with items = item :: ctx.items }
 
-let add_items = fun ctx items ->
-  { ctx with items = List.fold_left items ~init:ctx.items ~fn:(fun acc item -> item :: acc) }
+let add_items = fun ctx items -> {
+  ctx with
+  items = List.fold_left items ~init:ctx.items ~fn:(fun acc item -> item :: acc);
+}
 
-let with_visitor_ctx = fun visitor fn ->
-  Visitor.with_ctx visitor (fn (Visitor.ctx visitor))
+let with_visitor_ctx = fun visitor fn -> Visitor.with_ctx visitor (fn (Visitor.ctx visitor))
 
 let continue = fun visitor -> (visitor, Visitor.Continue)
 
@@ -792,8 +796,7 @@ and bind_modules_items = fun modules scope ->
 
 and items_of_source_file = fun source_file ->
   match A.SourceFile.view source_file with
-  | A.SourceFile.Implementation impl ->
-      (Implementation, items_of_implementation impl)
+  | A.SourceFile.Implementation impl -> (Implementation, items_of_implementation impl)
   | A.SourceFile.Interface intf -> (Interface, items_of_interface intf)
 
 and items_of_implementation = fun impl ->
@@ -850,11 +853,17 @@ and items_of_include_declaration = fun mode decl ->
       match A.IncludeDeclaration.body_node decl with
       | Some node -> (
           match A.ModuleExpr.cast node with
-          | A.Node module_expr -> [ Item.Include (mode, item_of_module_expr module_expr) ]
+          | A.Node module_expr ->
+              [
+                Item.Include (mode, item_of_module_expr module_expr);
+              ]
           | A.Unknown _
           | A.Error _ -> (
               match A.ModuleTypeExpr.cast node with
-              | A.Node module_type -> [ Item.Include (mode, item_of_module_type_expr module_type) ]
+              | A.Node module_type ->
+                  [
+                    Item.Include (mode, item_of_module_type_expr module_type);
+                  ]
               | A.Unknown _
               | A.Error _ -> []
             )
@@ -922,7 +931,9 @@ and items_of_module_declaration = fun container decl ->
         decl
         []
         (fun items member ->
-          prepend_all (items_of_recursive_module_member_rhs container member) items)
+          prepend_all
+            (items_of_recursive_module_member_rhs container member)
+            items)
       |> List.reverse
     in
     match rhs_items with
@@ -983,7 +994,7 @@ and items_of_recursive_module_member_rhs = fun container member ->
     match A.ModuleDeclaration.Member.module_expr member with
     | Some node -> (
         match A.ModuleExpr.cast node with
-              | A.Node module_expr -> items_of_module_expr_declaration_body module_expr
+        | A.Node module_expr -> items_of_module_expr_declaration_body module_expr
         | A.Unknown _
         | A.Error _ -> items_of_node ~container node
       )
@@ -998,7 +1009,7 @@ and items_of_recursive_module_member_rhs = fun container member ->
         | None -> []
       )
   in
-  prefix @ annotation_items @ body_items
+  (prefix @ annotation_items) @ body_items
 
 and module_item_with_prefix = fun name prefix item ->
   match prefix with
@@ -1011,8 +1022,7 @@ and items_of_module_member = fun container member ->
       A.ModuleDeclaration.Member.fold_child_node
         member
         ~init:[]
-        ~fn:(fun node items ->
-          A.Continue (prepend_all (items_of_node ~container node) items))
+        ~fn:(fun node items -> A.Continue (prepend_all (items_of_node ~container node) items))
       |> List.reverse
   | Some ident -> (
       match ident_name ident with
@@ -1041,12 +1051,8 @@ and items_of_module_member = fun container member ->
               match A.ModuleExpr.cast node with
               | A.Node module_expr -> (
                   match (functor_args, A.ModuleExpr.view module_expr) with
-                  | ([], A.ModuleExpr.Ident { ident }) -> [
-                      Item.ModuleAlias {
-                        name;
-                        target = Item.Use (ident_segments ident);
-                      };
-                    ]
+                  | ([], A.ModuleExpr.Ident { ident }) ->
+                      [ Item.ModuleAlias { name; target = Item.Use (ident_segments ident) }; ]
                   | ([], A.ModuleExpr.Functor { body }) ->
                       let (args, body) = functor_parts body ~body_kind:`ModuleExpr in
                       [ Item.Functor { name; args; body } ]
@@ -1056,8 +1062,7 @@ and items_of_module_member = fun container member ->
                         (annotation_items @ items_of_module_expr_declaration_body module_expr)
                 )
               | A.Unknown _
-              | A.Error _ ->
-                  make_declaration (items_of_node ~container:Structure_container node)
+              | A.Error _ -> make_declaration (items_of_node ~container:Structure_container node)
             )
           | None -> (
               match A.ModuleDeclaration.Member.module_type member with
@@ -1250,38 +1255,31 @@ and items_of_let_module_expr = fun let_module ->
                 match A.ModuleExpr.cast node with
                 | A.Node module_expr -> (
                     match A.ModuleExpr.view module_expr with
-                    | A.ModuleExpr.Ident { ident } -> [
-                        Item.ModuleAlias {
-                          name;
-                          target = Item.Use (ident_segments ident);
-                        };
-                      ]
-                    | _ -> [
-                        Item.Module {
-                          name;
-                          signature = [];
-                          body = items_of_module_expr_declaration_body module_expr;
-                        };
-                      ]
+                    | A.ModuleExpr.Ident { ident } ->
+                        [ Item.ModuleAlias { name; target = Item.Use (ident_segments ident) }; ]
+                    | _ ->
+                        [
+                          Item.Module {
+                            name;
+                            signature = [];
+                            body = items_of_module_expr_declaration_body module_expr;
+                          };
+                        ]
                   )
                 | A.Unknown _
-                | A.Error _ -> [
-                    Item.Module {
-                      name;
-                      signature = [];
-                      body = items_of_node ~container:Structure_container node;
-                    };
-                  ]
+                | A.Error _ ->
+                    [
+                      Item.Module {
+                        name;
+                        signature = [];
+                        body = items_of_node ~container:Structure_container node;
+                      };
+                    ]
               )
             | None -> (
                 match A.LetModuleExpr.module_body_ident let_module with
                 | Some ident ->
-                    [
-                      Item.ModuleAlias {
-                        name;
-                        target = Item.Use (ident_segments ident);
-                      };
-                    ]
+                    [ Item.ModuleAlias { name; target = Item.Use (ident_segments ident) }; ]
                 | None -> [ Item.Module { name; signature = []; body = [] } ]
               )
           in
@@ -1341,11 +1339,7 @@ and items_of_variant_constructor = fun constructor ->
       match rhs with
       | A.VariantConstructor.Plain -> []
       | A.VariantConstructor.Payload { payload; _ } -> items_of_variant_payload payload
-      | A.VariantConstructor.Gadt {
-          record_payload;
-          result;
-          _;
-        } ->
+      | A.VariantConstructor.Gadt { record_payload; result; _ } ->
           (
             match record_payload with
             | Some record_type -> items_of_record_type record_type
@@ -1377,9 +1371,7 @@ and items_of_pattern = fun pattern ->
   | Some local_open -> (
       match A.LocalOpenPattern.view local_open with
       | A.LocalOpenPattern.Delimited { module_ident; pattern; _ } ->
-          [
-            Item.Scope (ident_module_open module_ident @ items_of_pattern pattern);
-          ]
+          [ Item.Scope (ident_module_open module_ident @ items_of_pattern pattern); ]
       | A.LocalOpenPattern.Unknown node -> items_of_node ~container:Structure_container node
     )
   | None -> (
@@ -1389,8 +1381,7 @@ and items_of_pattern = fun pattern ->
       | A.Pattern.Literal _ -> []
       | A.Pattern.Ident { ident } -> ident_parent_use ident
       | A.Pattern.Constructor { constructor; payload } ->
-          ident_parent_use constructor
-          @ (
+          ident_parent_use constructor @ (
             match payload with
             | Some payload -> items_of_pattern payload
             | None -> []
@@ -1404,8 +1395,7 @@ and items_of_pattern = fun pattern ->
             ~fn:(fun __tmp1 ->
               match __tmp1 with
               | A.RecordPatternField { ident; pattern; _ } ->
-                  ident_parent_use ident
-                  @ (
+                  ident_parent_use ident @ (
                     match pattern with
                     | Some pattern -> items_of_pattern pattern
                     | None -> []
@@ -1423,8 +1413,7 @@ and items_of_pattern = fun pattern ->
           items_of_pattern left @ items_of_pattern right
       | A.Pattern.Constraint { pattern; annotation } ->
           items_of_pattern pattern @ items_of_type_expr annotation
-      | A.Pattern.Alias { pattern; alias } ->
-          items_of_pattern pattern @ items_of_pattern alias
+      | A.Pattern.Alias { pattern; alias } -> items_of_pattern pattern @ items_of_pattern alias
       | A.Pattern.Lazy { pattern }
       | A.Pattern.Exception { pattern } -> items_of_pattern pattern
       | A.Pattern.Error node
@@ -1454,8 +1443,7 @@ and bound_modules_of_pattern = fun pattern ->
         )
       | A.Pattern.Tuple { parts }
       | A.Pattern.List { items = parts }
-      | A.Pattern.Array { items = parts } ->
-          vector_items parts ~fn:bound_modules_of_pattern
+      | A.Pattern.Array { items = parts } -> vector_items parts ~fn:bound_modules_of_pattern
       | A.Pattern.Record { fields; _ } ->
           vector_items
             fields
@@ -1495,8 +1483,7 @@ and items_of_parameter = fun parameter ->
         | A.Parameter.Labeled _
         | A.Parameter.Optional { default = None; _ } -> []
       in
-      label_items
-      @ (
+      label_items @ (
         match pattern with
         | Some pattern -> items_of_pattern pattern
         | None -> []
@@ -1512,19 +1499,21 @@ and bound_modules_of_parameter = fun parameter ->
 and items_of_parameters = fun parameters -> vector_items parameters ~fn:items_of_parameter
 
 and bound_modules_of_parameters = fun parameters ->
-  vector_items parameters ~fn:bound_modules_of_parameter
+  vector_items
+    parameters
+    ~fn:bound_modules_of_parameter
 
 and items_of_match_case = fun match_case ->
   match A.MatchCase.view match_case with
   | A.MatchCase.Case { pattern; guard; body } ->
       let scope =
-          items_of_pattern pattern
-          @ (
+        (
+          items_of_pattern pattern @ (
             match guard with
             | Some guard -> items_of_expr guard
             | None -> []
           )
-          @ items_of_expr body
+        ) @ items_of_expr body
       in
       let modules = bound_modules_of_pattern pattern in
       bind_modules_items modules scope
@@ -1557,41 +1546,44 @@ and items_of_let_binding = fun binding ->
           match A.LetBinding.type_annotation binding with
           | Some annotation -> items_of_type_expr annotation
           | None -> []
-        )
-        @ (
+        ) @ (
           match A.LetBinding.return_type_annotation binding with
           | Some annotation -> items_of_type_expr annotation
           | None -> []
         )
       in
       annotation_items
-      @ scoped_items (items_of_pattern pattern @ parameter_items @ items_of_expr body)
+      @ scoped_items ((items_of_pattern pattern @ parameter_items) @ items_of_expr body)
   | A.LetBinding.Unknown node -> items_of_node ~container:Structure_container node
 
 and items_of_expr = fun expr ->
   match A.Expr.view expr with
   | A.Expr.Fun { parameters; return_annotation; body } ->
       let scope =
-        items_of_parameters parameters
-        @ (
-          match return_annotation with
-          | Some annotation -> items_of_type_expr annotation
-          | None -> []
-        )
-        @ items_of_fun_body expr body
+        (
+          items_of_parameters parameters @ (
+            match return_annotation with
+            | Some annotation -> items_of_type_expr annotation
+            | None -> []
+          )
+        ) @ items_of_fun_body expr body
       in
       let modules = bound_modules_of_parameters parameters in
       bind_modules_items modules scope
   | A.Expr.Match { scrutinee; _ } -> items_of_expr scrutinee @ items_of_match_cases expr
   | A.Expr.Try { body; _ } -> items_of_expr body @ items_of_match_cases expr
   | A.Expr.Sequence { left; right } ->
-      items_of_expr left
-      @ (
+      items_of_expr left @ (
         match right with
         | Some right -> items_of_expr right
         | None -> []
       )
-  | A.Expr.For { pattern; start_; stop; body } ->
+  | A.Expr.For {
+      pattern;
+      start_;
+      stop;
+      body;
+    } ->
       items_of_expr start_
       @ items_of_expr stop
       @ scoped_items (items_of_pattern pattern @ items_of_expr body)
@@ -1606,37 +1598,36 @@ and enter_signature_item = fun visitor item ->
   continue (with_visitor_ctx visitor (fun ctx -> push_container ctx node Signature_container))
 
 and enter_module_declaration = fun visitor decl ->
-  skip (
-    with_visitor_ctx
+  skip
+    (with_visitor_ctx
       visitor
-      (fun ctx -> add_items ctx (items_of_module_declaration ctx.container decl))
-  )
+      (fun ctx -> add_items ctx (items_of_module_declaration ctx.container decl)))
 
 and enter_module_type_declaration = fun visitor decl ->
-  skip (
-    with_visitor_ctx
-      visitor
-      (fun ctx -> add_items ctx (items_of_module_type_declaration decl))
-  )
+  skip
+    (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_module_type_declaration decl)))
 
 and enter_open_declaration = fun visitor decl ->
-  skip (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_open_declaration decl)))
+  skip
+    (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_open_declaration decl)))
 
 and enter_include_declaration = fun visitor decl ->
-  skip (
-    with_visitor_ctx
-      visitor
-      (fun ctx ->
-        let mode =
-          match ctx.container with
-          | Structure_container -> Item.Structure
-          | Signature_container -> Item.Signature
-        in
-        add_items ctx (items_of_include_declaration mode decl))
-  )
+  skip
+    (
+      with_visitor_ctx
+        visitor
+        (fun ctx ->
+          let mode =
+            match ctx.container with
+            | Structure_container -> Item.Structure
+            | Signature_container -> Item.Signature
+          in
+          add_items ctx (items_of_include_declaration mode decl))
+    )
 
 and enter_let_binding = fun visitor binding ->
-  skip (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_let_binding binding)))
+  skip
+    (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_let_binding binding)))
 
 and enter_expr = fun visitor expr ->
   let visitor =
@@ -1645,8 +1636,7 @@ and enter_expr = fun visitor expr ->
       (fun ctx ->
         match A.Expr.view expr with
         | A.Expr.Ident { ident } -> add_items ctx (ident_parent_use ident)
-        | A.Expr.Constructor { constructor; _ } ->
-            add_items ctx (ident_parent_use constructor)
+        | A.Expr.Constructor { constructor; _ } -> add_items ctx (ident_parent_use constructor)
         | A.Expr.FieldAccess { field; _ } -> add_items ctx (ident_parent_use field)
         | A.Expr.Record { fields; _ } ->
             Vector.to_array fields
@@ -1681,14 +1671,13 @@ and enter_expr = fun visitor expr ->
           match A.LocalOpenExpr.view local_open with
           | A.LocalOpenExpr.LetOpen { module_ident; body; _ }
           | A.LocalOpenExpr.Delimited { module_ident; body; _ } ->
-              skip (
-                with_visitor_ctx
+              skip
+                (with_visitor_ctx
                   visitor
                   (fun ctx ->
                     add_item
                       ctx
-                      (Item.Scope (ident_module_open module_ident @ items_of_expr body)))
-              )
+                      (Item.Scope (ident_module_open module_ident @ items_of_expr body))))
           | A.LocalOpenExpr.Unknown _ -> continue visitor
         )
       | None -> continue visitor
@@ -1696,18 +1685,16 @@ and enter_expr = fun visitor expr ->
   | A.Expr.LetModule _ -> (
       match A.cast_result_to_option (A.LetModuleExpr.cast expr) with
       | Some let_module ->
-          skip (
-            with_visitor_ctx
+          skip
+            (with_visitor_ctx
               visitor
-              (fun ctx -> add_items ctx (items_of_let_module_expr let_module))
-          )
+              (fun ctx -> add_items ctx (items_of_let_module_expr let_module)))
       | None -> continue visitor
     )
   | A.Expr.Fun _
   | A.Expr.Match _
   | A.Expr.Try _
-  | A.Expr.For _ ->
-      skip (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_expr expr)))
+  | A.Expr.For _ -> skip (with_visitor_ctx visitor (fun ctx -> add_items ctx (items_of_expr expr)))
   | _ -> continue visitor
 
 and enter_pattern = fun visitor pattern ->
@@ -1717,8 +1704,7 @@ and enter_pattern = fun visitor pattern ->
       (fun ctx ->
         match A.Pattern.view pattern with
         | A.Pattern.Constructor { constructor; _ }
-        | A.Pattern.Ident { ident = constructor } ->
-            add_items ctx (ident_parent_use constructor)
+        | A.Pattern.Ident { ident = constructor } -> add_items ctx (ident_parent_use constructor)
         | A.Pattern.Record { fields; _ } ->
             Vector.to_array fields
             |> Array.fold_left
@@ -1733,25 +1719,23 @@ and enter_pattern = fun visitor pattern ->
   | Some local_open -> (
       match A.LocalOpenPattern.view local_open with
       | A.LocalOpenPattern.Delimited { module_ident; _ } ->
-          continue (
-            with_visitor_ctx
-              visitor
-              (fun ctx -> add_items ctx (ident_module_open module_ident))
-          )
+          continue
+            (with_visitor_ctx visitor (fun ctx -> add_items ctx (ident_module_open module_ident)))
       | A.LocalOpenPattern.Unknown _ -> continue visitor
     )
   | None -> continue visitor
 
 and enter_type_expr = fun visitor type_expr ->
-  continue (
-    with_visitor_ctx
-      visitor
-      (fun ctx ->
-        match A.TypeExpr.view type_expr with
-        | A.TypeExpr.Ident { ident }
-        | A.TypeExpr.Apply { ident; _ } -> add_items ctx (ident_parent_use ident)
-        | _ -> ctx)
-  )
+  continue
+    (
+      with_visitor_ctx
+        visitor
+        (fun ctx ->
+          match A.TypeExpr.view type_expr with
+          | A.TypeExpr.Ident { ident }
+          | A.TypeExpr.Apply { ident; _ } -> add_items ctx (ident_parent_use ident)
+          | _ -> ctx)
+    )
 
 and enter_node = fun visitor node ->
   let kind = A.Node.kind node in
@@ -1760,53 +1744,47 @@ and enter_node = fun visitor node ->
     | Some module_expr -> (
         match A.ModuleExpr.view module_expr with
         | A.ModuleExpr.Ident { ident } ->
-            skip (
-              with_visitor_ctx
-                visitor
-                (fun ctx -> add_items ctx (ident_module_use ident))
-            )
+            skip (with_visitor_ctx visitor (fun ctx -> add_items ctx (ident_module_use ident)))
         | _ -> continue visitor
       )
     | None -> continue visitor
-  else if is_module_type_kind kind then
-    (
-      match A.cast_result_to_option (A.ModuleTypeExpr.cast node) with
-      | Some module_type -> (
-          match A.ModuleTypeExpr.view module_type with
-          | A.ModuleTypeExpr.Error _
-          | A.ModuleTypeExpr.Unknown _ -> continue visitor
-          | _ ->
-              skip (
-                with_visitor_ctx
-                  visitor
-                  (fun ctx -> add_items ctx (items_of_module_type_expr module_type))
-              )
-        )
-      | None -> continue visitor
-    )
-  else
+  else if is_module_type_kind kind then (
+    match A.cast_result_to_option (A.ModuleTypeExpr.cast node) with
+    | Some module_type -> (
+        match A.ModuleTypeExpr.view module_type with
+        | A.ModuleTypeExpr.Error _
+        | A.ModuleTypeExpr.Unknown _ -> continue visitor
+        | _ ->
+            skip
+              (with_visitor_ctx
+                visitor
+                (fun ctx -> add_items ctx (items_of_module_type_expr module_type)))
+      )
+    | None -> continue visitor
+  ) else
     continue visitor
 
 and leave_node = fun visitor node ->
-  with_visitor_ctx visitor (fun ctx -> restore_container ctx node)
+  with_visitor_ctx
+    visitor
+    (fun ctx -> restore_container ctx node)
 
 and items_of_node = fun ~container node ->
-  let hooks =
-    {
-      Visitor.empty_hooks with
-      enter_node = Some enter_node;
-      leave_node = Some leave_node;
-      enter_structure_item = Some enter_structure_item;
-      enter_signature_item = Some enter_signature_item;
-      enter_module_declaration = Some enter_module_declaration;
-      enter_module_type_declaration = Some enter_module_type_declaration;
-      enter_open_declaration = Some enter_open_declaration;
-      enter_include_declaration = Some enter_include_declaration;
-      enter_let_binding = Some enter_let_binding;
-      enter_expr = Some enter_expr;
-      enter_pattern = Some enter_pattern;
-      enter_type_expr = Some enter_type_expr;
-    }
+  let hooks = {
+    Visitor.empty_hooks with
+    enter_node = Some enter_node;
+    leave_node = Some leave_node;
+    enter_structure_item = Some enter_structure_item;
+    enter_signature_item = Some enter_signature_item;
+    enter_module_declaration = Some enter_module_declaration;
+    enter_module_type_declaration = Some enter_module_type_declaration;
+    enter_open_declaration = Some enter_open_declaration;
+    enter_include_declaration = Some enter_include_declaration;
+    enter_let_binding = Some enter_let_binding;
+    enter_expr = Some enter_expr;
+    enter_pattern = Some enter_pattern;
+    enter_type_expr = Some enter_type_expr;
+  }
   in
   let visitor = Visitor.make ~ctx:{ empty_collect_ctx with container } ~hooks in
   let visitor = Visitor.visit_node visitor node in

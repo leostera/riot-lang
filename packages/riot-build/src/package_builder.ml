@@ -233,14 +233,7 @@ let plan_detailed_from_result = fun
             duration;
           };
       }
-  | Ok (
-    Riot_planner.Package_planner.Cached {
-      unit_key = planned_key;
-      artifact;
-      depset;
-      _;
-    }
-  ) ->
+  | Ok (Riot_planner.Package_planner.Cached { unit_key = planned_key; artifact; depset; _ }) ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
         Telemetry.emit
@@ -303,7 +296,13 @@ let plan_detailed_from_result = fun
 let plan_build_unit = fun
   ~on_source_analyzed
   ~input_hash_cache
-  ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ~emit_visible_progress ->
+  ~workspace
+  ~toolchain
+  ~store
+  ~(unit:Build_unit.t)
+  ~depset
+  ~build_ctx
+  ~emit_visible_progress ->
   let package = Build_unit.package unit in
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
@@ -440,7 +439,9 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
     let materialize_started_at = Instant.now () in
     match Sandbox.materialize_files ~sandbox ~files:execution_plan.sandbox_files with
     | Error err ->
-        let error_msg = Sandbox.prepare_error_to_string (Sandbox.SandboxMaterializationFailed err) in
+        let error_msg =
+          Sandbox.prepare_error_to_string (Sandbox.SandboxMaterializationFailed err)
+        in
         let error = ExecutionFailed { message = error_msg } in
         Sandbox.cleanup sandbox;
         Error (failed_execution_result
@@ -563,7 +564,10 @@ let finalize_execution = fun
         let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
         let ocamlc_warnings = action_result.Action_scheduler.ocamlc_warnings in
         (
-          match Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir with
+          match Riot_store.Store.materialize_package_exports
+            store
+            ~exports:export_entries
+            ~target_dir with
           | Error store_error ->
               let error_msg =
                 "Failed to materialize package exports for "
@@ -580,16 +584,14 @@ let finalize_execution = fun
                   ~error
                   ~graph_error:error_msg)
           | Ok () -> (
-              match
-                Riot_store.Store.save_package
-                  store
-                  ~package:package_name_string
-                  ~ocamlc_warnings
-                  ~exports:export_entries
-                  ~input_hash:execution_plan.hash
-                  ~sandbox_dir
-                  ~outs:package_outputs
-              with
+              match Riot_store.Store.save_package
+                store
+                ~package:package_name_string
+                ~ocamlc_warnings
+                ~exports:export_entries
+                ~input_hash:execution_plan.hash
+                ~sandbox_dir
+                ~outs:package_outputs with
               | Error store_error ->
                   let error_msg =
                     "Failed to save package hash artifact for "
@@ -619,7 +621,9 @@ let finalize_execution = fun
                         }
                       );
                   Sandbox.cleanup prepared_execution.sandbox;
-                  let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+                  let duration =
+                    Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ())
+                  in
                   if execution_plan.emit_visible_progress then
                     Telemetry.emit
                       (
@@ -672,7 +676,8 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
           prepared_execution.toolchain
           ~concurrency:build_ctx.Build_ctx.parallelism
       in
-      let completed: (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t =
+      let completed:
+        (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t =
         ConcurrentHashMap.create ()
       in
       List.for_each

@@ -82,10 +82,11 @@ let provider_exports = fun graph path ->
   |> List.filter_map
     ~fn:(fun node ->
       match module_segments node with
-      | Some child_path ->
-          (match suffix_after_prefix child_path path with
+      | Some child_path -> (
+          match suffix_after_prefix child_path path with
           | Some [ child ] -> Some [ child ]
-          | _ -> None)
+          | _ -> None
+        )
       | None -> None)
 
 let graph_providers = fun graph ->

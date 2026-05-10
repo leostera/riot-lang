@@ -123,10 +123,11 @@ let test_from_syn_keeps_constructor_patterns _ctx =
     } ->
       let some_result =
         match some_case.pattern.kind with
-        | Constructor { ident = constructor; payload = Some { kind = Bind binding; _ } } ->
-            (match assert_path_string ~expected:"Some" constructor with
+        | Constructor { ident = constructor; payload = Some { kind = Bind binding; _ } } -> (
+            match assert_path_string ~expected:"Some" constructor with
             | Error _ as error -> error
-            | Ok () -> assert_path_string ~expected:"x" binding)
+            | Ok () -> assert_path_string ~expected:"x" binding
+          )
         | _ -> Error "expected Some x to lower as constructor pattern with payload"
       in
       (

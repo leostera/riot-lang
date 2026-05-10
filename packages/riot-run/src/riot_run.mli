@@ -67,11 +67,12 @@ val run_error_message: run_error -> string
 
 val run_event_to_json: run_event -> Data.Json.t option
 
-val build_binary:
-  ?on_event:(run_event -> unit) -> run_request -> (built_binary, run_error) result
+val build_binary: ?on_event:(run_event -> unit) -> run_request -> (built_binary, run_error) result
 
 val build_source_binary:
-  ?on_event:(run_event -> unit) -> source_run_request -> (built_binary, run_error) result
+  ?on_event:(run_event -> unit) ->
+  source_run_request ->
+  (built_binary, run_error) result
 
 val run: ?on_event:(run_event -> unit) -> run_request -> (unit, run_error) result
 

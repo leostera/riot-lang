@@ -94,11 +94,20 @@ let start = fun ?span ?attributes name ->
     name;
     attributes;
     started_at = Time.Instant.now ();
-  } in
+  }
+  in
   !emit_lifecycle (Started span);
   span
 
 let finish = fun ?(status = Succeeded) span ->
   let completed_at = Time.Instant.now () in
   let duration = Time.Instant.saturating_duration_since ~earlier:span.started_at completed_at in
-  !emit_lifecycle (Completed { span; completed_at; duration; status })
+  !emit_lifecycle
+    (
+      Completed {
+        span;
+        completed_at;
+        duration;
+        status;
+      }
+    )

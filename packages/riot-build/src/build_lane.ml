@@ -226,8 +226,8 @@ let prepare:
         store;
         lock;
         build_unit_plan = plan.build_unit_plan;
-        build_unit_graph =
-          Riot_planner.Build_unit_graph.clone (Build_unit_plan.graph plan.build_unit_plan);
+        build_unit_graph = Riot_planner.Build_unit_graph.clone
+          (Build_unit_plan.graph plan.build_unit_plan);
         build_units;
         build_unit_keys;
       }

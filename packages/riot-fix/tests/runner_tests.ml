@@ -64,13 +64,15 @@ let rule_context = fun ~file_path source ->
 
 let binding_name = fun binding ->
   match Syn.Ast.LetBinding.pattern binding with
-  | Some pattern ->
-      (match Syn.Ast.Pattern.view pattern with
-      | Syn.Ast.Pattern.Ident { ident = path } ->
-          (match Syn.Ast.Ident.last_segment path with
+  | Some pattern -> (
+      match Syn.Ast.Pattern.view pattern with
+      | Syn.Ast.Pattern.Ident { ident = path } -> (
+          match Syn.Ast.Ident.last_segment path with
           | Some token -> Syn.Ast.Token.text token
-          | None -> "")
-      | _ -> "")
+          | None -> ""
+        )
+      | _ -> ""
+    )
   | None -> ""
 
 let type_declaration_name = fun declaration ->

@@ -91,8 +91,7 @@ let cli_trace_enabled = fun () ->
 
 let trace_cli = fun message ->
   if cli_trace_enabled () then
-    eprintln
-      ("riot-cli +" ^ Int.to_string (cli_elapsed_us ()) ^ "us " ^ message)
+    eprintln ("riot-cli +" ^ Int.to_string (cli_elapsed_us ()) ^ "us " ^ message)
 
 let normalize_args = fun __tmp1 ->
   match __tmp1 with

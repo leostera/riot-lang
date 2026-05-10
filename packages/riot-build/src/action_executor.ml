@@ -379,7 +379,8 @@ let run_action = fun
                   ocamlc_failed ("Failed to execute foreign build command: " ^ msg)
         )
 
-let execute_actions = fun ~session_id ~build_target ~(node:Action_node.t) toolchain sandbox_dir actions ->
+let execute_actions = fun
+  ~session_id ~build_target ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Riot_toolchain.ocamlc toolchain in
   let c_compiler = Riot_toolchain.c_compiler toolchain in
   let package = (Action_node.value node).package in
@@ -415,7 +416,13 @@ let verify_outputs = fun outputs ->
     Ok ()
 
 let save_action_artifact = fun ~store ~package ~input_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
-  Riot_store.Store.save_action store ~package ~ocamlc_warnings ~input_hash ~sandbox_dir ~outs:outputs
+  Riot_store.Store.save_action
+    store
+    ~package
+    ~ocamlc_warnings
+    ~input_hash
+    ~sandbox_dir
+    ~outs:outputs
   |> Result.map_err ~fn:Riot_store.Store.error_message
 
 let successful_artifact = fun (result: execution_result) ->
@@ -531,13 +538,15 @@ let execute_node = fun
     }
   ) else (
     Telemetry.emit
-      (Telemetry_events.ActionStarted {
-        session_id;
-        package = (Action_node.value node).package;
-        build_target;
-        action = node;
-        started_at = start;
-      });
+      (
+        Telemetry_events.ActionStarted {
+          session_id;
+          package = (Action_node.value node).package;
+          build_target;
+          action = node;
+          started_at = start;
+        }
+      );
     let planned_hash = Action_node.get_hash node in
     let action_input_hash =
       compute_action_input_hash
@@ -562,7 +571,8 @@ let execute_node = fun
               artifact.Riot_store.Artifact.input_hash
               ~target_dir:sandbox_dir
             |> Result.expect
-              ~msg:("Failed to materialize cached action artifact: " ^ G.Node_id.to_string (Action_node.id node))
+              ~msg:("Failed to materialize cached action artifact: "
+              ^ G.Node_id.to_string (Action_node.id node))
           in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
@@ -608,7 +618,9 @@ let execute_node = fun
                 match acc with
                 | Error _ -> acc
                 | Ok () ->
-                    match resolve_source_for_copy ~package:(Action_node.value node).package ~src_path with
+                    match resolve_source_for_copy
+                      ~package:(Action_node.value node).package
+                      ~src_path with
                     | Error msg -> Error msg
                     | Ok abs_src ->
                         let abs_dst = Path.join sandbox_dir src_path in
@@ -678,7 +690,8 @@ let execute_node = fun
                   if not needs_output_verification then
                     match save_action_artifact
                       ~store
-                      ~package:(Riot_model.Package_name.to_string (Action_node.value node).package.name)
+                      ~package:(Riot_model.Package_name.to_string
+                        (Action_node.value node).package.name)
                       ~input_hash:action_input_hash
                       ~ocamlc_warnings
                       ~sandbox_dir
@@ -729,7 +742,8 @@ let execute_node = fun
                     | Ok () ->
                         match save_action_artifact
                           ~store
-                          ~package:(Riot_model.Package_name.to_string (Action_node.value node).package.name)
+                          ~package:(Riot_model.Package_name.to_string
+                            (Action_node.value node).package.name)
                           ~input_hash:action_input_hash
                           ~ocamlc_warnings
                           ~sandbox_dir

@@ -1856,9 +1856,7 @@ let test_cache_gc_rebuilds_stale_zero_state_for_sharded_entries = fun _ctx ->
 let tests =
   Test.[
     case "save/promote nested outputs" test_save_and_promote_nested_outputs;
-    case
-      "save/promote loaded action artifact"
-      test_save_and_promote_loaded_action_artifact;
+    case "save/promote loaded action artifact" test_save_and_promote_loaded_action_artifact;
     case "save/promote self-host-style outputs" test_save_and_promote_self_host_style_outputs;
     case "get preserves relative paths" test_get_preserves_relative_paths;
     case

@@ -193,8 +193,8 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
           in
           match (find_node_id `interface "Bar", find_node_id `implementation "Foo", find_node_id
             `interface "Foo") with
-          | (Ok bar_mli_id, Ok foo_ml_id, Ok foo_mli_id) ->
-              (match G.get_node graph bar_mli_id with
+          | (Ok bar_mli_id, Ok foo_ml_id, Ok foo_mli_id) -> (
+              match G.get_node graph bar_mli_id with
               | None -> Error "expected bar.mli node to exist"
               | Some node ->
                   let depends_on_impl = List.any (G.deps node) ~fn:(G.Node_id.eq foo_ml_id) in
@@ -202,7 +202,8 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
                   if depends_on_impl && not depends_on_intf then
                     Ok ()
                   else
-                    Error "expected bar.mli to depend on foo.ml implementation node only")
+                    Error "expected bar.mli to depend on foo.ml implementation node only"
+            )
           | (Error msg, _, _)
           | (_, Error msg, _)
           | (_, _, Error msg) -> Error msg) with
@@ -668,37 +669,40 @@ let test_module_graph_opened_public_root_resolves_children_to_public_module = fu
                 || String.ends_with ~suffix:expected_suffix display_path)
             |> Option.map ~fn:(fun (_id, analyzed) -> analyzed)
           in
-          (match (
-            find_ml "Syn",
-            find_ml "Syn__Token",
-            find_ml "Syn__Main",
-            find_analyzed_module "src/main.ml"
-          ) with
-          | (Ok syn_node, Ok token_node, Ok main_node, Some analyzed_main) ->
-              (match analyzed_main.deps with
-              | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
-              | Ok deps ->
-                  let modules = Dep_analyzer.Resolution.modules deps in
-                  let depends_on_syn =
-                    List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id syn_node))
-                  in
-                  let depends_on_token =
-                    List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id token_node))
-                  in
-                  if modules = [ "Syn" ] && depends_on_syn && not depends_on_token then
-                    Ok ()
-                  else
-                    Error ("expected opened child reference to resolve through public root only; modules=["
-                    ^ String.concat ", " modules
-                    ^ "], depends_on_syn="
-                    ^ Bool.to_string depends_on_syn
-                    ^ ", depends_on_token="
-                    ^ Bool.to_string depends_on_token
-                    ^ ")"))
-           | (Error msg, _, _, _)
-           | (_, Error msg, _, _)
-           | (_, _, Error msg, _) -> Error msg
-           | _ -> Error "expected analyzed main module to exist")) with
+          (
+            match (
+              find_ml "Syn",
+              find_ml "Syn__Token",
+              find_ml "Syn__Main",
+              find_analyzed_module "src/main.ml"
+            ) with
+            | (Ok syn_node, Ok token_node, Ok main_node, Some analyzed_main) -> (
+                match analyzed_main.deps with
+                | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
+                | Ok deps ->
+                    let modules = Dep_analyzer.Resolution.modules deps in
+                    let depends_on_syn =
+                      List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id syn_node))
+                    in
+                    let depends_on_token =
+                      List.any (G.deps main_node) ~fn:(G.Node_id.eq (G.id token_node))
+                    in
+                    if modules = [ "Syn" ] && depends_on_syn && not depends_on_token then
+                      Ok ()
+                    else
+                      Error ("expected opened child reference to resolve through public root only; modules=["
+                      ^ String.concat ", " modules
+                      ^ "], depends_on_syn="
+                      ^ Bool.to_string depends_on_syn
+                      ^ ", depends_on_token="
+                      ^ Bool.to_string depends_on_token
+                      ^ ")")
+              )
+            | (Error msg, _, _, _)
+            | (_, Error msg, _, _)
+            | (_, _, Error msg, _) -> Error msg
+            | _ -> Error "expected analyzed main module to exist"
+          )) with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
@@ -830,20 +834,20 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
             find_mli "Kernel__Net__Addr__Unix",
             find_ml "Kernel__Result",
             find_ml "Kernel__System_error",
-	              find_ml "Kernel__Net__Socket_addr",
-	              find_analyzed_module "src/net/addr/unix.mli"
-	            ) with
-	          | (
-	              Ok unix_node,
+            find_ml "Kernel__Net__Socket_addr",
+            find_analyzed_module "src/net/addr/unix.mli"
+          ) with
+          | (
+              Ok unix_node,
               Ok result_node,
               Ok system_error_node,
-	              Ok socket_addr_node,
-	              Some analyzed_unix
-	            ) ->
-	              (match analyzed_unix.deps with
-	              | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
-	              | Ok deps ->
-	                  let modules = Dep_analyzer.Resolution.modules deps in
+              Ok socket_addr_node,
+              Some analyzed_unix
+            ) -> (
+              match analyzed_unix.deps with
+              | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
+              | Ok deps ->
+                  let modules = Dep_analyzer.Resolution.modules deps in
                   let depends_on_result =
                     List.any (G.deps unix_node) ~fn:(G.Node_id.eq (G.id result_node))
                   in
@@ -866,13 +870,14 @@ let test_module_graph_implicit_alias_opens_resolve_nested_leaf_modules = fun _ct
                     ^ "], depends_on_result="
                     ^ Bool.to_string depends_on_result
                     ^ ", depends_on_system_error="
-	                    ^ Bool.to_string depends_on_system_error
-	                    ^ ", depends_on_socket_addr="
-	                    ^ Bool.to_string depends_on_socket_addr
-	                    ^ ")"))
-	          | (Error msg, _, _, _, _)
-	          | (_, Error msg, _, _, _)
-	          | (_, _, Error msg, _, _)
+                    ^ Bool.to_string depends_on_system_error
+                    ^ ", depends_on_socket_addr="
+                    ^ Bool.to_string depends_on_socket_addr
+                    ^ ")")
+            )
+          | (Error msg, _, _, _, _)
+          | (_, Error msg, _, _, _)
+          | (_, _, Error msg, _, _)
           | (_, _, _, Error msg, _) -> Error msg
           | _ -> Error "expected analyzed unix.mli module to exist") with
   | Ok x -> x
@@ -997,13 +1002,13 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
               Ok process_node,
               Ok fs_node,
               Ok fs_file_node,
-	              Ok system_error_node,
-	              Some analyzed_process
-	            ) ->
-	              (match analyzed_process.deps with
-	              | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
-	              | Ok deps ->
-	                  let modules = Dep_analyzer.Resolution.modules deps in
+              Ok system_error_node,
+              Some analyzed_process
+            ) -> (
+              match analyzed_process.deps with
+              | Error err -> Error ("dependency analysis failed: " ^ deps_error_to_string err)
+              | Ok deps ->
+                  let modules = Dep_analyzer.Resolution.modules deps in
                   let depends_on_fs =
                     List.any (G.deps process_node) ~fn:(G.Node_id.eq (G.id fs_node))
                   in
@@ -1027,11 +1032,12 @@ let test_module_graph_implicit_root_alias_resolves_public_child_root = fun _ctx 
                     ^ Bool.to_string depends_on_fs
                     ^ ", depends_on_fs_file="
                     ^ Bool.to_string depends_on_fs_file
-	                    ^ ", depends_on_system_error="
-	                    ^ Bool.to_string depends_on_system_error
-	                    ^ ")"))
-	          | (Error msg, _, _, _, _)
-	          | (_, Error msg, _, _, _)
+                    ^ ", depends_on_system_error="
+                    ^ Bool.to_string depends_on_system_error
+                    ^ ")")
+            )
+          | (Error msg, _, _, _, _)
+          | (_, Error msg, _, _, _)
           | (_, _, Error msg, _, _)
           | (_, _, _, Error msg, _) -> Error msg
           | _ -> Error "expected analyzed process.mli module to exist") with
@@ -1316,12 +1322,12 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                 let module_dependency_labels (node: Riot_planner.Module_node.t G.node) =
                   List.filter_map
                     (G.deps node)
-	                    ~fn:(fun dep_id ->
-	                      match G.get_node graph dep_id with
-	                      | Some dep_node ->
-	                          (match (G.value dep_node).kind with
-	                          | Riot_planner.Module_node.ML mod_ ->
-	                              Some ("ML(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
+                    ~fn:(fun dep_id ->
+                      match G.get_node graph dep_id with
+                      | Some dep_node -> (
+                          match (G.value dep_node).kind with
+                          | Riot_planner.Module_node.ML mod_ ->
+                              Some ("ML(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
                           | Riot_planner.Module_node.MLI mod_ ->
                               Some ("MLI(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
                           | Riot_planner.Module_node.Library _ -> Some "Library"
@@ -1329,11 +1335,12 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                           | Riot_planner.Module_node.C -> Some "C"
                           | Riot_planner.Module_node.H -> Some "H"
                           | Riot_planner.Module_node.Native _ -> Some "Native"
-	                          | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
-	                              Some ("PackageDependency(" ^ root_module ^ ")")
-	                          | Riot_planner.Module_node.Other label -> Some ("Other(" ^ label ^ ")")
-	                          | Riot_planner.Module_node.Root -> Some "Root")
-	                      | None -> None)
+                          | Riot_planner.Module_node.PackageDependency { root_module; _ } ->
+                              Some ("PackageDependency(" ^ root_module ^ ")")
+                          | Riot_planner.Module_node.Other label -> Some ("Other(" ^ label ^ ")")
+                          | Riot_planner.Module_node.Root -> Some "Root"
+                        )
+                      | None -> None)
                 in
                 match (
                   find_mli "Demo__Net__Udp_server",
@@ -1825,8 +1832,8 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
                 List.find analyzed_modules ~fn:(fun (id, _module_) -> G.Node_id.eq id node_id)
               in
               match (find_ml "Action", find_ml "Dep_graph") with
-              | (Some (action_id, action_node), Some (_dep_id, dep_node)) ->
-                  (match find_analysis action_id with
+              | (Some (action_id, action_node), Some (_dep_id, dep_node)) -> (
+                  match find_analysis action_id with
                   | None -> Error "expected analyzed Action module"
                   | Some (_node_id, analyzed) ->
                       let requested_modules =
@@ -1849,7 +1856,8 @@ let test_module_graph_resolves_loose_source_local_open_exports = fun _ctx ->
                         ^ "], unresolved=["
                         ^ String.concat ", " analyzed.Riot_planner.Module_graph.unresolved_deps
                         ^ "], has_edge="
-                        ^ Bool.to_string has_edge))
+                        ^ Bool.to_string has_edge)
+                )
               | (None, _) -> Error "expected Action module node"
               | (_, None) -> Error "expected Dep_graph module node") with
   | Ok x -> x
@@ -2203,8 +2211,8 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                     | _ -> false)
               in
               match (find_app_node (), find_kernel_node ()) with
-              | (Some (app_id, app_node), Some (_kernel_id, kernel_node)) ->
-                  (match List.find
+              | (Some (app_id, app_node), Some (_kernel_id, kernel_node)) -> (
+                  match List.find
                     analyzed_modules
                     ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id app_id) with
                   | None -> Error "expected analyzed App module"
@@ -2229,7 +2237,8 @@ let test_module_graph_resolves_direct_dependency_nested_public_export = fun _ctx
                         ^ "], unresolved=["
                         ^ String.concat ", " analyzed.Riot_planner.Module_graph.unresolved_deps
                         ^ "], has_edge="
-                        ^ Bool.to_string has_edge))
+                        ^ Bool.to_string has_edge)
+                )
               | (None, _) -> Error "expected App module node"
               | (_, None) -> Error "expected Kernel package dependency node") with
   | Ok x -> x
@@ -2462,8 +2471,8 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
                     | _ -> false)
               in
               match (find_local_config_node (), find_dependency_config_node ()) with
-              | (Some (config_id, config_node), Some (_dep_id, dependency_node)) ->
-                  (match List.find
+              | (Some (config_id, config_node), Some (_dep_id, dependency_node)) -> (
+                  match List.find
                     analyzed_modules
                     ~fn:(fun (node_id, _analyzed) -> G.Node_id.eq node_id config_id) with
                   | None -> Error "expected analyzed App__Config module"
@@ -2494,7 +2503,8 @@ let test_module_graph_resolves_self_named_reference_to_dependency_root = fun _ct
                         ^ "], depends_on_dependency="
                         ^ Bool.to_string depends_on_dependency
                         ^ ", depends_on_self="
-                        ^ Bool.to_string depends_on_self))
+                        ^ Bool.to_string depends_on_self)
+                )
               | (None, _) -> Error "expected App__Config module node"
               | (_, None) -> Error "expected Config package dependency node") with
   | Ok x -> x

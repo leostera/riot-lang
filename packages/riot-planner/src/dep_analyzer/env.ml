@@ -45,13 +45,11 @@ let merge = fun left right ->
   List.fold_left
     right
     ~init:left
-    ~fn:(fun env (name, node) -> add name node env)
+    ~fn:(fun env (name, node) ->
+      add name node env)
 
 let rec merge_node = fun (Node (left_free, left_children)) (Node (right_free, right_children)) ->
-  Node (
-    Names.union left_free right_free,
-    merge_preserving_children left_children right_children
-  )
+  Node (Names.union left_free right_free, merge_preserving_children left_children right_children)
 
 and merge_preserving_children = fun left right ->
   List.fold_left
@@ -67,10 +65,7 @@ and merge_preserving_children = fun left right ->
 
 let rec rebind = fun free_names ->
   fun (Node (_, children)) ->
-    Node (
-      free_names,
-      List.map children ~fn:(fun (name, child) -> (name, rebind free_names child))
-    )
+    Node (free_names, List.map children ~fn:(fun (name, child) -> (name, rebind free_names child)))
 
 let rebind_exports = fun free_names exports ->
   List.map
@@ -104,7 +99,9 @@ let rec add_binding = fun env ~path ~free_names ~exports ->
         | None -> Node (Names.empty, [])
       in
       let Node (free, children) = existing in
-      let merged_children = merge_preserving_children children (rebind_exports free_names exports) in
+      let merged_children =
+        merge_preserving_children children (rebind_exports free_names exports)
+      in
       add segment (Node (Names.union free free_names, merged_children)) env
   | segment :: rest ->
       let existing =

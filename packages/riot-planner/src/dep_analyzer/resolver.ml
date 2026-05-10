@@ -514,7 +514,8 @@ let add_summaries = fun ~full_free_names_of_module_path ~add_simple env summarie
   List.fold_left
     summaries
     ~init:env
-    ~fn:(fun env summary -> add_summary ~full_free_names_of_module_path ~add_simple env summary)
+    ~fn:(fun env summary ->
+      add_summary ~full_free_names_of_module_path ~add_simple env summary)
 
 let add_external_summaries =
   add_summaries ~full_free_names_of_module_path:module_path_root_free_names ~add_simple:false
@@ -526,7 +527,8 @@ let binding_exports_from_provider = fun provider ->
   List.fold_left
     provider.exports
     ~init:Dep_env.empty
-    ~fn:(fun exports path -> Dep_env.add_path exports ~path ~free_names:provider.free_names)
+    ~fn:(fun exports path ->
+      Dep_env.add_path exports ~path ~free_names:provider.free_names)
 
 let add_provider = fun env provider ->
   Dep_env.add_binding
@@ -542,8 +544,7 @@ let add_providers = fun env providers -> List.fold_left providers ~init:env ~fn:
 let resolve_summary = fun env (summary: Ir.source_summary) ->
   match Ast_deps.from_parse_result ~env summary with
   | Error _ as error -> error
-  | Ok (deps, _env, _exports) ->
-      Ok (Resolution.make ~modules:(DepSet.elements deps) ~unresolved:[])
+  | Ok (deps, _env, _exports) -> Ok (Resolution.make ~modules:(DepSet.elements deps) ~unresolved:[])
 
 let resolve = fun env (summaries: Ir.source_summary list) ->
   let env = with_summaries env summaries in
@@ -555,13 +556,16 @@ let resolve = fun env (summaries: Ir.source_summary list) ->
         | Error _ as error -> error
         | Ok resolution ->
             loop
-              ({
-                ResolvedSource.source = summary.source;
-                source_hash = summary.source_hash;
-                module_path = summary.module_path;
-                modules = Resolution.modules resolution;
-                unresolved = Resolution.unresolved resolution;
-              } :: acc)
+              (
+                {
+                  ResolvedSource.source = summary.source;
+                  source_hash = summary.source_hash;
+                  module_path = summary.module_path;
+                  modules = Resolution.modules resolution;
+                  unresolved = Resolution.unresolved resolution;
+                }
+                :: acc
+              )
               rest
   in
   loop [] summaries

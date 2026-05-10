@@ -527,10 +527,11 @@ let test_execute_rejects_invalid_parallelism = fun _ctx ->
       in
       match Build_context.make request with
       | Error (Build_context.InvalidRequestedParallelism 0) -> Ok ()
-      | Error err ->
-          (match err with
+      | Error err -> (
+          match err with
           | Build_context.InvalidRequestedParallelism requested ->
-              Error ("expected invalid parallelism 0, got " ^ Int.to_string requested))
+              Error ("expected invalid parallelism 0, got " ^ Int.to_string requested)
+        )
       | Ok _ -> Error "expected invalid parallelism to reject context creation") with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -602,10 +603,11 @@ let test_execute_partial_failures_by_default = fun _ctx ->
           let bad_output = Riot_build.Build_result.find_package output bad in
           let has_bad_failure =
             match bad_output with
-            | Some bad_package ->
-                (match Riot_build.Build_result.package_status bad_package with
+            | Some bad_package -> (
+                match Riot_build.Build_result.package_status bad_package with
                 | Riot_build.Build_result.Failed _ -> true
-                | _ -> false)
+                | _ -> false
+              )
             | None -> false
           in
           if not has_bad_failure then
@@ -644,30 +646,37 @@ let test_execute_allows_partial_failures = fun _ctx ->
       let result =
         Riot_build.Internal.Build_runtime.execute ~allow_partial_failures:true context spec
       in
-      (match result with
-      | Error err ->
-          Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
-      | Ok results ->
-          let build_output = Riot_build.Build_result.from_build_results results in
-          let good_result = Riot_build.Build_result.find_package build_output good in
-          let bad_result = Riot_build.Build_result.find_package build_output bad in
-          (match good_result with
-          | None -> Error "expected good package result"
-          | Some good_result ->
-              (match Riot_build.Build_result.package_status good_result with
-              | Riot_build.Build_result.Built _
-              | Riot_build.Build_result.Cached _ ->
-                  (match bad_result with
-                  | None -> Error "expected bad package result"
-                  | Some bad_result ->
-                      (match Riot_build.Build_result.package_status bad_result with
-                      | Riot_build.Build_result.Failed _ -> Ok ()
-                      | _ ->
-                          Error "expected bad package result to be failed with allow_partial_failures")
-                  )
-	              | Riot_build.Build_result.Skipped _
-	              | Riot_build.Build_result.Failed _ ->
-	                  Error "expected good package result to be successful")))) with
+      (
+        match result with
+        | Error err ->
+            Error ("expected partial failures to be returned, got: "
+            ^ Build_runtime.error_message err)
+        | Ok results ->
+            let build_output = Riot_build.Build_result.from_build_results results in
+            let good_result = Riot_build.Build_result.find_package build_output good in
+            let bad_result = Riot_build.Build_result.find_package build_output bad in
+            (
+              match good_result with
+              | None -> Error "expected good package result"
+              | Some good_result -> (
+                  match Riot_build.Build_result.package_status good_result with
+                  | Riot_build.Build_result.Built _
+                  | Riot_build.Build_result.Cached _ -> (
+                      match bad_result with
+                      | None -> Error "expected bad package result"
+                      | Some bad_result -> (
+                          match Riot_build.Build_result.package_status bad_result with
+                          | Riot_build.Build_result.Failed _ -> Ok ()
+                          | _ ->
+                              Error "expected bad package result to be failed with allow_partial_failures"
+                        )
+                    )
+                  | Riot_build.Build_result.Skipped _
+                  | Riot_build.Build_result.Failed _ ->
+                      Error "expected good package result to be successful"
+                )
+            )
+      )) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -764,19 +773,21 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
               let bad_output = Riot_build.Build_result.find_package build_output bad in
               let good_ok =
                 match good_output with
-                | Some package_output ->
-                    (match Riot_build.Build_result.package_status package_output with
+                | Some package_output -> (
+                    match Riot_build.Build_result.package_status package_output with
                     | Riot_build.Build_result.Built _
                     | Riot_build.Build_result.Cached _ -> true
-                    | _ -> false)
+                    | _ -> false
+                  )
                 | None -> false
               in
               let bad_ok =
                 match bad_output with
-                | Some package_output ->
-                    (match Riot_build.Build_result.package_status package_output with
+                | Some package_output -> (
+                    match Riot_build.Build_result.package_status package_output with
                     | Riot_build.Build_result.Failed _ -> true
-                    | _ -> false)
+                    | _ -> false
+                  )
                 | None -> false
               in
               if not good_ok then

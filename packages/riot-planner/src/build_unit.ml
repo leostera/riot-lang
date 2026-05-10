@@ -99,11 +99,7 @@ let profile = fun t -> t.key.profile
 
 let package_name = fun t -> t.key.package
 
-let make = fun ~key ~package -> {
-  id = id_of_key key;
-  key;
-  package;
-}
+let make = fun ~key ~package -> { id = id_of_key key; key; package }
 
 let from_artifact = fun ~package ~artifact ~target ~profile ->
   make
@@ -116,19 +112,43 @@ let from_artifact = fun ~package ~artifact ~target ~profile ->
     ~package
 
 let library = fun ~package ~target ~profile ->
-  from_artifact ~package ~artifact:Library ~target ~profile
+  from_artifact
+    ~package
+    ~artifact:Library
+    ~target
+    ~profile
 
 let executable = fun ~package ~name ~target ~profile ->
-  from_artifact ~package ~artifact:(RuntimeBinary { name }) ~target ~profile
+  from_artifact
+    ~package
+    ~artifact:(RuntimeBinary { name })
+    ~target
+    ~profile
 
 let test = fun ~package ~name ~target ~profile ->
-  from_artifact ~package ~artifact:(TestBinary { name }) ~target ~profile
+  from_artifact
+    ~package
+    ~artifact:(TestBinary { name })
+    ~target
+    ~profile
 
 let example = fun ~package ~name ~target ~profile ->
-  from_artifact ~package ~artifact:(ExampleBinary { name }) ~target ~profile
+  from_artifact
+    ~package
+    ~artifact:(ExampleBinary { name })
+    ~target
+    ~profile
 
 let bench = fun ~package ~name ~target ~profile ->
-  from_artifact ~package ~artifact:(BenchBinary { name }) ~target ~profile
+  from_artifact
+    ~package
+    ~artifact:(BenchBinary { name })
+    ~target
+    ~profile
 
 let synthetic = fun ~package ~name ~target ~profile ->
-  from_artifact ~package ~artifact:(SyntheticTool { name }) ~target ~profile
+  from_artifact
+    ~package
+    ~artifact:(SyntheticTool { name })
+    ~target
+    ~profile

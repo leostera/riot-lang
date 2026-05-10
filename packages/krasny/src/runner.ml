@@ -135,6 +135,16 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let trivia_buffer = IO.Buffer.create ~size:256 in
   let write_kind kind = IO.Buffer.add_string buffer (Kind.to_string kind) in
   let write_trivia_kind kind = IO.Buffer.add_string trivia_buffer (Kind.to_string kind) in
+  let normalized_token_text token =
+    let kind = Ast.Token.kind token in
+    let text = Ast.Token.text token in
+    if Kind.is kind Kind.INT then
+      Format_text.format_int_literal text
+    else if Kind.is kind Kind.FLOAT then
+      Format_text.format_float_literal text
+    else
+      text
+  in
   let is_tuple_kind = fun __tmp1 ->
     match __tmp1 with
     | Kind.TUPLE_EXPR
@@ -253,8 +263,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     | (1, Some (Syn.SyntaxTree.Node _ as child)) -> Some child
     | _ -> None
   in
-  let write_trivia ~kind ~text =
-    if Kind.(kind = COMMENT || kind = DOCSTRING) then (
+  let write_trivia = fun ~kind text ->
+    (
       IO.Buffer.add_string trivia_buffer "R(";
       write_trivia_kind kind;
       IO.Buffer.add_string trivia_buffer ":";
@@ -311,18 +321,25 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     iter_fold Ast.Node.fold_child node ~fn:(write_child ~parent_kind:(Some node_kind));
     IO.Buffer.add_string buffer "])"
   and write_token_trivia token =
-    Ast.Token.fold_leading_trivia
+    Ast.Token.fold_leading_trivia_item
       token
       ~init:()
-      ~fn:(fun ~kind ~text () ->
-        write_trivia ~kind ~text;
+      ~fn:(fun trivia () ->
+        (
+          match trivia with
+          | Ast.Token.Whitespace -> ()
+          | Ast.Token.Comment comment ->
+              write_trivia ~kind:Kind.COMMENT (Formatter.normalize_comment comment)
+          | Ast.Token.Docstring docstring ->
+              write_trivia ~kind:Kind.DOCSTRING (Formatter.normalize_docstring docstring)
+        );
         Ast.Continue ())
   and write_token token =
     write_token_trivia token;
     IO.Buffer.add_string buffer "T(";
     write_kind (Ast.Token.kind token);
     IO.Buffer.add_string buffer ":";
-    IO.Buffer.add_string buffer (Ast.Token.text token);
+    IO.Buffer.add_string buffer (normalized_token_text token);
     IO.Buffer.add_string buffer ")"
   and write_redundant_paren node =
     iter_fold

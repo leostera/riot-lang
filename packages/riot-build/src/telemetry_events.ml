@@ -259,8 +259,7 @@ let target_to_json = fun target ->
     match target with
     | All -> "all"
     | Package pkg -> Package_name.to_string pkg
-    | Packages pkgs ->
-        "packages:" ^ String.concat "," (List.map pkgs ~fn:Package_name.to_string)
+    | Packages pkgs -> "packages:" ^ String.concat "," (List.map pkgs ~fn:Package_name.to_string)
   )
 
 let target_of_json = fun __tmp1 ->
@@ -1398,10 +1397,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                           package;
                           target;
                           build_target;
-                          input_count = int_field_or_default
-                            fields
-                            ~name:"input_count"
-                            ~default:0;
+                          input_count = int_field_or_default fields ~name:"input_count" ~default:0;
                           copied_at = Time.Instant.now ();
                           duration = Time.Duration.from_millis duration_ms;
                         }
@@ -1441,10 +1437,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                             fields
                             ~name:"dependency_count"
                             ~default:0;
-                          object_count = int_field_or_default
-                            fields
-                            ~name:"object_count"
-                            ~default:0;
+                          object_count = int_field_or_default fields ~name:"object_count" ~default:0;
                           copied_at = Time.Instant.now ();
                           duration = Time.Duration.from_millis duration_ms;
                         }
@@ -1480,10 +1473,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                           package;
                           target;
                           build_target;
-                          input_count = int_field_or_default
-                            fields
-                            ~name:"input_count"
-                            ~default:0;
+                          input_count = int_field_or_default fields ~name:"input_count" ~default:0;
                           dependency_count = int_field_or_default
                             fields
                             ~name:"dependency_count"

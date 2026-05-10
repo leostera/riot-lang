@@ -325,22 +325,25 @@ let fixture_request_json = fun input ->
           let body =
             String.sub input ~offset:(header_end + 4) ~len:(String.length input - header_end - 4)
           in
-          (match String.split ~by:"\r\n" header_block with
-          | request_line :: header_lines ->
-              (match String.split ~by:" " request_line with
-              | method_ :: target :: version_parts ->
-                  let version = String.concat " " version_parts in
-                  let* headers = parse_header_lines header_lines in
-                  Ok (Json.obj
-                    [
-                      ("method", Json.string method_);
-                      ("path", Json.string target);
-                      ("version", Json.string version);
-                      ("headers", headers_json headers);
-                      ("body", Json.string body);
-                    ])
-              | _ -> Error ("invalid HTTP/1 request line fixture: " ^ request_line))
-          | [] -> Error "empty HTTP/1 request fixture")
+          (
+            match String.split ~by:"\r\n" header_block with
+            | request_line :: header_lines -> (
+                match String.split ~by:" " request_line with
+                | method_ :: target :: version_parts ->
+                    let version = String.concat " " version_parts in
+                    let* headers = parse_header_lines header_lines in
+                    Ok (Json.obj
+                      [
+                        ("method", Json.string method_);
+                        ("path", Json.string target);
+                        ("version", Json.string version);
+                        ("headers", headers_json headers);
+                        ("body", Json.string body);
+                      ])
+                | _ -> Error ("invalid HTTP/1 request line fixture: " ^ request_line)
+              )
+            | [] -> Error "empty HTTP/1 request fixture"
+          )
 
 let fixture_response_json = fun input ->
   match Http1.Response.parse input with

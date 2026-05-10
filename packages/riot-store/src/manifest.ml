@@ -90,11 +90,9 @@ let int64_string_decode =
 
 let int64_string_encode = Ser.contramap Int64.to_string Ser.string
 
-let system_time_decode =
-  De.map De.int Time.SystemTime.from_unix_timestamp
+let system_time_decode = De.map De.int Time.SystemTime.from_unix_timestamp
 
-let system_time_encode =
-  Ser.contramap Time.SystemTime.to_unix_timestamp Ser.int
+let system_time_encode = Ser.contramap Time.SystemTime.to_unix_timestamp Ser.int
 
 type file_entry_field =
   | File_path
@@ -142,40 +140,39 @@ type manifest_builder = {
 }
 
 let file_entry_fields =
-  De.fields [
-    De.field "path" File_path;
-    De.field "hash" File_hash;
-    De.field "size" File_size;
-  ]
+  De.fields [ De.field "path" File_path; De.field "hash" File_hash; De.field "size" File_size; ]
 
 let export_entry_fields =
-  De.fields [
-    De.field "name" Export_name;
-    De.field "path" Export_path;
-    De.field "action_hash" Export_action_hash;
-  ]
+  De.fields
+    [
+      De.field "name" Export_name;
+      De.field "path" Export_path;
+      De.field "action_hash" Export_action_hash;
+    ]
 
 let manifest_fields =
-  De.fields [
-    De.field "version" Manifest_version;
-    De.field "package" Manifest_package;
-    De.field "input_hash" Manifest_input_hash;
-    De.field "output_hash" Manifest_output_hash;
-    De.field "timestamp" Manifest_timestamp;
-    De.field "size_bytes" Manifest_size_bytes;
-    De.field "files" Manifest_files;
-    De.field "ocamlc_warnings" Manifest_ocamlc_warnings;
-    De.field "exports" Manifest_exports;
-  ]
+  De.fields
+    [
+      De.field "version" Manifest_version;
+      De.field "package" Manifest_package;
+      De.field "input_hash" Manifest_input_hash;
+      De.field "output_hash" Manifest_output_hash;
+      De.field "timestamp" Manifest_timestamp;
+      De.field "size_bytes" Manifest_size_bytes;
+      De.field "files" Manifest_files;
+      De.field "ocamlc_warnings" Manifest_ocamlc_warnings;
+      De.field "exports" Manifest_exports;
+    ]
 
 let metadata_fields =
-  De.fields [
-    De.field "input_hash" Manifest_input_hash;
-    De.field "output_hash" Manifest_output_hash;
-    De.field "size_bytes" Manifest_size_bytes;
-    De.field "ocamlc_warnings" Manifest_ocamlc_warnings;
-    De.field "exports" Manifest_exports;
-  ]
+  De.fields
+    [
+      De.field "input_hash" Manifest_input_hash;
+      De.field "output_hash" Manifest_output_hash;
+      De.field "size_bytes" Manifest_size_bytes;
+      De.field "ocamlc_warnings" Manifest_ocamlc_warnings;
+      De.field "exports" Manifest_exports;
+    ]
 
 let file_entry_deserializer =
   De.record_mut
@@ -195,17 +192,12 @@ let file_entry_deserializer =
 let export_entry_deserializer =
   De.record_mut
     ~fields:export_entry_fields
-    ~create:(fun () -> {
-      export_name = None;
-      export_path = None;
-      export_action_hash = None;
-    })
+    ~create:(fun () -> { export_name = None; export_path = None; export_action_hash = None })
     ~step:(fun reader builder field ->
       match field with
       | Some Export_name -> builder.export_name <- Some (De.read reader De.string)
       | Some Export_path -> builder.export_path <- Some (De.read reader path_decode)
-      | Some Export_action_hash ->
-          builder.export_action_hash <- Some (De.read reader De.string)
+      | Some Export_action_hash -> builder.export_action_hash <- Some (De.read reader De.string)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.export_name, builder.export_path, builder.export_action_hash) with
@@ -215,17 +207,18 @@ let export_entry_deserializer =
 let deserializer =
   De.record_mut
     ~fields:manifest_fields
-    ~create:(fun () -> {
-      version = None;
-      package = None;
-      input_hash = None;
-      output_hash = None;
-      timestamp = None;
-      size_bytes = None;
-      files = None;
-      ocamlc_warnings = [];
-      exports = [];
-    })
+    ~create:(fun () ->
+      {
+        version = None;
+        package = None;
+        input_hash = None;
+        output_hash = None;
+        timestamp = None;
+        size_bytes = None;
+        files = None;
+        ocamlc_warnings = [];
+        exports = [];
+      })
     ~step:(fun reader builder field ->
       match field with
       | Some Manifest_version -> builder.version <- Some (De.read reader version_decode)
@@ -234,23 +227,30 @@ let deserializer =
       | Some Manifest_output_hash -> builder.output_hash <- Some (De.read reader De.string)
       | Some Manifest_timestamp -> builder.timestamp <- Some (De.read reader system_time_decode)
       | Some Manifest_size_bytes -> builder.size_bytes <- Some (De.read reader int64_string_decode)
-      | Some Manifest_files -> builder.files <- Some (De.read reader (de_list file_entry_deserializer))
+      | Some Manifest_files ->
+          builder.files <- Some (De.read reader (de_list file_entry_deserializer))
       | Some Manifest_ocamlc_warnings ->
           builder.ocamlc_warnings <- De.read reader (de_list De.string)
-      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_deserializer)
+      | Some Manifest_exports ->
+          builder.exports <- De.read reader (de_list export_entry_deserializer)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
-      match
-        (
-          builder.version,
-          builder.package,
-          builder.input_hash,
-          builder.output_hash,
-          builder.timestamp,
-          builder.files
-        )
-      with
-      | (Some version, Some package, Some input_hash, Some output_hash, Some timestamp, Some files) ->
+      match (
+        builder.version,
+        builder.package,
+        builder.input_hash,
+        builder.output_hash,
+        builder.timestamp,
+        builder.files
+      ) with
+      | (
+          Some version,
+          Some package,
+          Some input_hash,
+          Some output_hash,
+          Some timestamp,
+          Some files
+        ) ->
           let size_bytes =
             match builder.size_bytes with
             | Some size_bytes -> size_bytes
@@ -272,17 +272,18 @@ let deserializer =
 let metadata_deserializer =
   De.record_mut
     ~fields:metadata_fields
-    ~create:(fun () -> {
-      version = None;
-      package = None;
-      input_hash = None;
-      output_hash = None;
-      timestamp = None;
-      size_bytes = None;
-      files = None;
-      ocamlc_warnings = [];
-      exports = [];
-    })
+    ~create:(fun () ->
+      {
+        version = None;
+        package = None;
+        input_hash = None;
+        output_hash = None;
+        timestamp = None;
+        size_bytes = None;
+        files = None;
+        ocamlc_warnings = [];
+        exports = [];
+      })
     ~step:(fun reader builder field ->
       match field with
       | Some Manifest_input_hash -> builder.input_hash <- Some (De.read reader De.string)
@@ -290,7 +291,8 @@ let metadata_deserializer =
       | Some Manifest_size_bytes -> builder.size_bytes <- Some (De.read reader int64_string_decode)
       | Some Manifest_ocamlc_warnings ->
           builder.ocamlc_warnings <- De.read reader (de_list De.string)
-      | Some Manifest_exports -> builder.exports <- De.read reader (de_list export_entry_deserializer)
+      | Some Manifest_exports ->
+          builder.exports <- De.read reader (de_list export_entry_deserializer)
       | _ -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.input_hash, builder.output_hash, builder.size_bytes) with
@@ -307,58 +309,71 @@ let metadata_deserializer =
 let file_entry_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "path" path_encode (fun (entry: file_entry) -> entry.path);
-        Ser.field "hash" Ser.string (fun (entry: file_entry) -> entry.hash);
-        Ser.field "size" Ser.int (fun (entry: file_entry) -> entry.size);
-      ]
+      Ser.fields
+        [
+          Ser.field "path" path_encode (fun (entry: file_entry) -> entry.path);
+          Ser.field "hash" Ser.string (fun (entry: file_entry) -> entry.hash);
+          Ser.field "size" Ser.int (fun (entry: file_entry) -> entry.size);
+        ]
     )
 
 let export_entry_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "name" Ser.string (fun (entry: export_entry) -> entry.name);
-        Ser.field "path" path_encode (fun (entry: export_entry) -> entry.path);
-        Ser.field "action_hash" Ser.string (fun (entry: export_entry) -> entry.action_hash);
-      ]
+      Ser.fields
+        [
+          Ser.field "name" Ser.string (fun (entry: export_entry) -> entry.name);
+          Ser.field "path" path_encode (fun (entry: export_entry) -> entry.path);
+          Ser.field "action_hash" Ser.string (fun (entry: export_entry) -> entry.action_hash);
+        ]
     )
 
 let serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "version" version_encode (fun (manifest: t) -> manifest.version);
-        Ser.field "package" Ser.string (fun (manifest: t) -> manifest.package);
-        Ser.field "input_hash" Ser.string (fun (manifest: t) -> manifest.input_hash);
-        Ser.field "output_hash" Ser.string (fun (manifest: t) -> manifest.output_hash);
-        Ser.field "timestamp" system_time_encode (fun (manifest: t) -> manifest.timestamp);
-        Ser.field "size_bytes" int64_string_encode (fun (manifest: t) -> manifest.size_bytes);
-        Ser.field "files" (ser_list file_entry_serializer) (fun (manifest: t) -> manifest.files);
-        Ser.field
-          "ocamlc_warnings"
-          (ser_list Ser.string)
-          (fun (manifest: t) -> manifest.ocamlc_warnings);
-        Ser.field "exports" (ser_list export_entry_serializer) (fun (manifest: t) -> manifest.exports);
-      ]
+      Ser.fields
+        [
+          Ser.field "version" version_encode (fun (manifest: t) -> manifest.version);
+          Ser.field "package" Ser.string (fun (manifest: t) -> manifest.package);
+          Ser.field "input_hash" Ser.string (fun (manifest: t) -> manifest.input_hash);
+          Ser.field "output_hash" Ser.string (fun (manifest: t) -> manifest.output_hash);
+          Ser.field "timestamp" system_time_encode (fun (manifest: t) -> manifest.timestamp);
+          Ser.field "size_bytes" int64_string_encode (fun (manifest: t) -> manifest.size_bytes);
+          Ser.field "files" (ser_list file_entry_serializer) (fun (manifest: t) -> manifest.files);
+          Ser.field
+            "ocamlc_warnings"
+            (ser_list Ser.string)
+            (fun (manifest: t) -> manifest.ocamlc_warnings);
+          Ser.field
+            "exports"
+            (ser_list export_entry_serializer)
+            (fun (manifest: t) -> manifest.exports);
+        ]
     )
 
 let metadata_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "input_hash" Ser.string (fun (metadata: metadata) -> metadata.input_hash);
-        Ser.field "output_hash" Ser.string (fun (metadata: metadata) -> metadata.output_hash);
-        Ser.field "size_bytes" int64_string_encode (fun (metadata: metadata) -> metadata.size_bytes);
-        Ser.field
-          "ocamlc_warnings"
-          (ser_list Ser.string)
-          (fun (metadata: metadata) -> metadata.ocamlc_warnings);
-        Ser.field "exports" (ser_list export_entry_serializer) (fun (metadata: metadata) -> metadata.exports);
-      ]
+      Ser.fields
+        [
+          Ser.field "input_hash" Ser.string (fun (metadata: metadata) -> metadata.input_hash);
+          Ser.field "output_hash" Ser.string (fun (metadata: metadata) -> metadata.output_hash);
+          Ser.field
+            "size_bytes"
+            int64_string_encode
+            (fun (metadata: metadata) -> metadata.size_bytes);
+          Ser.field
+            "ocamlc_warnings"
+            (ser_list Ser.string)
+            (fun (metadata: metadata) -> metadata.ocamlc_warnings);
+          Ser.field
+            "exports"
+            (ser_list export_entry_serializer)
+            (fun (metadata: metadata) -> metadata.exports);
+        ]
     )
 
-let small_cache_file_threshold = 64 * 1024
+let small_cache_file_threshold = 64 * 1_024
 
 let encode_to_string = fun serializer value ->
   Serde_bin.to_string serializer value
@@ -409,7 +424,8 @@ let read_cache_file = fun ~path deserializer ->
         )
   in
   match Std.Fs.metadata path with
-  | Ok metadata when Std.Fs.Metadata.len metadata <= small_cache_file_threshold -> read_small_file ()
+  | Ok metadata when Std.Fs.Metadata.len metadata <= small_cache_file_threshold ->
+      read_small_file ()
   | Ok _ -> read_large_file ()
   | Error _ -> read_large_file ()
 
@@ -420,8 +436,7 @@ let metadata_of_string = fun content -> decode_from_string metadata_deserializer
 let save_metadata = fun metadata ~path -> write_cache_file ~path metadata_serializer metadata
 
 (** Write manifest to file *)
-let save = fun (manifest: t) ~path ->
-  write_cache_file ~path serializer manifest
+let save = fun (manifest: t) ~path -> write_cache_file ~path serializer manifest
 
 (** Read manifest from file *)
 let load = fun ~path -> read_cache_file ~path deserializer

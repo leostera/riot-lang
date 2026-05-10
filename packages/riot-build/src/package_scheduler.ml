@@ -19,7 +19,8 @@ type work_item =
 
 type execution_state = {
   prepared_execution: Package_builder.prepared_execution;
-  completed_actions: (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t;
+  completed_actions:
+    (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t;
 }
 
 type finalized_source =
@@ -147,8 +148,7 @@ type event =
       error_count: int;
     }
 
-type package_state_store =
-  (Riot_planner.Build_unit.key, package_state) ConcurrentHashMap.t
+type package_state_store = (Riot_planner.Build_unit.key, package_state) ConcurrentHashMap.t
 
 type graph_state = {
   package_states: package_state_store;
@@ -186,7 +186,10 @@ type dependency_summary = {
 
 let package_key_id = fun unit_key -> Riot_planner.Build_unit.key_to_string unit_key
 
-let compute_dependency_keys = fun lane unit_key -> Build_lane.build_unit_dependency_keys lane unit_key
+let compute_dependency_keys = fun lane unit_key ->
+  Build_lane.build_unit_dependency_keys
+    lane
+    unit_key
 
 let dependency_keys = fun state unit_key ->
   match HashMap.get state.dependency_keys ~key:unit_key with
@@ -231,13 +234,13 @@ let dependency_failed_state = fun __tmp1 ->
   | AwaitingFinalization _ -> None
 
 let clone_completed_actions = fun completed_actions ->
-  ConcurrentHashMap.from_list (ConcurrentHashMap.to_list completed_actions)
+  ConcurrentHashMap.from_list
+    (ConcurrentHashMap.to_list completed_actions)
 
-let clone_execution_state = fun execution_state ->
-  {
-    prepared_execution = execution_state.prepared_execution;
-    completed_actions = clone_completed_actions execution_state.completed_actions;
-  }
+let clone_execution_state = fun execution_state -> {
+  prepared_execution = execution_state.prepared_execution;
+  completed_actions = clone_completed_actions execution_state.completed_actions;
+}
 
 let clone_package_state = fun __tmp1 ->
   match __tmp1 with
@@ -254,11 +257,7 @@ let get_package_state_raw = fun package_states lane unit_key ->
 
 let remember_package_state = fun package_states lane unit_key state ->
   let _ = lane in
-  let _ = ConcurrentHashMap.insert
-    package_states
-    ~key:unit_key
-    ~value:state
-  in
+  let _ = ConcurrentHashMap.insert package_states ~key:unit_key ~value:state in
   ()
 
 let get_package_state = fun package_states lane unit_key ->
@@ -269,24 +268,19 @@ let remember_action_result = fun package_states lane unit_key action_id result -
   match get_package_state_raw package_states lane unit_key with
   | Some (AwaitingFinalization execution_state) ->
       let _ =
-        ConcurrentHashMap.insert
-          execution_state.completed_actions
-          ~key:action_id
-          ~value:result
+        ConcurrentHashMap.insert execution_state.completed_actions ~key:action_id ~value:result
       in
       ()
   | Some AwaitingPlan ->
       panic
-        ("package scheduler: action result recorded before planning for "
-        ^ package_key_id unit_key)
+        ("package scheduler: action result recorded before planning for " ^ package_key_id unit_key)
   | Some (Finalized _) ->
       panic
         ("package scheduler: action result recorded after finalization for "
         ^ package_key_id unit_key)
   | None ->
       panic
-        ("package scheduler: missing package state for action result "
-        ^ package_key_id unit_key)
+        ("package scheduler: missing package state for action result " ^ package_key_id unit_key)
 
 let record_package_state = fun handle lane unit_key state ->
   Graph_scheduler.Handle.record
@@ -342,14 +336,17 @@ let dependency_of_detailed_result = fun store (detailed_result: Package_builder.
 let dependency_summary = fun state lane unit_key ->
   dependency_keys state unit_key
   |> List.fold_left
-    ~init:{ failed_packages = []; depset = []; }
+    ~init:{ failed_packages = []; depset = [] }
     ~fn:(fun summary dependency_key ->
       match get_package_state_raw state.package_states lane dependency_key with
       | Some (Finalized { detailed_result; _ }) -> (
           match detailed_result.result.status with
           | Package_builder.Failed _
           | Package_builder.Skipped _ ->
-              { summary with failed_packages = detailed_result.result.package :: summary.failed_packages }
+              {
+                summary with
+                failed_packages = detailed_result.result.package :: summary.failed_packages;
+              }
           | Package_builder.Built _
           | Package_builder.Cached _ -> (
               match dependency_of_detailed_result (Build_lane.store lane) detailed_result with
@@ -398,7 +395,8 @@ let add_action_work = fun graph ~finalize_node_id lane unit_key action_graph ->
       let action_node_id =
         HashMap.get action_node_ids ~key:(Action_node.id action)
         |> Option.expect
-          ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string (Action_node.id action))
+          ~msg:("missing scheduler node for action "
+          ^ Graph.SimpleGraph.Node_id.to_string (Action_node.id action))
       in
       List.for_each
         (Action_node.deps action)
@@ -437,7 +435,10 @@ let plan_package_work = fun ~state ~node_ids ~graph lane unit_key ->
       Error { lane; reason = "build unit graph missing node for " ^ package_key_id unit_key }
   | Some build_unit -> (
       let dependency_summary = dependency_summary state lane unit_key in
-      match skipped_result_if_failed_dependencies dependency_summary.failed_packages unit_key build_unit with
+      match skipped_result_if_failed_dependencies
+        dependency_summary.failed_packages
+        unit_key
+        build_unit with
       | Some detailed_result ->
           finalize_result graph ~source:Planned lane unit_key detailed_result;
           complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
@@ -483,22 +484,21 @@ let plan_package_work = fun ~state ~node_ids ~graph lane unit_key ->
           in
           let on_source_analyzed =
             if emit_visible_progress then
-              fun (progress: Module_graph.source_analysis_progress) ->
-                emit_plan_started ();
-                Graph_scheduler.Handle.emit_event
-                  graph
-                  (
-                    PackagePlanSourceStarted {
-                      package;
-                      build_target;
-                      source = progress.source;
-                      source_index = progress.source_index;
-                      source_count = progress.source_count;
-                      started_at = Time.Instant.now ();
-                    }
-                  )
+              fun (progress: Module_graph.source_analysis_progress) -> emit_plan_started ();
+              Graph_scheduler.Handle.emit_event
+                graph
+                (
+                  PackagePlanSourceStarted {
+                    package;
+                    build_target;
+                    source = progress.source;
+                    source_index = progress.source_index;
+                    source_count = progress.source_count;
+                    started_at = Time.Instant.now ();
+                  }
+                )
             else
-              fun (_:Module_graph.source_analysis_progress) -> ()
+              fun (_: Module_graph.source_analysis_progress) -> ()
           in
           match Package_builder.plan_build_unit
             ~on_source_analyzed
@@ -544,8 +544,7 @@ let plan_package_work = fun ~state ~node_ids ~graph lane unit_key ->
                 | Ok prepared_execution ->
                     let finalize_node_id =
                       HashMap.get node_ids.finalize ~key:unit_key
-                      |> Option.expect
-                        ~msg:("missing finalize node for " ^ package_key_id unit_key)
+                      |> Option.expect ~msg:("missing finalize node for " ^ package_key_id unit_key)
                     in
                     record_package_state
                       graph
@@ -636,12 +635,11 @@ let make_state = fun lanes ->
       Build_lane.build_unit_keys lane
       |> List.for_each
         ~fn:(fun unit_key ->
-          ignore (
-            HashMap.insert
+          ignore
+            (HashMap.insert
               dependency_keys
               ~key:unit_key
-              ~value:(compute_dependency_keys lane unit_key)
-          );
+              ~value:(compute_dependency_keys lane unit_key));
           remember_package_state package_states lane unit_key AwaitingPlan));
   { package_states; input_hash_cache; dependency_keys }
 
@@ -661,11 +659,7 @@ let make_graph = fun state lanes ->
             remember_action_result state.package_states lane unit_key action_id result)
       ()
   in
-  let node_ids: node_ids = {
-    plan = HashMap.create ();
-    finalize = HashMap.create ();
-  }
-  in
+  let node_ids: node_ids = { plan = HashMap.create (); finalize = HashMap.create () } in
   List.for_each
     lanes
     ~fn:(fun lane ->
@@ -679,12 +673,7 @@ let make_graph = fun state lanes ->
             Graph_scheduler.Graph.add_node graph ~payload:(FinalizePackage { lane; unit_key })
           in
           let _ = HashMap.insert node_ids.plan ~key:unit_key ~value:plan_node_id in
-          let _ =
-            HashMap.insert
-              node_ids.finalize
-              ~key:unit_key
-              ~value:finalize_node_id
-          in
+          let _ = HashMap.insert node_ids.finalize ~key:unit_key ~value:finalize_node_id in
           ()));
   List.for_each
     lanes
@@ -777,8 +766,7 @@ let cleanup_pending_execution = fun package_states ->
     |> List.filter_map
       ~fn:(fun (_, state) ->
         match state with
-        | AwaitingFinalization execution_state ->
-            Some execution_state.prepared_execution.sandbox
+        | AwaitingFinalization execution_state -> Some execution_state.prepared_execution.sandbox
         | AwaitingPlan
         | Finalized _ -> None)
   in
@@ -955,12 +943,7 @@ let run = fun ~parallelism ?(on_event = fun (_:event) -> ()) lanes ->
         ~execute:(fun ~graph ~node:_ ~payload ->
           match payload with
           | PlanPackage { lane; unit_key } ->
-              plan_package_work
-                ~state
-                ~node_ids
-                ~graph
-                lane
-                unit_key
+              plan_package_work ~state ~node_ids ~graph lane unit_key
           | ExecuteAction { lane; unit_key; action } ->
               execute_action_work ~package_states:state.package_states ~graph lane unit_key action
           | FinalizePackage { lane; unit_key } ->

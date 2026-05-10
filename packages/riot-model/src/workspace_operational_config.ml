@@ -104,11 +104,7 @@ let default_perf_trace_policy = {
   call_graph_stack_size = None;
 }
 
-let default_xctrace_trace_policy = {
-  template_ = None;
-  time_limit = None;
-  window = None;
-}
+let default_xctrace_trace_policy = { template_ = None; time_limit = None; window = None }
 
 let default_trace_policy = {
   profiler = None;
@@ -149,16 +145,12 @@ let trace_error_message = fun __tmp1 ->
   | PerfSampleRateMustBePositiveInt -> "riot.trace.perf.sample_rate must be greater than 0"
   | PerfSampleRateMustBeInt -> "riot.trace.perf.sample_rate must be an integer"
   | PerfCallGraphMustBeString -> "riot.trace.perf.call_graph must be a string"
-  | PerfCallGraphStackSizeMustBePositiveInt ->
-      "riot.trace.perf.call_graph_stack_size must be greater than 0"
-  | PerfCallGraphStackSizeMustBeInt ->
-      "riot.trace.perf.call_graph_stack_size must be an integer"
+  | PerfCallGraphStackSizeMustBePositiveInt -> "riot.trace.perf.call_graph_stack_size must be greater than 0"
+  | PerfCallGraphStackSizeMustBeInt -> "riot.trace.perf.call_graph_stack_size must be an integer"
   | XctraceTemplateMustBeString -> "riot.trace.xctrace.template must be a string"
-  | XctraceTimeLimitMustBeDurationString ->
-      "riot.trace.xctrace.time_limit must be a duration string like \"5s\""
+  | XctraceTimeLimitMustBeDurationString -> "riot.trace.xctrace.time_limit must be a duration string like \"5s\""
   | InvalidXctraceTimeLimit error -> "riot.trace.xctrace.time_limit " ^ value_error_message error
-  | XctraceWindowMustBeDurationString ->
-      "riot.trace.xctrace.window must be a duration string like \"1s\""
+  | XctraceWindowMustBeDurationString -> "riot.trace.xctrace.window must be a duration string like \"1s\""
   | InvalidXctraceWindow error -> "riot.trace.xctrace.window " ^ value_error_message error
 
 let invalid_config_error_message = fun __tmp1 ->
@@ -459,12 +451,7 @@ let parse_perf_trace_policy = fun ~path fields ->
       ~positive_error:PerfSampleRateMustBePositiveInt
       ~int_error:PerfSampleRateMustBeInt
   in
-  let call_graph =
-    parse_optional_string_field
-      fields
-      [ "call_graph" ]
-      PerfCallGraphMustBeString
-  in
+  let call_graph = parse_optional_string_field fields [ "call_graph" ] PerfCallGraphMustBeString in
   let call_graph_stack_size =
     parse_optional_positive_int_field
       fields
@@ -480,12 +467,7 @@ let parse_perf_trace_policy = fun ~path fields ->
   | (_, _, Error error) -> Error (InvalidConfig { path; error = TraceConfig error })
 
 let parse_xctrace_trace_policy = fun ~path fields ->
-  let template_ =
-    parse_optional_string_field
-      fields
-      [ "template" ]
-      XctraceTemplateMustBeString
-  in
+  let template_ = parse_optional_string_field fields [ "template" ] XctraceTemplateMustBeString in
   let time_limit =
     parse_optional_xctrace_duration_field
       fields
@@ -507,12 +489,7 @@ let parse_xctrace_trace_policy = fun ~path fields ->
   | (_, _, Error error) -> Error (InvalidConfig { path; error = TraceConfig error })
 
 let parse_trace_policy = fun ~path fields ->
-  let profiler =
-    parse_optional_string_field
-      fields
-      [ "profiler" ]
-      TraceProfilerMustBeString
-  in
+  let profiler = parse_optional_string_field fields [ "profiler" ] TraceProfilerMustBeString in
   let perf =
     match Fields.get "perf" fields with
     | None -> Ok default_perf_trace_policy

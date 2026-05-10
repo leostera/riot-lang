@@ -167,8 +167,7 @@ let keys = fun t ->
 
 let graph_key_from_build_key = Build_unit.id_of_key
 
-let graph_key_to_string = fun (key:graph_key) ->
-  Crypto.Digest.hex key
+let graph_key_to_string = fun (key: graph_key) -> Crypto.Digest.hex key
 
 let find = fun t key -> HashMap.get t.nodes ~key:(graph_key_from_build_key key)
 
@@ -220,20 +219,28 @@ let is_well_known_package = fun name ->
   Package.is_builtin_dependency_name
     (Package_name.to_string name)
 
-let target_key = fun ~(package:Package_name.t) ~(artifact:Build_unit.artifact_kind) ~(target:Target.t) ~(profile:Profile.t) ->
-  let package_name:Package_name.t = package in
-  let artifact_kind:Build_unit.artifact_kind = artifact in
-  let target_value:Target.t = target in
-  let profile_value:Profile.t = profile in
+let target_key = fun
+  ~(package:Package_name.t)
+  ~(artifact:Build_unit.artifact_kind)
+  ~(target:Target.t)
+  ~(profile:Profile.t) ->
+  let package_name: Package_name.t = package in
+  let artifact_kind: Build_unit.artifact_kind = artifact in
+  let target_value: Target.t = target in
+  let profile_value: Profile.t = profile in
   ({
     package = package_name;
     artifact = artifact_kind;
     target = target_value;
     profile = profile_value;
-  }:Build_unit.key)
+  }: Build_unit.key)
 
 let unit_spec_key = fun (spec: unit_spec) ->
-  target_key ~package:spec.package.name ~artifact:spec.artifact ~target:spec.target ~profile:spec.profile
+  target_key
+    ~package:spec.package.name
+    ~artifact:spec.artifact
+    ~target:spec.target
+    ~profile:spec.profile
 
 let add_graph_unit = fun t (spec: unit_spec) ->
   let key = unit_spec_key spec in
@@ -263,9 +270,7 @@ let clone = fun t ->
   let graph = G.make () in
   let nodes = HashMap.with_capacity ~size:(HashMap.length t.nodes) in
   let edges = HashSet.with_capacity ~size:(HashSet.length t.edges) in
-  let processed_libraries =
-    HashSet.with_capacity ~size:(HashSet.length t.processed_libraries)
-  in
+  let processed_libraries = HashSet.with_capacity ~size:(HashSet.length t.processed_libraries) in
   let cloned = {
     graph;
     nodes;
@@ -356,15 +361,13 @@ let artifacts_for_package = fun request_kind (package: Package.t) ->
       | SyntheticTool _ -> ());
   Array.to_list (Vector.to_array artifacts)
 
-let discover_root_artifacts = fun request_kind source_ignore_patterns (manifest: Package_manifest.t) ->
+let discover_root_artifacts = fun
+  request_kind source_ignore_patterns (manifest: Package_manifest.t) ->
   let intent = request_intent request_kind in
   let package = Package_manifest.realize ~intent ~source_ignore_patterns manifest in
   {
     root_manifest = manifest;
-    root_realization = {
-      realized_intent = intent;
-      realized_package = package;
-    };
+    root_realization = { realized_intent = intent; realized_package = package };
     root_artifacts = artifacts_for_package request_kind package;
   }
 
@@ -423,17 +426,21 @@ let group_unit_refs = fun unit_refs root_realizations source_ignore_patterns ->
       Vector.push bucket.bucket_refs ~value:unit_ref);
   HashMap.to_list buckets
   |> List.map
-    ~fn:(fun (package_name, bucket) -> {
-      group_manifest = bucket.bucket_manifest;
-      group_refs = Vector.to_array bucket.bucket_refs |> Array.to_list;
-      group_realization = HashMap.get root_realizations ~key:package_name;
-      group_source_ignore_patterns = source_ignore_patterns;
-    })
+    ~fn:(fun (package_name, bucket) ->
+      {
+        group_manifest = bucket.bucket_manifest;
+        group_refs =
+          Vector.to_array bucket.bucket_refs
+          |> Array.to_list;
+        group_realization = HashMap.get root_realizations ~key:package_name;
+        group_source_ignore_patterns = source_ignore_patterns;
+      })
 
 let realize_unit_group = fun (group: unit_ref_group) ->
   let needs_dev =
-    List.any group.group_refs ~fn:(fun unit_ref ->
-      artifact_needs_dev_realization unit_ref.ref_artifact)
+    List.any
+      group.group_refs
+      ~fn:(fun unit_ref -> artifact_needs_dev_realization unit_ref.ref_artifact)
   in
   let realized_package =
     match group.group_realization with
@@ -442,7 +449,12 @@ let realize_unit_group = fun (group: unit_ref_group) ->
         realized_package
     | _ ->
         Package_manifest.realize
-          ~intent:(if needs_dev then Package.Dev else Package.Runtime)
+          ~intent:(
+            if needs_dev then
+              Package.Dev
+            else
+              Package.Runtime
+          )
           ~source_ignore_patterns:group.group_source_ignore_patterns
           group.group_manifest
   in
@@ -510,10 +522,7 @@ let missing_package_key = fun __tmp1 ->
   | Root package -> Package.key_of_string ("root:" ^ Package_name.to_string package)
   | Dependency { package; dependency } ->
       Package.key_of_string
-        ("dependency:"
-        ^ Package_name.to_string package
-        ^ "->"
-        ^ Package_name.to_string dependency)
+        ("dependency:" ^ Package_name.to_string package ^ "->" ^ Package_name.to_string dependency)
 
 let report_missing = fun (ctx: create_context) missing_package ->
   let key = missing_package_key missing_package in
@@ -529,16 +538,18 @@ let lookup_root = fun (ctx: create_context) root ->
       None
 
 let missing_list = fun (ctx: create_context) ->
-  Vector.to_array ctx.missing |> Array.to_list
+  Vector.to_array ctx.missing
+  |> Array.to_list
 
-let create_root_node_collector = fun ctx -> {
-  root_context = ctx;
-  root_unit_refs = Vector.with_capacity ~size:16;
-  root_library_seeds = Vector.with_capacity ~size:16;
-  root_library_seed_keys = HashSet.with_capacity ~size:16;
-  root_missing = Vector.with_capacity ~size:2;
-  root_missing_seen = HashSet.with_capacity ~size:2;
-}
+let create_root_node_collector = fun ctx ->
+  {
+    root_context = ctx;
+    root_unit_refs = Vector.with_capacity ~size:16;
+    root_library_seeds = Vector.with_capacity ~size:16;
+    root_library_seed_keys = HashSet.with_capacity ~size:16;
+    root_missing = Vector.with_capacity ~size:2;
+    root_missing_seen = HashSet.with_capacity ~size:2;
+  }
 
 let root_report_missing = fun collector missing_package ->
   let key = missing_package_key missing_package in
@@ -567,17 +578,14 @@ let root_add_library_seed = fun collector (manifest: Package_manifest.t) target 
   match manifest.library with
   | None -> None
   | Some _ ->
-      let seed = {
-        seed_manifest = manifest;
-        seed_target = target;
-      }
-      in
+      let seed = { seed_manifest = manifest; seed_target = target } in
       let key = library_seed_key collector.root_context seed in
       if HashSet.insert collector.root_library_seed_keys ~value:key then
         Vector.push collector.root_library_seeds ~value:seed;
       Some key
 
-let root_collect_dependency_library_seeds = fun collector (manifest: Package_manifest.t) target dependency_names ->
+let root_collect_dependency_library_seeds = fun
+  collector (manifest: Package_manifest.t) target dependency_names ->
   List.for_each
     dependency_names
     ~fn:(fun dependency ->
@@ -594,10 +602,7 @@ let root_collect_build_dependency_library_seeds = fun collector (manifest: Packa
       | None -> ()
       | Some dependency_manifest ->
           ignore
-            (root_add_library_seed
-              collector
-              dependency_manifest
-              collector.root_context.host_target))
+            (root_add_library_seed collector dependency_manifest collector.root_context.host_target))
 
 let root_collect_target_artifacts = fun collector (manifest: Package_manifest.t) target artifacts ->
   let needs_runtime_dependencies = ref false in
@@ -631,27 +636,38 @@ let root_collect_target_artifacts = fun collector (manifest: Package_manifest.t)
         (dependency_names manifest.dev_dependencies)
   )
 
-let root_collector_result = fun collector ~realization -> {
-  result_unit_refs = Vector.to_array collector.root_unit_refs |> Array.to_list;
-  result_library_seeds = Vector.to_array collector.root_library_seeds |> Array.to_list;
-  result_missing_packages = Vector.to_array collector.root_missing |> Array.to_list;
-  result_realization = realization;
-}
+let root_collector_result = fun collector ~realization ->
+  {
+    result_unit_refs =
+      Vector.to_array collector.root_unit_refs
+      |> Array.to_list;
+    result_library_seeds =
+      Vector.to_array collector.root_library_seeds
+      |> Array.to_list;
+    result_missing_packages =
+      Vector.to_array collector.root_missing
+      |> Array.to_list;
+    result_realization = realization;
+  }
 
-let library_collector_result = fun collector -> {
-  library_unit_refs = Vector.to_array collector.root_unit_refs |> Array.to_list;
-  library_seeds = Vector.to_array collector.root_library_seeds |> Array.to_list;
-  library_missing_packages = Vector.to_array collector.root_missing |> Array.to_list;
-}
+let library_collector_result = fun collector ->
+  {
+    library_unit_refs =
+      Vector.to_array collector.root_unit_refs
+      |> Array.to_list;
+    library_seeds =
+      Vector.to_array collector.root_library_seeds
+      |> Array.to_list;
+    library_missing_packages =
+      Vector.to_array collector.root_missing
+      |> Array.to_list;
+  }
 
 let create_root_nodes = fun ctx __tmp1 ->
   match __tmp1 with
   | RootTask manifest ->
       let discovery =
-        discover_root_artifacts
-          ctx.request.kind
-          ctx.workspace.source_ignore_patterns
-          manifest
+        discover_root_artifacts ctx.request.kind ctx.workspace.source_ignore_patterns manifest
       in
       let collector = create_root_node_collector ctx in
       List.for_each
@@ -667,11 +683,12 @@ let create_root_nodes = fun ctx __tmp1 ->
         ~realization:(Some (discovery.root_manifest.name, discovery.root_realization))
   | SyntheticTask { synthetic; manifest } ->
       let collector = create_root_node_collector ctx in
-      ignore (root_add_unit_ref
-        collector
-        ~manifest
-        ~artifact:(Build_unit.SyntheticTool { name = synthetic.name })
-        ~target:ctx.host_target);
+      ignore
+        (root_add_unit_ref
+          collector
+          ~manifest
+          ~artifact:(Build_unit.SyntheticTool { name = synthetic.name })
+          ~target:ctx.host_target);
       ignore (root_add_library_seed collector manifest ctx.host_target);
       root_collect_build_dependency_library_seeds collector manifest;
       root_collector_result collector ~realization:None
@@ -715,7 +732,8 @@ let enqueue_library_seed = fun ctx planned_libraries frontier seed ->
   if HashSet.insert planned_libraries ~value:key then
     Vector.push frontier ~value:seed
 
-let merge_root_node_result = fun ctx unit_refs unit_keys planned_libraries library_frontier root_realizations result ->
+let merge_root_node_result = fun
+  ctx unit_refs unit_keys planned_libraries library_frontier root_realizations result ->
   List.for_each result.result_missing_packages ~fn:(report_missing ctx);
   List.for_each
     result.result_unit_refs
@@ -728,26 +746,26 @@ let merge_root_node_result = fun ctx unit_refs unit_keys planned_libraries libra
   | Some (package_name, realization) ->
       ignore (HashMap.insert root_realizations ~key:package_name ~value:realization)
 
-let merge_library_node_result = fun ctx unit_refs unit_keys planned_libraries next_frontier result ->
+let merge_library_node_result = fun
+  ctx unit_refs unit_keys planned_libraries next_frontier result ->
   List.for_each result.library_missing_packages ~fn:(report_missing ctx);
   List.for_each
     result.library_unit_refs
     ~fn:(fun unit_ref -> ignore (merge_unit_ref unit_refs unit_keys unit_ref));
-  List.for_each
-    result.library_seeds
-    ~fn:(enqueue_library_seed ctx planned_libraries next_frontier)
+  List.for_each result.library_seeds ~fn:(enqueue_library_seed ctx planned_libraries next_frontier)
 
-let rec expand_library_frontier_at_depth = fun depth ctx unit_refs unit_keys planned_libraries frontier ->
-  let seeds = Vector.to_array frontier |> Array.to_list in
+let rec expand_library_frontier_at_depth = fun
+  depth ctx unit_refs unit_keys planned_libraries frontier ->
+  let seeds =
+    Vector.to_array frontier
+    |> Array.to_list
+  in
   match seeds with
   | [] -> ()
   | _ ->
       let started_at = Time.Instant.now () in
       let next_frontier = Vector.with_capacity ~size:(List.length seeds) in
-      WorkerPool.SimpleWorkerPool.run
-        ~tasks:seeds
-        ~fn:(create_library_nodes ctx)
-        ()
+      WorkerPool.SimpleWorkerPool.run ~tasks:seeds ~fn:(create_library_nodes ctx) ()
       |> List.for_each
         ~fn:(fun (_index, result) ->
           merge_library_node_result
@@ -774,13 +792,16 @@ let rec expand_library_frontier_at_depth = fun depth ctx unit_refs unit_keys pla
         next_frontier
 
 let expand_library_frontier = fun ctx unit_refs unit_keys planned_libraries frontier ->
-  expand_library_frontier_at_depth 0 ctx unit_refs unit_keys planned_libraries frontier
+  expand_library_frontier_at_depth
+    0
+    ctx
+    unit_refs
+    unit_keys
+    planned_libraries
+    frontier
 
 let create_unit_specs = fun unit_groups ->
-  WorkerPool.SimpleWorkerPool.run
-    ~tasks:unit_groups
-    ~fn:realize_unit_group
-    ()
+  WorkerPool.SimpleWorkerPool.run ~tasks:unit_groups ~fn:realize_unit_group ()
   |> List.flat_map ~fn:(fun (_index, specs) -> specs)
 
 let create_nodes = fun (ctx: create_context) ->
@@ -792,10 +813,7 @@ let create_nodes = fun (ctx: create_context) ->
   let root_realizations = HashMap.with_capacity ~size:128 in
   let tasks = node_tasks ctx in
   let root_started_at = Time.Instant.now () in
-  WorkerPool.SimpleWorkerPool.run
-    ~tasks
-    ~fn:(create_root_nodes ctx)
-    ()
+  WorkerPool.SimpleWorkerPool.run ~tasks ~fn:(create_root_nodes ctx) ()
   |> List.for_each
     ~fn:(fun (_index, result) ->
       merge_root_node_result
@@ -825,7 +843,10 @@ let create_nodes = fun (ctx: create_context) ->
   let group_started_at = Time.Instant.now () in
   let unit_groups =
     group_unit_refs
-      (Vector.to_array unit_refs |> Array.to_list)
+      (
+        Vector.to_array unit_refs
+        |> Array.to_list
+      )
       root_realizations
       ctx.workspace.source_ignore_patterns
   in
@@ -851,11 +872,7 @@ let create_nodes = fun (ctx: create_context) ->
     ^ Int.to_string (List.length tasks)
     ^ " missing="
     ^ Int.to_string (Vector.length ctx.missing));
-  Ok {
-    units = unit_specs;
-    planned_libraries;
-    missing_packages = missing_list ctx;
-  }
+  Ok { units = unit_specs; planned_libraries; missing_packages = missing_list ctx }
 
 let wire_dependencies = fun (ctx: create_context) node_plan ->
   let graph_init_started_at = Time.Instant.now () in
@@ -885,8 +902,7 @@ let wire_dependencies = fun (ctx: create_context) node_plan ->
   in
   let add_library_edge = fun from_key dependency_name target ->
     match HashMap.get ctx.manifests ~key:dependency_name with
-    | None ->
-        ()
+    | None -> ()
     | Some dependency_manifest -> (
         match dependency_manifest.library with
         | None -> ()
@@ -906,7 +922,8 @@ let wire_dependencies = fun (ctx: create_context) node_plan ->
   let add_library_edges = fun from_key (_manifest: Package_manifest.t) target dependency_names ->
     List.for_each
       dependency_names
-      ~fn:(fun dependency -> add_library_edge from_key dependency target)
+      ~fn:(fun dependency ->
+        add_library_edge from_key dependency target)
   in
   let wire_edges_started_at = Time.Instant.now () in
   List.for_each
@@ -948,7 +965,8 @@ let wire_dependencies = fun (ctx: create_context) node_plan ->
           add_library_edge from_key spec.manifest.name spec.target;
           List.for_each
             spec.manifest.build_dependencies
-            ~fn:(fun dependency -> add_library_edge from_key dependency.name spec.target));
+            ~fn:(fun dependency ->
+              add_library_edge from_key dependency.name spec.target));
   trace_probe
     ~started_at:wire_edges_started_at
     ("wire_edges edges=" ^ Int.to_string (HashSet.length t.edges));

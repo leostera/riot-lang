@@ -21,8 +21,8 @@ let test_parse_valid_ping = fun _ctx ->
 
 let test_parse_preserves_remaining_frame = fun _ctx ->
   match Parser.parse ~role:Parser.Client "\x89\x00\x8a\x00" with
-  | Parser.Done { value = { Frame.opcode = Frame.Ping; _ }; remaining } when remaining = "\x8a\x00" ->
-      (match Parser.parse ~role:Parser.Client remaining with
+  | Parser.Done { value = { Frame.opcode = Frame.Ping; _ }; remaining } when remaining = "\x8a\x00" -> (
+      match Parser.parse ~role:Parser.Client remaining with
       | Parser.Done {
           value = {
             Frame.opcode = Frame.Pong;
@@ -36,7 +36,8 @@ let test_parse_preserves_remaining_frame = fun _ctx ->
       | Parser.Done _ -> Result.Error "remaining frame parsed with the wrong shape"
       | Parser.Need_more -> Result.Error "remaining frame unexpectedly needed more data"
       | Parser.Error err ->
-          Result.Error ("remaining frame was rejected: " ^ Parser.error_to_string err))
+          Result.Error ("remaining frame was rejected: " ^ Parser.error_to_string err)
+    )
   | Parser.Done _ -> Result.Error "first frame did not preserve the next frame as remaining bytes"
   | Parser.Need_more -> Result.Error "two-frame input unexpectedly needed more data"
   | Parser.Error err -> Result.Error ("two-frame input was rejected: " ^ Parser.error_to_string err)

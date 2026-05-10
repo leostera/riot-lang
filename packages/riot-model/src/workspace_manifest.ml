@@ -302,15 +302,17 @@ let parse_workspace_ignore: Toml.value -> string list = fun toml ->
       | Some (Toml.Table workspace_items) -> (
           match Fields.get "ignore" workspace_items with
           | Some (Toml.Array patterns) ->
-              List.filter_map patterns ~fn:(fun pattern ->
-                match pattern with
-                | Toml.String pattern ->
-                    let pattern = String.trim pattern in
-                    if String.equal pattern "" then
-                      None
-                    else
-                      Some pattern
-                | _ -> None)
+              List.filter_map
+                patterns
+                ~fn:(fun pattern ->
+                  match pattern with
+                  | Toml.String pattern ->
+                      let pattern = String.trim pattern in
+                      if String.equal pattern "" then
+                        None
+                      else
+                        Some pattern
+                  | _ -> None)
           | _ -> []
         )
       | _ -> []

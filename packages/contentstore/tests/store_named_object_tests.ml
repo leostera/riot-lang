@@ -281,10 +281,12 @@ let test_failed_named_overwrite_preserves_previous_value = fun _ctx ->
         match Contentstore.save_named_object store ~key ~content:"second" with
         | Error (Contentstore.Store.Io _) ->
             let _ = Fs.set_permissions parent_dir Fs.Permissions.executable in
-            (match open_named_object_to_string store ~key with
-            | Ok "first" -> Ok ()
-            | Ok _ -> Error "expected failed overwrite to preserve the previous named value"
-            | Error err -> Error (Contentstore.Store.error_message err))
+            (
+              match open_named_object_to_string store ~key with
+              | Ok "first" -> Ok ()
+              | Ok _ -> Error "expected failed overwrite to preserve the previous named value"
+              | Error err -> Error (Contentstore.Store.error_message err)
+            )
         | Error err ->
             let _ = Fs.set_permissions parent_dir Fs.Permissions.executable in
             Error ("unexpected error: " ^ Contentstore.Store.error_message err)

@@ -32,11 +32,7 @@ module Item = struct
     let of_token = fun (token: A.Token.t) ->
       let start = A.Token.span_start token in
       let end_ = A.Token.span_end token in
-      Slice {
-        source = token.A.tree.Syn.SyntaxTree.source;
-        start;
-        len = end_ - start;
-      }
+      Slice { source = token.A.tree.Syn.SyntaxTree.source; start; len = end_ - start }
 
     let segment_length = fun __tmp1 ->
       match __tmp1 with
@@ -97,10 +93,7 @@ module Item = struct
         signature: t list;
         body: t list;
       }
-    | ModuleAlias of {
-        name: string;
-        target: t;
-      }
+    | ModuleAlias of { name: string; target: t }
     | Functor of {
         name: string;
         args: functor_arg list;
@@ -110,10 +103,7 @@ module Item = struct
         name: string;
         body: t list;
       }
-    | FunctorApply of {
-        callee: t;
-        argument: t;
-      }
+    | FunctorApply of { callee: t; argument: t }
     | Constraint of {
         expr: t;
         signature: t list;
@@ -140,10 +130,7 @@ module Item = struct
     module_body: t list;
   }
 
-  type module_alias_payload = {
-    module_alias_name: string;
-    module_alias_target: t;
-  }
+  type module_alias_payload = { module_alias_name: string; module_alias_target: t }
 
   type functor_payload = {
     functor_name: string;
@@ -156,10 +143,7 @@ module Item = struct
     module_type_body: t list;
   }
 
-  type functor_apply_payload = {
-    functor_apply_callee: t;
-    functor_apply_argument: t;
-  }
+  type functor_apply_payload = { functor_apply_callee: t; functor_apply_argument: t }
 
   type constraint_payload = {
     constraint_expr: t;
@@ -177,310 +161,316 @@ module Item = struct
   }
 
   let include_mode_serializer =
-    Ser.variant [
-      Ser.Variant.unit "Structure" (fun __tmp1 ->
-        match __tmp1 with
-        | Structure -> true
-        | Signature -> false);
-      Ser.Variant.unit "Signature" (fun __tmp1 ->
-        match __tmp1 with
-        | Signature -> true
-        | Structure -> false);
-    ]
+    Ser.variant
+      [
+        Ser.Variant.unit
+          "Structure"
+          (fun __tmp1 ->
+            match __tmp1 with
+            | Structure -> true
+            | Signature -> false);
+        Ser.Variant.unit
+          "Signature"
+          (fun __tmp1 ->
+            match __tmp1 with
+            | Signature -> true
+            | Structure -> false);
+      ]
 
   let ident_serializer = Ser.contramap Ident.to_strings (ser_list Ser.string)
 
-  let rec serializer =
-    {
-      Ser.run = (fun backend state item ->
+  let rec serializer = {
+    Ser.run =
+      (fun backend state item ->
         let item_list_serializer = ser_list serializer in
         let functor_arg_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" (Ser.option Ser.string) (fun (arg: functor_arg) -> arg.name);
-                Ser.field
-                  "ascription"
-                  item_list_serializer
-                  (fun (arg: functor_arg) -> arg.ascription);
-              ]
+              Ser.fields
+                [
+                  Ser.field "name" (Ser.option Ser.string) (fun (arg: functor_arg) -> arg.name);
+                  Ser.field
+                    "ascription"
+                    item_list_serializer
+                    (fun (arg: functor_arg) -> arg.ascription);
+                ]
             )
         in
         let bound_module_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" Ser.string (fun (module_: bound_module) -> module_.name);
-                Ser.field
-                  "ascription"
-                  item_list_serializer
-                  (fun (module_: bound_module) -> module_.ascription);
-              ]
+              Ser.fields
+                [
+                  Ser.field "name" Ser.string (fun (module_: bound_module) -> module_.name);
+                  Ser.field
+                    "ascription"
+                    item_list_serializer
+                    (fun (module_: bound_module) -> module_.ascription);
+                ]
             )
         in
         let include_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "mode"
-                  include_mode_serializer
-                  (fun (payload: include_payload) -> payload.include_mode);
-                Ser.field "expr" serializer (fun (payload: include_payload) -> payload.include_expr);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "mode"
+                    include_mode_serializer
+                    (fun (payload: include_payload) -> payload.include_mode);
+                  Ser.field
+                    "expr"
+                    serializer
+                    (fun (payload: include_payload) -> payload.include_expr);
+                ]
             )
         in
         let module_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" Ser.string (fun (payload: module_payload) -> payload.module_name);
-                Ser.field
-                  "signature"
-                  item_list_serializer
-                  (fun (payload: module_payload) -> payload.module_signature);
-                Ser.field "body" item_list_serializer (fun (payload: module_payload) -> payload.module_body);
-              ]
+              Ser.fields
+                [
+                  Ser.field "name" Ser.string (fun (payload: module_payload) -> payload.module_name);
+                  Ser.field
+                    "signature"
+                    item_list_serializer
+                    (fun (payload: module_payload) -> payload.module_signature);
+                  Ser.field
+                    "body"
+                    item_list_serializer
+                    (fun (payload: module_payload) -> payload.module_body);
+                ]
             )
         in
         let module_alias_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "name"
-                  Ser.string
-                  (fun (payload: module_alias_payload) -> payload.module_alias_name);
-                Ser.field
-                  "target"
-                  serializer
-                  (fun (payload: module_alias_payload) -> payload.module_alias_target);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "name"
+                    Ser.string
+                    (fun (payload: module_alias_payload) -> payload.module_alias_name);
+                  Ser.field
+                    "target"
+                    serializer
+                    (fun (payload: module_alias_payload) -> payload.module_alias_target);
+                ]
             )
         in
         let functor_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "name" Ser.string (fun (payload: functor_payload) -> payload.functor_name);
-                Ser.field
-                  "args"
-                  (ser_list functor_arg_serializer)
-                  (fun (payload: functor_payload) -> payload.functor_args);
-                Ser.field "body" item_list_serializer (fun (payload: functor_payload) -> payload.functor_body);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "name"
+                    Ser.string
+                    (fun (payload: functor_payload) -> payload.functor_name);
+                  Ser.field
+                    "args"
+                    (ser_list functor_arg_serializer)
+                    (fun (payload: functor_payload) -> payload.functor_args);
+                  Ser.field
+                    "body"
+                    item_list_serializer
+                    (fun (payload: functor_payload) -> payload.functor_body);
+                ]
             )
         in
         let module_type_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "name"
-                  Ser.string
-                  (fun (payload: module_type_payload) -> payload.module_type_name);
-                Ser.field
-                  "body"
-                  item_list_serializer
-                  (fun (payload: module_type_payload) -> payload.module_type_body);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "name"
+                    Ser.string
+                    (fun (payload: module_type_payload) -> payload.module_type_name);
+                  Ser.field
+                    "body"
+                    item_list_serializer
+                    (fun (payload: module_type_payload) -> payload.module_type_body);
+                ]
             )
         in
         let functor_apply_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "callee"
-                  serializer
-                  (fun (payload: functor_apply_payload) -> payload.functor_apply_callee);
-                Ser.field
-                  "argument"
-                  serializer
-                  (fun (payload: functor_apply_payload) -> payload.functor_apply_argument);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "callee"
+                    serializer
+                    (fun (payload: functor_apply_payload) -> payload.functor_apply_callee);
+                  Ser.field
+                    "argument"
+                    serializer
+                    (fun (payload: functor_apply_payload) -> payload.functor_apply_argument);
+                ]
             )
         in
         let constraint_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "expr"
-                  serializer
-                  (fun (payload: constraint_payload) -> payload.constraint_expr);
-                Ser.field
-                  "signature"
-                  item_list_serializer
-                  (fun (payload: constraint_payload) -> payload.constraint_signature);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "expr"
+                    serializer
+                    (fun (payload: constraint_payload) -> payload.constraint_expr);
+                  Ser.field
+                    "signature"
+                    item_list_serializer
+                    (fun (payload: constraint_payload) -> payload.constraint_signature);
+                ]
             )
         in
         let with_constraint_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field "base" serializer (fun (payload: with_constraint_payload) -> payload.with_base);
-                Ser.field
-                  "constraints"
-                  item_list_serializer
-                  (fun (payload: with_constraint_payload) -> payload.with_constraints);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "base"
+                    serializer
+                    (fun (payload: with_constraint_payload) -> payload.with_base);
+                  Ser.field
+                    "constraints"
+                    item_list_serializer
+                    (fun (payload: with_constraint_payload) -> payload.with_constraints);
+                ]
             )
         in
         let bind_modules_payload_serializer =
           Ser.record
             (
-              Ser.fields [
-                Ser.field
-                  "modules"
-                  (ser_list bound_module_serializer)
-                  (fun (payload: bind_modules_payload) -> payload.bind_modules_modules);
-                Ser.field
-                  "scope"
-                  item_list_serializer
-                  (fun (payload: bind_modules_payload) -> payload.bind_modules_scope);
-              ]
+              Ser.fields
+                [
+                  Ser.field
+                    "modules"
+                    (ser_list bound_module_serializer)
+                    (fun (payload: bind_modules_payload) -> payload.bind_modules_modules);
+                  Ser.field
+                    "scope"
+                    item_list_serializer
+                    (fun (payload: bind_modules_payload) -> payload.bind_modules_scope);
+                ]
             )
         in
         let encode =
-          Ser.variant [
-            Ser.Variant.newtype
-              "Use"
-              ident_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Use ident -> Some ident
-                | _ -> None);
-            Ser.Variant.newtype
-              "Open"
-              serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Open expr -> Some expr
-                | _ -> None);
-            Ser.Variant.newtype
-              "ImplicitOpen"
-              serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | ImplicitOpen expr -> Some expr
-                | _ -> None);
-            Ser.Variant.newtype
-              "Include"
-              include_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Include (include_mode, include_expr) -> Some { include_mode; include_expr }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Module"
-              module_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Module { name; signature; body } ->
-                    Some {
-                      module_name = name;
-                      module_signature = signature;
-                      module_body = body;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "ModuleAlias"
-              module_alias_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | ModuleAlias { name; target } ->
-                    Some {
-                      module_alias_name = name;
-                      module_alias_target = target;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Functor"
-              functor_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Functor { name; args; body } ->
-                    Some {
-                      functor_name = name;
-                      functor_args = args;
-                      functor_body = body;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "ModuleType"
-              module_type_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | ModuleType { name; body } ->
-                    Some {
-                      module_type_name = name;
-                      module_type_body = body;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "FunctorApply"
-              functor_apply_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | FunctorApply { callee; argument } ->
-                    Some {
-                      functor_apply_callee = callee;
-                      functor_apply_argument = argument;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Constraint"
-              constraint_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Constraint { expr; signature } ->
-                    Some {
-                      constraint_expr = expr;
-                      constraint_signature = signature;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Typeof"
-              serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Typeof expr -> Some expr
-                | _ -> None);
-            Ser.Variant.newtype
-              "WithConstraint"
-              with_constraint_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | WithConstraint { base; constraints } ->
-                    Some {
-                      with_base = base;
-                      with_constraints = constraints;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "BindModules"
-              bind_modules_payload_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | BindModules { modules; scope } ->
-                    Some {
-                      bind_modules_modules = modules;
-                      bind_modules_scope = scope;
-                    }
-                | _ -> None);
-            Ser.Variant.newtype
-              "Scope"
-              item_list_serializer
-              (fun __tmp1 ->
-                match __tmp1 with
-                | Scope body -> Some body
-                | _ -> None);
-          ]
+          Ser.variant
+            [
+              Ser.Variant.newtype
+                "Use"
+                ident_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Use ident -> Some ident
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Open"
+                serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Open expr -> Some expr
+                  | _ -> None);
+              Ser.Variant.newtype
+                "ImplicitOpen"
+                serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | ImplicitOpen expr -> Some expr
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Include"
+                include_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Include (include_mode, include_expr) -> Some { include_mode; include_expr }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Module"
+                module_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Module { name; signature; body } ->
+                      Some { module_name = name; module_signature = signature; module_body = body }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "ModuleAlias"
+                module_alias_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | ModuleAlias { name; target } ->
+                      Some { module_alias_name = name; module_alias_target = target }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Functor"
+                functor_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Functor { name; args; body } ->
+                      Some { functor_name = name; functor_args = args; functor_body = body }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "ModuleType"
+                module_type_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | ModuleType { name; body } ->
+                      Some { module_type_name = name; module_type_body = body }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "FunctorApply"
+                functor_apply_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | FunctorApply { callee; argument } ->
+                      Some { functor_apply_callee = callee; functor_apply_argument = argument }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Constraint"
+                constraint_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Constraint { expr; signature } ->
+                      Some { constraint_expr = expr; constraint_signature = signature }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Typeof"
+                serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Typeof expr -> Some expr
+                  | _ -> None);
+              Ser.Variant.newtype
+                "WithConstraint"
+                with_constraint_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | WithConstraint { base; constraints } ->
+                      Some { with_base = base; with_constraints = constraints }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "BindModules"
+                bind_modules_payload_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | BindModules { modules; scope } ->
+                      Some { bind_modules_modules = modules; bind_modules_scope = scope }
+                  | _ -> None);
+              Ser.Variant.newtype
+                "Scope"
+                item_list_serializer
+                (fun __tmp1 ->
+                  match __tmp1 with
+                  | Scope body -> Some body
+                  | _ -> None);
+            ]
         in
         encode.run backend state item);
-    }
+  }
 end
 
 type source_kind =
@@ -499,33 +489,45 @@ type parse_error =
   | Parse_diagnostics of Syn.Diagnostic.t list
 
 let source_kind_serializer =
-  Ser.variant [
-    Ser.Variant.unit "Implementation" (fun __tmp1 ->
-      match __tmp1 with
-      | Implementation -> true
-      | Interface -> false);
-    Ser.Variant.unit "Interface" (fun __tmp1 ->
-      match __tmp1 with
-      | Interface -> true
-      | Implementation -> false);
-  ]
+  Ser.variant
+    [
+      Ser.Variant.unit
+        "Implementation"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Implementation -> true
+          | Interface -> false);
+      Ser.Variant.unit
+        "Interface"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Interface -> true
+          | Implementation -> false);
+    ]
 
 let source_summary_serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" (Ser.contramap Path.to_string Ser.string) (fun (summary: source_summary) -> summary.source);
-        Ser.field
-          "source_hash"
-          (Ser.contramap Crypto.Digest.hex Ser.string)
-          (fun (summary: source_summary) -> summary.source_hash);
-        Ser.field
-          "module_path"
-          (Ser.option (ser_list Ser.string))
-          (fun (summary: source_summary) -> summary.module_path);
-        Ser.field "kind" source_kind_serializer (fun (summary: source_summary) -> summary.kind);
-        Ser.field "items" (ser_list Item.serializer) (fun (summary: source_summary) -> summary.items);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "source"
+            (Ser.contramap Path.to_string Ser.string)
+            (fun (summary: source_summary) -> summary.source);
+          Ser.field
+            "source_hash"
+            (Ser.contramap Crypto.Digest.hex Ser.string)
+            (fun (summary: source_summary) -> summary.source_hash);
+          Ser.field
+            "module_path"
+            (Ser.option (ser_list Ser.string))
+            (fun (summary: source_summary) -> summary.module_path);
+          Ser.field "kind" source_kind_serializer (fun (summary: source_summary) -> summary.kind);
+          Ser.field
+            "items"
+            (ser_list Item.serializer)
+            (fun (summary: source_summary) -> summary.items);
+        ]
     )
 
 let is_uppercase_ascii = fun __tmp1 ->
@@ -611,7 +613,9 @@ let child_count = fun node ->
   syntax.Syn.SyntaxTree.child_count
 
 let child_at_unchecked = fun (node: A.Node.t) (syntax: Syn.SyntaxTree.node) index ->
-  Syn.SyntaxTree.child node.A.tree (syntax.Syn.SyntaxTree.first_child + index)
+  Syn.SyntaxTree.child
+    node.A.tree
+    (syntax.Syn.SyntaxTree.first_child + index)
 
 let direct_child_nodes = fun node ~matches ~init ~fn ->
   let syntax = syntax_node node in
@@ -721,12 +725,18 @@ let ident_module_include = fun mode ident ->
   match mode with
   | Item.Structure -> (
       match ident_segments_if_module_head ident with
-      | Some segments -> [ Item.Include (mode, Item.Use segments) ]
+      | Some segments ->
+          [
+            Item.Include (mode, Item.Use segments);
+          ]
       | None -> []
     )
   | Item.Signature -> (
       match ident_segments_if_module_head ident with
-      | Some _ -> [ Item.Include (mode, Item.Scope (ident_parent_use ident)) ]
+      | Some _ ->
+          [
+            Item.Include (mode, Item.Scope (ident_parent_use ident));
+          ]
       | None -> []
     )
 
@@ -748,7 +758,10 @@ let flatten_pure_uses = fun items ->
   |> List.reverse
 
 let prepend_all = fun values acc ->
-  List.fold_left values ~init:acc ~fn:(fun acc value -> value :: acc)
+  List.fold_left
+    values
+    ~init:acc
+    ~fn:(fun acc value -> value :: acc)
 
 let singleton_item = fun item ->
   match item with
@@ -763,9 +776,7 @@ let scoped_items = fun items ->
 
 let vector_items = fun vector ~fn ->
   let items = ref [] in
-  Vector.for_each
-    vector
-    ~fn:(fun item -> items := prepend_all (fn item) !items);
+  Vector.for_each vector ~fn:(fun item -> items := prepend_all (fn item) !items);
   List.reverse !items
 
 type container =
@@ -867,8 +878,7 @@ let direct_module_refs_between = fun node start stop ->
       match child_token_at node index with
       | Some token when Syn.SyntaxKind.(A.Token.kind token = IDENT) ->
           collect_path (index + 1) (Item.Ident.of_token token :: acc)
-      | Some token when Syn.SyntaxKind.(A.Token.kind token = DOT) ->
-          collect_path (index + 1) acc
+      | Some token when Syn.SyntaxKind.(A.Token.kind token = DOT) -> collect_path (index + 1) acc
       | _ -> (index, List.reverse acc)
   in
   let rec scan index items =
@@ -927,8 +937,7 @@ let direct_type_payload_paths = fun node ->
       match child_token_at node index with
       | Some token when Syn.SyntaxKind.(A.Token.kind token = IDENT) ->
           collect_path (index + 1) (Item.Ident.of_token token :: acc)
-      | Some token when Syn.SyntaxKind.(A.Token.kind token = DOT) ->
-          collect_path (index + 1) acc
+      | Some token when Syn.SyntaxKind.(A.Token.kind token = DOT) -> collect_path (index + 1) acc
       | _ -> (index, List.reverse acc)
   in
   let rec scan active index items =
@@ -942,7 +951,10 @@ let direct_type_payload_paths = fun node ->
           scan false (index + 1) items
       | Some token when active && Syn.SyntaxKind.(A.Token.kind token = IDENT) ->
           let (next, segments) = collect_path index [] in
-          scan active next (prepend_all (path_parent_use segments) items)
+          scan
+            active
+            next
+            (prepend_all (path_parent_use segments) items)
       | _ -> scan active (index + 1) items
   in
   scan false 0 []
@@ -969,7 +981,9 @@ let direct_type_extension_path = fun node ->
       | _ -> collect_before_plus (index + 1) plus_index [] items
   in
   match find_plus 0 with
-  | Some plus_index -> collect_before_plus 0 plus_index [] [] |> List.reverse
+  | Some plus_index ->
+      collect_before_plus 0 plus_index [] []
+      |> List.reverse
   | None -> []
 
 let is_module_expr_kind = fun __tmp1 ->
@@ -1219,7 +1233,10 @@ let fold_module_members = fun decl init fn ->
       | Syn.SyntaxTree.Node id ->
           let child_syntax = Syn.SyntaxTree.node node.A.tree id in
           if Syn.SyntaxKind.(child_syntax.Syn.SyntaxTree.kind = MODULE_DECL_MEMBER) then
-            loop (index + 1) true (fn acc { node = { tree = node.A.tree; id } })
+            loop
+              (index + 1)
+              true
+              (fn acc { node = { tree = node.A.tree; id } })
           else
             loop (index + 1) saw_member acc
       | Syn.SyntaxTree.Token _
@@ -1273,16 +1290,14 @@ let module_member_first_specific_module_type = fun node ->
 let module_member_module_expr = fun member ->
   match module_member_find_node
     member
-    ~matches:(fun kind -> is_module_expr_kind kind || Syn.SyntaxKind.(kind = MODULE_EXPR))
-  with
+    ~matches:(fun kind -> is_module_expr_kind kind || Syn.SyntaxKind.(kind = MODULE_EXPR)) with
   | Some node -> module_member_first_specific_module_expr node
   | None -> None
 
 let module_member_module_type = fun member ->
   match module_member_find_node
     member
-    ~matches:(fun kind -> is_module_type_kind kind || Syn.SyntaxKind.(kind = MODULE_TYPE_EXPR))
-  with
+    ~matches:(fun kind -> is_module_type_kind kind || Syn.SyntaxKind.(kind = MODULE_TYPE_EXPR)) with
   | Some node -> module_member_first_specific_module_type node
   | None -> None
 
@@ -1316,7 +1331,10 @@ let module_member_functor_args = fun member ->
       match colon_index with
       | None -> []
       | Some colon_index -> (
-          match A.Ident.from_child_range_option member.node ~start_index:(colon_index + 1) ~stop_index:stop with
+          match A.Ident.from_child_range_option
+            member.node
+            ~start_index:(colon_index + 1)
+            ~stop_index:stop with
           | Some ident -> ident_parent_use ident
           | None -> []
         )
@@ -1431,8 +1449,7 @@ and bind_modules_items = fun modules scope ->
 
 and items_of_source_file = fun source_file ->
   match A.SourceFile.view source_file with
-  | A.SourceFile.Implementation impl ->
-      (Implementation, items_of_implementation impl)
+  | A.SourceFile.Implementation impl -> (Implementation, items_of_implementation impl)
   | A.SourceFile.Interface intf -> (Interface, items_of_interface intf)
 
 and items_of_implementation = fun impl ->
@@ -1499,22 +1516,34 @@ and items_of_include_declaration = fun mode decl ->
       let node = A.IncludeDeclaration.as_node decl in
       let module_expr_include () =
         match first_module_expr node with
-        | Some module_expr -> [ Item.Include (mode, item_of_module_expr module_expr) ]
+        | Some module_expr ->
+            [
+              Item.Include (mode, item_of_module_expr module_expr);
+            ]
         | None -> []
       in
       let module_type_include () =
         match first_module_type_expr node with
-        | Some module_type -> [ Item.Include (mode, item_of_module_type_expr module_type) ]
+        | Some module_type ->
+            [
+              Item.Include (mode, item_of_module_type_expr module_type);
+            ]
         | None -> []
       in
       let raw_include () =
         let count = A.Node.child_count node in
         match direct_path_between node 1 count with
-        | Some segments -> [ Item.Include (mode, Item.Use segments) ]
+        | Some segments ->
+            [
+              Item.Include (mode, Item.Use segments);
+            ]
         | None -> (
             match direct_module_refs_between node 1 count with
             | [] -> []
-            | items -> [ Item.Include (mode, Item.Scope items) ]
+            | items ->
+                [
+                  Item.Include (mode, Item.Scope items);
+                ]
           )
       in
       match mode with
@@ -1556,7 +1585,8 @@ and items_of_module_type_declaration = fun decl ->
       | Some name ->
           let body =
             match A.ModuleTypeDeclaration.body decl with
-            | A.ModuleTypeDeclaration.Manifest { body } -> singleton_item (item_of_module_type_expr body)
+            | A.ModuleTypeDeclaration.Manifest { body } ->
+                singleton_item (item_of_module_type_expr body)
             | A.ModuleTypeDeclaration.Abstract -> []
             | A.ModuleTypeDeclaration.Unsupported { body } -> (
                 match body with
@@ -1598,7 +1628,9 @@ and items_of_module_declaration = fun container decl ->
         decl
         []
         (fun items member ->
-          prepend_all (items_of_recursive_module_member_rhs container member) items)
+          prepend_all
+            (items_of_recursive_module_member_rhs container member)
+            items)
       |> List.reverse
     in
     match rhs_items with
@@ -1643,7 +1675,7 @@ and items_of_recursive_module_member_rhs = fun container member ->
     match module_member_module_expr member with
     | Some node -> (
         match A.ModuleExpr.cast node with
-              | A.Node module_expr -> items_of_module_expr_declaration_body module_expr
+        | A.Node module_expr -> items_of_module_expr_declaration_body module_expr
         | A.Unknown _
         | A.Error _ -> items_of_node ~container node
       )
@@ -1658,12 +1690,12 @@ and items_of_recursive_module_member_rhs = fun container member ->
         | None -> []
       )
   in
-  prefix @ annotation_items @ body_items
+  (prefix @ annotation_items) @ body_items
 
 and module_item_with_prefix = fun name prefix item ->
   match prefix with
   | [] -> item
-    | _ -> Item.Module { name; signature = []; body = prefix @ [ item ] }
+  | _ -> Item.Module { name; signature = []; body = prefix @ [ item ] }
 
 and items_of_module_member = fun container member ->
   match module_member_name member with
@@ -1671,8 +1703,7 @@ and items_of_module_member = fun container member ->
       fold_module_member_child_nodes
         member
         ~init:[]
-        ~fn:(fun node items ->
-          prepend_all (items_of_node ~container node) items)
+        ~fn:(fun node items -> prepend_all (items_of_node ~container node) items)
       |> List.reverse
   | Some ident -> (
       match ident_name ident with
@@ -1701,12 +1732,8 @@ and items_of_module_member = fun container member ->
               match A.ModuleExpr.cast node with
               | A.Node module_expr -> (
                   match (functor_args, A.ModuleExpr.view module_expr) with
-                  | ([], A.ModuleExpr.Ident { ident }) -> [
-                      Item.ModuleAlias {
-                        name;
-                        target = Item.Use (ident_segments ident);
-                      };
-                    ]
+                  | ([], A.ModuleExpr.Ident { ident }) ->
+                      [ Item.ModuleAlias { name; target = Item.Use (ident_segments ident) }; ]
                   | ([], A.ModuleExpr.Functor { body }) ->
                       let (args, body) = functor_parts body ~body_kind:`ModuleExpr in
                       [ Item.Functor { name; args; body } ]
@@ -1716,15 +1743,14 @@ and items_of_module_member = fun container member ->
                         (annotation_items @ items_of_module_expr_declaration_body module_expr)
                 )
               | A.Unknown _
-              | A.Error _ ->
-                  make_declaration (items_of_node ~container:Structure_container node)
+              | A.Error _ -> make_declaration (items_of_node ~container:Structure_container node)
             )
-              | None -> (
-                  match module_member_module_type member with
-                  | Some _node -> make_declaration []
-                  | None -> make_declaration []
-                )
+          | None -> (
+              match module_member_module_type member with
+              | Some _node -> make_declaration []
+              | None -> make_declaration []
             )
+    )
 
 and item_of_module_expr = fun module_expr ->
   match A.ModuleExpr.view module_expr with
@@ -1831,8 +1857,7 @@ and item_of_module_type_expr = fun module_type ->
           ~init:[]
           ~fn:(fun child items ->
             match A.ModuleTypeConstraint.cast child with
-            | A.Node constraint_ ->
-                prepend_all (items_of_module_type_constraint constraint_) items
+            | A.Node constraint_ -> prepend_all (items_of_module_type_constraint constraint_) items
             | A.Unknown _
             | A.Error _ -> items)
         |> List.reverse
@@ -1879,8 +1904,7 @@ and items_of_module_type_expr = fun module_type ->
           ~init:[]
           ~fn:(fun child items ->
             match A.ModuleTypeConstraint.cast child with
-            | A.Node constraint_ ->
-                prepend_all (items_of_module_type_constraint constraint_) items
+            | A.Node constraint_ -> prepend_all (items_of_module_type_constraint constraint_) items
             | A.Unknown _
             | A.Error _ -> items)
         |> List.reverse
@@ -1922,38 +1946,31 @@ and items_of_let_module_expr = fun let_module ->
                 match A.ModuleExpr.cast node with
                 | A.Node module_expr -> (
                     match A.ModuleExpr.view module_expr with
-                    | A.ModuleExpr.Ident { ident } -> [
-                        Item.ModuleAlias {
-                          name;
-                          target = Item.Use (ident_segments ident);
-                        };
-                      ]
-                    | _ -> [
-                        Item.Module {
-                          name;
-                          signature = [];
-                          body = items_of_module_expr_declaration_body module_expr;
-                        };
-                      ]
+                    | A.ModuleExpr.Ident { ident } ->
+                        [ Item.ModuleAlias { name; target = Item.Use (ident_segments ident) }; ]
+                    | _ ->
+                        [
+                          Item.Module {
+                            name;
+                            signature = [];
+                            body = items_of_module_expr_declaration_body module_expr;
+                          };
+                        ]
                   )
                 | A.Unknown _
-                | A.Error _ -> [
-                    Item.Module {
-                      name;
-                      signature = [];
-                      body = items_of_node ~container:Structure_container node;
-                    };
-                  ]
+                | A.Error _ ->
+                    [
+                      Item.Module {
+                        name;
+                        signature = [];
+                        body = items_of_node ~container:Structure_container node;
+                      };
+                    ]
               )
             | None -> (
                 match A.LetModuleExpr.module_body_ident let_module with
                 | Some ident ->
-                    [
-                      Item.ModuleAlias {
-                        name;
-                        target = Item.Use (ident_segments ident);
-                      };
-                    ]
+                    [ Item.ModuleAlias { name; target = Item.Use (ident_segments ident) }; ]
                 | None -> [ Item.Module { name; signature = []; body = [] } ]
               )
           in
@@ -1966,7 +1983,9 @@ and items_of_let_module_expr = fun let_module ->
     )
 
 and items_of_type_expr = fun type_expr ->
-  items_of_node ~container:Signature_container (A.TypeExpr.as_node type_expr)
+  items_of_node
+    ~container:Signature_container
+    (A.TypeExpr.as_node type_expr)
 
 and items_of_type_expr_node = fun node ->
   match A.VariantType.cast node with
@@ -1987,11 +2006,11 @@ and items_of_record_type = fun record_type ->
     ~fn:(fun node items ->
       match A.RecordField.cast node with
       | A.Node field -> (
-      match A.RecordField.view field with
-      | A.RecordField.Field { annotation; _ } ->
-          prepend_all (items_of_type_expr annotation) items
-      | A.RecordField.Unknown node ->
-          prepend_all (items_of_node ~container:Signature_container node) items
+          match A.RecordField.view field with
+          | A.RecordField.Field { annotation; _ } ->
+              prepend_all (items_of_type_expr annotation) items
+          | A.RecordField.Unknown node ->
+              prepend_all (items_of_node ~container:Signature_container node) items
         )
       | A.Unknown _
       | A.Error _ -> items)
@@ -2008,11 +2027,7 @@ and items_of_variant_constructor = fun constructor ->
       match rhs with
       | A.VariantConstructor.Plain -> []
       | A.VariantConstructor.Payload { payload; _ } -> items_of_variant_payload payload
-      | A.VariantConstructor.Gadt {
-          record_payload;
-          result;
-          _;
-        } ->
+      | A.VariantConstructor.Gadt { record_payload; result; _ } ->
           (
             match record_payload with
             | Some record_type -> items_of_record_type record_type
@@ -2053,9 +2068,7 @@ and items_of_pattern = fun pattern ->
   | Some local_open -> (
       match A.LocalOpenPattern.view local_open with
       | A.LocalOpenPattern.Delimited { module_ident; pattern; _ } ->
-          [
-            Item.Scope (ident_module_open module_ident @ items_of_pattern pattern);
-          ]
+          [ Item.Scope (ident_module_open module_ident @ items_of_pattern pattern); ]
       | A.LocalOpenPattern.Unknown node -> items_of_node ~container:Structure_container node
     )
   | None -> (
@@ -2065,8 +2078,7 @@ and items_of_pattern = fun pattern ->
       | A.Pattern.Literal _ -> []
       | A.Pattern.Ident { ident } -> ident_parent_use ident
       | A.Pattern.Constructor { constructor; payload } ->
-          ident_parent_use constructor
-          @ (
+          ident_parent_use constructor @ (
             match payload with
             | Some payload -> items_of_pattern payload
             | None -> []
@@ -2080,8 +2092,7 @@ and items_of_pattern = fun pattern ->
             ~fn:(fun __tmp1 ->
               match __tmp1 with
               | A.RecordPatternField { ident; pattern; _ } ->
-                  ident_parent_use ident
-                  @ (
+                  ident_parent_use ident @ (
                     match pattern with
                     | Some pattern -> items_of_pattern pattern
                     | None -> []
@@ -2103,8 +2114,7 @@ and items_of_pattern = fun pattern ->
           items_of_pattern left @ items_of_pattern right
       | A.Pattern.Constraint { pattern; annotation } ->
           items_of_pattern pattern @ items_of_type_expr annotation
-      | A.Pattern.Alias { pattern; alias } ->
-          items_of_pattern pattern @ items_of_pattern alias
+      | A.Pattern.Alias { pattern; alias } -> items_of_pattern pattern @ items_of_pattern alias
       | A.Pattern.Lazy { pattern }
       | A.Pattern.Exception { pattern } -> items_of_pattern pattern
       | A.Pattern.Error node
@@ -2134,8 +2144,7 @@ and bound_modules_of_pattern = fun pattern ->
         )
       | A.Pattern.Tuple { parts }
       | A.Pattern.List { items = parts }
-      | A.Pattern.Array { items = parts } ->
-          vector_items parts ~fn:bound_modules_of_pattern
+      | A.Pattern.Array { items = parts } -> vector_items parts ~fn:bound_modules_of_pattern
       | A.Pattern.Record { fields; _ } ->
           vector_items
             fields
@@ -2186,13 +2195,14 @@ and bound_modules_of_pattern_node = fun node ->
               find_binding (index + 1) true
           | Some token when seen_module && Syn.SyntaxKind.(A.Token.kind token = IDENT) ->
               Some (token_text token)
-          | Some token when seen_module && Syn.SyntaxKind.(A.Token.kind token = UNDERSCORE) ->
-              None
+          | Some token when seen_module && Syn.SyntaxKind.(A.Token.kind token = UNDERSCORE) -> None
           | _ -> find_binding (index + 1) seen_module
       in
       (
         match find_binding 0 false with
-        | Some name when is_module_head name -> [ ({ Item.name; ascription = [] }: Item.bound_module) ]
+        | Some name when is_module_head name -> [
+          ({ Item.name; ascription = [] }: Item.bound_module);
+        ]
         | Some _
         | None -> []
       )
@@ -2208,8 +2218,7 @@ and items_of_parameter = fun parameter ->
         | A.Parameter.Labeled _
         | A.Parameter.Optional { default = None; _ } -> []
       in
-      label_items
-      @ (
+      label_items @ (
         match pattern with
         | Some pattern -> items_of_pattern pattern
         | None -> []
@@ -2231,7 +2240,9 @@ and bound_modules_of_parameter = fun parameter ->
 and items_of_parameters = fun parameters -> vector_items parameters ~fn:items_of_parameter
 
 and bound_modules_of_parameters = fun parameters ->
-  vector_items parameters ~fn:bound_modules_of_parameter
+  vector_items
+    parameters
+    ~fn:bound_modules_of_parameter
 
 and items_of_match_case = fun match_case ->
   match A.MatchCase.view match_case with
@@ -2242,8 +2253,7 @@ and items_of_match_case = fun match_case ->
           match guard with
           | Some guard -> items_of_expr guard
           | None -> []
-        )
-        @ items_of_expr body
+        ) @ items_of_expr body
       in
       let modules = bound_modules_of_pattern pattern in
       pattern_items @ bind_modules_items modules scope
@@ -2289,8 +2299,7 @@ and items_of_let_binding = fun binding ->
           match A.LetBinding.type_annotation binding with
           | Some annotation -> items_of_type_expr annotation
           | None -> []
-        )
-        @ (
+        ) @ (
           match A.LetBinding.return_type_annotation binding with
           | Some annotation -> items_of_type_expr annotation
           | None -> []
@@ -2309,13 +2318,13 @@ and items_of_record_expr_fields = fun fields ->
     ~fn:(fun __tmp1 ->
       match __tmp1 with
       | A.RecordExprField { ident; value; _ } ->
-          ident_parent_use ident
-          @ (
+          ident_parent_use ident @ (
             match value with
             | Some value -> items_of_expr value
             | None -> []
           )
-      | A.UnknownRecordExprField { node } -> items_of_node ~container:Structure_container (A.RecordExprField.as_node node))
+      | A.UnknownRecordExprField { node } ->
+          items_of_node ~container:Structure_container (A.RecordExprField.as_node node))
 
 and items_of_first_class_module_expr = fun expr ->
   match A.cast_result_to_option (A.FirstClassModuleExpr.cast expr) with
@@ -2325,8 +2334,7 @@ and items_of_first_class_module_expr = fun expr ->
         match A.FirstClassModuleExpr.module_ident first_class with
         | Some ident -> ident_module_use ident
         | None -> []
-      )
-      @ (
+      ) @ (
         match A.FirstClassModuleExpr.ascription_ident first_class with
         | Some ident -> ident_parent_use ident
         | None -> []
@@ -2342,7 +2350,8 @@ and items_of_expr = fun expr ->
           | A.LocalOpenExpr.LetOpen { module_ident; body; _ }
           | A.LocalOpenExpr.Delimited { module_ident; body; _ } ->
               [ Item.Scope (ident_module_open module_ident @ items_of_expr body) ]
-          | A.LocalOpenExpr.Unknown node -> items_of_node ~container:Structure_container node)
+          | A.LocalOpenExpr.Unknown node -> items_of_node ~container:Structure_container node
+        )
       | None -> items_of_node ~container:Structure_container (A.Expr.as_node expr)
     )
   | Syn.SyntaxKind.LET_MODULE_EXPR -> (
@@ -2360,7 +2369,9 @@ and items_of_expr = fun expr ->
             | None -> []
           in
           let modules = bound_modules_of_parameters parameters in
-          parameter_items @ return_items @ bind_modules_items modules (items_of_fun_body expr body)
+          (parameter_items @ return_items) @ bind_modules_items
+            modules
+            (items_of_fun_body expr body)
       | _ -> items_of_node ~container:Structure_container (A.Expr.as_node expr)
     )
   | _ -> items_of_node ~container:Structure_container (A.Expr.as_node expr)
@@ -2371,8 +2382,7 @@ and items_of_node = fun ~container node ->
   | Syn.SyntaxKind.PATH_PATTERN
   | Syn.SyntaxKind.PATH_TYPE
   | Syn.SyntaxKind.PATH_MODULE_TYPE
-  | Syn.SyntaxKind.FIELD_ACCESS_EXPR ->
-      path_parent_use_node node
+  | Syn.SyntaxKind.FIELD_ACCESS_EXPR -> path_parent_use_node node
   | Syn.SyntaxKind.PATH_MODULE_EXPR -> path_module_use_node node
   | Syn.SyntaxKind.TYPE_DECL ->
       direct_type_extension_path node
@@ -2382,8 +2392,7 @@ and items_of_node = fun ~container node ->
       direct_type_extension_path node
       @ direct_type_payload_paths node
       @ items_of_child_nodes ~container node
-  | Syn.SyntaxKind.OPAQUE_TYPE ->
-      direct_module_accesses_between node 0 (A.Node.child_count node)
+  | Syn.SyntaxKind.OPAQUE_TYPE -> direct_module_accesses_between node 0 (A.Node.child_count node)
   | Syn.SyntaxKind.MODULE_DECL
   | Syn.SyntaxKind.MODULE_TYPE_DECL
   | Syn.SyntaxKind.OPEN_DECL
@@ -2393,8 +2402,7 @@ and items_of_node = fun ~container node ->
   | Syn.SyntaxKind.FUN_EXPR
   | Syn.SyntaxKind.MATCH_CASE
   | Syn.SyntaxKind.LOCAL_OPEN_EXPR
-  | Syn.SyntaxKind.LOCAL_OPEN_PATTERN ->
-      items_of_known_node ~container node
+  | Syn.SyntaxKind.LOCAL_OPEN_PATTERN -> items_of_known_node ~container node
   | kind when is_module_expr_kind kind -> (
       match A.ModuleExpr.cast node with
       | A.Node module_expr -> (
@@ -2406,18 +2414,22 @@ and items_of_node = fun ~container node ->
           | A.ModuleExpr.Constraint _
           | A.ModuleExpr.Opaque _
           | A.ModuleExpr.Error _
-          | A.ModuleExpr.Unknown _ -> items_of_child_nodes ~container node)
+          | A.ModuleExpr.Unknown _ -> items_of_child_nodes ~container node
+        )
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | kind when is_module_type_kind kind -> (
       match A.ModuleTypeExpr.cast node with
       | A.Node module_type -> (
           match A.ModuleTypeExpr.view module_type with
           | A.ModuleTypeExpr.Error _
           | A.ModuleTypeExpr.Unknown _ -> items_of_child_nodes ~container node
-          | _ -> items_of_module_type_expr module_type)
+          | _ -> items_of_module_type_expr module_type
+        )
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | _ -> items_of_child_nodes ~container node
 
 and items_of_child_nodes = fun ~container node ->
@@ -2442,17 +2454,20 @@ and items_of_known_node = fun ~container node ->
       match A.ModuleDeclaration.cast node with
       | A.Node decl -> items_of_module_declaration container decl
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.MODULE_TYPE_DECL -> (
       match A.ModuleTypeDeclaration.cast node with
       | A.Node decl -> items_of_module_type_declaration decl
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.OPEN_DECL -> (
       match A.OpenDeclaration.cast node with
       | A.Node decl -> items_of_open_declaration decl
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.INCLUDE_DECL -> (
       match A.IncludeDeclaration.cast node with
       | A.Node decl ->
@@ -2463,36 +2478,43 @@ and items_of_known_node = fun ~container node ->
           in
           items_of_include_declaration mode decl
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.LET_BINDING -> (
       match A.LetBinding.cast node with
       | A.Node binding -> items_of_let_binding binding
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.LET_MODULE_EXPR -> (
       match A.Expr.cast node with
       | A.Node expr -> (
           match A.cast_result_to_option (A.LetModuleExpr.cast expr) with
           | Some let_module -> items_of_let_module_expr let_module
-          | None -> items_of_child_nodes ~container node)
+          | None -> items_of_child_nodes ~container node
+        )
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.FUN_EXPR
   | Syn.SyntaxKind.LOCAL_OPEN_EXPR -> (
       match A.Expr.cast node with
       | A.Node expr -> items_of_expr expr
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.MATCH_CASE -> (
       match A.MatchCase.cast node with
       | A.Node match_case -> items_of_match_case match_case
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | Syn.SyntaxKind.LOCAL_OPEN_PATTERN -> (
       match A.Pattern.cast node with
       | A.Node pattern -> items_of_pattern pattern
       | A.Unknown _
-      | A.Error _ -> items_of_child_nodes ~container node)
+      | A.Error _ -> items_of_child_nodes ~container node
+    )
   | _ -> items_of_child_nodes ~container node
 
 and items_of_child_node = fun ~container node ->
@@ -2525,7 +2547,12 @@ and items_of_child_node = fun ~container node ->
                           in
                           items_of_include_declaration mode decl
                       | A.Unknown _
-                      | A.Error _ -> items_of_non_decl_node ~container node)))))
+                      | A.Error _ -> items_of_non_decl_node ~container node
+                    )
+                )
+            )
+        )
+    )
 
 and items_of_non_decl_node = fun ~container node ->
   match A.LetBinding.cast node with
@@ -2554,7 +2581,8 @@ and items_of_non_decl_node = fun ~container node ->
                       | A.ModuleExpr.Constraint _
                       | A.ModuleExpr.Opaque _
                       | A.ModuleExpr.Error _
-                      | A.ModuleExpr.Unknown _ -> items_of_node ~container node)
+                      | A.ModuleExpr.Unknown _ -> items_of_node ~container node
+                    )
                   | A.Unknown _
                   | A.Error _ -> (
                       match A.ModuleTypeExpr.cast node with
@@ -2562,9 +2590,15 @@ and items_of_non_decl_node = fun ~container node ->
                           match A.ModuleTypeExpr.view module_type with
                           | A.ModuleTypeExpr.Error _
                           | A.ModuleTypeExpr.Unknown _ -> items_of_node ~container node
-                          | _ -> items_of_module_type_expr module_type)
+                          | _ -> items_of_module_type_expr module_type
+                        )
                       | A.Unknown _
-                      | A.Error _ -> items_of_leaf_node ~container node)))))
+                      | A.Error _ -> items_of_leaf_node ~container node
+                    )
+                )
+            )
+        )
+    )
 
 and items_of_leaf_node = fun ~container node ->
   match A.VariantType.cast node with
@@ -2583,16 +2617,22 @@ and items_of_leaf_node = fun ~container node ->
               | A.Node field -> (
                   match A.RecordField.view field with
                   | A.RecordField.Field { annotation; _ } -> items_of_type_expr annotation
-                  | A.RecordField.Unknown node -> items_of_node ~container:Signature_container node)
+                  | A.RecordField.Unknown node -> items_of_node ~container:Signature_container node
+                )
               | A.Unknown _
               | A.Error _ -> (
                   match A.ExprItem.cast node with
                   | A.Node item -> (
                       match A.ExprItem.expr item with
                       | Some expr -> items_of_expr expr
-                      | None -> [])
+                      | None -> []
+                    )
                   | A.Unknown _
-                  | A.Error _ -> items_of_node ~container node))))
+                  | A.Error _ -> items_of_node ~container node
+                )
+            )
+        )
+    )
 
 let analyze = fun ?(implicit_opens = []) ?module_path ~source ~source_hash result ->
   if Int.(Vector.length result.Syn.Parser.diagnostics != 0) then

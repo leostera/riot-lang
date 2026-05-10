@@ -272,10 +272,7 @@ val for_binary: binary_name:string -> t -> t option
 
 val make_projection_cache: t -> projection_cache
 
-val for_binary_with_projection_cache:
-  projection_cache ->
-  binary_name:string ->
-  t option
+val for_binary_with_projection_cache: projection_cache -> binary_name:string -> t option
 
 val scope_of_binary_name: t -> binary_name:string -> dependency_scope option
 
@@ -297,6 +294,8 @@ val resolve:
 (** Hash package metadata into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit
 
-(** Hash package metadata and source file fingerprints into a Sha256 hasher state.
-    Source file fingerprints use filesystem metadata instead of reading file contents. *)
+(**
+   Hash package metadata and source file fingerprints into a Sha256 hasher state.
+   Source file fingerprints use filesystem metadata instead of reading file contents.
+*)
 val hash_fingerprint: Crypto.Sha256.state -> t -> unit

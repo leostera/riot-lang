@@ -125,16 +125,17 @@ let test_await_all_ignores_unrelated_messages = fun _ctx ->
       ]
   in
   match results with
-  | [ Ok 7; Ok 9 ] ->
-      (match await_message
+  | [ Ok 7; Ok 9 ] -> (
+      match await_message
         ~what:"unrelated message"
         (fun __tmp1 ->
           match __tmp1 with
           | Task_unrelated payload -> Select payload
-        | _ -> Skip) with
+          | _ -> Skip) with
       | Ok "noise" -> Ok ()
       | Ok payload -> Error ("expected unrelated payload noise, got " ^ payload)
-      | Error _ as err -> err)
+      | Error _ as err -> err
+    )
   | _ -> Error "expected Task.await_all to ignore unrelated mailbox messages"
 
 let test_async_starts_eagerly = fun _ctx ->

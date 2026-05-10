@@ -250,58 +250,34 @@ let runtime_phase_fields = fun __tmp1 ->
       [ ("lock_path", Data.Json.String (Path.to_string lock_path)); ]
   | BuildLanesPreparationStarted { target_count; started_at = _ } ->
       [ ("target_count", Data.Json.Int target_count); ]
-  | BuildLanesPreparationFinished {
-      lane_count;
-      completed_at = _;
-      duration;
-    } ->
+  | BuildLanesPreparationFinished { lane_count; completed_at = _; duration } ->
       [
         ("lane_count", Data.Json.Int lane_count);
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ]
-  | BuildUnitPlanCreated {
-      unit_count;
-      planned_at = _;
-      duration;
-    } ->
+  | BuildUnitPlanCreated { unit_count; planned_at = _; duration } ->
       [
         ("unit_count", Data.Json.Int unit_count);
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ]
   | BuildLanePreparationStarted { target; started_at = _ } ->
       [ ("target", Data.Json.String (Riot_model.Target.to_string target)); ]
-  | BuildLaneLockAcquired {
-      target;
-      acquired_at = _;
-      duration;
-    } ->
+  | BuildLaneLockAcquired { target; acquired_at = _; duration } ->
       [
         ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ]
-  | BuildLaneToolchainInitialized {
-      target;
-      initialized_at = _;
-      duration;
-    } ->
+  | BuildLaneToolchainInitialized { target; initialized_at = _; duration } ->
       [
         ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ]
-  | BuildLaneStoreCreated {
-      target;
-      created_at = _;
-      duration;
-    } ->
+  | BuildLaneStoreCreated { target; created_at = _; duration } ->
       [
         ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ]
-  | BuildLanePreparationFinished {
-      target;
-      completed_at = _;
-      duration;
-    } ->
+  | BuildLanePreparationFinished { target; completed_at = _; duration } ->
       [
         ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
@@ -353,22 +329,16 @@ let timestamp = fun __tmp1 ->
   | Phase (BuildLanesPreparationStarted { started_at; _ })
   | Phase (BuildLanePreparationStarted { started_at; _ })
   | Phase (PackagePlanStarted { started_at; _ })
-  | Phase (PackagePlanSourceStarted { started_at; _ }) ->
-      Some ("started_at_us", started_at)
+  | Phase (PackagePlanSourceStarted { started_at; _ }) -> Some ("started_at_us", started_at)
   | Phase (BuildLanesPreparationFinished { completed_at; _ })
   | Phase (BuildLanePreparationFinished { completed_at; _ })
-  | Phase (PackagePlanFinished { completed_at; _ }) ->
-      Some ("completed_at_us", completed_at)
-  | Phase (BuildUnitPlanCreated { planned_at; _ }) ->
-      Some ("planned_at_us", planned_at)
-  | Phase (BuildLaneLockAcquired { acquired_at; _ }) ->
-      Some ("acquired_at_us", acquired_at)
+  | Phase (PackagePlanFinished { completed_at; _ }) -> Some ("completed_at_us", completed_at)
+  | Phase (BuildUnitPlanCreated { planned_at; _ }) -> Some ("planned_at_us", planned_at)
+  | Phase (BuildLaneLockAcquired { acquired_at; _ }) -> Some ("acquired_at_us", acquired_at)
   | Phase (BuildLaneToolchainInitialized { initialized_at; _ }) ->
       Some ("initialized_at_us", initialized_at)
-  | Phase (PackageActionGraphPlanned { planned_at; _ }) ->
-      Some ("planned_at_us", planned_at)
-  | Phase (BuildLaneStoreCreated { created_at; _ }) ->
-      Some ("created_at_us", created_at)
+  | Phase (PackageActionGraphPlanned { planned_at; _ }) -> Some ("planned_at_us", planned_at)
+  | Phase (BuildLaneStoreCreated { created_at; _ }) -> Some ("created_at_us", created_at)
   | Pm _
   | BuildingTarget _
   | CacheGc _

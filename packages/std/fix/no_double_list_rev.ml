@@ -60,10 +60,11 @@ let make_diagnostic = fun ~outer ~replacement ->
 
 let diagnostic_for_expression = fun expr ->
   match rev_argument expr with
-  | Some inner_apply ->
-      (match rev_argument inner_apply with
+  | Some inner_apply -> (
+      match rev_argument inner_apply with
       | Some replacement -> Some (make_diagnostic ~outer:expr ~replacement)
-      | None -> None)
+      | None -> None
+    )
   | None -> None
 
 let check_tree = fun (ctx: Api.Rule.context) _red_root ->

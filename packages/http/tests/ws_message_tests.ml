@@ -57,12 +57,13 @@ let test_control_frame_allowed_during_fragmented_message = fun _ctx ->
       | Ok (state, None) ->
           match handle state (Frame.ping ()) with
           | Error error -> Error error
-          | Ok (state, Some (Message.ControlFrame { Frame.opcode = Frame.Ping; _ })) ->
-              (match handle state (continuation "lo") with
+          | Ok (state, Some (Message.ControlFrame { Frame.opcode = Frame.Ping; _ })) -> (
+              match handle state (continuation "lo") with
               | Ok (_, Some (Message.DataMessage { opcode = Message.Text; payload = "hello" })) ->
                   Ok ()
               | Ok _ -> Error "Expected text message after ping"
-              | Error error -> Error error)
+              | Error error -> Error error
+            )
           | Ok _ -> Error "Expected ping control event"
 
 let test_continuation_without_fragment_fails = fun _ctx ->

@@ -5,10 +5,7 @@ type t =
   | Perf
   | Xctrace
 
-type unavailable = {
-  profiler: string;
-  reason: string;
-}
+type unavailable = { profiler: string; reason: string }
 
 let to_string = fun __tmp1 ->
   match __tmp1 with
@@ -21,11 +18,7 @@ let from_string = fun value ->
   | "auto" -> Ok Auto
   | "perf" -> Ok Perf
   | "xctrace" -> Ok Xctrace
-  | other ->
-      Error
-        ("unknown profiler '"
-        ^ other
-        ^ "' (expected auto, perf, or xctrace)")
+  | other -> Error ("unknown profiler '" ^ other ^ "' (expected auto, perf, or xctrace)")
 
 let is_filename_safe_char = fun __tmp1 ->
   match __tmp1 with

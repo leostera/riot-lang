@@ -1,9 +1,7 @@
 module Attributes: sig
   type 'a key = 'a Collections.TypedKeyHashMap.key
-
   type binding = Collections.TypedKeyHashMap.binding =
     | Binding: 'a key * 'a -> binding
-
   type t
 
   val create: unit -> t
@@ -28,17 +26,12 @@ module Attributes: sig
 end
 
 type id = Uuid.t
-
 type attribute = Attributes.binding
-
 type attributes = Attributes.t
-
 type status =
   | Succeeded
   | Failed of exn
-
 type t
-
 type lifecycle =
   | Started of t
   | Completed of {

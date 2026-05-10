@@ -126,19 +126,20 @@ let analyze_dep_analyzer_fixture = fun fixture ->
   match Dep_analyzer.analyze
     ~source:fixture.path
     ~source_hash:fixture.source_hash
-	    fixture.parse_result with
-	  | Ok summary ->
-	      (match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
-	      | Ok resolved_sources -> touch_resolved_sources resolved_sources
-	      | Error (Dep_analyzer.Invalid_provider message) ->
-	          panic
-	            ("dep analyzer benchmark invalid provider for "
-	            ^ Path.to_string fixture.path
-	            ^ ": "
-	            ^ message))
-	  | Error (Dep_analyzer.Parse_diagnostics diagnostics) ->
-	      panic
-	        ("dep analyzer benchmark parse diagnostics for "
+    fixture.parse_result with
+  | Ok summary -> (
+      match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
+      | Ok resolved_sources -> touch_resolved_sources resolved_sources
+      | Error (Dep_analyzer.Invalid_provider message) ->
+          panic
+            ("dep analyzer benchmark invalid provider for "
+            ^ Path.to_string fixture.path
+            ^ ": "
+            ^ message)
+    )
+  | Error (Dep_analyzer.Parse_diagnostics diagnostics) ->
+      panic
+        ("dep analyzer benchmark parse diagnostics for "
         ^ Path.to_string fixture.path
         ^ ": "
         ^ String.concat "; " (List.map diagnostics ~fn:Syn.Diagnostic.to_string))

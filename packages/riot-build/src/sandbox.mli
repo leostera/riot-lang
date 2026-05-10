@@ -4,12 +4,7 @@ open Riot_planner
 
 (** A sandbox directory for building packages *)
 type t
-
-type dependency_prepare_stats = {
-  dependency_count: int;
-  object_count: int;
-}
-
+type dependency_prepare_stats = { dependency_count: int; object_count: int }
 type dependency_prepare_error =
   | DependencyArtifactUnavailable of {
       package: Package_name.t;
@@ -22,19 +17,8 @@ type dependency_prepare_error =
       dst: Path.t;
       message: string;
     }
-
-type prepare_stats = {
-  input_count: int;
-  dependency_count: int;
-  dependency_object_count: int;
-}
-
-type materialize_stats = {
-  copy_count: int;
-  link_count: int;
-  reference_count: int;
-}
-
+type prepare_stats = { input_count: int; dependency_count: int; dependency_object_count: int }
+type materialize_stats = { copy_count: int; link_count: int; reference_count: int }
 type materialize_error =
   | SandboxFileMaterializeFailed of {
       mode: Riot_planner.Sandbox_file.mode;
@@ -42,7 +26,6 @@ type materialize_error =
       dst: Path.t;
       message: string;
     }
-
 type prepare_error =
   | InputCopyFailed of { message: string }
   | DependencyPreparationFailed of dependency_prepare_error

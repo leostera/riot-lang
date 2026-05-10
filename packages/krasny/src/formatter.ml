@@ -1709,6 +1709,7 @@ let is_type_expr_node_kind = fun __tmp1 ->
   | Kind.TUPLE_TYPE
   | Kind.APPLY_TYPE
   | Kind.PAREN_TYPE
+  | Kind.VARIANT_TYPE
   | Kind.OPAQUE_TYPE -> true
   | _ -> false
 
@@ -1840,6 +1841,7 @@ module TypeExprView = struct
           constructor = nth_child_type_expr node 1;
         }
     | Kind.PAREN_TYPE -> Parenthesized { inner = first_child_type_expr node }
+    | Kind.VARIANT_TYPE -> Opaque node
     | Kind.OPAQUE_TYPE -> Opaque node
     | Kind.ERROR -> Error node
     | _ -> Unknown node
@@ -2403,7 +2405,7 @@ let token_vector_range_spaced_flat_width = fun tokens ~start ~stop ->
   loop start None 0
 
 let node_spaced_flat_width = fun node ->
-  let tokens = collect_child_tokens node in
+  let tokens = collect_node_tokens node in
   token_vector_spaced_flat_width tokens
 
 let infix_operator_tokens = fun
@@ -2635,7 +2637,7 @@ let emit_joined_vector = fun state values ~sep ~fn ->
   loop 0
 
 let render_first_class_module_type = fun state node ->
-  let tokens = collect_child_tokens node in
+  let tokens = collect_node_tokens node in
   let length = Vector.length tokens in
   match (
     token_vector_find_kind tokens Kind.LPAREN,
@@ -2732,7 +2734,7 @@ let render_bracketed_opaque_type_rows = fun state tokens ~start ~stop ->
   loop start start
 
 let render_bracketed_opaque_type = fun state node ->
-  let tokens = collect_child_tokens node in
+  let tokens = collect_node_tokens node in
   let length = Vector.length tokens in
   if Int.equal length 0 then
     false
@@ -3401,7 +3403,7 @@ and type_expr_is_arrow = fun type_expr ->
 and type_expr_is_closed_backtick_bracketed_opaque = fun type_expr ->
   match TypeExprView.view type_expr with
   | Opaque node ->
-      let tokens = collect_child_tokens node in
+      let tokens = collect_node_tokens node in
       let length = Vector.length tokens in
       if Int.(length < 3) then
         false
@@ -5693,7 +5695,10 @@ let rec render_expr = fun ?(role = Layout.Top_expr) state (expr: Ast.Expr.t) ->
       let last_operator = render_prefix_operator_tokens state operator_tokens operator in
       if token_text_is last_operator "not" then
         emit_space state;
-      render_prefix_operand state operand;
+      if token_text_is last_operator "!" then
+        render_deref_prefix_operand state operand
+      else
+        render_prefix_operand state operand;
       if prefix_operator_is_negative last_operator && expr_is_literal operand then
         emit_text state ")"
   | Prefix _ -> unsupported_node "incomplete prefix expression" node
@@ -5987,6 +5992,11 @@ and render_prefix_operand = fun state operand ->
   | FieldAccess _ -> render_parenthesized_expr state operand
   | _ when expr_is_prefix_deref operand -> render_parenthesized_expr state operand
   | _ -> render_expr_atom state operand
+
+and render_deref_prefix_operand = fun state operand ->
+  match ExprView.view operand with
+  | FieldAccess _ -> render_expr state operand
+  | _ -> render_prefix_operand state operand
 
 and render_expr_postfix_target = fun state target ->
   if expr_can_render_postfix_target_without_parens target then
@@ -7049,6 +7059,59 @@ and match_case_has_leading_comment = fun case ->
   | Some token -> Ast.Token.has_leading_comment token
   | None -> node_has_leading_comment (Ast.MatchCase.as_node case)
 
+and match_case_body_preserving_parens = fun case fallback ->
+  let node = Ast.MatchCase.as_node case in
+  let child_count = Ast.Node.child_count node in
+  let rec loop index seen_arrow =
+    if Int.(index >= child_count) then
+      fallback
+    else
+      match Ast.Node.child_at node index with
+      | Some (Syn.SyntaxTree.Token id) ->
+          let token: Ast.Token.t = { tree = node.Ast.tree; id } in
+          loop (Int.add index 1) (seen_arrow || token_kind_is token Kind.ARROW)
+      | Some (Syn.SyntaxTree.Node id) when seen_arrow -> (
+          let child: Ast.Node.t = { tree = node.Ast.tree; id } in
+          if is_expr_node_kind (node_kind child) then
+            match Ast.cast_result_to_option (Ast.Expr.cast child) with
+            | Some expr -> expr
+            | None -> fallback
+          else
+            loop (Int.add index 1) seen_arrow
+        )
+      | Some _
+      | None -> loop (Int.add index 1) seen_arrow
+  in
+  loop 0 false
+
+and match_case_guard_preserving_parens = fun case fallback ->
+  let node = Ast.MatchCase.as_node case in
+  let child_count = Ast.Node.child_count node in
+  let rec loop index seen_when =
+    if Int.(index >= child_count) then
+      fallback
+    else
+      match Ast.Node.child_at node index with
+      | Some (Syn.SyntaxTree.Token id) ->
+          let token: Ast.Token.t = { tree = node.Ast.tree; id } in
+          if token_kind_is token Kind.ARROW then
+            fallback
+          else
+            loop (Int.add index 1) (seen_when || token_kind_is token Kind.WHEN_KW)
+      | Some (Syn.SyntaxTree.Node id) when seen_when -> (
+          let child: Ast.Node.t = { tree = node.Ast.tree; id } in
+          if is_expr_node_kind (node_kind child) then
+            match Ast.cast_result_to_option (Ast.Expr.cast child) with
+            | Some expr -> expr
+            | None -> fallback
+          else
+            loop (Int.add index 1) seen_when
+        )
+      | Some _
+      | None -> loop (Int.add index 1) seen_when
+  in
+  loop 0 false
+
 and render_match_cases_with_body_break = fun state cases force_body_break ->
   let length = Vector.length cases in
   let rec loop index =
@@ -7107,6 +7170,7 @@ and match_case_body_exceeds_width = fun state body ->
 and render_parenthesized_match_case_body = fun state expr ->
   match ExprView.view expr with
   | Parenthesized { inner = Some inner } when not (same_expr_node expr inner) ->
+      emit_node_leading_comments_as_lines state (Ast.Expr.as_node expr);
       render_parenthesized_expr_with_multiline_indent state inner ~body_indent:4 ~closing_indent:2
   | _ -> render_expr state expr
 
@@ -7133,6 +7197,7 @@ and render_match_case_with_body_break = fun state case force_body_break ->
       (
         match guard with
         | Some guard ->
+            let guard = match_case_guard_preserving_parens case guard in
             emit_space state;
             emit_text state "when";
             emit_space state;
@@ -7140,6 +7205,7 @@ and render_match_case_with_body_break = fun state case force_body_break ->
         | None -> ()
       );
       let force_body_break = force_body_break || pattern_forces_body_break in
+      let body = match_case_body_preserving_parens case body in
       emit_space state;
       emit_text state "->";
       (
@@ -9163,6 +9229,26 @@ and type_member_private_token = fun member ->
   );
   !found
 
+and variant_type_is_bracketed = fun variant_type ->
+  match Ast.Node.first_child_token (Ast.VariantType.as_node variant_type) ~kind:Kind.LBRACKET with
+  | Some _ -> true
+  | None -> false
+
+and type_member_manifest_and_representation = fun member ->
+  match (
+    Ast.TypeDeclaration.Member.variant_type member,
+    Ast.TypeDeclaration.Member.record_type member,
+    Ast.TypeDeclaration.Member.manifest member
+  ) with
+  | (Some variant_type, record_type, Some manifest) when same_ast_node
+    (Ast.VariantType.as_node variant_type)
+    (Ast.TypeExpr.as_node manifest) ->
+      if variant_type_is_bracketed variant_type then
+        (None, record_type, Some manifest)
+      else
+        (Some variant_type, record_type, None)
+  | parts -> parts
+
 and type_member_is_alias_extensible = fun member ->
   let equals_count = ref 0 in
   let saw_dotdot_after_alias = ref false in
@@ -9357,11 +9443,7 @@ and render_type_member = fun state member ->
     | None -> unsupported "type declaration member without name"
   );
   (
-    match (
-      Ast.TypeDeclaration.Member.variant_type member,
-      Ast.TypeDeclaration.Member.record_type member,
-      Ast.TypeDeclaration.Member.manifest member
-    ) with
+    match type_member_manifest_and_representation member with
     | (Some variant_type, _, Some manifest) ->
         emit_space state;
         emit_text state "=";

@@ -156,7 +156,8 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
   | Cbor_value.Map items -> (
       match map_singleton items with
       | Some (tag, payload) -> find_newtype tag payload 0
-      | None -> invalid_field_type "variant")
+      | None -> invalid_field_type "variant"
+    )
   | _ -> invalid_field_type "variant"
 
 and backend: state De.backend = {

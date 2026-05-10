@@ -25,12 +25,8 @@ type t =
     }
   | Text of string
   | CData of string
-
 type error =
-  | Parse_error of {
-      message: string;
-      offset: int;
-    }
+  | Parse_error of { message: string; offset: int }
 
 (**
    Creates an XML element with optional attributes and child nodes.

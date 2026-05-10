@@ -623,8 +623,7 @@ let package_hash = fun input_hash_cache ~workspace ~key package ->
 let cached_toolchain_hash = fun cache toolchain ->
   let key = Path.to_string (Riot_toolchain.path toolchain) in
   match ConcurrentHashMap.get cache.toolchain_hashes ~key with
-  | Some hash ->
-      hash
+  | Some hash -> hash
   | None ->
       let hash = Riot_toolchain.hash toolchain in
       ignore (ConcurrentHashMap.insert cache.toolchain_hashes ~key ~value:hash);
@@ -723,8 +722,9 @@ let compute_input_hash_with_cache = fun
   List.for_each dep_output_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
-let compute_input_hash = fun ?planner_version ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
-    compute_input_hash_with_cache
+let compute_input_hash = fun
+  ?planner_version ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
+  compute_input_hash_with_cache
     ?planner_version
     ~input_hash_cache:None
     ~package
@@ -771,10 +771,7 @@ let missing_native_object_outputs_in_store = fun store input_hash outputs ->
 let package_source_sandbox_files = fun (package: Package.t) ->
   List.concat [ package.sources.src; package.sources.native; package.sources.tests ]
   |> List.map
-    ~fn:(fun source ->
-      Sandbox_file.copy
-        ~source:Path.(package.path / source)
-        ~destination:source)
+    ~fn:(fun source -> Sandbox_file.copy ~source:Path.(package.path / source) ~destination:source)
 
 let dependency_object_sandbox_files = fun depset ->
   let dedupe_outputs = fun outputs ->
@@ -809,14 +806,7 @@ let sandbox_files_for_plan = fun ~store ~package ~depset ->
   Ok (List.concat [ package_source_sandbox_files package; dependency_files ])
 
 let planned_result = fun
-  ~store
-  ~unit_key
-  ~package
-  ~module_graph
-  ~action_graph
-  ~hash
-  ~depset
-  ~breakdown ->
+  ~store ~unit_key ~package ~module_graph ~action_graph ~hash ~depset ~breakdown ->
   let* sandbox_files = sandbox_files_for_plan ~store ~package ~depset in
   Ok (
     Planned {
@@ -881,8 +871,7 @@ let plan_package_after_dependencies = fun
       ~fn:(fun (target, _) -> String.equal target target_platform) with
     | Some (_, target_override) -> (
         match target_override.profile_override with
-        | Some override ->
-            Profile.apply_override profile override
+        | Some override -> Profile.apply_override profile override
         | None -> profile
       )
     | None -> profile
@@ -973,17 +962,16 @@ let plan_package_after_dependencies = fun
                   ~action_graph
                   ~hash:input_hash
                   ~depset
-                  ~breakdown:
-                    {
-                      empty_breakdown with
-                      dependency_count = List.length depset;
-                      dependency_check_duration;
-                      input_hash_duration;
-                      artifact_lookup_duration;
-                      plan_bundle_lookup_duration;
-                      plan_bundle_decode_duration;
-                      plan_bundle_cache_hit = true;
-                    }
+                  ~breakdown:{
+                    empty_breakdown with
+                    dependency_count = List.length depset;
+                    dependency_check_duration;
+                    input_hash_duration;
+                    artifact_lookup_duration;
+                    plan_bundle_lookup_duration;
+                    plan_bundle_decode_duration;
+                    plan_bundle_cache_hit = true;
+                  }
             | Error _ ->
                 Log.warn
                   ("Package "
@@ -1096,17 +1084,16 @@ let plan_package_after_dependencies = fun
                       ~action_graph
                       ~hash:input_hash
                       ~depset
-                      ~breakdown:
-                        {
-                          empty_breakdown with
-                          dependency_count = List.length depset;
-                          dependency_check_duration;
-                          input_hash_duration;
-                          artifact_lookup_duration;
-                          plan_bundle_lookup_duration;
-                          plan_bundle_decode_duration;
-                          module_plan_duration;
-                        }
+                      ~breakdown:{
+                        empty_breakdown with
+                        dependency_count = List.length depset;
+                        dependency_check_duration;
+                        input_hash_duration;
+                        artifact_lookup_duration;
+                        plan_bundle_lookup_duration;
+                        plan_bundle_decode_duration;
+                        module_plan_duration;
+                      }
           )
       | None ->
           let plan_bundle_lookup_duration =
@@ -1222,16 +1209,15 @@ let plan_package_after_dependencies = fun
                 ~action_graph
                 ~hash:input_hash
                 ~depset
-                ~breakdown:
-                  {
-                    empty_breakdown with
-                    dependency_count = List.length depset;
-                    dependency_check_duration;
-                    input_hash_duration;
-                    artifact_lookup_duration;
-                    plan_bundle_lookup_duration;
-                    module_plan_duration;
-                  }
+                ~breakdown:{
+                  empty_breakdown with
+                  dependency_count = List.length depset;
+                  dependency_check_duration;
+                  input_hash_duration;
+                  artifact_lookup_duration;
+                  plan_bundle_lookup_duration;
+                  module_plan_duration;
+                }
     )
 
 let plan_build_unit_with_cache = fun
@@ -1282,13 +1268,7 @@ let plan_build_unit_with_cache_and_source_analyzer = fun
     ~build_ctx
 
 let plan_build_unit = fun
-  ~on_source_analyzed
-  ~workspace
-  ~toolchain
-  ~store
-  ~(unit:Build_unit.t)
-  ~depset
-  ~build_ctx ->
+  ~on_source_analyzed ~workspace ~toolchain ~store ~(unit:Build_unit.t) ~depset ~build_ctx ->
   plan_package_after_dependencies
     ~analyze_sources:None
     ~on_source_analyzed

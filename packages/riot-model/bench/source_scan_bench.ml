@@ -97,10 +97,11 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
     | (Some (Ok (entry: Fs.Walker.FileItem.t)), iter') ->
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
-        | File ->
-            (match Path.strip_prefix path ~prefix:package_path with
+        | File -> (
+            match Path.strip_prefix path ~prefix:package_path with
             | Ok rel_path -> loop (rel_path :: acc) iter'
-            | Error _ -> loop acc iter')
+            | Error _ -> loop acc iter'
+          )
         | Directory
         | Symlink
         | Other -> loop acc iter'

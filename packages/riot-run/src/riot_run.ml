@@ -101,7 +101,7 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () -
           source_path = Path.(pkg.path / bin.path);
         }))
   |> List.sort
-    ~compare:(fun (left:runnable_binary) (right:runnable_binary) ->
+    ~compare:(fun (left: runnable_binary) (right: runnable_binary) ->
       match Riot_model.Package_name.compare left.package_name right.package_name with
       | Order.EQ -> String.compare left.binary_name right.binary_name
       | diff -> diff)
@@ -276,11 +276,7 @@ let build_source_binary = fun ?(on_event = no_event) (request: source_run_reques
 let run = fun ?(on_event = no_event) (request: run_request) ->
   let* built = build_binary ~on_event request in
   on_event
-    (RunningBinary {
-      package = built.package_name;
-      binary = built.binary_name;
-      args = built.args;
-    });
+    (RunningBinary { package = built.package_name; binary = built.binary_name; args = built.args });
   let cmd = Command.make (Path.to_string built.path) ~args:built.args in
   match Command.status cmd with
   | Ok 0 -> Ok ()
@@ -290,11 +286,7 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
 let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
   let* built = build_source_binary ~on_event request in
   on_event
-    (RunningBinary {
-      package = built.package_name;
-      binary = built.binary_name;
-      args = built.args;
-    });
+    (RunningBinary { package = built.package_name; binary = built.binary_name; args = built.args });
   let cmd = Command.make (Path.to_string built.path) ~args:built.args in
   match Command.status cmd with
   | Ok 0 -> Ok ()

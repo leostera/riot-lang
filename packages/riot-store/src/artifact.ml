@@ -94,26 +94,28 @@ type builder = {
 }
 
 let fields =
-  De.fields [
-    De.field "input_hash" Input_hash;
-    De.field "output_hash" Output_hash;
-    De.field "size_bytes" Size_bytes;
-    De.field "files" Files;
-    De.field "ocamlc_warnings" Ocamlc_warnings;
-    De.field "exports" Exports;
-  ]
+  De.fields
+    [
+      De.field "input_hash" Input_hash;
+      De.field "output_hash" Output_hash;
+      De.field "size_bytes" Size_bytes;
+      De.field "files" Files;
+      De.field "ocamlc_warnings" Ocamlc_warnings;
+      De.field "exports" Exports;
+    ]
 
 let deserializer =
   De.record_mut
     ~fields
-    ~create:(fun () -> {
-      input_hash = None;
-      output_hash = None;
-      size_bytes = None;
-      files = Some [];
-      ocamlc_warnings = [];
-      exports = [];
-    })
+    ~create:(fun () ->
+      {
+        input_hash = None;
+        output_hash = None;
+        size_bytes = None;
+        files = Some [];
+        ocamlc_warnings = [];
+        exports = [];
+      })
     ~step:(fun reader builder field ->
       match field with
       | Some Input_hash -> builder.input_hash <- Some (De.read reader hash_deserializer)
@@ -122,7 +124,8 @@ let deserializer =
       | Some Files ->
           builder.files <- Some (De.read reader (de_list Manifest.file_entry_deserializer))
       | Some Ocamlc_warnings -> builder.ocamlc_warnings <- De.read reader (de_list De.string)
-      | Some Exports -> builder.exports <- De.read reader (de_list Manifest.export_entry_deserializer)
+      | Some Exports ->
+          builder.exports <- De.read reader (de_list Manifest.export_entry_deserializer)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.input_hash, builder.output_hash, builder.size_bytes, builder.files) with
@@ -134,21 +137,28 @@ let deserializer =
             files;
             ocamlc_warnings = builder.ocamlc_warnings;
             exports = builder.exports;
-          }:t)
+          }: t)
       | _ -> De.missing_field ())
 
 let serializer =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "input_hash" hash_serializer (fun (artifact: t) -> artifact.input_hash);
-        Ser.field "output_hash" hash_serializer (fun (artifact: t) -> artifact.output_hash);
-        Ser.field "size_bytes" int64_string_serializer (fun (artifact: t) -> artifact.size_bytes);
-        Ser.field "files" (ser_list Manifest.file_entry_serializer) (fun (artifact: t) -> artifact.files);
-        Ser.field
-          "ocamlc_warnings"
-          (ser_list Ser.string)
-          (fun (artifact: t) -> artifact.ocamlc_warnings);
-        Ser.field "exports" (ser_list Manifest.export_entry_serializer) (fun (artifact: t) -> artifact.exports);
-      ]
+      Ser.fields
+        [
+          Ser.field "input_hash" hash_serializer (fun (artifact: t) -> artifact.input_hash);
+          Ser.field "output_hash" hash_serializer (fun (artifact: t) -> artifact.output_hash);
+          Ser.field "size_bytes" int64_string_serializer (fun (artifact: t) -> artifact.size_bytes);
+          Ser.field
+            "files"
+            (ser_list Manifest.file_entry_serializer)
+            (fun (artifact: t) -> artifact.files);
+          Ser.field
+            "ocamlc_warnings"
+            (ser_list Ser.string)
+            (fun (artifact: t) -> artifact.ocamlc_warnings);
+          Ser.field
+            "exports"
+            (ser_list Manifest.export_entry_serializer)
+            (fun (artifact: t) -> artifact.exports);
+        ]
     )

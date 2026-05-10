@@ -27,12 +27,13 @@ let await_ready_worker:
     ~what:"worker readiness"
     (fun __tmp1 ->
       match __tmp1 with
-      | WorkerPool.DynamicWorkerPool.WorkerReady worker ->
-          (match Ref.type_equal
+      | WorkerPool.DynamicWorkerPool.WorkerReady worker -> (
+          match Ref.type_equal
             pool.WorkerPool.DynamicWorkerPool.task_ref
             (WorkerPool.DynamicWorkerPool.get_worker_task_ref worker) with
           | Some witness -> Select (cast_worker witness worker)
-          | None -> Skip)
+          | None -> Skip
+        )
       | _ -> Skip)
 
 let test_simple_worker_pool_empty_returns_immediately =
@@ -164,17 +165,19 @@ let test_dynamic_worker_pool_send_task_executes_payload =
               ~what:"dynamic worker payload"
               (fun __tmp1 ->
                 match __tmp1 with
-                | Worker_pool_task_received { payload; run_ref = received_ref } ->
-                    (match Ref.type_equal run_ref received_ref with
+                | Worker_pool_task_received { payload; run_ref = received_ref } -> (
+                    match Ref.type_equal run_ref received_ref with
                     | Some Type.Equal -> Select payload
-                    | None -> Skip)
+                    | None -> Skip
+                  )
                 | _ -> Skip)
           in
           match received with
-          | Ok "payload" ->
-              (match await_ready_worker pool with
+          | Ok "payload" -> (
+              match await_ready_worker pool with
               | Ok _ -> Ok ()
-              | Error _ as err -> err)
+              | Error _ as err -> err
+            )
           | Ok payload -> Error ("expected dynamic worker to receive payload, got " ^ payload)
           | Error _ as err -> err)
 

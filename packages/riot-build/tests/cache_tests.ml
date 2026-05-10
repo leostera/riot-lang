@@ -91,21 +91,23 @@ let test_second_build_reuses_action_cache_path = fun _ctx ->
       let package = make_package tmpdir "test-pkg" "let x = 42" in
       let workspace = make_test_workspace tmpdir [ package ] in
       match build_package ~workspace package with
-      | Ok first_build ->
-          (match Riot_build.Build_result.package_status first_build with
-          | Riot_build.Build_result.Built _ ->
-              (match build_package ~workspace package with
+      | Ok first_build -> (
+          match Riot_build.Build_result.package_status first_build with
+          | Riot_build.Build_result.Built _ -> (
+              match build_package ~workspace package with
               | Error err -> Error ("Second build failed: " ^ err)
-              | Ok second_build ->
-                  (match Riot_build.Build_result.package_status second_build with
+              | Ok second_build -> (
+                  match Riot_build.Build_result.package_status second_build with
                   | Built _
                   | Cached _ -> Ok ()
                   | Skipped reason -> Error ("Second build skipped: " ^ reason)
-                  | Failed reason -> Error ("Second build failed: " ^ reason))
-              )
+                  | Failed reason -> Error ("Second build failed: " ^ reason)
+                )
+            )
           | Skipped reason -> Error ("First build skipped: " ^ reason)
           | Cached _ -> Error "First build should not be cached"
-          | Failed reason -> Error ("First build failed: " ^ reason))
+          | Failed reason -> Error ("First build failed: " ^ reason)
+        )
       | Error err -> Error ("First build failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

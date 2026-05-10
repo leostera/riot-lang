@@ -630,10 +630,7 @@ type build_dashboard_row_view = {
   status_kind: build_dashboard_row_status;
 }
 
-and build_dashboard_action_view = {
-  action_key: string;
-  action_label: string;
-}
+and build_dashboard_action_view = { action_key: string; action_label: string }
 
 type build_dashboard_board_view = {
   completed_action_count: int;
@@ -744,7 +741,9 @@ let build_dashboard_package_label = fun state ~build_target package ->
     | None -> false
   in
   let name = Riot_model.Package_name.to_string package.Riot_model.Package.name in
-  let details = display_package_details ?profile:state.profile_name ~build_target ~show_target package in
+  let details =
+    display_package_details ?profile:state.profile_name ~build_target ~show_target package
+  in
   match details with
   | [] -> name
   | details -> name ^ Ui.muted terminal (" (" ^ String.concat ", " details ^ ")")
@@ -817,11 +816,7 @@ let build_dashboard_running_action_views = fun row ->
     row.running_action_order
     ~fn:(fun key ->
       match HashMap.get row.running_actions ~key with
-      | Some label ->
-          actions := {
-            action_key = key;
-            action_label = label;
-          } :: !actions
+      | Some label -> actions := { action_key = key; action_label = label } :: !actions
       | None -> ());
   List.reverse !actions
 
@@ -836,10 +831,7 @@ let build_dashboard_planning_source_views = fun row ->
         match HashMap.get row.planning_sources ~key with
         | Some label ->
             visible_count := !visible_count + 1;
-            sources := {
-              action_key = key;
-              action_label = label;
-            } :: !sources
+            sources := { action_key = key; action_label = label } :: !sources
         | None -> ());
   List.reverse !sources
 
@@ -852,7 +844,10 @@ let build_dashboard_set_planning_source = fun row source ->
 
 let build_dashboard_mark_action_started = fun
   state ~build_target (action: Riot_planner.Action_node.t) ->
-  match build_dashboard_find_package state ~build_target (Riot_planner.Action_node.value action).package with
+  match build_dashboard_find_package
+    state
+    ~build_target
+    (Riot_planner.Action_node.value action).package with
   | Some row ->
       let key = build_dashboard_action_key action in
       let label = build_dashboard_node_label action in
@@ -992,11 +987,19 @@ let build_dashboard_update = fun state event ->
   | Riot_build.Event.Telemetry (
     Build_telemetry.ActionCompleted { action; build_target; _ }
   ) ->
-      build_dashboard_mark_action_completed state ~build_target (Riot_planner.Action_node.value action).package action
+      build_dashboard_mark_action_completed
+        state
+        ~build_target
+        (Riot_planner.Action_node.value action).package
+        action
   | Riot_build.Event.Telemetry (
     Build_telemetry.ActionFailed { action; build_target; _ }
   ) ->
-      build_dashboard_mark_action_completed state ~build_target (Riot_planner.Action_node.value action).package action
+      build_dashboard_mark_action_completed
+        state
+        ~build_target
+        (Riot_planner.Action_node.value action).package
+        action
   | Riot_build.Event.Telemetry (
     Build_telemetry.BuildCompleted { package; build_target; status = `Fresh; _ }
   ) ->
@@ -1050,9 +1053,7 @@ let build_dashboard_row_view = fun state (row: build_dashboard_package) ->
   }
 
 let build_dashboard_row_is_active = fun (row: build_dashboard_package) ->
-  not (HashMap.is_empty row.running_actions)
-  || not (HashMap.is_empty row.planning_sources)
-  || match row.status with
+  not (HashMap.is_empty row.running_actions) || not (HashMap.is_empty row.planning_sources) || match row.status with
   | Planning -> true
   | Finalizing -> true
   | Preparing
@@ -1074,16 +1075,16 @@ let build_dashboard_render_state = fun state ->
             rows := build_dashboard_row_view state row :: !rows
         | Some _
         | None -> ());
-    let rows = List.reverse !rows in
-    if List.is_empty rows && state.completed_action_count = 0 && state.total_action_count = 0 then
-      Empty
-    else
-      Board {
-        completed_action_count = state.completed_action_count;
-        total_action_count = state.total_action_count;
-        summary = build_dashboard_count_summary state;
-        rows;
-      }
+  let rows = List.reverse !rows in
+  if List.is_empty rows && state.completed_action_count = 0 && state.total_action_count = 0 then
+    Empty
+  else
+    Board {
+      completed_action_count = state.completed_action_count;
+      total_action_count = state.total_action_count;
+      summary = build_dashboard_count_summary state;
+      rows;
+    }
 
 let rec build_dashboard_row_views_equal = fun left right ->
   match (left, right) with
@@ -1121,7 +1122,11 @@ let build_dashboard_row_line = fun ~width ~is_last row ->
     match row.status_kind with
     | Planning ->
         if row.planning_source_count > 0 then
-          "[" ^ Int.to_string row.planned_sources ^ "/" ^ Int.to_string row.planning_source_count ^ "]"
+          "["
+          ^ Int.to_string row.planned_sources
+          ^ "/"
+          ^ Int.to_string row.planning_source_count
+          ^ "]"
         else
           "[0/?]"
     | Preparing
@@ -1191,18 +1196,10 @@ let build_dashboard_push_row_lines = fun ~width lines rows ->
     | [] -> ()
     | [ row ] ->
         Vector.push lines ~value:(build_dashboard_row_line ~width ~is_last:true row);
-        build_dashboard_push_action_lines
-          ~width
-          ~parent_is_last:true
-          lines
-          row.actions
+        build_dashboard_push_action_lines ~width ~parent_is_last:true lines row.actions
     | row :: rest ->
         Vector.push lines ~value:(build_dashboard_row_line ~width ~is_last:false row);
-        build_dashboard_push_action_lines
-          ~width
-          ~parent_is_last:false
-          lines
-          row.actions;
+        build_dashboard_push_action_lines ~width ~parent_is_last:false lines row.actions;
         loop rest
   in
   loop rows
@@ -1215,12 +1212,14 @@ let build_dashboard_view_lines = fun view ->
       let lines = Vector.with_capacity ~size:8 in
       Vector.push
         lines
-        ~value:(build_dashboard_truncate ~width ("["
-        ^ Int.to_string board.completed_action_count
-        ^ "/"
-        ^ Int.to_string board.total_action_count
-        ^ "] actions  "
-        ^ board.summary));
+        ~value:(build_dashboard_truncate
+          ~width
+          ("["
+          ^ Int.to_string board.completed_action_count
+          ^ "/"
+          ^ Int.to_string board.total_action_count
+          ^ "] actions  "
+          ^ board.summary));
       build_dashboard_push_row_lines ~width lines board.rows;
       lines
 
@@ -2180,12 +2179,10 @@ let run_request = fun (request: request) ->
     if List.is_empty providers then
       None
     else
-      Some (
-        Riot_fix.Fixme_runner.materialize
-          ~workspace_root:request.workspace.root
-          ~target_dir_root:request.workspace.target_dir_root
-          providers
-      )
+      Some (Riot_fix.Fixme_runner.materialize
+        ~workspace_root:request.workspace.root
+        ~target_dir_root:request.workspace.target_dir_root
+        providers)
   in
   let runner_plan =
     if should_build_fix_provider_runner request then
@@ -2206,12 +2203,7 @@ let run_request = fun (request: request) ->
   let synthetic_tools =
     match runner_plan with
     | Some plan ->
-        [
-          Riot_planner.Build_unit_graph.{
-            package = plan.package_name;
-            name = plan.binary_name;
-          };
-        ]
+        [ Riot_planner.Build_unit_graph.{ package = plan.package_name; name = plan.binary_name }; ]
     | None -> []
   in
   let result =

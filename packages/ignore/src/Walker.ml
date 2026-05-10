@@ -176,17 +176,20 @@ let decision_for_entry = fun config frames entry ->
     let extra_ignore_match = Gitignore.matched config.ignore_patterns ~path ~is_dir in
     if not (Match.is_none extra_ignore_match) then
       Ok extra_ignore_match
-    else (
-      let ignore_match = match_across_frames config frames path ~is_dir in
-      if Match.is_ignore ignore_match then
-        Ok Match.Ignore
-      else if Match.is_whitelist ignore_match then
-        Ok Match.Whitelist
-      else if config.hidden && Fs.Walker.FileItem.depth entry > 0 && basename_is_hidden entry then
-        Ok Match.Ignore
-      else
-        Ok Match.None_
-    )
+    else
+      (
+        let ignore_match = match_across_frames config frames path ~is_dir in
+        if Match.is_ignore ignore_match then
+          Ok Match.Ignore
+        else if Match.is_whitelist ignore_match then
+          Ok Match.Whitelist
+        else if
+          config.hidden && Fs.Walker.FileItem.depth entry > 0 && basename_is_hidden entry
+        then
+          Ok Match.Ignore
+        else
+          Ok Match.None_
+      )
 
 let create = fun
   ~roots

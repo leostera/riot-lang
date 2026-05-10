@@ -2752,13 +2752,11 @@ and parse_labeled_type = fun p ->
 
 and starts_polymorphic_variant_type = fun p ->
   Syntax_kind.(current_kind p = LBRACKET)
-  && Syntax_kind.(
-    peek_kind p 1 = PIPE
-    || peek_kind p 1 = BACKTICK
-    || peek_kind p 1 = IDENT
-    || peek_kind p 1 = LT
-    || peek_kind p 1 = GT
-  )
+  && Syntax_kind.(peek_kind p 1 = PIPE
+  || peek_kind p 1 = BACKTICK
+  || peek_kind p 1 = IDENT
+  || peek_kind p 1 = LT
+  || peek_kind p 1 = GT)
 
 and parse_polymorphic_variant_constructor_type = fun p ->
   let marker = start_node p in
