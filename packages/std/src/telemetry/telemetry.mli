@@ -29,20 +29,48 @@
    with their own events.
 *)
 
-(**
-   Start the telemetry server process. Returns the server's PID. Must be called
-   before emitting events. Idempotent: returns the existing server PID when the
-   server is already running.
-*)
-type event = ..
+module Event: sig
+  type t = ..
+end
+
+type event = Event.t = ..
 
 module Span: sig
   (** A UUIDv7 span identifier. *)
   type id = Uuid.t
 
-  (** Extra span metadata. Values use JSON so handlers can preserve types. *)
-  type attribute = string * Data.Json.t
-  type attributes = attribute list
+  module Attributes: sig
+    type 'a key = 'a Collections.TypedKeyHashMap.key
+
+    type binding = Collections.TypedKeyHashMap.binding =
+      | Binding: 'a key * 'a -> binding
+
+    type t
+
+    val create: unit -> t
+
+    val key: unit -> 'a key
+
+    val of_list: binding list -> t
+
+    val copy: t -> t
+
+    val get: t -> key:'a key -> 'a option
+
+    val insert: t -> key:'a key -> value:'a -> t
+
+    val remove: t -> key:'a key -> 'a option
+
+    val has_key: t -> key:'a key -> bool
+
+    val length: t -> int
+
+    val is_empty: t -> bool
+  end
+
+  (** Extra span metadata stored in a typed-key map. *)
+  type attribute = Attributes.binding
+  type attributes = Attributes.t
 
   type status =
     | Succeeded
@@ -64,7 +92,12 @@ module Span: sig
   val equal_id: id -> id -> bool
   val parent_id: t -> id option
   val name: t -> string
+
+  (** Return a copy of the span attributes. *)
   val attributes: t -> attributes
+
+  val get_attribute: t -> key:'a Attributes.key -> 'a option
+
   val started_at: t -> Time.Instant.t
 
   (** Start a span and emit a [Started] lifecycle event. *)
@@ -88,6 +121,11 @@ type event +=
 *)
 val with_span: ?span:Span.t -> ?attributes:Span.attributes -> string -> (Span.t -> 'a) -> 'a
 
+(**
+   Start the telemetry server process. Returns the server's PID. Must be called
+   before emitting events. Idempotent: returns the existing server PID when the
+   server is already running.
+*)
 val start: unit -> Pid.t
 
 (** Emit a telemetry event. All attached handlers will receive it. *)

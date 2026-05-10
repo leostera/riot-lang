@@ -261,6 +261,7 @@ _riot() {
                 compadd summary
                 compadd call-tree
                 compadd -a binaries
+                _files
             elif [[ "${words[3]}" == "summary" || "${words[3]}" == "call-tree" ]]; then
                 _arguments \
                     '--json[Emit machine-readable JSON output]' \
@@ -281,8 +282,7 @@ _riot() {
                     '--window[Keep only final recording window]:duration:' \
                     '--xctrace-template[xctrace template name or path]:template:' \
                     '--perf-call-graph[perf call graph mode]:mode:(dwarf fp lbr no)' \
-                    '--perf-call-graph-stack-size[perf DWARF stack dump size]:bytes:' \
-                    '--update[Refresh a cached remote source before tracing]'
+                    '--perf-call-graph-stack-size[perf DWARF stack dump size]:bytes:'
 
                 case $state in
                     packages)

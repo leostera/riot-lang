@@ -59,7 +59,7 @@ let command =
       positional "name"
       |> required false
       |> help
-        "Binary name or remote source to trace. Use -p/--package to disambiguate local binaries, or the legacy [package:]binary form";
+        "Binary name or executable path to trace. Use -p/--package to disambiguate local binaries, or the legacy [package:]binary form";
       option "package"
       |> short 'p'
       |> long "package"
@@ -112,9 +112,6 @@ let command =
       |> long "perf-call-graph-stack-size"
       |> value_name "BYTES"
       |> help "perf DWARF call graph stack dump size";
-      flag "update"
-      |> long "update"
-      |> help "Refresh a cached remote source before tracing";
       trailing "-- [args]..."
       |> help "Arguments to pass to the binary";
       flag "verbose"
@@ -149,7 +146,7 @@ type target =
       package_name: Riot_model.Package_name.t option;
       binary_name: string;
     }
-  | Remote_source of { source_spec: string; binary_name: string }
+  | External_binary of { binary_path: Path.t; binary_name: string }
 
 type implicit_local_target = {
   package_name: Riot_model.Package_name.t;
@@ -192,34 +189,27 @@ let parse_local_target = fun ?package_filter name ->
       Ok (Local { package_name = Some package_name; binary_name })
   | _ -> Ok (Local { package_name = package_filter; binary_name = name })
 
-let split_remote_binary = fun raw ->
-  match String.last_index raw '@' with
-  | Some idx when idx = String.length raw - 1 ->
-      Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
-  | Some idx when idx > 0 && idx < String.length raw - 1 ->
-      Ok (
-        String.sub raw ~offset:0 ~len:idx,
-        Some (String.sub raw ~offset:(idx + 1) ~len:(String.length raw - idx - 1))
-      )
-  | _ -> Ok (raw, None)
+let looks_like_binary_path = fun name ->
+  Path.is_absolute name
+  || String.starts_with ~prefix:"./" name
+  || String.starts_with ~prefix:"../" name
+  || String.contains name "/"
 
-let default_remote_binary_name = Run.default_remote_binary_name
+let parse_external_binary_target = fun name ->
+  Path.from_string name
+  |> Result.map_err ~fn:(fun _ -> Failure ("invalid binary path: " ^ name))
+  |> Result.map
+    ~fn:(fun binary_path ->
+      External_binary {
+        binary_path;
+        binary_name = Path.basename binary_path;
+      })
 
 let parse_target = fun ?package_filter name ->
-  if Riot_deps.Git_dependency.looks_like_remote_spec name then
+  if looks_like_binary_path name then
     match package_filter with
-    | Some _ -> Error (Failure "--package cannot be used with remote source targets")
-    | None -> (
-        match split_remote_binary name with
-        | Error _ as err -> err
-        | Ok (source_spec, binary_name) ->
-            Ok (Remote_source {
-              source_spec;
-              binary_name = Option.unwrap_or
-                ~default:(default_remote_binary_name source_spec)
-                binary_name;
-            })
-      )
+    | Some _ -> Error (Failure "--package cannot be used with binary paths")
+    | None -> parse_external_binary_target name
   else
     parse_local_target ?package_filter name
 
@@ -345,6 +335,12 @@ let trace_error_to_json = fun (err: Trace_runtime.trace_error) ->
           ("kind", Data.Json.String "run_error");
           ("reason", Data.Json.String (Run_runtime.run_error_message run_error));
         ]
+    | Trace_runtime.BinaryPathInvalid { path; reason } ->
+        [
+          ("kind", Data.Json.String "binary_path_invalid");
+          ("path", Data.Json.String (Path.to_string path));
+          ("reason", Data.Json.String reason);
+        ]
     | Trace_runtime.ProfilerUnavailable { profiler; reason } ->
         [
           ("kind", Data.Json.String "profiler_unavailable");
@@ -389,6 +385,14 @@ let write_trace_event = fun ~mode (event: Trace_runtime.trace_event) ->
             ^ Riot_model.Package_name.to_string package
             ^ ":"
             ^ binary
+            ^ " with "
+            ^ profiler
+            ^ " -> "
+            ^ Path.to_string output)
+      | Trace_runtime.TracingExternalBinary { path; profiler; output; _ } ->
+          out
+            ("    \027[1;32mTracing\027[0m "
+            ^ Path.to_string path
             ^ " with "
             ^ profiler
             ^ " -> "
@@ -959,7 +963,6 @@ let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
         parse_package_name package_name
         |> Result.map ~fn:Option.some
   in
-  let update = ArgParser.get_flag matches "update" in
   let profile = profile_of_matches matches in
   let output_mode =
     if list_mode && json_mode then
@@ -1033,28 +1036,25 @@ let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
     | Ok target ->
         let result =
           match target with
-          | Remote_source { source_spec; binary_name } ->
-              (
-                match trace_request_of_matches ~binary_name ~operational_config matches with
-                | Error (Failure message) -> Error (`Cli message)
-                | Error err -> Error (`Cli (Exception.to_string err))
-                | Ok trace ->
-                    let* () =
-                      Trace_runtime.preflight trace
-                      |> Result.map_err ~fn:(fun err -> `Trace err)
-                    in
-                    Trace_runtime.run_source
-                      ~on_event
-                      {
-                        source_spec;
-                        binary_name;
-                        profile;
-                        trace;
-                        update;
-                        args = extra;
-                      }
+          | External_binary { binary_path; binary_name } -> (
+              match trace_request_of_matches ~binary_name ~operational_config matches with
+              | Error (Failure message) -> Error (`Cli message)
+              | Error err -> Error (`Cli (Exception.to_string err))
+              | Ok trace ->
+                  let* () =
+                    Trace_runtime.preflight trace
                     |> Result.map_err ~fn:(fun err -> `Trace err)
-              )
+                  in
+                  Trace_runtime.run_binary
+                    ~on_event
+                    {
+                      binary_path;
+                      binary_name;
+                      trace;
+                      args = extra;
+                    }
+                  |> Result.map_err ~fn:(fun err -> `Trace err)
+            )
           | Local { package_name; binary_name } -> (
               match trace_request_of_matches ~binary_name ~operational_config matches with
               | Error (Failure message) -> Error (`Cli message)

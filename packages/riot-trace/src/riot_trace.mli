@@ -16,7 +16,6 @@ type profiler = Profiler.t =
   | Auto
   | Perf
   | Xctrace
-
 type perf_options = Trace_run.perf_options = {
   sample_rate_hz: int option;
   call_graph: string option;
@@ -35,7 +34,6 @@ type output_policy = Trace_run.output_policy =
   | Fail_if_exists
   | Overwrite
   | Append
-
 type trace_request = Trace_run.trace_request = {
   output: Path.t;
   output_policy: output_policy;
@@ -50,12 +48,10 @@ type run_request = Trace_run.run_request = {
   trace: trace_request;
   args: string list;
 }
-type source_run_request = Trace_run.source_run_request = {
-  source_spec: string;
+type binary_run_request = Trace_run.binary_run_request = {
+  binary_path: Path.t;
   binary_name: string;
-  profile: string;
   trace: trace_request;
-  update: bool;
   args: string list;
 }
 type trace_event = Trace_run.event =
@@ -66,21 +62,23 @@ type trace_event = Trace_run.event =
       profiler: string;
       output: Path.t;
     }
+  | TracingExternalBinary of {
+      path: Path.t;
+      binary: string;
+      profiler: string;
+      output: Path.t;
+    }
 type trace_error = Trace_run.error =
   | Run of Riot_run.run_error
-  | ProfilerUnavailable of {
-      profiler: string;
+  | BinaryPathInvalid of {
+      path: Path.t;
       reason: string;
     }
-  | UnsupportedProfilerOption of {
-      profiler: string;
-      option: string;
-      reason: string;
-    }
+  | ProfilerUnavailable of { profiler: string; reason: string }
+  | UnsupportedProfilerOption of { profiler: string; option: string; reason: string }
   | OutputAlreadyExists of Path.t
   | ProcessExited of int
   | SystemError of string
-
 type call_cost = Profile.call_cost = {
   name: string;
   samples: int;
@@ -133,8 +131,7 @@ val preflight: trace_request -> (unit, trace_error) result
 
 val run: ?on_event:(trace_event -> unit) -> run_request -> (unit, trace_error) result
 
-val run_source:
-  ?on_event:(trace_event -> unit) -> source_run_request -> (unit, trace_error) result
+val run_binary: ?on_event:(trace_event -> unit) -> binary_run_request -> (unit, trace_error) result
 
 val summarize: Path.t -> (summary, summary_error) result
 

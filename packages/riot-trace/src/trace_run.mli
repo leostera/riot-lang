@@ -35,12 +35,10 @@ type run_request = {
   args: string list;
 }
 
-type source_run_request = {
-  source_spec: string;
+type binary_run_request = {
+  binary_path: Path.t;
   binary_name: string;
-  profile: string;
   trace: trace_request;
-  update: bool;
   args: string list;
 }
 
@@ -52,9 +50,19 @@ type event =
       profiler: string;
       output: Path.t;
     }
+  | TracingExternalBinary of {
+      path: Path.t;
+      binary: string;
+      profiler: string;
+      output: Path.t;
+    }
 
 type error =
   | Run of Riot_run.run_error
+  | BinaryPathInvalid of {
+      path: Path.t;
+      reason: string;
+    }
   | ProfilerUnavailable of {
       profiler: string;
       reason: string;
@@ -78,4 +86,4 @@ val preflight: trace_request -> (unit, error) result
 
 val run: ?on_event:(event -> unit) -> run_request -> (unit, error) result
 
-val run_source: ?on_event:(event -> unit) -> source_run_request -> (unit, error) result
+val run_binary: ?on_event:(event -> unit) -> binary_run_request -> (unit, error) result

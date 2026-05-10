@@ -1,8 +1,9 @@
 # riot-trace AGENTS
 
-`riot-trace` owns profiler execution and trace artifact inspection/conversion. Binary
-selection and builds stay in `riot-run`; CLI parsing and rendering stay in
-`riot-cli`.
+`riot-trace` owns profiler execution and trace artifact inspection/conversion.
+Manifest binary selection and builds stay in `riot-run`; direct executable path
+validation and profiler launch stay in `riot-trace`; CLI parsing and rendering
+stay in `riot-cli`.
 
 ## Rules
 

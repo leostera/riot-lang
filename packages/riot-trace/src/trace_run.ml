@@ -36,12 +36,10 @@ type run_request = {
   args: string list;
 }
 
-type source_run_request = {
-  source_spec: string;
+type binary_run_request = {
+  binary_path: Path.t;
   binary_name: string;
-  profile: string;
   trace: trace_request;
-  update: bool;
   args: string list;
 }
 
@@ -53,9 +51,19 @@ type event =
       profiler: string;
       output: Path.t;
     }
+  | TracingExternalBinary of {
+      path: Path.t;
+      binary: string;
+      profiler: string;
+      output: Path.t;
+    }
 
 type error =
   | Run of Riot_run.run_error
+  | BinaryPathInvalid of {
+      path: Path.t;
+      reason: string;
+    }
   | ProfilerUnavailable of {
       profiler: string;
       reason: string;
@@ -85,6 +93,8 @@ let unavailable_error = fun (unavailable: Profiler.unavailable) ->
 let error_message = fun __tmp1 ->
   match __tmp1 with
   | Run err -> Riot_run.run_error_message err
+  | BinaryPathInvalid { path; reason } ->
+      "cannot trace binary path '" ^ Path.to_string path ^ "': " ^ reason
   | ProfilerUnavailable { profiler; reason } ->
       "profiler '" ^ profiler ^ "' is unavailable: " ^ reason
   | UnsupportedProfilerOption { profiler; option; reason } ->
@@ -103,6 +113,14 @@ let event_to_json = fun __tmp1 ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "TracingBinary");
         ("package", Data.Json.String (Riot_model.Package_name.to_string package));
+        ("binary", Data.Json.String binary);
+        ("profiler", Data.Json.String profiler);
+        ("output", Data.Json.String (Path.to_string output));
+      ])
+  | TracingExternalBinary { path; binary; profiler; output } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "TracingExternalBinary");
+        ("path", Data.Json.String (Path.to_string path));
         ("binary", Data.Json.String binary);
         ("profiler", Data.Json.String profiler);
         ("output", Data.Json.String (Path.to_string output));
@@ -317,6 +335,24 @@ let profiler_command = fun ~(binary_path:Path.t) ~(args:string list) (trace:trac
   | Profiler.Auto ->
       Error (ProfilerUnavailable { profiler = "auto"; reason = "unresolved profiler" })
 
+let ensure_external_binary_path = fun path ->
+  match Fs.metadata path with
+  | Error err ->
+      Error (BinaryPathInvalid {
+        path;
+        reason = "failed to read metadata: " ^ IO.error_message err;
+      })
+  | Ok metadata when Fs.Metadata.is_dir metadata ->
+      Error (BinaryPathInvalid { path; reason = "path is a directory" })
+  | Ok metadata when not (Fs.Metadata.is_file metadata) ->
+      Error (BinaryPathInvalid { path; reason = "path is not a regular file" })
+  | Ok metadata ->
+      let mode = Fs.Metadata.mode metadata in
+      if mode land 0o111 != 0 then
+        Ok ()
+      else
+        Error (BinaryPathInvalid { path; reason = "file is not executable" })
+
 let run_built_binary = fun ~on_event ~(trace:trace_request) (built:Riot_run.built_binary) ->
   let* (profiler, cmd) = profiler_command ~binary_path:built.path ~args:built.args trace in
   on_event
@@ -325,6 +361,23 @@ let run_built_binary = fun ~on_event ~(trace:trace_request) (built:Riot_run.buil
       binary = built.binary_name;
       profiler;
       output = trace.output;
+    });
+  match Command.status cmd with
+  | Ok 0 -> Ok ()
+  | Ok code -> Error (ProcessExited code)
+  | Error (Command.SystemError msg) -> Error (SystemError msg)
+
+let run_external_binary = fun ~on_event (request:binary_run_request) ->
+  let* () = ensure_external_binary_path request.binary_path in
+  let* (profiler, cmd) =
+    profiler_command ~binary_path:request.binary_path ~args:request.args request.trace
+  in
+  on_event
+    (TracingExternalBinary {
+      path = request.binary_path;
+      binary = request.binary_name;
+      profiler;
+      output = request.trace.output;
     });
   match Command.status cmd with
   | Ok 0 -> Ok ()
@@ -351,17 +404,5 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
   in
   run_built_binary ~on_event ~trace:request.trace built
 
-let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
-  let* built =
-    Riot_run.build_source_binary
-      ~on_event:(bridge_run_event ~on_event)
-      {
-        source_spec = request.source_spec;
-        binary_name = request.binary_name;
-        profile = request.profile;
-        update = request.update;
-        args = request.args;
-      }
-    |> Result.map_err ~fn:(fun err -> Run err)
-  in
-  run_built_binary ~on_event ~trace:request.trace built
+let run_binary = fun ?(on_event = no_event) request ->
+  run_external_binary ~on_event request

@@ -166,13 +166,17 @@ let test_span_start_and_finish =
         match event with
         | Telemetry.SpanEvent event -> events := event :: !events
         | _ -> ());
-    let parent = Telemetry.Span.start "parent" in
-    let child =
-      Telemetry.Span.start
-        ~span:parent
-        ~attributes:[ ("component", Data.Json.String "std-test") ]
-        "child"
+    let component_key: string Telemetry.Span.Attributes.key = Telemetry.Span.Attributes.key () in
+    let attempt_key: int Telemetry.Span.Attributes.key = Telemetry.Span.Attributes.key () in
+    let child_attributes =
+      Telemetry.Span.Attributes.of_list
+        [
+          Telemetry.Span.Attributes.Binding (component_key, "std-test");
+          Telemetry.Span.Attributes.Binding (attempt_key, 1);
+        ]
     in
+    let parent = Telemetry.Span.start "parent" in
+    let child = Telemetry.Span.start ~span:parent ~attributes:child_attributes "child" in
     Telemetry.Span.finish child;
     Telemetry.Span.finish parent;
     Telemetry.stop ();
@@ -220,9 +224,21 @@ let test_span_start_and_finish =
           | _ -> Error "child span did not carry parent id"
         in
         let* () =
-          match Telemetry.Span.attributes started_child with
-          | [ ("component", Data.Json.String "std-test") ] -> Ok ()
-          | _ -> Error "child span did not carry attributes"
+          match Telemetry.Span.get_attribute started_child ~key:component_key with
+          | Some "std-test" -> Ok ()
+          | _ -> Error "child span did not carry typed string attribute"
+        in
+        let* () =
+          match Telemetry.Span.get_attribute started_child ~key:attempt_key with
+          | Some 1 -> Ok ()
+          | _ -> Error "child span did not carry typed int attribute"
+        in
+        let* () =
+          let attributes = Telemetry.Span.attributes started_child in
+          if Telemetry.Span.Attributes.length attributes = 2 then
+            Ok ()
+          else
+            Error "child span attributes snapshot had unexpected length"
         in
         let* () =
           if String.equal (Telemetry.Span.name started_child) "child" then

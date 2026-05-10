@@ -130,18 +130,23 @@ call_graph = "dwarf"
 The public command surface is:
 
 ```text
-riot trace [OPTIONS] [name] [-- args...]
+riot trace [OPTIONS] [name-or-path] [-- args...]
 riot trace summary [OPTIONS] <path>
 riot trace call-tree [OPTIONS] <path>
 ```
 
-`riot trace` should follow `riot run` selection semantics for local binaries:
+`riot trace` supports local manifest binaries and already-built executable paths.
+Manifest binaries follow `riot run` selection semantics:
 
 - optional binary name
 - optional `-p` or `--package`
 - `--list` and `--json` for binary discovery
 - `--release` for the release build profile
 - trailing child arguments after `--`
+
+When the target contains a path separator, starts with `./` or `../`, or is an
+absolute path, the command treats it as an executable path and runs the profiler
+directly over that file without requiring a Riot workspace.
 
 The command intentionally does not live as `riot run --trace`. Tracing changes
 the outer execution wrapper, output policy, and failure modes. A separate verb

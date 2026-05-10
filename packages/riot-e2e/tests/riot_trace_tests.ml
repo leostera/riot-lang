@@ -36,6 +36,13 @@ let unsupported_profiler_for_host = fun () ->
   | "linux" -> Some ("xctrace", "xctrace recording is only supported on Darwin hosts")
   | _ -> None
 
+let supported_profiler_for_host = fun () ->
+  let host = System.host_triple in
+  match host.System.TargetTriple.os with
+  | "darwin" -> Some "xctrace"
+  | "linux" -> Some "perf"
+  | _ -> None
+
 let test_trace_preserves_workspace_preflight_behaviors =
   Test.case
     ~size:Test.Large
@@ -137,6 +144,47 @@ let test_trace_preserves_workspace_preflight_behaviors =
               let* () = assert_contains output_path "existing trace placeholder" in
               assert_no_build_or_trace_output ~cmd:"riot trace unsupported profiler" unsupported))
 
+let test_trace_validates_binary_path_without_workspace =
+  Test.case
+    ~size:Test.Large
+    "riot trace validates binary paths outside a workspace"
+    (fun ctx ->
+      match supported_profiler_for_host () with
+      | None -> Ok ()
+      | Some profiler ->
+          with_tempdir_result
+            ~prefix:"riot_e2e_trace_path_"
+            (fun root ->
+              let binary_path = Path.(root / Path.v "generated-binary") in
+              let output_path = Path.(root / Path.v "generated.trace") in
+              let* () = write_text binary_path "#!/bin/sh\nexit 0\n" in
+              let* output =
+                run_riot
+                  ctx
+                  ~cwd:root
+                  [
+                    "trace";
+                    "--profiler";
+                    profiler;
+                    "--output";
+                    Path.to_string output_path;
+                    Path.to_string binary_path;
+                  ]
+              in
+              let* output =
+                expect_failure_contains
+                  ~cmd:"riot trace path"
+                  ~needle:"cannot trace binary path"
+                  output
+              in
+              let* () =
+                assert_output_contains ~cmd:"riot trace path" output "file is not executable"
+              in
+              let* () =
+                assert_output_not_contains ~cmd:"riot trace path" output "Not in a riot workspace"
+              in
+              assert_no_build_or_trace_output ~cmd:"riot trace path" output))
+
 let test_trace_summary_and_call_tree_report_missing_artifacts =
   Test.case
     ~size:Test.Large
@@ -193,6 +241,7 @@ let test_trace_summary_and_call_tree_report_missing_artifacts =
 
 let tests = [
   test_trace_preserves_workspace_preflight_behaviors;
+  test_trace_validates_binary_path_without_workspace;
   test_trace_summary_and_call_tree_report_missing_artifacts;
 ]
 

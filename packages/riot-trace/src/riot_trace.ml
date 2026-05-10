@@ -52,12 +52,10 @@ type run_request = Trace_run.run_request = {
   args: string list;
 }
 
-type source_run_request = Trace_run.source_run_request = {
-  source_spec: string;
+type binary_run_request = Trace_run.binary_run_request = {
+  binary_path: Path.t;
   binary_name: string;
-  profile: string;
   trace: trace_request;
-  update: bool;
   args: string list;
 }
 
@@ -69,18 +67,21 @@ type trace_event = Trace_run.event =
       profiler: string;
       output: Path.t;
     }
+  | TracingExternalBinary of {
+      path: Path.t;
+      binary: string;
+      profiler: string;
+      output: Path.t;
+    }
 
 type trace_error = Trace_run.error =
   | Run of Riot_run.run_error
-  | ProfilerUnavailable of {
-      profiler: string;
+  | BinaryPathInvalid of {
+      path: Path.t;
       reason: string;
     }
-  | UnsupportedProfilerOption of {
-      profiler: string;
-      option: string;
-      reason: string;
-    }
+  | ProfilerUnavailable of { profiler: string; reason: string }
+  | UnsupportedProfilerOption of { profiler: string; option: string; reason: string }
   | OutputAlreadyExists of Path.t
   | ProcessExited of int
   | SystemError of string
@@ -141,7 +142,7 @@ let preflight = Trace_run.preflight
 
 let run = Trace_run.run
 
-let run_source = Trace_run.run_source
+let run_binary = Trace_run.run_binary
 
 let summarize = Trace_summary.summarize
 

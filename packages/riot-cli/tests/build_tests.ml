@@ -1009,6 +1009,15 @@ let test_trace_accepts_output_option = fun _ctx ->
       Test.assert_equal ~expected:(Some "out.trace") ~actual:(ArgParser.get_one matches "output");
       Ok ()
 
+let test_trace_accepts_path_target = fun _ctx ->
+  match parse_trace [ "trace"; "./_build/debug/demo" ] with
+  | Error err -> Error ("expected trace args to parse with executable path: " ^ err)
+  | Ok matches ->
+      Test.assert_equal
+        ~expected:(Some "./_build/debug/demo")
+        ~actual:(ArgParser.get_one matches "name");
+      Ok ()
+
 let test_trace_accepts_profiler_option = fun _ctx ->
   match parse_trace [ "trace"; "--profiler"; "xctrace"; "riot" ] with
   | Error err -> Error ("expected trace args to parse with --profiler: " ^ err)
@@ -1589,6 +1598,7 @@ let tests =
     case "run: parse rejects removed --trace flag" test_run_rejects_removed_trace_flag;
     case "trace: parse missing name" test_trace_accepts_missing_name;
     case "trace: parse --output option" test_trace_accepts_output_option;
+    case "trace: parse path target" test_trace_accepts_path_target;
     case "trace: parse --profiler option" test_trace_accepts_profiler_option;
     case "trace: parse output policy options" test_trace_accepts_output_policy_options;
     case "trace: parse sampling options" test_trace_accepts_sampling_options;
