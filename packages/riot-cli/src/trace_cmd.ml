@@ -382,10 +382,11 @@ let trace_error_to_json = fun (err: Trace_runtime.trace_error) ->
 
 let write_trace_event = fun ~mode (event: Trace_runtime.trace_event) ->
   match mode with
-  | Build.Json ->
+  | Ui.Json ->
       Trace_runtime.trace_event_to_json event
       |> Option.for_each ~fn:write_json_event
-  | Build.Human -> (
+  | Ui.Line
+  | Ui.TUI -> (
       match event with
       | Trace_runtime.Build _ -> ()
       | Trace_runtime.TracingBinary {
@@ -415,8 +416,9 @@ let write_trace_event = fun ~mode (event: Trace_runtime.trace_event) ->
 
 let write_trace_error = fun ~mode (err: Trace_runtime.trace_error) ->
   match mode with
-  | Build.Json -> write_json_event (trace_error_to_json err)
-  | Build.Human -> (
+  | Ui.Json -> write_json_event (trace_error_to_json err)
+  | Ui.Line
+  | Ui.TUI -> (
       match err with
       | Trace_runtime.ProcessExited _ -> ()
       | Trace_runtime.Run (Run_runtime.ProcessExited _) -> ()
@@ -425,14 +427,15 @@ let write_trace_error = fun ~mode (err: Trace_runtime.trace_error) ->
 
 let write_workspace_error = fun ~mode message ->
   match mode with
-  | Build.Json ->
+  | Ui.Json ->
       write_json_event
         (Data.Json.Object [
           ("type", Data.Json.String "trace.error");
           ("kind", Data.Json.String "workspace_error");
           ("message", Data.Json.String message);
         ])
-  | Build.Human -> out ("error: " ^ message)
+  | Ui.Line
+  | Ui.TUI -> out ("error: " ^ message)
 
 let binary_source_label = fun
   ~(workspace:Riot_model.Workspace.t) (binary: Run_runtime.runnable_binary) ->
@@ -963,7 +966,6 @@ let load_operational_config = fun workspace ->
       |> Result.map_err ~fn:Riot_model.Workspace_operational_config.message
 
 let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
-  let seen_registry_updates = Collections.HashSet.create () in
   let extra = trailing_args matches in
   let _verbose = ArgParser.get_count matches "verbose" in
   let list_mode = ArgParser.get_flag matches "list" in
@@ -978,17 +980,23 @@ let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let profile = profile_of_matches matches in
   let output_mode =
     if list_mode && json_mode then
-      Build.Json
+      Ui.Json
     else if json_requested_for_child extra then
-      Build.Json
+      Ui.Json
     else
-      Build.Human
+      Ui.Line
+  in
+  let build_ui_mode =
+    match output_mode with
+    | Ui.Json -> Ui.Json
+    | Ui.Line
+    | Ui.TUI -> Ui.default_human_mode ()
   in
   if json_mode && not list_mode then
     let message =
       "riot trace --json is only supported with --list; use `riot trace -- --json` to forward JSON to the child binary"
     in
-    write_workspace_error ~mode:Build.Json message;
+    write_workspace_error ~mode:Ui.Json message;
     Error (Failure message)
   else if list_mode then
     match workspace with
@@ -1009,8 +1017,9 @@ let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
           let binaries = Run_runtime.list_binaries workspace ?package_filter:pkg_filter () in
           (
             match output_mode with
-            | Build.Json -> write_binary_list_json ~workspace binaries
-            | Build.Human -> write_binary_list ~workspace binaries
+            | Ui.Json -> write_binary_list_json ~workspace binaries
+            | Ui.Line
+            | Ui.TUI -> write_binary_list ~workspace binaries
           );
         Ok ()
   else
@@ -1019,10 +1028,10 @@ let run_trace_with_workspace_info = fun ~workspace ~workspace_error matches ->
         write_workspace_error ~mode:output_mode message;
         Error (Failure message)
     | Ok operational_config ->
+        let ui = Ui.make ~mode:build_ui_mode ~profile () in
         let on_event (event: Trace_runtime.trace_event) =
           match event with
-          | Trace_runtime.Build build_event ->
-              Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
+          | Trace_runtime.Build build_event -> Ui.send ui build_event
           | _ -> write_trace_event ~mode:output_mode event
         in
         let resolved_target =

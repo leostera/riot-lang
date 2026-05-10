@@ -18,7 +18,7 @@ type loaded_workspace = {
   workspace: Riot_model.Workspace.t;
   package_name: Riot_model.Package_name.t;
 }
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 type add_request = {
   selection: manifest_selection;
   scope: dependency_scope;

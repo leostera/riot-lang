@@ -3,10 +3,9 @@ open Std.Collections
 open Std.Time
 open Riot_model
 open Riot_planner
-open Telemetry_events
 
-type package_error = Telemetry_events.package_error =
-  | PlanningFailed of Riot_planner.Planning_error.t
+type package_error =
+  | PlanningFailed of Planning_error.t
   | ExecutionFailed of { message: string }
   | ActionExecutionFailed of { message: string }
   | ActionOutputsNotCreated of {
@@ -18,12 +17,9 @@ type package_error = Telemetry_events.package_error =
 
 let convert_action_error = fun __tmp1 ->
   match __tmp1 with
-  | Action_scheduler.ExecutionFailed { message } ->
-      Telemetry_events.ActionExecutionFailed { message }
-  | Action_scheduler.OutputsNotCreated { missing } ->
-      Telemetry_events.ActionOutputsNotCreated { missing }
-  | Action_scheduler.DependenciesFailed { failed } ->
-      Telemetry_events.ActionDependenciesFailed { failed }
+  | Action_scheduler.ExecutionFailed { message } -> ActionExecutionFailed { message }
+  | Action_scheduler.OutputsNotCreated { missing } -> ActionOutputsNotCreated { missing }
+  | Action_scheduler.DependenciesFailed { failed } -> ActionDependenciesFailed { failed }
 
 let package_error_to_string = fun __tmp1 ->
   match __tmp1 with
@@ -34,6 +30,22 @@ let package_error_to_string = fun __tmp1 ->
       "Outputs not created: " ^ String.concat ", " (List.map missing ~fn:Path.to_string)
   | ActionDependenciesFailed { failed } ->
       "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
+
+let model_package_error = fun __tmp1 ->
+  match __tmp1 with
+  | PlanningFailed err ->
+      Riot_model.Event.BuildPlanningFailed { message = Planning_error.to_string err }
+  | ExecutionFailed { message } -> Riot_model.Event.BuildExecutionFailed { message }
+  | ActionExecutionFailed { message } -> Riot_model.Event.BuildActionExecutionFailed { message }
+  | ActionOutputsNotCreated { missing } -> Riot_model.Event.BuildActionOutputsNotCreated { missing }
+  | ActionDependenciesFailed { failed } ->
+      Riot_model.Event.BuildActionDependenciesFailed {
+        failed = List.map failed ~fn:Graph.SimpleGraph.Node_id.to_string;
+      }
+
+let emit_build_event = fun ~on_event ~session_id event ->
+  on_event
+    (Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info (Riot_model.Event.Build event))
 
 type build_status =
   | Cached of Riot_store.Artifact.t
@@ -201,9 +213,8 @@ let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
 let plan_detailed_from_result = fun
   ~start
   ~session_id
+  ~on_event
   ~build_target
-  ~package_name
-  ~package_name_string
   ~emit_visible_progress
   ~unit_key
   ~(package:Package.t)
@@ -212,16 +223,14 @@ let plan_detailed_from_result = fun
   | Error err ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       (* Don't mark as Failed in graph - planning errors don't have a hash *)
-      Telemetry.emit
-        (
-          BuildFailed {
-            session_id;
-            package;
-            target = Package package_name;
-            build_target;
-            error = PlanningFailed err;
-          }
-        );
+      emit_build_event
+        ~on_event
+        ~session_id
+        (Riot_model.Event.BuildPackageFailed {
+          package;
+          build_target;
+          error = model_package_error (PlanningFailed err);
+        });
       Final_result {
         result =
           {
@@ -236,26 +245,26 @@ let plan_detailed_from_result = fun
   | Ok (Riot_planner.Package_planner.Cached { unit_key = planned_key; artifact; depset; _ }) ->
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
-        Telemetry.emit
+        emit_build_event
+          ~on_event
+          ~session_id
           (
-            PackageOcamlcWarnings {
-              session_id;
+            Riot_model.Event.BuildPackageWarnings {
               package;
-              target = Package package_name;
               build_target;
-              source = `Cached;
+              source = Riot_model.Event.CachedWarning;
               messages = artifact.ocamlc_warnings;
             }
           );
       if emit_visible_progress then
-        Telemetry.emit
+        emit_build_event
+          ~on_event
+          ~session_id
           (
-            BuildCompleted {
-              session_id;
+            Riot_model.Event.BuildPackageFinished {
               package;
-              target = Package package_name;
               build_target;
-              status = `Cached;
+              status = Riot_model.Event.Cached;
               duration;
             }
           );
@@ -302,13 +311,12 @@ let plan_build_unit = fun
   ~(unit:Build_unit.t)
   ~depset
   ~build_ctx
+  ~on_event
   ~emit_visible_progress ->
   let package = Build_unit.package unit in
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
   let build_target = Build_ctx.target_triplet build_ctx in
-  let package_name = package.Package.name in
-  let package_name_string = Package_name.to_string package_name in
   Riot_planner.Package_planner.plan_build_unit_with_cache
     ~on_source_analyzed
     ~input_hash_cache
@@ -321,9 +329,8 @@ let plan_build_unit = fun
   |> plan_detailed_from_result
     ~start
     ~session_id
+    ~on_event
     ~build_target
-    ~package_name
-    ~package_name_string
     ~emit_visible_progress
     ~unit_key:(Build_unit.key unit)
     ~package
@@ -340,23 +347,21 @@ let execution_outputs = fun (execution_plan: execution_plan) ->
 
 let failed_execution_result = fun
   ~session_id
+  ~on_event
   ~build_target
   ~(execution_plan:execution_plan)
   ~(error:package_error)
   ~graph_error ->
   let package = execution_plan.package in
-  let package_name = package.Package.name in
   let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
-  Telemetry.emit
-    (
-      BuildFailed {
-        session_id;
-        package;
-        target = Package package_name;
-        build_target;
-        error;
-      }
-    );
+  emit_build_event
+    ~on_event
+    ~session_id
+    (Riot_model.Event.BuildPackageFailed {
+      package;
+      build_target;
+      error = model_package_error error;
+    });
   {
     result =
       {
@@ -369,23 +374,13 @@ let failed_execution_result = fun
       };
   }
 
-let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
+let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ~on_event ->
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triplet = Build_ctx.target_triplet build_ctx in
   let package = execution_plan.package in
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
-  if execution_plan.emit_visible_progress then
-    Telemetry.emit
-      (
-        PackageStarted {
-          session_id;
-          package;
-          target = Package package_name;
-          started_at = Instant.now ();
-        }
-      );
   Log.info ("Package " ^ package_name_string ^ ": executing action graph");
   Log.info
     ("Package "
@@ -397,12 +392,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
     execution_plan.emit_visible_progress
     && List.length (Action_graph.nodes execution_plan.action_graph) > 0
   then
-    Telemetry.emit
+    emit_build_event
+      ~on_event
+      ~session_id
       (
-        CompilationStarted {
-          session_id;
+        Riot_model.Event.BuildPackageCompilationStarted {
           package;
-          target = Package package_name;
           build_target = target_triplet;
           action_count = List.length (Action_graph.nodes execution_plan.action_graph);
           started_at = Instant.now ();
@@ -423,12 +418,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
     in
     if execution_plan.emit_visible_progress then (
       let created_at = Instant.now () in
-      Telemetry.emit
+      emit_build_event
+        ~on_event
+        ~session_id
         (
-          SandboxCreated {
-            session_id;
+          Riot_model.Event.BuildSandboxCreated {
             package;
-            target = Package package_name;
             build_target = target_triplet;
             path = Sandbox.get_dir sandbox;
             created_at;
@@ -446,6 +441,7 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         Sandbox.cleanup sandbox;
         Error (failed_execution_result
           ~session_id
+          ~on_event
           ~build_target:target_triplet
           ~execution_plan
           ~error
@@ -454,12 +450,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         let materialized_at = Instant.now () in
         let input_count = materialize_stats.copy_count in
         if execution_plan.emit_visible_progress then
-          Telemetry.emit
+          emit_build_event
+            ~on_event
+            ~session_id
             (
-              SandboxInputsCopied {
-                session_id;
+              Riot_model.Event.BuildSandboxInputsCopied {
                 package;
-                target = Package package_name;
                 build_target = target_triplet;
                 input_count;
                 copied_at = materialized_at;
@@ -467,12 +463,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
               }
             );
         if execution_plan.emit_visible_progress then (
-          Telemetry.emit
+          emit_build_event
+            ~on_event
+            ~session_id
             (
-              SandboxDependenciesCopied {
-                session_id;
+              Riot_model.Event.BuildSandboxDependenciesCopied {
                 package;
-                target = Package package_name;
                 build_target = target_triplet;
                 dependency_count = List.length execution_plan.depset;
                 object_count = materialize_stats.link_count;
@@ -483,12 +479,12 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         );
         if execution_plan.emit_visible_progress then (
           let prepared_at = Instant.now () in
-          Telemetry.emit
+          emit_build_event
+            ~on_event
+            ~session_id
             (
-              PackageExecutionPrepared {
-                session_id;
+              Riot_model.Event.BuildPackageExecutionPrepared {
                 package;
-                target = Package package_name;
                 build_target = target_triplet;
                 input_count;
                 dependency_count = List.length execution_plan.depset;
@@ -505,24 +501,26 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
       let error = ExecutionFailed { message = error_msg } in
       Error (failed_execution_result
         ~session_id
+        ~on_event
         ~build_target:target_triplet
         ~execution_plan
         ~error
         ~graph_error:error_msg)
 
 let execute_action = fun
-  ~store ~(prepared_execution:prepared_execution) ~build_ctx ~completed action ->
+  ~store ~(prepared_execution:prepared_execution) ~build_ctx ~on_event ~completed action ->
   Action_executor.execute_node
     ~completed
     ~store
     ~session_id:build_ctx.Build_ctx.session_id
     ~build_target:(Build_ctx.target_triplet build_ctx)
+    ~on_event
     prepared_execution.toolchain
     (Sandbox.get_dir prepared_execution.sandbox)
     action
 
 let finalize_execution = fun
-  ~workspace ~store ~(prepared_execution:prepared_execution) ~completed ~build_ctx ->
+  ~workspace ~store ~(prepared_execution:prepared_execution) ~completed ~build_ctx ~on_event ->
   let execution_plan = prepared_execution.execution_plan in
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
@@ -554,6 +552,7 @@ let finalize_execution = fun
         cleanup_and_return
           (failed_execution_result
             ~session_id
+            ~on_event
             ~build_target:target_triplet
             ~execution_plan
             ~error
@@ -579,6 +578,7 @@ let finalize_execution = fun
               cleanup_and_return
                 (failed_execution_result
                   ~session_id
+                  ~on_event
                   ~build_target:target_triplet
                   ~execution_plan
                   ~error
@@ -603,20 +603,21 @@ let finalize_execution = fun
                   cleanup_and_return
                     (failed_execution_result
                       ~session_id
+                      ~on_event
                       ~build_target:target_triplet
                       ~execution_plan
                       ~error
                       ~graph_error:error_msg)
               | Ok artifact ->
                   if execution_plan.emit_visible_progress && List.length ocamlc_warnings > 0 then
-                    Telemetry.emit
+                    emit_build_event
+                      ~on_event
+                      ~session_id
                       (
-                        PackageOcamlcWarnings {
-                          session_id;
+                        Riot_model.Event.BuildPackageWarnings {
                           package;
-                          target = Package package_name;
                           build_target = target_triplet;
-                          source = `Fresh;
+                          source = Riot_model.Event.FreshWarning;
                           messages = ocamlc_warnings;
                         }
                       );
@@ -625,14 +626,14 @@ let finalize_execution = fun
                     Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ())
                   in
                   if execution_plan.emit_visible_progress then
-                    Telemetry.emit
+                    emit_build_event
+                      ~on_event
+                      ~session_id
                       (
-                        BuildCompleted {
-                          session_id;
+                        Riot_model.Event.BuildPackageFinished {
                           package;
-                          target = Package package_name;
                           build_target = target_triplet;
-                          status = `Fresh;
+                          status = Riot_model.Event.Fresh;
                           duration;
                         }
                       );
@@ -656,14 +657,15 @@ let finalize_execution = fun
       cleanup_and_return
         (failed_execution_result
           ~session_id
+          ~on_event
           ~build_target:target_triplet
           ~execution_plan
           ~error
           ~graph_error:error_msg)
 
-let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
+let execute_detailed = fun ~on_event ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
   let target_triplet = Build_ctx.target_triplet build_ctx in
-  match prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with
+  match prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx ~on_event with
   | Error detailed_result -> detailed_result
   | Ok prepared_execution ->
       let action_result =
@@ -673,6 +675,7 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
           ~store
           ~session_id:build_ctx.Build_ctx.session_id
           ~build_target:target_triplet
+          ~on_event
           prepared_execution.toolchain
           ~concurrency:build_ctx.Build_ctx.parallelism
       in
@@ -690,4 +693,4 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_c
               ~value:completed_action.result
           in
           ());
-      finalize_execution ~workspace ~store ~prepared_execution ~completed ~build_ctx
+      finalize_execution ~workspace ~store ~prepared_execution ~completed ~build_ctx ~on_event

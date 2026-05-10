@@ -5,7 +5,7 @@ module Error = Error
 type mode =
   | Refresh
   | Unlock
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 type context = {
   emit: event_sink;
   mode: mode;

@@ -32,7 +32,7 @@ type loaded_workspace = {
   package_name: Package_name.t;
 }
 
-type event_sink = Event.kind -> unit
+type event_sink = Event.deps_event -> unit
 
 type add_request = {
   selection: manifest_selection;
@@ -451,7 +451,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
   in
   if emit_materialization_events then
     emit
-      (Riot_model.Event.SourceDependencyMaterializationStarted {
+      (Riot_model.Event.DepsSourceMaterializationStarted {
         source_locator = spec.source_locator;
         ref_ = spec.ref_;
       });
@@ -514,7 +514,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
   if emit_materialization_events then
     emit
       (
-        Riot_model.Event.SourceDependencyMaterializationFinished {
+        Riot_model.Event.DepsSourceMaterializationFinished {
           source_locator = spec.source_locator;
           ref_ = spec.ref_;
           package = package.name;
@@ -833,7 +833,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
   let registry_name = Pkgs_ml.Registry.name registry in
   let started = Time.Instant.now () in
   emit
-    (Riot_model.Event.PackageMetadataFetchStarted {
+    (Riot_model.Event.DepsPackageMetadataFetchStarted {
       registry = registry_name;
       package = package_name;
     });
@@ -842,7 +842,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
     |> Result.map_err
       ~fn:(fun error ->
         emit
-          (Riot_model.Event.PackageMetadataFetchFailed {
+          (Riot_model.Event.DepsPackageMetadataFetchFailed {
             registry = registry_name;
             package = package_name;
             error = Riot_model.Pm_error.PackageMetadataReadFailed {
@@ -860,7 +860,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
   match document with
   | None ->
       emit
-        (Riot_model.Event.PackageMetadataFetchFailed {
+        (Riot_model.Event.DepsPackageMetadataFetchFailed {
           registry = registry_name;
           package = package_name;
           error = Riot_model.Pm_error.PackageNotFound {
@@ -887,7 +887,7 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
       in
       emit
         (
-          Riot_model.Event.PackageMetadataFetchFinished {
+          Riot_model.Event.DepsPackageMetadataFetchFinished {
             registry = registry_name;
             package = document_name;
             version = Some document.latest;
@@ -933,7 +933,7 @@ let load_source_workspace_from_spec = fun
   in
   if emit_materialization_events then
     emit
-      (Riot_model.Event.SourceDependencyMaterializationStarted {
+      (Riot_model.Event.DepsSourceMaterializationStarted {
         source_locator = parsed.source_locator;
         ref_ = parsed.ref_;
       });
@@ -982,7 +982,7 @@ let load_source_workspace_from_spec = fun
   if emit_materialization_events then
     emit
       (
-        Riot_model.Event.SourceDependencyMaterializationFinished {
+        Riot_model.Event.DepsSourceMaterializationFinished {
           source_locator = parsed.source_locator;
           ref_ = parsed.ref_;
           package = loaded.package_name;
@@ -995,7 +995,7 @@ let load_source_workspace_from_spec = fun
       );
   emit
     (
-      Riot_model.Event.PackageResolvedForBuild {
+      Riot_model.Event.DepsPackageResolvedForBuild {
         package = loaded.package_name;
         version =
           (
@@ -1147,7 +1147,7 @@ let load_registry_workspace_from_spec = fun
   in
   emit
     (
-      Riot_model.Event.PackageResolvedForBuild {
+      Riot_model.Event.DepsPackageResolvedForBuild {
         package = loaded.package_name;
         version = Some release.version;
         path = Path.to_string package_root;
@@ -1291,7 +1291,7 @@ let emit_updated_packages = fun
           |> Option.map ~fn:(fun (_, version) -> version) with
           | Some from_version when not (String.equal from_version to_version) ->
               emit
-                (Riot_model.Event.PackageVersionUpdated {
+                (Riot_model.Event.DepsPackageVersionUpdated {
                   package = pkg.id.name;
                   from_version;
                   to_version;
@@ -1326,7 +1326,7 @@ let update_manifest_many = fun
         ~fn:(fun dependency ->
           emit
             (
-              Riot_model.Event.DependencyManifestUpdated {
+              Riot_model.Event.DepsManifestUpdated {
                 path = Path.to_string target.path;
                 section = Manifest_edit.section_name (scope_to_section scope);
                 operation;
@@ -1487,7 +1487,7 @@ let update = fun
       if Int.equal updates 0 then
         emit
           (
-            Riot_model.Event.PackageVersionsUnchanged {
+            Riot_model.Event.DepsPackageVersionsUnchanged {
               packages =
                 if List.is_empty request.packages then
                   List.length lockfile.packages

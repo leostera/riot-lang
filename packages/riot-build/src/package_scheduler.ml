@@ -509,6 +509,7 @@ let plan_package_work = fun ~state ~node_ids ~graph lane unit_key ->
             ~unit:build_unit
             ~depset
             ~build_ctx:(Build_lane.build_ctx lane)
+            ~on_event:(Build_lane.on_event lane)
             ~emit_visible_progress with
           | Package_builder.Final_result detailed_result ->
               emit_plan_finished ();
@@ -536,7 +537,8 @@ let plan_package_work = fun ~state ~node_ids ~graph lane unit_key ->
                   ~toolchain:(Build_lane.toolchain lane)
                   ~store:(Build_lane.store lane)
                   ~execution_plan
-                  ~build_ctx:(Build_lane.build_ctx lane) with
+                  ~build_ctx:(Build_lane.build_ctx lane)
+                  ~on_event:(Build_lane.on_event lane) with
                 | Error detailed_result ->
                     finalize_result graph ~source:Planned lane unit_key detailed_result;
                     complete_finalize_from_plan graph node_ids lane unit_key detailed_result;
@@ -572,6 +574,7 @@ let execute_action_work = fun ~package_states ~graph lane unit_key action ->
           ~store:(Build_lane.store lane)
           ~prepared_execution:execution_state.prepared_execution
           ~build_ctx:(Build_lane.build_ctx lane)
+          ~on_event:(Build_lane.on_event lane)
           ~completed:execution_state.completed_actions
           action
       in
@@ -614,6 +617,7 @@ let finalize_package_work = fun ~package_states ~graph lane unit_key ->
           ~prepared_execution:execution_state.prepared_execution
           ~completed:execution_state.completed_actions
           ~build_ctx:(Build_lane.build_ctx lane)
+          ~on_event:(Build_lane.on_event lane)
       in
       finalize_result graph ~source:Executed lane unit_key detailed_result;
       Ok (Finalized_package (FinalizedFromExecution { lane; detailed_result }))

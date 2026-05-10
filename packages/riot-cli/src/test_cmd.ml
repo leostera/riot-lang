@@ -749,16 +749,16 @@ let write_test_error_json = fun ~command_started_at err ->
   print "\n"
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
-  let seen_registry_updates = Collections.HashSet.create () in
   let trailing = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let output_mode =
     if ArgParser.get_flag matches "json" then
-      Build.Json
+      Ui.Json
     else
-      Build.Human
+      Ui.Line
   in
+  let build_ui_mode = Ui.mode_of_json_flag (output_mode = Ui.Json) in
   let small_only = ArgParser.get_flag matches "small" in
   let large_only = ArgParser.get_flag matches "large" in
   let flaky_only = ArgParser.get_flag matches "flaky" in
@@ -767,8 +767,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let list_mode = ArgParser.get_flag matches "list" in
   let profile = profile_of_matches matches in
   let command_started_at = Time.Instant.now () in
-  if output_mode = Build.Json then
-    Build.reset_json_clock ~started_at:command_started_at;
+  if output_mode = Ui.Json then
+    Ui.reset_json_clock ~started_at:command_started_at;
   if small_only && large_only then
     Error (Failure "Cannot combine --small and --large")
   else
@@ -777,7 +777,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         let message = Riot_model.Workspace_operational_config.message err in
         (
           match output_mode with
-          | Build.Json ->
+          | Ui.Json ->
               print
                 (Data.Json.to_string
                   (Data.Json.Object [
@@ -786,7 +786,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                     ("completed_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
                   ]));
               print "\n"
-          | Build.Human -> println ("error: " ^ message)
+          | Ui.Line
+          | Ui.TUI -> println ("error: " ^ message)
         );
         Error (Failure message)
     | Ok operational_config ->
@@ -812,6 +813,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             trailing
         in
         if list_mode then
+          let ui = Ui.make ~mode:build_ui_mode ~profile () in
           let listed_suite_count = ref 0 in
           let listed_test_count = ref 0 in
           let failed_suite_count = ref 0 in
@@ -831,24 +833,19 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           in
           let on_event (event: Test_runtime.test_event) =
             match event with
-            | Test_runtime.Build build_event ->
-                Build.write_build_event
-                  ~mode:output_mode
-                  ~profile
-                  ~seen_registry_updates
-                  build_event
+            | Test_runtime.Build build_event -> Ui.send ui build_event
             | _ -> ()
           in
           match Test_runtime.list_tests
             ~on_event
             ?on_suite:(
-              if output_mode = Build.Json then
+              if output_mode = Ui.Json then
                 Some on_suite
               else
                 None
             )
             ?on_suite_error:(
-              if output_mode = Build.Json then
+              if output_mode = Ui.Json then
                 Some on_suite_error
               else
                 None
@@ -870,13 +867,14 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
               in
               (
                 match output_mode with
-                | Build.Json ->
+                | Ui.Json ->
                     write_test_list_completed_json
                       ~command_started_at
                       ~suite_count:!listed_suite_count
                       ~test_count:!listed_test_count
                       ~failed_suite_count:!failed_suite_count
-                | Build.Human ->
+                | Ui.Line
+                | Ui.TUI ->
                     if List.is_empty suites then
                       print_empty_list_hint
                         request.package_filter
@@ -889,25 +887,23 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           | Error err ->
               (
                 match output_mode with
-                | Build.Json -> write_test_error_json ~command_started_at err
-                | Build.Human -> write_test_error err
+                | Ui.Json -> write_test_error_json ~command_started_at err
+                | Ui.Line
+                | Ui.TUI -> write_test_error err
               );
               Error (Failure (Test_runtime.test_error_message err))
         else
+          let ui = Ui.make ~mode:build_ui_mode ~profile () in
           let timing = empty_timing_summary () in
           let state = empty_human_render_state () in
           let on_event (event: Test_runtime.test_event) =
             match event with
-            | Test_runtime.Build build_event ->
-                Build.write_build_event
-                  ~mode:output_mode
-                  ~profile
-                  ~seen_registry_updates
-                  build_event
+            | Test_runtime.Build build_event -> Ui.send ui build_event
             | _ -> (
                 match output_mode with
-                | Build.Json -> write_test_event_json ~command_started_at event
-                | Build.Human ->
+                | Ui.Json -> write_test_event_json ~command_started_at event
+                | Ui.Line
+                | Ui.TUI ->
                     write_test_event
                       ~suite_labels
                       ~timing
@@ -931,7 +927,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           | Error err ->
               (
                 match output_mode with
-                | Build.Json -> write_test_error_json ~command_started_at err
-                | Build.Human -> write_test_error err
+                | Ui.Json -> write_test_error_json ~command_started_at err
+                | Ui.Line
+                | Ui.TUI -> write_test_error err
               );
               Error (Failure (Test_runtime.test_error_message err))

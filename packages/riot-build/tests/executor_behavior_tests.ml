@@ -67,6 +67,7 @@ let test_execute_empty_graph_returns_no_results = fun _ctx ->
           ~store:(Riot_store.Store.create ~workspace)
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           ~concurrency:2
       in
@@ -114,6 +115,7 @@ let test_execute_runs_independent_actions = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           ~concurrency:2
       in
@@ -198,6 +200,7 @@ let test_execute_skips_dependent_action_after_failure = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           ~concurrency:2
       in

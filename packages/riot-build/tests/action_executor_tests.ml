@@ -99,6 +99,7 @@ let test_execute_node_writes_file = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           sandbox
           node
@@ -150,6 +151,7 @@ let test_execute_node_copies_file = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           sandbox
           node
@@ -198,6 +200,7 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           sandbox
           node
@@ -263,6 +266,7 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           sandbox
           node

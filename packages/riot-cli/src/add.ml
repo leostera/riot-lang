@@ -119,9 +119,12 @@ let scope_of_matches = fun matches ->
   | (false, true) -> Ok Riot_deps.Dev
   | (false, false) -> Ok Riot_deps.Runtime
 
-let write_event = fun ~mode ~pm_session_id ~seen_registry_updates kind ->
-  Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind
-  |> Build.write_pm_event ~mode ~seen_registry_updates
+let write_event = fun ~ui ~pm_session_id kind ->
+  Riot_model.Event.create
+    ~session_id:pm_session_id
+    ~level:Riot_model.Event.Info
+    (Riot_model.Event.Deps kind)
+  |> fun event -> Ui.send ui event
 
 let empty_workspace_manifest_source = {|[workspace]
 members = []
@@ -162,12 +165,8 @@ let load_workspace = fun ~root ->
     Error (WorkspaceLoadFailed (WorkspaceLoadHadErrors load_errors))
 
 let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd matches ->
-  let mode =
-    if ArgParser.get_flag matches "json" then
-      Build.Json
-    else
-      Build.Human
-  in
+  let mode = Ui.mode_of_json_flag (ArgParser.get_flag matches "json") in
+  let ui = Ui.make ~mode () in
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let dependencies =
     match ArgParser.get_many matches "dependency" with
@@ -178,10 +177,9 @@ let run_request = fun ?(default_selection = Riot_deps.Current) ~workspace ~cwd m
   | (Ok dependencies, Ok selection, Ok scope) ->
       let request: Riot_deps.add_request = Riot_deps.{ selection; scope; dependencies } in
       let pm_session_id = Riot_model.Session_id.make () in
-      let seen_registry_updates = HashSet.create () in
       (
         match Riot_deps.add
-          ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
+          ~on_event:(write_event ~ui ~pm_session_id)
           ~workspace_manager
           ~workspace
           ~cwd

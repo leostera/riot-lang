@@ -9,7 +9,7 @@ type mode =
   | Refresh
   | Unlock
 
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 
 let no_emit: event_sink = fun _ -> ()
 
@@ -444,12 +444,12 @@ and resolve_registry_dependency = fun
               )
           | None -> (
               ctx.emit
-                (Riot_model.Event.RegistryIndexUpdating {
+                (Riot_model.Event.DepsRegistryIndexUpdating {
                   registry = Pkgs_ml.Registry.name ctx.registry;
                 });
               let metadata_started = Time.Instant.now () in
               ctx.emit
-                (Riot_model.Event.PackageMetadataFetchStarted {
+                (Riot_model.Event.DepsPackageMetadataFetchStarted {
                   registry = registry_name;
                   package = package_name;
                 });
@@ -464,7 +464,7 @@ and resolve_registry_dependency = fun
                   }
                   in
                   ctx.emit
-                    (Riot_model.Event.PackageMetadataFetchFailed {
+                    (Riot_model.Event.DepsPackageMetadataFetchFailed {
                       registry = registry_name;
                       package = package_name;
                       error;
@@ -478,7 +478,7 @@ and resolve_registry_dependency = fun
                   }
                   in
                   ctx.emit
-                    (Riot_model.Event.PackageMetadataFetchFailed {
+                    (Riot_model.Event.DepsPackageMetadataFetchFailed {
                       registry = registry_name;
                       package = package_name;
                       error;
@@ -488,7 +488,7 @@ and resolve_registry_dependency = fun
                   let* document_name = event_package_name document.name in
                   ctx.emit
                     (
-                      Riot_model.Event.PackageMetadataFetchFinished {
+                      Riot_model.Event.DepsPackageMetadataFetchFinished {
                         registry = registry_name;
                         package = document_name;
                         version = Some document.latest;
@@ -1065,12 +1065,12 @@ let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~versi
       in
       let started = Time.Instant.now () in
       catalog.ctx.emit
-        (Riot_model.Event.PackageManifestFetchStarted { package = package_name_t; version });
+        (Riot_model.Event.DepsPackageManifestFetchStarted { package = package_name_t; version });
       let manifest_path = Path.(package_root / Path.v "riot.toml") in
       match load_manifest_toml ~manifest_path with
       | Error err ->
           catalog.ctx.emit
-            (Riot_model.Event.PackageManifestFetchFailed {
+            (Riot_model.Event.DepsPackageManifestFetchFailed {
               package = package_name_t;
               version = Some version;
               error = err;
@@ -1087,7 +1087,7 @@ let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~versi
           | Ok manifest ->
               let _ = HashMap.insert catalog.registry_manifests ~key:cache_key ~value:manifest in
               catalog.ctx.emit
-                (Riot_model.Event.PackageManifestFetchFinished {
+                (Riot_model.Event.DepsPackageManifestFetchFinished {
                   package = package_name_t;
                   version;
                   duration_ms = duration_ms_since started;
@@ -1104,7 +1104,7 @@ let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~versi
               }
               in
               catalog.ctx.emit
-                (Riot_model.Event.PackageManifestFetchFailed {
+                (Riot_model.Event.DepsPackageManifestFetchFailed {
                   package = package_name_t;
                   version = Some version;
                   error;
@@ -1451,10 +1451,10 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
   | None ->
       let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
       let* requested_package_name = event_package_name package_name in
-      catalog.ctx.emit (Riot_model.Event.RegistryIndexUpdating { registry = registry_name });
+      catalog.ctx.emit (Riot_model.Event.DepsRegistryIndexUpdating { registry = registry_name });
       let started = Time.Instant.now () in
       catalog.ctx.emit
-        (Riot_model.Event.PackageMetadataFetchStarted {
+        (Riot_model.Event.DepsPackageMetadataFetchStarted {
           registry = registry_name;
           package = requested_package_name;
         });
@@ -1468,7 +1468,7 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
             }
             in
             catalog.ctx.emit
-              (Riot_model.Event.PackageMetadataFetchFailed {
+              (Riot_model.Event.DepsPackageMetadataFetchFailed {
                 registry = registry_name;
                 package = requested_package_name;
                 error;
@@ -1484,7 +1484,7 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
                   let* document_name = event_package_name document.name in
                   catalog.ctx.emit
                     (
-                      Riot_model.Event.PackageMetadataFetchFinished {
+                      Riot_model.Event.DepsPackageMetadataFetchFinished {
                         registry = registry_name;
                         package = document_name;
                         version = Some document.latest;
@@ -1500,7 +1500,7 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
                   }
                   in
                   catalog.ctx.emit
-                    (Riot_model.Event.PackageMetadataFetchFailed {
+                    (Riot_model.Event.DepsPackageMetadataFetchFailed {
                       registry = registry_name;
                       package = requested_package_name;
                       error;
@@ -1965,7 +1965,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
   let catalog = create_catalog ~ctx in
   let* () = register_workspace_packages catalog workspace_packages in
   emit
-    (Riot_model.Event.DependencyUniverseBuilding {
+    (Riot_model.Event.DepsUniverseBuilding {
       packages = List.map
         workspace_packages
         ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name);
@@ -2054,7 +2054,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
       let (runtime_packages, build_packages, dev_packages) = dependency_counts packages in
       emit
         (
-          Riot_model.Event.DependencyUniverseBuilt {
+          Riot_model.Event.DepsUniverseBuilt {
             runtime_packages;
             build_packages;
             dev_packages;

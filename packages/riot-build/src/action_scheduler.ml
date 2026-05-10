@@ -166,7 +166,8 @@ let summarize_completed = fun ~action_graph ~completed_results ->
     ocamlc_warnings = ocamlc_warnings_of_completed_actions completed_actions;
   }
 
-let run = fun ~action_graph ~sandbox ~store ~session_id ~build_target toolchain ~concurrency ->
+let run = fun
+  ~action_graph ~sandbox ~store ~session_id ~build_target ~on_event toolchain ~concurrency ->
   let completed_results: (Graph.SimpleGraph.Node_id.t, execution_result) ConcurrentHashMap.t =
     ConcurrentHashMap.create ()
   in
@@ -187,6 +188,7 @@ let run = fun ~action_graph ~sandbox ~store ~session_id ~build_target toolchain 
             ~store
             ~session_id
             ~build_target
+            ~on_event
             toolchain
             sandbox_dir
             payload

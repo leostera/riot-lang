@@ -48,8 +48,6 @@ module Internal: sig
   module Diagnostic_rewrite = Diagnostic_rewrite
 
   module Sandbox = Sandbox
-
-  module Telemetry_events = Telemetry_events
 end
 
 type error = Build_core.error =

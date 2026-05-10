@@ -373,10 +373,7 @@ let run_external_binary = fun ~on_event (request: binary_run_request) ->
   | Ok code -> Error (ProcessExited code)
   | Error (Command.SystemError msg) -> Error (SystemError msg)
 
-let bridge_run_event = fun ~on_event __tmp1 ->
-  match __tmp1 with
-  | Riot_run.Build event -> on_event (Build event)
-  | Riot_run.RunningBinary _ -> ()
+let bridge_run_event = fun ~on_event event -> on_event (Build event)
 
 let run = fun ?(on_event = no_event) (request: run_request) ->
   let* built =

@@ -262,35 +262,35 @@ let test_build_accepts_multiple_packages = fun _ctx ->
 
 let test_display_package_name_keeps_workspace_package_bare = fun _ctx ->
   let package = make_package "demo" in
-  Test.assert_equal ~expected:"demo" ~actual:(Riot_cli.Build.display_package_name package);
+  Test.assert_equal ~expected:"demo" ~actual:(Riot_cli.Ui.display_package_name package);
   Ok ()
 
 let test_display_package_name_shows_debug_profile = fun _ctx ->
   let package = make_package "demo" in
   Test.assert_equal
     ~expected:"demo (debug)"
-    ~actual:(Riot_cli.Build.display_package_name ~profile:"debug" package);
+    ~actual:(Riot_cli.Ui.display_package_name ~profile:"debug" package);
   Ok ()
 
 let test_display_package_name_shows_non_debug_profile = fun _ctx ->
   let package = make_package "demo" in
   Test.assert_equal
     ~expected:"demo (fuzz)"
-    ~actual:(Riot_cli.Build.display_package_name ~profile:"fuzz" package);
+    ~actual:(Riot_cli.Ui.display_package_name ~profile:"fuzz" package);
   Ok ()
 
 let test_display_package_name_shows_external_package_version = fun _ctx ->
   let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
   Test.assert_equal
     ~expected:"serde-json (1.2.3)"
-    ~actual:(Riot_cli.Build.display_package_name package);
+    ~actual:(Riot_cli.Ui.display_package_name package);
   Ok ()
 
 let test_display_package_name_shows_external_package_version_and_target = fun _ctx ->
   let package = make_package ~workspace_member:false ~version:(version "1.2.3") "serde-json" in
   Test.assert_equal
     ~expected:"serde-json (1.2.3, aarch64-apple-darwin)"
-    ~actual:(Riot_cli.Build.display_package_name
+    ~actual:(Riot_cli.Ui.display_package_name
       ~build_target:(target "aarch64-apple-darwin")
       ~show_target:true
       package);
@@ -307,7 +307,7 @@ let test_display_package_name_shows_workspace_test_and_target = fun _ctx ->
   in
   Test.assert_equal
     ~expected:"serde-json (fuzz, test, aarch64-apple-darwin)"
-    ~actual:(Riot_cli.Build.display_package_name
+    ~actual:(Riot_cli.Ui.display_package_name
       ~profile:"fuzz"
       ~build_target:(target "aarch64-apple-darwin")
       ~show_target:true
@@ -327,12 +327,12 @@ let test_display_package_name_shows_workspace_bench = fun _ctx ->
   in
   Test.assert_equal
     ~expected:"serde-json (bench)"
-    ~actual:(Riot_cli.Build.display_package_name package);
+    ~actual:(Riot_cli.Ui.display_package_name package);
   Ok ()
 
 let test_planning_error_lines_describe_internal_module_violation = fun _ctx ->
   let lines =
-    Riot_cli.Build.planning_error_lines
+    Riot_cli.Ui.planning_error_lines
       (
         Riot_planner.Planning_error.TargetDependsOnInternalLibraryModule {
           target_name = "main";
@@ -361,7 +361,7 @@ let test_planning_error_lines_describe_internal_module_violation = fun _ctx ->
 
 let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
   let lines =
-    Riot_cli.Build.planning_error_lines
+    Riot_cli.Ui.planning_error_lines
       (
         Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
           package_name = "demo";
@@ -389,7 +389,7 @@ let test_planning_error_lines_describe_undeclared_package_module = fun _ctx ->
 
 let test_planning_error_lines_include_module_name_suggestions = fun _ctx ->
   let lines =
-    Riot_cli.Build.planning_error_lines
+    Riot_cli.Ui.planning_error_lines
       (
         Riot_planner.Planning_error.SourceDependsOnUndeclaredPackageModule {
           package_name = "typ";
@@ -418,7 +418,7 @@ let test_planning_error_lines_include_module_name_suggestions = fun _ctx ->
 
 let test_planning_error_lines_describe_invalid_executable_main = fun _ctx ->
   let lines =
-    Riot_cli.Build.planning_error_lines
+    Riot_cli.Ui.planning_error_lines
       (
         Riot_planner.Planning_error.InvalidExecutableMain {
           package_name = "riot-fix";
@@ -453,7 +453,7 @@ let test_planning_error_lines_describe_invalid_executable_main = fun _ctx ->
 
 let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx ->
   let lines =
-    Riot_cli.Build.build_unit_planning_error_lines
+    Riot_cli.Ui.build_unit_planning_error_lines
       (Riot_build.Internal.Build_unit_plan.MissingPackages {
         missing = [
           Riot_planner.Build_unit_graph.Dependency {
@@ -479,7 +479,7 @@ let test_workspace_planning_error_lines_describe_missing_dependencies = fun _ctx
 
 let test_planning_error_lines_indent_multiline_reasons = fun _ctx ->
   let lines =
-    Riot_cli.Build.planning_error_lines
+    Riot_cli.Ui.planning_error_lines
       (Riot_planner.Planning_error.DependencyAnalysisFailed {
         reason = "failed to parse tests/solver_tests.ml\n\nhint: add )";
       })
@@ -519,7 +519,7 @@ let test_build_failure_detail_lines_render_planning_errors = fun _ctx ->
       "reason: failed to parse src/demo.ml";
       "  hint: add end";
     ]
-    ~actual:(Riot_cli.Build.build_failure_detail_lines failure);
+    ~actual:(Riot_cli.Ui.build_failure_detail_lines failure);
   Ok ()
 
 let test_build_usage_shows_repeated_package_flag = fun _ctx ->
@@ -689,7 +689,7 @@ let test_build_command_accepts_workspace = fun _ctx ->
       Riot_cli.Build.build_command
         ~workspace
         ~show_finished_summary:false
-        ~mode:Riot_cli.Build.Human
+        ~mode:Riot_cli.Ui.Line
         (Some (package_name "demo"))
         None) with
   | Ok (Ok ()) -> Ok ()
@@ -1403,10 +1403,10 @@ let test_run_reports_package_without_binaries_with_creation_hint = fun _ctx ->
 let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
       (
-        Riot_model.Event.PackageResolvedForBuild {
+        Riot_model.Event.DepsPackageResolvedForBuild {
           package = package_name "create-riot-app";
           version = None;
           path = "/workspace";
@@ -1420,9 +1420,9 @@ let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
 let test_pm_event_hides_materialization_started = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
-      (Riot_model.Event.PackageMaterializationStarted {
+      (Riot_model.Event.DepsPackageMaterializationStarted {
         package = package_name "std";
         version = "0.1.0";
         path = "/cache/std";
@@ -1434,9 +1434,9 @@ let test_pm_event_hides_materialization_started = fun _ctx ->
 let test_pm_event_hides_manifest_fetch_chatter = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
-      (Riot_model.Event.PackageManifestFetchStarted {
+      (Riot_model.Event.DepsPackageManifestFetchStarted {
         package = package_name "std";
         version = "0.1.0";
       })
@@ -1447,10 +1447,10 @@ let test_pm_event_hides_manifest_fetch_chatter = fun _ctx ->
 let test_pm_event_hides_download_skipped = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
       (
-        Riot_model.Event.PackageDownloadSkipped {
+        Riot_model.Event.DepsPackageDownloadSkipped {
           package = package_name "std";
           version = "0.1.0";
           path = "/cache/std";
@@ -1464,9 +1464,9 @@ let test_pm_event_hides_download_skipped = fun _ctx ->
 let test_pm_event_shows_installing_with_padding = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
-      (Riot_model.Event.SourceDependencyMaterializationStarted {
+      (Riot_model.Event.DepsSourceMaterializationStarted {
         source_locator = "leostera/hello-world";
         ref_ = None;
       })
@@ -1477,9 +1477,12 @@ let test_pm_event_shows_installing_with_padding = fun _ctx ->
 let test_pm_event_shows_locked_package = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
-      (Riot_model.Event.PackageVersionLocked { package = package_name "std"; version = "0.2.0" })
+      (Riot_model.Event.DepsPackageVersionLocked {
+        package = package_name "std";
+        version = "0.2.0";
+      })
   in
   Test.assert_equal ~expected:(Some "ok locked std (0.2.0)") ~actual;
   Ok ()
@@ -1487,9 +1490,9 @@ let test_pm_event_shows_locked_package = fun _ctx ->
 let test_pm_event_shows_up_to_date = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual =
-    Riot_cli.Build.format_pm_event
+    Riot_cli.Ui.Line.format_deps_event
       ~seen_registry_updates
-      (Riot_model.Event.PackageVersionsUnchanged { packages = 3 })
+      (Riot_model.Event.DepsPackageVersionsUnchanged { packages = 3 })
   in
   Test.assert_equal ~expected:(Some "ok dependencies are already up to date") ~actual;
   Ok ()

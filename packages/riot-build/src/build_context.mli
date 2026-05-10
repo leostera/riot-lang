@@ -20,6 +20,4 @@ val emit_building_target: t -> target:Riot_model.Target.t -> host:bool -> unit
 
 val emit_cache_gc: t -> Riot_store.Cache_gc.event -> unit
 
-val forward_telemetry_event: t -> Std.Telemetry.event -> unit
-
 val flush_events: t -> unit

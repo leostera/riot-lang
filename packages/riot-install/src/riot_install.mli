@@ -20,23 +20,6 @@ type request =
       spec: external_spec;
       binary_name: string;
     }
-type install_event =
-  | Build of Riot_build.Event.t
-  | InstallingBinary of {
-      package: Riot_model.Package_name.t;
-      binary: string;
-    }
-  | PromotedBinary of {
-      binary: string;
-      destination: Path.t;
-      mode: destination;
-    }
-  | InstalledBinary of {
-      binary: string;
-      duration_ms: int;
-      destination: Path.t;
-      mode: destination;
-    }
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of {
@@ -62,6 +45,4 @@ type install_error =
 
 val install_error_message: install_error -> string
 
-val install_event_to_json: install_event -> Data.Json.t option
-
-val install: ?on_event:(install_event -> unit) -> request -> (unit, install_error) result
+val install: ?on_event:(Riot_model.Event.t -> unit) -> request -> (unit, install_error) result

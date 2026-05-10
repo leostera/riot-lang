@@ -26,6 +26,7 @@ type 'stage t = {
   build_ctx: Riot_model.Build_ctx.t;
   toolchain: Riot_toolchain.t;
   store: Riot_store.Store.t;
+  on_event: Event.t -> unit;
   lock: Build_lock.t;
   build_unit_plan: Build_unit_plan.t;
   build_unit_graph: Riot_planner.Build_unit_graph.t;
@@ -224,6 +225,7 @@ let prepare:
         build_ctx;
         toolchain = lane_toolchain;
         store;
+        on_event = context.on_event;
         lock;
         build_unit_plan = plan.build_unit_plan;
         build_unit_graph = Riot_planner.Build_unit_graph.clone
@@ -255,6 +257,8 @@ let build_ctx = fun (lane: 'a t) -> lane.build_ctx
 let toolchain = fun (lane: 'a t) -> lane.toolchain
 
 let store = fun (lane: 'a t) -> lane.store
+
+let on_event = fun (lane: 'a t) -> lane.on_event
 
 let build_unit_plan = fun (lane: 'a t) -> lane.build_unit_plan
 

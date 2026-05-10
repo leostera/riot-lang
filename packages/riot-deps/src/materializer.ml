@@ -3,7 +3,7 @@ open Std.Result.Syntax
 
 module Error = Error
 
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 
 let no_emit: event_sink = fun _ -> ()
 
@@ -83,7 +83,7 @@ let ensure_registry_package = fun
       | Already_materialized ->
           emit
             (
-              Riot_model.Event.PackageDownloadSkipped {
+              Riot_model.Event.DepsPackageDownloadSkipped {
                 package = event_package;
                 version;
                 path;
@@ -95,19 +95,23 @@ let ensure_registry_package = fun
       | Needs_download ->
           let started = Time.Instant.now () in
           emit
-            (Riot_model.Event.PackageMaterializationStarted {
+            (Riot_model.Event.DepsPackageMaterializationStarted {
               package = event_package;
               version;
               path;
             });
           if state = Needs_download then
             emit
-              (Riot_model.Event.PackageDownloadStarted { package = event_package; version; path });
+              (Riot_model.Event.DepsPackageDownloadStarted {
+                package = event_package;
+                version;
+                path;
+              });
           match Pkgs_ml.Registry.materialize_release registry ~package_name:package ~version with
           | Ok Pkgs_ml.Registry.Materialized ->
               emit
                 (
-                  Riot_model.Event.PackageMaterializationFinished {
+                  Riot_model.Event.DepsPackageMaterializationFinished {
                     package = event_package;
                     version;
                     path;
@@ -118,7 +122,7 @@ let ensure_registry_package = fun
           | Ok Pkgs_ml.Registry.Already_present ->
               emit
                 (
-                  Riot_model.Event.PackageDownloadSkipped {
+                  Riot_model.Event.DepsPackageDownloadSkipped {
                     package = event_package;
                     version;
                     path;
@@ -130,7 +134,7 @@ let ensure_registry_package = fun
               let error = Error.MaterializationFailed { error = err } in
               emit
                 (
-                  Riot_model.Event.PackageMaterializationFailed {
+                  Riot_model.Event.DepsPackageMaterializationFailed {
                     package = event_package;
                     version;
                     path;

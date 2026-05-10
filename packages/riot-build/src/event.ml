@@ -1,16 +1,8 @@
 open Std
 
-type t =
-  | Pm of Riot_model.Event.t
-  | BuildingTarget of {
-      target: Riot_model.Target.t;
-      host: bool;
-    }
-  | CacheGc of Riot_store.Cache_gc.event
-  | Telemetry of Std.Telemetry.event
-  | Phase of runtime_phase
+type t = Riot_model.Event.t
 
-and runtime_phase =
+type runtime_phase = Riot_model.Event.build_runtime_phase =
   | TargetsResolved of { target_count: int }
   | ToolchainsEnsured of { target_count: int }
   | ToolchainsValidated of { target_count: int }
@@ -118,228 +110,103 @@ and runtime_phase =
   | CacheGenerationRecorded of { lane_count: int; new_entry_count: int }
   | ReturningResults of { result_count: int; had_partial_failure: bool }
 
-let phase_name_of_runtime_phase = fun __tmp1 ->
-  match __tmp1 with
-  | TargetsResolved _ -> "targets_resolved"
-  | ToolchainsEnsured _ -> "toolchains_ensured"
-  | ToolchainsValidated _ -> "toolchains_validated"
-  | RuntimeStarting -> "runtime_starting"
-  | RuntimeStarted -> "runtime_started"
-  | BuildLockWaiting _ -> "build_lock_waiting"
-  | BuildLanesPreparationStarted _ -> "build_lanes_preparation_started"
-  | BuildLanesPreparationFinished _ -> "build_lanes_preparation_finished"
-  | BuildUnitPlanCreated _ -> "build_unit_plan_created"
-  | BuildLanePreparationStarted _ -> "build_lane_preparation_started"
-  | BuildLaneLockAcquired _ -> "build_lane_lock_acquired"
-  | BuildLaneToolchainInitialized _ -> "build_lane_toolchain_initialized"
-  | BuildLaneStoreCreated _ -> "build_lane_store_created"
-  | BuildLanePreparationFinished _ -> "build_lane_preparation_finished"
-  | PackagePlanningStarted _ -> "package_planning_started"
-  | PackagePlanStarted _ -> "package_plan_started"
-  | PackagePlanSourceStarted _ -> "package_plan_source_started"
-  | PackagePlanFinished _ -> "package_plan_finished"
-  | PackagePlanningFinished _ -> "package_planning_finished"
-  | PackageActionGraphPlanned _ -> "package_action_graph_planned"
-  | PackageExecutionStarted _ -> "package_execution_started"
-  | PackageExecutionFinished _ -> "package_execution_finished"
-  | TargetBuildStarted _ -> "target_build_started"
-  | TargetBuildFinished _ -> "target_build_finished"
-  | CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
-  | CacheGenerationRecorded _ -> "cache_generation_recorded"
-  | ReturningResults _ -> "returning_results"
+let create = fun ~session_id ?(level = Riot_model.Event.Info) kind ->
+  Riot_model.Event.create
+    ~session_id
+    ~level
+    kind
 
-let runtime_phase_fields = fun __tmp1 ->
-  match __tmp1 with
-  | TargetsResolved { target_count }
-  | ToolchainsEnsured { target_count }
-  | ToolchainsValidated { target_count } -> [ ("target_count", Data.Json.Int target_count); ]
-  | PackagePlanningStarted { lane_count; package_count }
-  | PackageExecutionStarted { lane_count; package_count } ->
-      [ ("lane_count", Data.Json.Int lane_count); ("package_count", Data.Json.Int package_count); ]
-  | PackagePlanStarted {
-      package;
-      build_target;
-      source_count;
-      started_at = _;
-    } ->
-      [
-        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
-        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
-        ("source_count", Data.Json.Int source_count);
-      ]
-  | PackagePlanSourceStarted {
-      package;
-      build_target;
-      source;
-      source_index;
-      source_count;
-      started_at = _;
-    } ->
-      [
-        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
-        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
-        ("source", Data.Json.String (Path.to_string source));
-        ("source_index", Data.Json.Int source_index);
-        ("source_count", Data.Json.Int source_count);
-      ]
-  | PackagePlanFinished {
-      package;
-      build_target;
-      source_count;
-      completed_at = _;
-      duration;
-    } ->
-      [
-        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
-        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
-        ("source_count", Data.Json.Int source_count);
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | PackagePlanningFinished {
-      lane_count;
-      package_count;
-      deferred_count;
-      execution_required_count;
-      finalized_count;
-      cached_count;
-      skipped_count;
-      failed_count;
-      error_count;
-    } ->
-      [
-        ("lane_count", Data.Json.Int lane_count);
-        ("package_count", Data.Json.Int package_count);
-        ("deferred_count", Data.Json.Int deferred_count);
-        ("execution_required_count", Data.Json.Int execution_required_count);
-        ("finalized_count", Data.Json.Int finalized_count);
-        ("cached_count", Data.Json.Int cached_count);
-        ("skipped_count", Data.Json.Int skipped_count);
-        ("failed_count", Data.Json.Int failed_count);
-        ("error_count", Data.Json.Int error_count);
-      ]
-  | PackageActionGraphPlanned {
-      package;
-      build_target;
-      action_count;
-      planned_at = _;
-    } ->
-      [
-        ("package", Data.Json.String (Riot_model.Package_name.to_string package.name));
-        ("target", Data.Json.String (Riot_model.Target.to_string build_target));
-        ("action_count", Data.Json.Int action_count);
-      ]
-  | PackageExecutionFinished {
-      lane_count;
-      package_count;
-      finalized_count;
-      built_count;
-      failed_count;
-      error_count;
-    } ->
-      [
-        ("lane_count", Data.Json.Int lane_count);
-        ("package_count", Data.Json.Int package_count);
-        ("finalized_count", Data.Json.Int finalized_count);
-        ("built_count", Data.Json.Int built_count);
-        ("failed_count", Data.Json.Int failed_count);
-        ("error_count", Data.Json.Int error_count);
-      ]
-  | RuntimeStarting
-  | RuntimeStarted -> []
-  | BuildLockWaiting { lock_path } ->
-      [ ("lock_path", Data.Json.String (Path.to_string lock_path)); ]
-  | BuildLanesPreparationStarted { target_count; started_at = _ } ->
-      [ ("target_count", Data.Json.Int target_count); ]
-  | BuildLanesPreparationFinished { lane_count; completed_at = _; duration } ->
-      [
-        ("lane_count", Data.Json.Int lane_count);
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildUnitPlanCreated { unit_count; planned_at = _; duration } ->
-      [
-        ("unit_count", Data.Json.Int unit_count);
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildLanePreparationStarted { target; started_at = _ } ->
-      [ ("target", Data.Json.String (Riot_model.Target.to_string target)); ]
-  | BuildLaneLockAcquired { target; acquired_at = _; duration } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildLaneToolchainInitialized { target; initialized_at = _; duration } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildLaneStoreCreated { target; created_at = _; duration } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | BuildLanePreparationFinished { target; completed_at = _; duration } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
-      ]
-  | TargetBuildStarted { target; host } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("host", Data.Json.Bool host);
-      ]
-  | TargetBuildFinished { target; result_count; had_partial_failure } ->
-      [
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("result_count", Data.Json.Int result_count);
-        ("had_partial_failure", Data.Json.Bool had_partial_failure);
-      ]
-  | CacheGenerationRecordingStarted { lane_count; new_entry_count }
-  | CacheGenerationRecorded { lane_count; new_entry_count } ->
-      [
-        ("lane_count", Data.Json.Int lane_count);
-        ("new_entry_count", Data.Json.Int new_entry_count);
-      ]
-  | ReturningResults { result_count; had_partial_failure } ->
-      [
-        ("result_count", Data.Json.Int result_count);
-        ("had_partial_failure", Data.Json.Bool had_partial_failure);
-      ]
+let build = fun ~session_id ?level event -> create ~session_id ?level (Riot_model.Event.Build event)
 
-let to_json = fun __tmp1 ->
-  match __tmp1 with
-  | Pm event -> Some (Riot_model.Event.to_json event)
-  | BuildingTarget { target; host } ->
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "BuildingTarget");
-        ("target", Data.Json.String (Riot_model.Target.to_string target));
-        ("host", Data.Json.Bool host);
-      ])
-  | CacheGc _ -> None
-  | Telemetry event -> Telemetry_events.to_json event
-  | Phase phase ->
-      Some (Data.Json.Object ([
-        ("type", Data.Json.String "BuildPhase");
-        ("phase", Data.Json.String (phase_name_of_runtime_phase phase));
-      ]
-      @ runtime_phase_fields phase))
+let cache = fun ~session_id ?level event -> create ~session_id ?level (Riot_model.Event.Cache event)
 
-let timestamp = fun __tmp1 ->
+let phase = fun ~session_id phase -> build ~session_id (Riot_model.Event.BuildPhase phase)
+
+let cache_gc_trigger = fun __tmp1 ->
   match __tmp1 with
-  | Telemetry event -> Telemetry_events.event_timestamp event
-  | Phase (BuildLanesPreparationStarted { started_at; _ })
-  | Phase (BuildLanePreparationStarted { started_at; _ })
-  | Phase (PackagePlanStarted { started_at; _ })
-  | Phase (PackagePlanSourceStarted { started_at; _ }) -> Some ("started_at_us", started_at)
-  | Phase (BuildLanesPreparationFinished { completed_at; _ })
-  | Phase (BuildLanePreparationFinished { completed_at; _ })
-  | Phase (PackagePlanFinished { completed_at; _ }) -> Some ("completed_at_us", completed_at)
-  | Phase (BuildUnitPlanCreated { planned_at; _ }) -> Some ("planned_at_us", planned_at)
-  | Phase (BuildLaneLockAcquired { acquired_at; _ }) -> Some ("acquired_at_us", acquired_at)
-  | Phase (BuildLaneToolchainInitialized { initialized_at; _ }) ->
-      Some ("initialized_at_us", initialized_at)
-  | Phase (PackageActionGraphPlanned { planned_at; _ }) -> Some ("planned_at_us", planned_at)
-  | Phase (BuildLaneStoreCreated { created_at; _ }) -> Some ("created_at_us", created_at)
-  | Pm _
-  | BuildingTarget _
-  | CacheGc _
-  | Phase _ -> None
+  | Riot_store.Cache_gc.Manual -> Riot_model.Event.Manual
+  | Riot_store.Cache_gc.Post_build -> Riot_model.Event.Post_build
+
+let cache_gc_summary = fun (summary: Riot_store.Cache_gc.summary) ->
+  Riot_model.Event.{
+    ran_gc = summary.ran_gc;
+    kept_generations = summary.kept_generations;
+    deleted_generations = summary.deleted_generations;
+    deleted_entries = summary.deleted_entries;
+    size_before_bytes = summary.size_before_bytes;
+    size_after_bytes = summary.size_after_bytes;
+  }
+
+let cache_gc_event_kind = fun __tmp1 ->
+  let open Riot_model.Event in
+  match __tmp1 with
+  | Riot_store.Cache_gc.GcStarted { trigger } ->
+      CacheGcStarted { trigger = cache_gc_trigger trigger }
+  | Riot_store.Cache_gc.GcCacheScanStarted { trigger; build_root } ->
+      CacheGcCacheScanStarted { trigger = cache_gc_trigger trigger; build_root }
+  | Riot_store.Cache_gc.GcCacheEntryScanStarted { trigger; hash; path } ->
+      CacheGcCacheEntryScanStarted { trigger = cache_gc_trigger trigger; hash; path }
+  | Riot_store.Cache_gc.GcCacheEntryScanned {
+      trigger;
+      hash;
+      path;
+      size_bytes;
+    } ->
+      CacheGcCacheEntryScanned {
+        trigger = cache_gc_trigger trigger;
+        hash;
+        path;
+        size_bytes;
+      }
+  | Riot_store.Cache_gc.GcCacheScanCompleted { trigger; entry_count; total_size_bytes } ->
+      CacheGcCacheScanCompleted {
+        trigger = cache_gc_trigger trigger;
+        entry_count;
+        total_size_bytes;
+      }
+  | Riot_store.Cache_gc.GcPlanComputed {
+      trigger;
+      deleted_entries;
+      deleted_generations;
+      reclaimable_bytes;
+    } ->
+      CacheGcPlanComputed {
+        trigger = cache_gc_trigger trigger;
+        deleted_entries;
+        deleted_generations;
+        reclaimable_bytes;
+      }
+  | Riot_store.Cache_gc.GcCacheEntryDeleteStarted {
+      trigger;
+      hash;
+      path;
+      size_bytes;
+    } ->
+      CacheGcCacheEntryDeleteStarted {
+        trigger = cache_gc_trigger trigger;
+        hash;
+        path;
+        size_bytes;
+      }
+  | Riot_store.Cache_gc.GcGenerationDeleteStarted { trigger; path } ->
+      CacheGcGenerationDeleteStarted { trigger = cache_gc_trigger trigger; path }
+  | Riot_store.Cache_gc.GcSkipped { trigger; summary } ->
+      CacheGcSkipped { trigger = cache_gc_trigger trigger; summary = cache_gc_summary summary }
+  | Riot_store.Cache_gc.GcCompleted { trigger; summary } ->
+      CacheGcCompleted {
+        trigger = cache_gc_trigger trigger;
+        summary = cache_gc_summary summary;
+      }
+  | Riot_store.Cache_gc.GcFailed { trigger; error } ->
+      CacheGcFailed { trigger = cache_gc_trigger trigger; error }
+  | Riot_store.Cache_gc.ForceCleanStarted { build_root } -> CacheForceCleanStarted { build_root }
+  | Riot_store.Cache_gc.ForceCleanCompleted { build_root } ->
+      CacheForceCleanCompleted { build_root }
+  | Riot_store.Cache_gc.ForceCleanFailed { build_root; error } ->
+      CacheForceCleanFailed { build_root; error }
+
+let cache_gc = fun ~session_id event -> cache ~session_id (cache_gc_event_kind event)
+
+let to_json = fun event -> Some (Riot_model.Event.to_json event)
+
+let timestamp = fun (_: t) -> None

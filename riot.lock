@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "03e1796449f926bd"
+dependency_hash = "b2833272c4ac23aa"
 
 [[packages]]
 name = "blink"
@@ -38,7 +38,7 @@ dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 name = "docker-client"
 root = "packages/docker-client"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "blink", package = { name = "blink" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "blink", package = { name = "blink" } }, { name = "serde", package = { name = "serde" } }, { name = "serde-json", package = { name = "serde-json" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -158,9 +158,9 @@ dev_dependencies = []
 name = "postgres"
 root = "packages/postgres"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "kernel", package = { name = "kernel" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "kernel", package = { name = "kernel" } }, { name = "serde", package = { name = "serde" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
-dev_dependencies = [{ name = "dotenv", package = { name = "dotenv" } }]
+dev_dependencies = [{ name = "dotenv", package = { name = "dotenv" } }, { name = "propane", package = { name = "propane" } }, { name = "testcontainers", package = { name = "testcontainers" } }]
 
 [[packages]]
 name = "pkgs-ml"
@@ -190,7 +190,7 @@ dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 name = "sqlite"
 root = "packages/sqlite"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -198,7 +198,7 @@ dev_dependencies = []
 name = "sqlx"
 root = "packages/sqlx"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "kernel", package = { name = "kernel" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "kernel", package = { name = "kernel" } }, { name = "serde", package = { name = "serde" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -270,7 +270,7 @@ dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 name = "sqlx-driver"
 root = "packages/sqlx-driver"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
+dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -390,7 +390,7 @@ dev_dependencies = []
 name = "riot-model"
 root = "packages/riot-model"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "ignore", package = { name = "ignore" } }, { name = "std", package = { name = "std" } }]
+dependencies = [{ name = "ignore", package = { name = "ignore" } }, { name = "serde", package = { name = "serde" } }, { name = "serde-json", package = { name = "serde-json" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

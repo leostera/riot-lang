@@ -93,17 +93,12 @@ let output_mode_of_matches = fun matches ->
 
 let build_output_mode = fun __tmp1 ->
   match __tmp1 with
-  | Human -> Build.Human
-  | Json -> Build.Json
+  | Human -> Ui.default_human_mode ()
+  | Json -> Ui.Json
 
-let render_discovery_event = fun ~mode ~seen_registry_updates event ->
+let render_discovery_event = fun ~ui event ->
   match event with
-  | Riot_test.Test_runtime.Build build_event ->
-      Build.write_build_event
-        ~mode:(build_output_mode mode)
-        ~profile:"fuzz"
-        ~seen_registry_updates
-        build_event
+  | Riot_test.Test_runtime.Build build_event -> Ui.send ui build_event
   | _ -> ()
 
 let parse_package_names = fun package_names ->
@@ -591,11 +586,11 @@ let minimize_cases = fun ~workspace ~mode ~timeout_ms cases ->
   in
   loop cases
 
-let collect_selected_cases = fun ~workspace ~mode ~seen_registry_updates matches ->
+let collect_selected_cases = fun ~workspace ~ui matches ->
   let filter = ArgParser.get_one matches "filter" in
   let* package_filters = parse_package_names (ArgParser.get_many matches "package") in
   Riot_fuzz.collect_cases
-    ~on_event:(render_discovery_event ~mode ~seen_registry_updates)
+    ~on_event:(render_discovery_event ~ui)
     ~workspace
     ~package_filters
     ~filter
@@ -613,11 +608,11 @@ let with_fuzz_lock = fun ~workspace ~mode fn ->
 
 let run_minimize = fun ~workspace matches ->
   let mode = output_mode_of_matches matches in
-  let seen_registry_updates = Collections.HashSet.create () in
+  let ui = Ui.make ~mode:(build_output_mode mode) ~profile:"fuzz" () in
   if mode = Json then
-    Build.reset_json_clock ~started_at:(Time.Instant.now ());
+    Ui.reset_json_clock ~started_at:(Time.Instant.now ());
   let* timeout_ms = parse_positive_int ~name:"timeout-ms" ~default:1_000 matches in
-  let* cases = collect_selected_cases ~workspace ~mode ~seen_registry_updates matches in
+  let* cases = collect_selected_cases ~workspace ~ui matches in
   with_fuzz_lock ~workspace ~mode (fun () -> minimize_cases ~workspace ~mode ~timeout_ms cases)
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
@@ -626,9 +621,9 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   | Some _ -> Error (Failure "unknown fuzz subcommand")
   | None ->
       let mode = output_mode_of_matches matches in
-      let seen_registry_updates = Collections.HashSet.create () in
+      let ui = Ui.make ~mode:(build_output_mode mode) ~profile:"fuzz" () in
       if mode = Json then
-        Build.reset_json_clock ~started_at:(Time.Instant.now ());
+        Ui.reset_json_clock ~started_at:(Time.Instant.now ());
       let list_only = ArgParser.get_flag matches "list" in
       let minimize_only = ArgParser.get_flag matches "minimize-corpus" in
       let* duration = parse_duration matches in
@@ -641,7 +636,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         |> Option.map ~fn:Path.v
       in
       let seed = ArgParser.get_one matches "seed" in
-      let* cases = collect_selected_cases ~workspace ~mode ~seen_registry_updates matches in
+      let* cases = collect_selected_cases ~workspace ~ui matches in
       if list_only then (
         (
           match mode with

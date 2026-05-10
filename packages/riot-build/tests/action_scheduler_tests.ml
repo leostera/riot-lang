@@ -60,6 +60,7 @@ let test_action_scheduler_returns_empty_results_for_empty_graph = fun _ctx ->
           ~store:(Riot_store.Store.create ~workspace)
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           ~concurrency:2
       in
@@ -130,6 +131,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           (test_toolchain ())
           ~concurrency:2
       in

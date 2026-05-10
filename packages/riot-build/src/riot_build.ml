@@ -32,7 +32,6 @@ module Internal = struct
   module Resolved_build = Resolved_build
   module Diagnostic_rewrite = Diagnostic_rewrite
   module Sandbox = Sandbox
-  module Telemetry_events = Telemetry_events
 end
 
 type error = Build_core.error =

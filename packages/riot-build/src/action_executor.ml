@@ -30,6 +30,43 @@ type execution_result = {
   completed_at: Instant.t;
 }
 
+let action_label = fun action ->
+  let path_label = fun prefix path -> prefix ^ " " ^ Path.basename path in
+  match action with
+  | Action.CompileInterface { source; _ } -> path_label "compile" source
+  | Action.CompileImplementation { source; _ } -> path_label "compile" source
+  | Action.GenerateInterface { source; _ } -> path_label "interface" source
+  | Action.CompileC { source; _ } -> path_label "compile" source
+  | Action.CreateLibrary { outputs; _ } -> (
+      match outputs with
+      | output :: _ -> path_label "archive" output
+      | [] -> "archive"
+    )
+  | Action.CreateExecutable { outputs; _ } -> (
+      match outputs with
+      | output :: _ -> path_label "link" output
+      | [] -> "link"
+    )
+  | Action.CreateSharedLibrary { outputs; _ } -> (
+      match outputs with
+      | output :: _ -> path_label "link" output
+      | [] -> "link shared library"
+    )
+  | Action.CopyFile { source; _ } -> path_label "copy" source
+  | Action.WriteFile { destination; _ } -> path_label "write" destination
+  | Action.BuildForeignDependency { name; _ } -> "build " ^ name
+
+let node_label = fun (node: Action_node.t) ->
+  match (Action_node.value node).actions with
+  | first :: _ -> action_label first
+  | [] -> "build"
+
+let action_id = fun node -> G.Node_id.to_string (Action_node.id node)
+
+let emit_build_event = fun ~on_event ~session_id event ->
+  on_event
+    (Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info (Riot_model.Event.Build event))
+
 let make_flags_absolute = fun sandbox_dir flags ->
   List.map
     flags
@@ -50,14 +87,16 @@ let resolve_include_paths = fun sandbox_dir includes ->
       else
         Path.join sandbox_dir inc)
 
-let emit_action_command = fun ~session_id ~package ~build_target ~node command ->
-  Telemetry.emit
+let emit_action_command = fun ~on_event ~session_id ~package ~build_target ~node command ->
+  emit_build_event
+    ~on_event
+    ~session_id
     (
-      Telemetry_events.ActionCommandStarted {
-        session_id;
+      Riot_model.Event.BuildActionCommandStarted {
         package;
         build_target;
-        action = node;
+        action_id = action_id node;
+        action_label = node_label node;
         started_at = Instant.now ();
         command;
       }
@@ -67,8 +106,10 @@ let ocamlc_success = fun message -> Riot_toolchain.Ocamlc.Success { message; dia
 
 let ocamlc_failed = fun message -> Riot_toolchain.Ocamlc.Failed { message; diagnostics = [] }
 
-let run_ocamlc_invocation = fun ~session_id ~package ~build_target ~node ~sandbox_dir invocation ->
+let run_ocamlc_invocation = fun
+  ~on_event ~session_id ~package ~build_target ~node ~sandbox_dir invocation ->
   emit_action_command
+    ~on_event
     ~session_id
     ~package
     ~build_target
@@ -78,7 +119,7 @@ let run_ocamlc_invocation = fun ~session_id ~package ~build_target ~node ~sandbo
   |> Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir
 
 let run_action = fun
-  ~session_id ~package ~build_target ~node ?c_compiler ocamlc sandbox_dir action ->
+  ~on_event ~session_id ~package ~build_target ~node ?c_compiler ocamlc sandbox_dir action ->
   match action with
   | Action.CompileInterface {
       source;
@@ -99,7 +140,14 @@ let run_action = fun
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+      run_ocamlc_invocation
+        ~on_event
+        ~session_id
+        ~package
+        ~build_target
+        ~node
+        ~sandbox_dir
+        invocation
   | Action.CompileImplementation {
       source;
       outputs = output :: _;
@@ -119,7 +167,14 @@ let run_action = fun
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+      run_ocamlc_invocation
+        ~on_event
+        ~session_id
+        ~package
+        ~build_target
+        ~node
+        ~sandbox_dir
+        invocation
   | Action.GenerateInterface {
       source;
       outputs = output :: _;
@@ -139,7 +194,14 @@ let run_action = fun
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+      run_ocamlc_invocation
+        ~on_event
+        ~session_id
+        ~package
+        ~build_target
+        ~node
+        ~sandbox_dir
+        invocation
   | Action.CompileC { source; outputs = output :: _; ccflags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
@@ -159,7 +221,14 @@ let run_action = fun
           ~output:abs_output
           abs_source
       in
-      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+      run_ocamlc_invocation
+        ~on_event
+        ~session_id
+        ~package
+        ~build_target
+        ~node
+        ~sandbox_dir
+        invocation
   | Action.CreateLibrary { outputs = output :: _; objects; includes } ->
       let abs_output = Path.join sandbox_dir output in
       let rel_objects = objects in
@@ -172,7 +241,14 @@ let run_action = fun
           ~output:abs_output
           rel_objects
       in
-      run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+      run_ocamlc_invocation
+        ~on_event
+        ~session_id
+        ~package
+        ~build_target
+        ~node
+        ~sandbox_dir
+        invocation
   | Action.CreateExecutable {
       outputs = output :: _;
       objects;
@@ -218,7 +294,14 @@ let run_action = fun
               abs_objects
           in
           let result =
-            run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+            run_ocamlc_invocation
+              ~on_event
+              ~session_id
+              ~package
+              ~build_target
+              ~node
+              ~sandbox_dir
+              invocation
           in
           match result with
           | Riot_toolchain.Ocamlc.Success _ -> (
@@ -278,7 +361,14 @@ let run_action = fun
               ~output:abs_output
               abs_objects
           in
-          run_ocamlc_invocation ~session_id ~package ~build_target ~node ~sandbox_dir invocation
+          run_ocamlc_invocation
+            ~on_event
+            ~session_id
+            ~package
+            ~build_target
+            ~node
+            ~sandbox_dir
+            invocation
         )
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
@@ -336,7 +426,7 @@ let run_action = fun
                 Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name
               in
               let cmd_str = Command.to_string cmd in
-              emit_action_command ~session_id ~package ~build_target ~node cmd_str;
+              emit_action_command ~on_event ~session_id ~package ~build_target ~node cmd_str;
               Log.debug ("Executing: " ^ cmd_str);
               match Command.output cmd with
               | Ok output when output.Command.status = 0 ->
@@ -380,7 +470,7 @@ let run_action = fun
         )
 
 let execute_actions = fun
-  ~session_id ~build_target ~(node:Action_node.t) toolchain sandbox_dir actions ->
+  ~on_event ~session_id ~build_target ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Riot_toolchain.ocamlc toolchain in
   let c_compiler = Riot_toolchain.c_compiler toolchain in
   let package = (Action_node.value node).package in
@@ -389,7 +479,16 @@ let execute_actions = fun
     | [] -> Ok ocamlc_warnings
     | action :: rest -> (
         let result =
-          run_action ~session_id ~package ~build_target ~node ?c_compiler ocamlc sandbox_dir action
+          run_action
+            ~on_event
+            ~session_id
+            ~package
+            ~build_target
+            ~node
+            ?c_compiler
+            ocamlc
+            sandbox_dir
+            action
         in
         match result with
         | Riot_toolchain.Ocamlc.Success _ ->
@@ -524,7 +623,14 @@ let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->
       ^ ")")
 
 let execute_node = fun
-  ~completed ~store ~session_id ~build_target toolchain sandbox_dir (node: Action_node.t) ->
+  ~completed
+  ~store
+  ~session_id
+  ~build_target
+  ~on_event
+  toolchain
+  sandbox_dir
+  (node: Action_node.t) ->
   let start = Instant.now () in
   if has_failed_dependencies completed node then (
     let now = Instant.now () in
@@ -537,13 +643,18 @@ let execute_node = fun
       completed_at = now;
     }
   ) else (
-    Telemetry.emit
+    let package = (Action_node.value node).package in
+    let action_id = action_id node in
+    let action_label = node_label node in
+    emit_build_event
+      ~on_event
+      ~session_id
       (
-        Telemetry_events.ActionStarted {
-          session_id;
-          package = (Action_node.value node).package;
+        Riot_model.Event.BuildActionStarted {
+          package;
           build_target;
-          action = node;
+          action_id;
+          action_label;
           started_at = start;
         }
       );
@@ -556,13 +667,15 @@ let execute_node = fun
     (
       match Riot_store.Store.get_action store action_input_hash with
       | Some artifact ->
-          Telemetry.emit
+          emit_build_event
+            ~on_event
+            ~session_id
             (
-              Telemetry_events.CacheHit {
-                session_id;
-                package = (Action_node.value node).package;
-                action = node;
-                hash = action_input_hash;
+              Riot_model.Event.BuildActionCacheHit {
+                package;
+                action_id;
+                action_label;
+                hash = Crypto.Digest.hex action_input_hash;
               }
             );
           let _ =
@@ -576,16 +689,17 @@ let execute_node = fun
           in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
-          Telemetry.emit
+          emit_build_event
+            ~on_event
+            ~session_id
             (
-              Telemetry_events.ActionCompleted {
-                session_id;
-                package = (Action_node.value node).package;
+              Riot_model.Event.BuildActionCompleted {
+                package;
                 build_target;
-                action = node;
+                action_id;
+                action_label;
                 completed_at;
-                artifact;
-                status = `Cached;
+                status = Riot_model.Event.Cached;
                 duration;
               }
             );
@@ -598,13 +712,15 @@ let execute_node = fun
             completed_at;
           }
       | None ->
-          Telemetry.emit
+          emit_build_event
+            ~on_event
+            ~session_id
             (
-              Telemetry_events.CacheMiss {
-                session_id;
-                package = (Action_node.value node).package;
-                action = node;
-                hash = action_input_hash;
+              Riot_model.Event.BuildActionCacheMiss {
+                package;
+                action_id;
+                action_label;
+                hash = Crypto.Digest.hex action_input_hash;
               }
             );
           let actions = (Action_node.value node).actions in
@@ -657,15 +773,24 @@ let execute_node = fun
                 completed_at;
               }
           | Ok () -> (
-              match execute_actions ~session_id ~build_target ~node toolchain sandbox_dir actions with
+              match execute_actions
+                ~on_event
+                ~session_id
+                ~build_target
+                ~node
+                toolchain
+                sandbox_dir
+                actions with
               | Error msg ->
-                  Telemetry.emit
+                  emit_build_event
+                    ~on_event
+                    ~session_id
                     (
-                      Telemetry_events.ActionFailed {
-                        session_id;
-                        package = (Action_node.value node).package;
+                      Riot_model.Event.BuildActionFailed {
+                        package;
                         build_target;
-                        action = node;
+                        action_id;
+                        action_label;
                         failed_at = Instant.now ();
                         error = msg;
                       }
@@ -706,16 +831,17 @@ let execute_node = fun
                           completed_at;
                         }
                     | Ok artifact ->
-                        Telemetry.emit
+                        emit_build_event
+                          ~on_event
+                          ~session_id
                           (
-                            Telemetry_events.ActionCompleted {
-                              session_id;
-                              package = (Action_node.value node).package;
+                            Riot_model.Event.BuildActionCompleted {
+                              package;
                               build_target;
-                              action = node;
+                              action_id;
+                              action_label;
                               completed_at;
-                              artifact;
-                              status = `Fresh;
+                              status = Riot_model.Event.Fresh;
                               duration;
                             }
                           );
@@ -758,16 +884,17 @@ let execute_node = fun
                               completed_at;
                             }
                         | Ok artifact ->
-                            Telemetry.emit
+                            emit_build_event
+                              ~on_event
+                              ~session_id
                               (
-                                Telemetry_events.ActionCompleted {
-                                  session_id;
-                                  package = (Action_node.value node).package;
+                                Riot_model.Event.BuildActionCompleted {
+                                  package;
                                   build_target;
-                                  action = node;
+                                  action_id;
+                                  action_label;
                                   completed_at;
-                                  artifact;
-                                  status = `Fresh;
+                                  status = Riot_model.Event.Fresh;
                                   duration;
                                 }
                               );

@@ -17,15 +17,14 @@ let command =
     ]
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
-  let mode =
-    if ArgParser.get_flag matches "json" then
-      Build.Json
-    else
-      Build.Human
-  in
-  let on_event event = Build.write_cache_gc_event ~mode event in
+  let mode = Ui.mode_of_json_flag (ArgParser.get_flag matches "json") in
+  let ui = Ui.make ~mode () in
+  let session_id = Riot_model.Session_id.make () in
+  let on_event event = Ui.send ui (Riot_build.Event.cache_gc ~session_id event) in
   let on_waiting lock_path =
-    Build.write_build_phase_event ~mode (Riot_build.Event.BuildLockWaiting { lock_path })
+    Ui.send
+      ui
+      (Riot_build.Event.phase ~session_id (Riot_build.Event.BuildLockWaiting { lock_path }))
   in
   Riot_build.BuildLock.acquire_existing_lanes
     ~on_waiting

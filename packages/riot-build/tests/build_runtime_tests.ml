@@ -14,6 +14,11 @@ let target = fun value ->
   Riot_model.Target.from_string value
   |> Result.expect ~msg:("invalid target triple: " ^ value)
 
+let build_phase = fun (event: Riot_build.Event.t) ->
+  match event.kind with
+  | Riot_model.Event.Build (Riot_model.Event.BuildPhase phase) -> Some phase
+  | _ -> None
+
 let write_workspace_manifest = fun ~root ~members ->
   let members =
     members
@@ -548,13 +553,10 @@ let test_execute_does_not_record_cache_generation_when_disabled = fun _ctx ->
           ~package_names:[ package_name "demo" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.CacheGenerationRecordingStarted _
-            )
-            | Riot_build.Event.Phase (
-              Riot_build.Event.CacheGenerationRecorded _
-            ) -> saw_cache_event := true
+            match build_phase event with
+            | Some (Riot_build.Event.CacheGenerationRecordingStarted _
+            | Riot_build.Event.CacheGenerationRecorded _) ->
+                saw_cache_event := true
             | _ -> ())
           ()
       in
@@ -586,13 +588,10 @@ let test_execute_partial_failures_by_default = fun _ctx ->
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.TargetBuildFinished { had_partial_failure }
-            ) ->
+            match build_phase event with
+            | Some (Riot_build.Event.TargetBuildFinished { had_partial_failure }) ->
                 saw_partial_failure := had_partial_failure
-            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
-                saw_returning_results := true
+            | Some (Riot_build.Event.ReturningResults _) -> saw_returning_results := true
             | _ -> ())
           ()
       in
@@ -719,12 +718,10 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
           ~targets:requested_targets
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.TargetBuildStarted { target }
-            ) ->
+            match build_phase event with
+            | Some (Riot_build.Event.TargetBuildStarted { target }) ->
                 started_targets := Riot_model.Target.to_string target :: !started_targets
-            | Riot_build.Event.Phase (
+            | Some (
               Riot_build.Event.TargetBuildFinished {
                 target;
                 result_count;
@@ -831,10 +828,8 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
           ~targets:requested_targets
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.ReturningResults { result_count; had_partial_failure }
-            ) ->
+            match build_phase event with
+            | Some (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
                 returning_event := Some (result_count, had_partial_failure)
             | _ -> ())
           ()
@@ -891,10 +886,8 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
           ~targets:requested_targets
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.ReturningResults { result_count; had_partial_failure }
-            ) ->
+            match build_phase event with
+            | Some (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
                 returning_event := Some (result_count, had_partial_failure)
             | _ -> ())
           ()
@@ -947,13 +940,10 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
           ~targets:requested_targets
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.CacheGenerationRecordingStarted _
-            )
-            | Riot_build.Event.Phase (
-              Riot_build.Event.CacheGenerationRecorded _
-            ) -> saw_cache_event := true
+            match build_phase event with
+            | Some (Riot_build.Event.CacheGenerationRecordingStarted _
+            | Riot_build.Event.CacheGenerationRecorded _) ->
+                saw_cache_event := true
             | _ -> ())
           ()
       in
@@ -1000,15 +990,9 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
           ~targets:requested_targets
           ~requested_parallelism:(Some 1)
           ~on_event:(fun event ->
-            match event with
-            | Riot_build.Event.Phase (
-              Riot_build.Event.CacheGenerationRecordingStarted _
-            ) ->
-                recording_started := true
-            | Riot_build.Event.Phase (
-              Riot_build.Event.CacheGenerationRecorded _
-            ) ->
-                recording_recorded := true
+            match build_phase event with
+            | Some (Riot_build.Event.CacheGenerationRecordingStarted _) -> recording_started := true
+            | Some (Riot_build.Event.CacheGenerationRecorded _) -> recording_recorded := true
             | _ -> ())
           ()
       in

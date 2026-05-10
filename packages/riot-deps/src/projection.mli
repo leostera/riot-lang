@@ -2,7 +2,7 @@ open Std
 
 module Error = Error
 
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 
 val resolve_packages:
   ?emit:event_sink ->

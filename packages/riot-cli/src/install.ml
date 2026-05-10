@@ -44,24 +44,6 @@ let parse_package_name = fun package_name ->
       ^ "': "
       ^ Riot_model.Package_name.error_message error))
 
-let display_path = fun ~workspace_root path ->
-  match Path.strip_prefix path ~prefix:workspace_root with
-  | Ok rel -> "./" ^ Path.to_string rel
-  | Error _ -> (
-      match Env.home_dir () with
-      | Some home -> (
-          match Path.strip_prefix path ~prefix:home with
-          | Ok rel -> "~/" ^ Path.to_string rel
-          | Error _ -> Path.to_string path
-        )
-      | None -> Path.to_string path
-    )
-
-let print_path_hint = fun () ->
-  out "";
-  out "To use the installed binary from anywhere, add ~/.riot/bin to your PATH:";
-  out "  export PATH='$HOME/.riot/bin:$PATH'"
-
 let split_remote_binary = fun raw ->
   match String.last_index raw '@' with
   | Some idx when idx = String.length raw - 1 ->
@@ -127,29 +109,6 @@ let parse_target = fun ?package_filter raw ->
   else
     parse_local_target ?package_filter raw
 
-let write_install_event = fun ~workspace_root (event: Install_runtime.install_event) ->
-  match event with
-  | Install_runtime.Build _ -> ()
-  | Install_runtime.InstallingBinary { binary; _ } ->
-      out ("  \027[1;34mInstalling\027[0m " ^ binary)
-  | Install_runtime.PromotedBinary { binary; destination; _ } ->
-      out
-        ("    \027[1;32mPromoted\027[0m "
-        ^ binary
-        ^ " to "
-        ^ display_path ~workspace_root destination)
-  | Install_runtime.InstalledBinary { binary; duration_ms; mode; _ } ->
-      let duration =
-        Time.Duration.from_millis duration_ms
-        |> Time.Duration.to_secs_string ~precision:2
-      in
-      out ("   \027[1;32mInstalled\027[0m " ^ binary ^ " in " ^ duration ^ "s");
-      (
-        match mode with
-        | Install_runtime.Global -> print_path_hint ()
-        | Install_runtime.Local -> ()
-      )
-
 let write_install_error = fun err ->
   out
     ("\027[1;31mError\027[0m: " ^ Install_runtime.install_error_message err)
@@ -174,7 +133,12 @@ let local_install = fun ~on_event ~workspace ~package_name ~binary_name ~local_o
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let open ArgParser in
-  let seen_registry_updates = Collections.HashSet.create () in
+  let workspace_root =
+    match workspace with
+    | Some (workspace: Riot_model.Workspace.t) -> Some workspace.root
+    | None -> None
+  in
+  let ui = Ui.make ?workspace_root ~mode:(Ui.default_human_mode ()) () in
   let raw_target = get_one matches "name" in
   let* package_filter =
     match get_one matches "package" with
@@ -185,17 +149,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   in
   let local_only = get_flag matches "local" in
   let update = get_flag matches "update" in
-  let workspace_root_for_output =
-    match workspace with
-    | Some (workspace: Riot_model.Workspace.t) -> workspace.root
-    | None -> Path.v "."
-  in
-  let on_event (event: Install_runtime.install_event) =
-    match event with
-    | Install_runtime.Build build_event ->
-        Build.write_build_event ~mode:Build.Human ~seen_registry_updates build_event
-    | _ -> write_install_event ~workspace_root:workspace_root_for_output event
-  in
+  let on_event event = Ui.send ui event in
   let result =
     match match raw_target with
     | Some raw_target -> parse_target ?package_filter raw_target

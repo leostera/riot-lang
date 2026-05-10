@@ -3,7 +3,6 @@ open Riot_build
 
 module Test = Std.Test
 module Package_builder = Riot_build.Internal.Package_builder
-module Telemetry_events = Riot_build.Internal.Telemetry_events
 
 let package_name = fun name ->
   Riot_model.Package_name.from_string name
@@ -246,6 +245,16 @@ let phase_name = fun __tmp1 ->
   | Riot_build.Event.CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
   | Riot_build.Event.CacheGenerationRecorded _ -> "cache_generation_recorded"
   | Riot_build.Event.ReturningResults _ -> "returning_results"
+
+let build_phase = fun (event: Riot_build.Event.t) ->
+  match event.kind with
+  | Riot_model.Event.Build (Riot_model.Event.BuildPhase phase) -> Some phase
+  | _ -> None
+
+let build_event = fun (event: Riot_build.Event.t) ->
+  match event.kind with
+  | Riot_model.Event.Build event -> Some event
+  | _ -> None
 
 let expect_subsequence = fun ~haystack ~needle ->
   let rec loop haystack needle =
@@ -658,8 +667,8 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
       let saw_generation_event = ref false in
       match build_request
         ~on_event:(fun __tmp1 ->
-          match __tmp1 with
-          | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _
+          match build_phase __tmp1 with
+          | Some (Riot_build.Event.CacheGenerationRecordingStarted _
           | Riot_build.Event.CacheGenerationRecorded _) ->
               saw_generation_event := true
           | _ -> ())
@@ -680,8 +689,8 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
       let seen = ref [] in
       match build_request
         ~on_event:(fun __tmp1 ->
-          match __tmp1 with
-          | Riot_build.Event.Phase phase -> seen := !seen @ [ phase_name phase ]
+          match build_phase __tmp1 with
+          | Some phase -> seen := !seen @ [ phase_name phase ]
           | _ -> ())
         (make_request ~workspace:prepared_workspace ()) with
       | Error err -> Error ("expected build to succeed, got: " ^ Riot_build.error_message err)
@@ -721,21 +730,15 @@ let test_build_emits_detailed_build_telemetry = fun _ctx ->
       let seen = ref [] in
       match build_request
         ~on_event:(fun __tmp1 ->
-          match __tmp1 with
-          | Riot_build.Event.Telemetry event -> (
-              match event with
-              | Telemetry_events.PackageStarted _ -> seen := !seen @ [ "package_started" ]
-              | Telemetry_events.CompilationStarted _ -> seen := !seen @ [ "compilation_started" ]
-              | Telemetry_events.BuildCompleted _ -> seen := !seen @ [ "build_completed" ]
-              | _ -> ()
-            )
+          match build_event __tmp1 with
+          | Some (Riot_model.Event.BuildPackageCompilationStarted _) ->
+              seen := !seen @ [ "compilation_started" ]
+          | Some (Riot_model.Event.BuildPackageFinished _) -> seen := !seen @ [ "build_completed" ]
           | _ -> ())
         (make_request ~workspace:prepared_workspace ()) with
       | Error err -> Error ("expected build to succeed, got: " ^ Riot_build.error_message err)
       | Ok _ ->
-          expect_subsequence
-            ~haystack:!seen
-            ~needle:[ "package_started"; "compilation_started"; "build_completed" ]) with
+          expect_subsequence ~haystack:!seen ~needle:[ "compilation_started"; "build_completed" ]) with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -760,15 +763,11 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
       let finished_count = ref 0 in
       match build_request
         ~on_event:(fun __tmp1 ->
-          match __tmp1 with
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetsResolved { target_count = count }
-          ) ->
+          match build_phase __tmp1 with
+          | Some (Riot_build.Event.TargetsResolved { target_count = count }) ->
               target_count := Some count
-          | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted _) ->
-              started_count := !started_count + 1
-          | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished _) ->
-              finished_count := !finished_count + 1
+          | Some (Riot_build.Event.TargetBuildStarted _) -> started_count := !started_count + 1
+          | Some (Riot_build.Event.TargetBuildFinished _) -> finished_count := !finished_count + 1
           | _ -> ())
         (make_request
           ~workspace:prepared_workspace
@@ -829,16 +828,12 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
       let any_partial_failure = ref false in
       match build_request
         ~on_event:(fun __tmp1 ->
-          match __tmp1 with
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetsResolved { target_count }
-          ) ->
+          match build_phase __tmp1 with
+          | Some (Riot_build.Event.TargetsResolved { target_count }) ->
               seen_target_count := Some target_count
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetBuildStarted { target }
-          ) ->
+          | Some (Riot_build.Event.TargetBuildStarted { target }) ->
               started_targets := Riot_model.Target.to_string target :: !started_targets
-          | Riot_build.Event.Phase (
+          | Some (
             Riot_build.Event.TargetBuildFinished { target; result_count; had_partial_failure }
           ) ->
               finished_targets := Riot_model.Target.to_string target :: !finished_targets;
@@ -964,22 +959,15 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
       let saw_returning_results = ref false in
       match build_request
         ~on_event:(fun __tmp1 ->
-          match __tmp1 with
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetsResolved { target_count }
-          ) ->
+          match build_phase __tmp1 with
+          | Some (Riot_build.Event.TargetsResolved { target_count }) ->
               seen_target_count := Some target_count
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetBuildStarted { target }
-          ) ->
+          | Some (Riot_build.Event.TargetBuildStarted { target }) ->
               started_targets := Riot_model.Target.to_string target :: !started_targets
-          | Riot_build.Event.Phase (
-            Riot_build.Event.TargetBuildFinished { had_partial_failure; target; _ }
-          ) ->
+          | Some (Riot_build.Event.TargetBuildFinished { had_partial_failure; target; _ }) ->
               finished_targets := Riot_model.Target.to_string target :: !finished_targets;
               partial_failure_flags := had_partial_failure :: !partial_failure_flags
-          | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
-              saw_returning_results := true
+          | Some (Riot_build.Event.ReturningResults _) -> saw_returning_results := true
           | _ -> ())
         (make_request
           ~workspace:prepared_workspace

@@ -170,6 +170,7 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                   ~store
                   ~session_id
                   ~build_target:Riot_model.Target.current
+                  ~on_event:(fun _ -> ())
                   test_toolchain
                   ~concurrency
               in

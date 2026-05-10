@@ -240,26 +240,11 @@ let run_error_to_json = fun (err: Run_runtime.run_error) ->
   :: ("message", Data.Json.String (Run_runtime.run_error_message err))
   :: details)
 
-let write_run_event = fun ~mode (event: Run_runtime.run_event) ->
-  match mode with
-  | Build.Json ->
-      Run_runtime.run_event_to_json event
-      |> Option.for_each ~fn:write_json_event
-  | Build.Human -> (
-      match event with
-      | Run_runtime.Build _ -> ()
-      | Run_runtime.RunningBinary { package; binary; _ } ->
-          out
-            ("    \027[1;32mBuilding\027[0m "
-            ^ Riot_model.Package_name.to_string package
-            ^ ":"
-            ^ binary)
-    )
-
 let write_run_error = fun ~mode (err: Run_runtime.run_error) ->
   match mode with
-  | Build.Json -> write_json_event (run_error_to_json err)
-  | Build.Human -> (
+  | Ui.Json -> write_json_event (run_error_to_json err)
+  | Ui.Line
+  | Ui.TUI -> (
       match err with
       | Run_runtime.ProcessExited _ -> ()
       | Run_runtime.BinaryNotFound { binary_name } ->
@@ -269,14 +254,15 @@ let write_run_error = fun ~mode (err: Run_runtime.run_error) ->
 
 let write_workspace_error = fun ~mode message ->
   match mode with
-  | Build.Json ->
+  | Ui.Json ->
       write_json_event
         (Data.Json.Object [
           ("type", Data.Json.String "run.error");
           ("kind", Data.Json.String "workspace_error");
           ("message", Data.Json.String message);
         ])
-  | Build.Human -> out ("error: " ^ message)
+  | Ui.Line
+  | Ui.TUI -> out ("error: " ^ message)
 
 let binary_source_label = fun
   ~(workspace:Riot_model.Workspace.t) (binary: Run_runtime.runnable_binary) ->
@@ -325,7 +311,6 @@ let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
     ])
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
-  let seen_registry_updates = Collections.HashSet.create () in
   let extra = trailing_args matches in
   let _verbose = ArgParser.get_count matches "verbose" in
   let list_mode = ArgParser.get_flag matches "list" in
@@ -341,11 +326,17 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let profile = profile_of_matches matches in
   let output_mode =
     if list_mode && json_mode then
-      Build.Json
+      Ui.Json
     else if json_requested_for_child extra then
-      Build.Json
+      Ui.Json
     else
-      Build.Human
+      Ui.Line
+  in
+  let build_ui_mode =
+    match output_mode with
+    | Ui.Json -> Ui.Json
+    | Ui.Line
+    | Ui.TUI -> Ui.default_human_mode ()
   in
   let* () =
     match rejected_removed_trace_flag matches with
@@ -358,7 +349,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     let message =
       "riot run --json is only supported with --list; use `riot run -- --json` to forward JSON to the child binary"
     in
-    write_workspace_error ~mode:Build.Json message;
+    write_workspace_error ~mode:Ui.Json message;
     Error (Failure message)
   else if list_mode then
     match workspace with
@@ -379,17 +370,14 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           let binaries = Run_runtime.list_binaries workspace ?package_filter:pkg_filter () in
           (
             match output_mode with
-            | Build.Json -> write_binary_list_json ~workspace binaries
-            | Build.Human -> write_binary_list ~workspace binaries
+            | Ui.Json -> write_binary_list_json ~workspace binaries
+            | Ui.Line
+            | Ui.TUI -> write_binary_list ~workspace binaries
           );
         Ok ()
   else
-    let on_event (event: Run_runtime.run_event) =
-      match event with
-      | Run_runtime.Build build_event ->
-          Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
-      | _ -> write_run_event ~mode:output_mode event
-    in
+    let ui = Ui.make ~mode:build_ui_mode ~profile () in
+    let on_event event = Ui.send ui event in
     let resolved_target =
       match ArgParser.get_one matches "name" with
       | Some name -> parse_target ?package_filter:pkg_filter name

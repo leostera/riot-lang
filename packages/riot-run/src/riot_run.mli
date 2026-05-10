@@ -25,13 +25,6 @@ type built_binary = {
   path: Path.t;
   args: string list;
 }
-type run_event =
-  | Build of Riot_build.Event.t
-  | RunningBinary of {
-      package: Riot_model.Package_name.t;
-      binary: string;
-      args: string list;
-    }
 type run_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of {
@@ -65,15 +58,19 @@ val list_binaries:
 
 val run_error_message: run_error -> string
 
-val run_event_to_json: run_event -> Data.Json.t option
-
-val build_binary: ?on_event:(run_event -> unit) -> run_request -> (built_binary, run_error) result
+val build_binary:
+  ?on_event:(Riot_model.Event.t -> unit) ->
+  run_request ->
+  (built_binary, run_error) result
 
 val build_source_binary:
-  ?on_event:(run_event -> unit) ->
+  ?on_event:(Riot_model.Event.t -> unit) ->
   source_run_request ->
   (built_binary, run_error) result
 
-val run: ?on_event:(run_event -> unit) -> run_request -> (unit, run_error) result
+val run: ?on_event:(Riot_model.Event.t -> unit) -> run_request -> (unit, run_error) result
 
-val run_source: ?on_event:(run_event -> unit) -> source_run_request -> (unit, run_error) result
+val run_source:
+  ?on_event:(Riot_model.Event.t -> unit) ->
+  source_run_request ->
+  (unit, run_error) result

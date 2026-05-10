@@ -23,6 +23,7 @@ let unit_key = fun package ->
 
 let build_package = fun ~workspace ~toolchain ~store package ->
   let build_ctx = make_test_build_ctx () in
+  let on_event = fun _ -> () in
   let input_hash_cache = Riot_planner.Package_planner.create_input_hash_cache () in
   let key = unit_key package in
   let unit =
@@ -42,6 +43,7 @@ let build_package = fun ~workspace ~toolchain ~store package ->
       ~unit
       ~depset:[]
       ~build_ctx
+      ~on_event
       ~emit_visible_progress:false with
     | Package_builder.Final_result detailed_result -> detailed_result
     | Execution_required execution_plan ->
@@ -50,7 +52,8 @@ let build_package = fun ~workspace ~toolchain ~store package ->
           ~toolchain
           ~store
           ~execution_plan
-          ~build_ctx with
+          ~build_ctx
+          ~on_event with
         | Error detailed_result -> detailed_result
         | Ok prepared_execution ->
             let action_result =
@@ -60,6 +63,7 @@ let build_package = fun ~workspace ~toolchain ~store package ->
                 ~store
                 ~session_id:build_ctx.session_id
                 ~build_target:(Riot_model.Target.host ())
+                ~on_event
                 prepared_execution.toolchain
                 ~concurrency:build_ctx.parallelism
             in
@@ -80,6 +84,7 @@ let build_package = fun ~workspace ~toolchain ~store package ->
               ~prepared_execution
               ~completed
               ~build_ctx
+              ~on_event
   in
   match detailed_result.Package_builder.result.status with
   | Built _

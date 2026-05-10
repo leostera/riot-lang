@@ -24,24 +24,6 @@ type request =
       binary_name: string;
     }
 
-type install_event =
-  | Build of Riot_build.Event.t
-  | InstallingBinary of {
-      package: Riot_model.Package_name.t;
-      binary: string;
-    }
-  | PromotedBinary of {
-      binary: string;
-      destination: Path.t;
-      mode: destination;
-    }
-  | InstalledBinary of {
-      binary: string;
-      duration_ms: int;
-      destination: Path.t;
-      mode: destination;
-    }
-
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of {
@@ -65,7 +47,7 @@ type install_error =
       error: Riot_deps.package_error;
     }
 
-let no_event: install_event -> unit = fun _ -> ()
+let no_event: Riot_model.Event.t -> unit = fun _ -> ()
 
 let destination_name = fun __tmp1 ->
   match __tmp1 with
@@ -107,37 +89,16 @@ let install_error_message = fun __tmp1 ->
   | ExternalTargetLoadFailed { target; error } ->
       "failed to load external target '" ^ target ^ "': " ^ Riot_deps.package_error_message error
 
-let path_json = fun path -> Data.Json.String (Path.to_string path)
-
-let install_event_to_json = fun __tmp1 ->
+let command_install_mode = fun __tmp1 ->
   match __tmp1 with
-  | Build event -> Riot_build.Event.to_json event
-  | InstallingBinary { package; binary } ->
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "InstallingBinary");
-        ("package", Data.Json.String (Riot_model.Package_name.to_string package));
-        ("binary", Data.Json.String binary);
-      ])
-  | PromotedBinary { binary; destination; mode } ->
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "PromotedBinary");
-        ("binary", Data.Json.String binary);
-        ("destination", path_json destination);
-        ("mode", Data.Json.String (destination_name mode));
-      ])
-  | InstalledBinary {
-      binary;
-      duration_ms;
-      destination;
-      mode;
-    } ->
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "InstalledBinary");
-        ("binary", Data.Json.String binary);
-        ("duration_ms", Data.Json.Int duration_ms);
-        ("destination", path_json destination);
-        ("mode", Data.Json.String (destination_name mode));
-      ])
+  | Local -> Riot_model.Event.CommandInstallLocal
+  | Global -> Riot_model.Event.CommandInstallGlobal
+
+let make_command_event = fun kind ->
+  Riot_model.Event.create
+    ~session_id:(Riot_model.Session_id.make ())
+    ~level:Riot_model.Event.Info
+    (Riot_model.Event.Command kind)
 
 let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run workspace
@@ -177,11 +138,11 @@ let make_pm_event = fun ~session_id kind ->
   Riot_model.Event.create
     ~session_id
     ~level:Riot_model.Event.Info
-    kind
+    (Riot_model.Event.Deps kind)
 
 let emit_pm_build_event = fun ~session_id ~on_event kind ->
   on_event
-    (Build (Riot_build.Event.Pm (make_pm_event ~session_id kind)))
+    (make_pm_event ~session_id kind)
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
@@ -269,7 +230,13 @@ let install_binary_atomically = fun ~src ~dst ~permissions ->
 let promote_binary = fun ~on_event ~src ~dst ~binary ~mode ->
   match install_binary_atomically ~src ~dst ~permissions:Fs.Permissions.executable with
   | Ok () ->
-      on_event (PromotedBinary { binary; destination = dst; mode });
+      on_event
+        (make_command_event
+          (Riot_model.Event.CommandBinaryPromoted {
+            binary;
+            destination = dst;
+            mode = command_install_mode mode;
+          }));
       Ok ()
   | Error reason ->
       Error (
@@ -303,11 +270,11 @@ let ensure_destination_parent = fun path ->
 let install_workspace = fun ~on_event ~workspace ~package_name ~binary_name ~destination ->
   let started_at = Time.Instant.now () in
   let* package_name = resolve_binary ~workspace ~package_name ~binary_name in
-  on_event (InstallingBinary { package = package_name; binary = binary_name });
+  on_event
+    (make_command_event
+      (Riot_model.Event.CommandBinaryInstalling { package = package_name; binary = binary_name }));
   let* output =
-    Riot_build.build
-      ~on_event:(fun event -> on_event (Build event))
-      (build_request ~workspace ~package_name)
+    Riot_build.build ~on_event (build_request ~workspace ~package_name)
     |> Result.map_err ~fn:(fun err -> BuildFailed err)
   in
   let store =
@@ -340,12 +307,15 @@ let install_workspace = fun ~on_event ~workspace ~package_name ~binary_name ~des
   let duration = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) in
   on_event
     (
-      InstalledBinary {
-        binary = binary_name;
-        duration_ms = Time.Duration.to_millis duration;
-        destination = destination_path;
-        mode = destination;
-      }
+      make_command_event
+        (
+          Riot_model.Event.CommandBinaryInstalled {
+            binary = binary_name;
+            duration_ms = Time.Duration.to_millis duration;
+            destination = destination_path;
+            mode = command_install_mode destination;
+          }
+        )
     );
   Ok ()
 

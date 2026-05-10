@@ -11,3 +11,5 @@ path = "src/riot_model.ml"
 [dependencies]
 std = "*"
 ignore = "*"
+serde = "*"
+serde-json = "*"

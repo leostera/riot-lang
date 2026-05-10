@@ -3,7 +3,7 @@ open Std.Result.Syntax
 
 module Error = Error
 
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 
 let no_emit: event_sink = fun _ -> ()
 
@@ -127,14 +127,15 @@ let load_external_package = fun
       let emit_started =
         match version_opt with
         | Some version ->
-            emit (Riot_model.Event.PackageManifestFetchStarted { package = package_name; version })
+            emit
+              (Riot_model.Event.DepsPackageManifestFetchStarted { package = package_name; version })
         | None -> ()
       in
       let emit_finished () =
         match version_opt with
         | Some version ->
             emit
-              (Riot_model.Event.PackageManifestFetchFinished {
+              (Riot_model.Event.DepsPackageManifestFetchFinished {
                 package = package_name;
                 version;
                 duration_ms = duration_ms_since started;
@@ -143,7 +144,7 @@ let load_external_package = fun
       in
       let emit_failed error =
         emit
-          (Riot_model.Event.PackageManifestFetchFailed {
+          (Riot_model.Event.DepsPackageManifestFetchFailed {
             package = package_name;
             version = version_opt;
             error;
@@ -268,7 +269,7 @@ let rec resolve_package_graph = fun
                 | Ok resolved ->
                     emit
                       (
-                        Riot_model.Event.PackageResolvedForBuild {
+                        Riot_model.Event.DepsPackageResolvedForBuild {
                           package = package.name;
                           version = resolved.id.version;
                           path = Path.to_string resolved.materialized_root;

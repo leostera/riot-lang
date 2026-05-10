@@ -261,9 +261,8 @@ type = "stdout"
 format = "full"
 |};
   Std.Log.set_level Info;
-  (* Now start logger and telemetry *)
+  (* Now start logger. Command progress flows through explicit UI event sinks. *)
   let _ = Std.Log.start_link () in
-  let _ = Std.Telemetry.start () in
   ()
 
 let is_lsp_invocation = fun args ->

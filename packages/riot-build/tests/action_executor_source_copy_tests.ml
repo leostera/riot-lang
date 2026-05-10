@@ -97,6 +97,7 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
               ~store
               ~session_id:(Riot_model.Session_id.make ())
               ~build_target:test_build_target
+              ~on_event:(fun _ -> ())
               (test_toolchain ())
               sandbox
               node
@@ -131,6 +132,7 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
               ~store
               ~session_id:(Riot_model.Session_id.make ())
               ~build_target:test_build_target
+              ~on_event:(fun _ -> ())
               (test_toolchain ())
               sandbox
               node
@@ -169,6 +171,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
           ~store
           ~session_id
           ~build_target:test_build_target
+          ~on_event:(fun _ -> ())
           toolchain
           sandbox
           node
@@ -186,6 +189,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
               ~store
               ~session_id
               ~build_target:test_build_target
+              ~on_event:(fun _ -> ())
               toolchain
               sandbox
               node

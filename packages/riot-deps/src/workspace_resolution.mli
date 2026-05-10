@@ -1,6 +1,6 @@
 open Std
 
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 
 val ensure_lock:
   ?emit:event_sink ->

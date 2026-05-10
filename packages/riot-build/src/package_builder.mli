@@ -83,6 +83,7 @@ val plan_build_unit:
   unit:Build_unit.t ->
   depset:Dependency.t list ->
   build_ctx:Build_ctx.t ->
+  on_event:(Event.t -> unit) ->
   emit_visible_progress:bool ->
   plan_outcome
 
@@ -92,12 +93,14 @@ val prepare_execution:
   store:Riot_store.Store.t ->
   execution_plan:execution_plan ->
   build_ctx:Build_ctx.t ->
+  on_event:(Event.t -> unit) ->
   (prepared_execution, detailed_result) result
 
 val execute_action:
   store:Riot_store.Store.t ->
   prepared_execution:prepared_execution ->
   build_ctx:Build_ctx.t ->
+  on_event:(Event.t -> unit) ->
   completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t ->
   Action_node.t ->
   Action_executor.execution_result
@@ -108,4 +111,5 @@ val finalize_execution:
   prepared_execution:prepared_execution ->
   completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) ConcurrentHashMap.t ->
   build_ctx:Build_ctx.t ->
+  on_event:(Event.t -> unit) ->
   detailed_result

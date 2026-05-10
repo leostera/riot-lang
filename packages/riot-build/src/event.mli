@@ -1,22 +1,13 @@
 open Std
 
 (**
-   Structured events emitted by [riot-build].
+   Public build events are the shared Riot model event envelope.
 
-   Use these events to drive human output, JSON output, or higher-level UI
-   integrations without scraping terminal text.
+   [riot-build] still owns conversion from build/runtime internals into model
+   events, but it does not expose a second event variant.
 *)
-type t =
-  | Pm of Riot_model.Event.t
-  | BuildingTarget of {
-      target: Riot_model.Target.t;
-      host: bool;
-    }
-  | CacheGc of Riot_store.Cache_gc.event
-  | Telemetry of Std.Telemetry.event
-  | Phase of runtime_phase
-
-and runtime_phase =
+type t = Riot_model.Event.t
+type runtime_phase = Riot_model.Event.build_runtime_phase =
   | TargetsResolved of { target_count: int }
   | ToolchainsEnsured of { target_count: int }
   | ToolchainsValidated of { target_count: int }
@@ -124,8 +115,30 @@ and runtime_phase =
   | CacheGenerationRecorded of { lane_count: int; new_entry_count: int }
   | ReturningResults of { result_count: int; had_partial_failure: bool }
 
-(** Convert an event into a JSON payload when it has a machine-readable form. *)
+val create:
+  session_id:Riot_model.Session_id.t ->
+  ?level:Riot_model.Event.level ->
+  Riot_model.Event.kind ->
+  t
+
+val build:
+  session_id:Riot_model.Session_id.t ->
+  ?level:Riot_model.Event.level ->
+  Riot_model.Event.build_event ->
+  t
+
+val cache:
+  session_id:Riot_model.Session_id.t ->
+  ?level:Riot_model.Event.level ->
+  Riot_model.Event.cache_event ->
+  t
+
+val phase: session_id:Riot_model.Session_id.t -> runtime_phase -> t
+
+val cache_gc_event_kind: Riot_store.Cache_gc.event -> Riot_model.Event.cache_event
+
+val cache_gc: session_id:Riot_model.Session_id.t -> Riot_store.Cache_gc.event -> t
+
 val to_json: t -> Data.Json.t option
 
-(** Return a semantic timestamp for events that carry one. *)
 val timestamp: t -> (string * Time.Instant.t) option

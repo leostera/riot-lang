@@ -30,6 +30,8 @@ val toolchain: 'a t -> Riot_toolchain.t
 
 val store: 'a t -> Riot_store.Store.t
 
+val on_event: 'a t -> Event.t -> unit
+
 val build_unit_plan: 'a t -> Build_unit_plan.t
 
 val build_unit_graph: 'a t -> Riot_planner.Build_unit_graph.t

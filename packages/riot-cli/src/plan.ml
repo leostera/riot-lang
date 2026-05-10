@@ -12,7 +12,7 @@ let command =
   |> about "Print the build-unit plan without checking cache or executing packages"
   |> args Build.build_args
 
-let output_mode_of_request = fun (request: Build.request) -> request.output_mode
+let output_mode_of_request = fun (request: Build.request) -> request.mode
 
 let out = println
 
@@ -116,19 +116,20 @@ let print_human_plan = fun ~resolve_us ~create_us resolved plan ->
 
 let write_error = fun ~mode message ->
   match mode with
-  | Build.Json ->
+  | Ui.Json ->
       out
         (Data.Json.to_string
           (Data.Json.Object [
             ("type", Data.Json.String "error");
             ("message", Data.Json.String message);
           ]))
-  | Human -> err ("\027[1;31merror\027[0m " ^ message)
+  | Ui.Line
+  | Ui.TUI -> err ("\027[1;31merror\027[0m " ^ message)
 
 let planning_error_message = fun __tmp1 ->
   match __tmp1 with
   | Build_core.BuildUnitPlanningFailed planning_error ->
-      Build.build_unit_planning_error_lines planning_error
+      Ui.build_unit_planning_error_lines planning_error
       |> String.concat "\n"
   | err -> Build_core.error_message err
 
@@ -170,8 +171,9 @@ let run_request = fun (request: Build.request) ->
   | Ok (resolved, plan, resolve_us, create_us) ->
       (
         match mode with
-        | Build.Json -> out (Data.Json.to_string (plan_json ~resolve_us ~create_us resolved plan))
-        | Human -> print_human_plan ~resolve_us ~create_us resolved plan
+        | Ui.Json -> out (Data.Json.to_string (plan_json ~resolve_us ~create_us resolved plan))
+        | Ui.Line
+        | Ui.TUI -> print_human_plan ~resolve_us ~create_us resolved plan
       );
       Ok ()
 

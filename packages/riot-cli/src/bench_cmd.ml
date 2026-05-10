@@ -1226,17 +1226,17 @@ let bench_history_compare = fun
           Some history)
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
-  let seen_registry_updates = Collections.HashSet.create () in
   let* (matches, trailing) = reparsed_matches matches in
   let extra_args = trailing @ bench_override_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let output_mode =
     if ArgParser.get_flag matches "json" then
-      Build.Json
+      Ui.Json
     else
-      Build.Human
+      Ui.Line
   in
+  let build_ui_mode = Ui.mode_of_json_flag (output_mode = Ui.Json) in
   let list_mode = ArgParser.get_flag matches "list" in
   let pattern = ArgParser.get_one matches "filter" in
   let package_filters = parse_package_names (ArgParser.get_many matches "package") in
@@ -1254,8 +1254,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   in
   let extra_args = Test_selection.extra_args request extra_args in
   let command_started_at = Time.Instant.now () in
-  if output_mode = Build.Json then
-    Build.reset_json_clock ~started_at:command_started_at;
+  if output_mode = Ui.Json then
+    Ui.reset_json_clock ~started_at:command_started_at;
   if list_mode then
     let listed_suite_count = ref 0 in
     let listed_benchmark_count = ref 0 in
@@ -1276,13 +1276,13 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     in
     match Bench_runtime.list_benchmarks
       ?on_suite:(
-        if output_mode = Build.Json then
+        if output_mode = Ui.Json then
           Some on_suite
         else
           None
       )
       ?on_suite_error:(
-        if output_mode = Build.Json then
+        if output_mode = Ui.Json then
           Some on_suite_error
         else
           None
@@ -1304,13 +1304,14 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         in
         (
           match output_mode with
-          | Build.Json ->
+          | Ui.Json ->
               write_bench_list_completed_json
                 ~command_started_at
                 ~suite_count:!listed_suite_count
                 ~benchmark_count:!listed_benchmark_count
                 ~failed_suite_count:!failed_suite_count
-          | Build.Human ->
+          | Ui.Line
+          | Ui.TUI ->
               if List.is_empty suites then
                 print_empty_list_hint request.package_filter request.query
               else
@@ -1320,11 +1321,13 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     | Error err ->
         (
           match output_mode with
-          | Build.Json -> write_bench_error_json ~command_started_at err
-          | Build.Human -> write_bench_error err
+          | Ui.Json -> write_bench_error_json ~command_started_at err
+          | Ui.Line
+          | Ui.TUI -> write_bench_error err
         );
         Error (Failure (Bench_runtime.bench_error_message err))
   else
+    let ui = Ui.make ~mode:build_ui_mode ~profile () in
     let history_partial = bench_history_partial request in
     let record_history = ArgParser.get_flag matches "record" in
     let history_context =
@@ -1336,8 +1339,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     let human_render_state = create_human_render_state () in
     let on_event (event: Bench_runtime.bench_event) =
       match event with
-      | Bench_runtime.Build build_event ->
-          Build.write_build_event ~mode:output_mode ~profile ~seen_registry_updates build_event
+      | Bench_runtime.Build build_event -> Ui.send ui build_event
       | Bench_runtime.SuiteCompleted {
           suite;
           status;
@@ -1404,7 +1406,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                       ^ error)));
           (
             match output_mode with
-            | Build.Json ->
+            | Ui.Json ->
                 Bench_runtime.bench_event_to_json event
                 |> Option.for_each
                   ~fn:(fun json ->
@@ -1421,7 +1423,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                       ~current_partial:history_partial
                       suite
                       history)
-            | Build.Human ->
+            | Ui.Line
+            | Ui.TUI ->
                 write_bench_event
                   ?history_comparison
                   ~current_partial:history_partial
@@ -1430,7 +1433,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           )
       | _ -> (
           match output_mode with
-          | Build.Json ->
+          | Ui.Json ->
               Bench_runtime.bench_event_to_json event
               |> Option.for_each
                 ~fn:(fun json ->
@@ -1439,8 +1442,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                     ~duration_us:(summary_duration_us ~command_started_at event)
                     event
                     json)
-          | Build.Human ->
-              write_bench_event ~current_partial:history_partial human_render_state event
+          | Ui.Line
+          | Ui.TUI -> write_bench_event ~current_partial:history_partial human_render_state event
         )
     in
     match Bench_runtime.bench
@@ -1456,7 +1459,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     | Error err ->
         (
           match output_mode with
-          | Build.Json -> write_bench_error_json ~command_started_at err
-          | Build.Human -> write_bench_error err
+          | Ui.Json -> write_bench_error_json ~command_started_at err
+          | Ui.Line
+          | Ui.TUI -> write_bench_error err
         );
         Error (Failure (Bench_runtime.bench_error_message err))

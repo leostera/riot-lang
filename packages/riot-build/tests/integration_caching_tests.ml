@@ -113,6 +113,7 @@ let execute_graph = fun ~workspace ~store ~package ~graph ->
       ~store
       ~session_id:(Riot_model.Session_id.make ())
       ~build_target:test_build_target
+      ~on_event:(fun _ -> ())
       (test_toolchain ())
       ~concurrency:1
   in

@@ -93,6 +93,7 @@ let make_execute_node_write_miss_bench = fun root ~size ->
         ~store
         ~session_id
         ~build_target:test_build_target
+        ~on_event:(fun _ -> ())
         test_toolchain
         sandbox
         node
@@ -134,6 +135,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
       ~store
       ~session_id
       ~build_target:test_build_target
+      ~on_event:(fun _ -> ())
       test_toolchain
       warm_sandbox
       node
@@ -163,6 +165,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
         ~store
         ~session_id
         ~build_target:test_build_target
+        ~on_event:(fun _ -> ())
         test_toolchain
         sandbox
         node
@@ -211,6 +214,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
         ~store
         ~session_id
         ~build_target:test_build_target
+        ~on_event:(fun _ -> ())
         test_toolchain
         ~concurrency
     in
@@ -237,6 +241,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
       ~store
       ~session_id
       ~build_target:test_build_target
+      ~on_event:(fun _ -> ())
       test_toolchain
       ~concurrency
   in
@@ -253,6 +258,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
         ~store
         ~session_id
         ~build_target:test_build_target
+        ~on_event:(fun _ -> ())
         test_toolchain
         ~concurrency
     in

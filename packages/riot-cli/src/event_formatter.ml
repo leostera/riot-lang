@@ -1,10 +1,11 @@
 open Std
 open Std.Collections
 
-let format = fun ~displayed_packages:_ (event: Riot_build.Event.t) ->
-  match event with
-  | Riot_build.Event.Pm event -> Riot_model.Event.display event.kind
-  | Riot_build.Event.BuildingTarget { target; host } ->
+let format = fun ~displayed_packages:_ (event: Riot_model.Event.t) ->
+  match event.kind with
+  | Riot_model.Event.Build (
+    Riot_model.Event.BuildTargetBuilding { target; host }
+  ) ->
       let kind =
         if host then
           "host"
@@ -12,6 +13,4 @@ let format = fun ~displayed_packages:_ (event: Riot_build.Event.t) ->
           "target"
       in
       "building " ^ kind ^ " " ^ Riot_model.Target.to_string target
-  | Riot_build.Event.CacheGc _
-  | Riot_build.Event.Telemetry _
-  | Riot_build.Event.Phase _ -> ""
+  | kind -> Riot_model.Event.display kind

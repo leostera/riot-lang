@@ -30,14 +30,6 @@ type built_binary = {
   args: string list;
 }
 
-type run_event =
-  | Build of Riot_build.Event.t
-  | RunningBinary of {
-      package: Riot_model.Package_name.t;
-      binary: string;
-      args: string list;
-    }
-
 type run_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of {
@@ -57,7 +49,7 @@ type run_error =
       error: Riot_deps.package_error;
     }
 
-let no_event: run_event -> unit = fun _ -> ()
+let no_event: Riot_model.Event.t -> unit = fun _ -> ()
 
 let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run workspace
@@ -147,26 +139,21 @@ let run_error_message = fun __tmp1 ->
   | ExternalTargetLoadFailed { target; error } ->
       "failed to load external target '" ^ target ^ "': " ^ Riot_deps.package_error_message error
 
-let run_event_to_json = fun __tmp1 ->
-  match __tmp1 with
-  | Build event -> Riot_build.Event.to_json event
-  | RunningBinary { package; binary; args } ->
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "RunningBinary");
-        ("package", Data.Json.String (Riot_model.Package_name.to_string package));
-        ("binary", Data.Json.String binary);
-        ("args", Data.Json.Array (List.map args ~fn:Data.Json.string));
-      ])
+let make_command_event = fun kind ->
+  Riot_model.Event.create
+    ~session_id:(Riot_model.Session_id.make ())
+    ~level:Riot_model.Event.Info
+    (Riot_model.Event.Command kind)
 
 let make_pm_event = fun ~session_id kind ->
   Riot_model.Event.create
     ~session_id
     ~level:Riot_model.Event.Info
-    kind
+    (Riot_model.Event.Deps kind)
 
 let emit_pm_build_event = fun ~session_id ~on_event kind ->
   on_event
-    (Build (Riot_build.Event.Pm (make_pm_event ~session_id kind)))
+    (make_pm_event ~session_id kind)
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
@@ -242,7 +229,7 @@ let build_binary = fun ?(on_event = no_event) (request: run_request) ->
       ()
   in
   let* output =
-    Riot_build.build ~on_event:(fun event -> on_event (Build event)) build_request
+    Riot_build.build ~on_event build_request
     |> Result.map_err ~fn:(fun err -> BuildFailed err)
   in
   let store =
@@ -276,7 +263,12 @@ let build_source_binary = fun ?(on_event = no_event) (request: source_run_reques
 let run = fun ?(on_event = no_event) (request: run_request) ->
   let* built = build_binary ~on_event request in
   on_event
-    (RunningBinary { package = built.package_name; binary = built.binary_name; args = built.args });
+    (make_command_event
+      (Riot_model.Event.CommandBinaryRunning {
+        package = built.package_name;
+        binary = built.binary_name;
+        args = built.args;
+      }));
   let cmd = Command.make (Path.to_string built.path) ~args:built.args in
   match Command.status cmd with
   | Ok 0 -> Ok ()
@@ -286,7 +278,12 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
 let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
   let* built = build_source_binary ~on_event request in
   on_event
-    (RunningBinary { package = built.package_name; binary = built.binary_name; args = built.args });
+    (make_command_event
+      (Riot_model.Event.CommandBinaryRunning {
+        package = built.package_name;
+        binary = built.binary_name;
+        args = built.args;
+      }));
   let cmd = Command.make (Path.to_string built.path) ~args:built.args in
   match Command.status cmd with
   | Ok 0 -> Ok ()

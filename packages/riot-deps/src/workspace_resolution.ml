@@ -1,7 +1,7 @@
 open Std
 open Std.Result.Syntax
 
-type event_sink = Riot_model.Event.kind -> unit
+type event_sink = Riot_model.Event.deps_event -> unit
 
 let no_emit: event_sink = fun _ -> ()
 
@@ -90,7 +90,8 @@ let emit_locked_packages = fun
                 previous_versions
                 ~fn:(fun (existing_key, _) -> lock_package_key_equal existing_key key))
           then
-            emit (Riot_model.Event.PackageVersionLocked { package = event_package_name; version })
+            emit
+              (Riot_model.Event.DepsPackageVersionLocked { package = event_package_name; version })
       | _ -> ())
 
 let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lockfile.t) -> {
@@ -112,12 +113,12 @@ let ensure_lock = fun
   let lock_path = Riot_model.Riot_dirs.package_lock_path ~workspace_root in
   let lock_path_str = Path.to_string lock_path in
   let write_lockfile (lockfile: Riot_model.Lockfile.t) =
-    emit (Riot_model.Event.LockfileWriteStarted { path = lock_path_str });
+    emit (Riot_model.Event.DepsLockfileWriteStarted { path = lock_path_str });
     let write_started = Time.Instant.now () in
     match Lockfile_store.write ~workspace_root lockfile with
     | Ok () ->
         emit
-          (Riot_model.Event.LockfileWriteFinished {
+          (Riot_model.Event.DepsLockfileWriteFinished {
             path = lock_path_str;
             duration_ms = duration_ms_since write_started;
           });
@@ -128,7 +129,7 @@ let ensure_lock = fun
           error = Lockfile_store.error_message err;
         }
         in
-        emit (Riot_model.Event.LockfileWriteFailed { path = lock_path_str; error = err });
+        emit (Riot_model.Event.DepsLockfileWriteFailed { path = lock_path_str; error = err });
         Error err
   in
   let resolve_lockfile ~projection_emit (lockfile: Riot_model.Lockfile.t) =
@@ -148,7 +149,7 @@ let ensure_lock = fun
         error = Lockfile_store.error_message err;
       }
       in
-      emit (Riot_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
+      emit (Riot_model.Event.DepsLockfileReadFailed { path = lock_path_str; error = err });
       Error err
   | Ok stored_lock ->
       let existing_lock =
@@ -175,14 +176,14 @@ let ensure_lock = fun
               | Dep_solver.Unlock ->
                   emit
                     (
-                      Riot_model.Event.DependencyResolutionStarted {
+                      Riot_model.Event.DepsResolutionStarted {
                         packages = event_package_names packages;
                         mode = `Unlock;
                       }
                     );
                   emit
                     (
-                      Riot_model.Event.DependencyResolutionUnlocking {
+                      Riot_model.Event.DepsResolutionUnlocking {
                         path =
                           match existing_lock with
                           | Some _ -> Some lock_path_str
@@ -211,13 +212,12 @@ let ensure_lock = fun
                   ) else (
                     emit
                       (
-                        Riot_model.Event.DependencyResolutionStarted {
+                        Riot_model.Event.DepsResolutionStarted {
                           packages = event_package_names packages;
                           mode = `Refresh;
                         }
                       );
-                    emit
-                      (Riot_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
+                    emit (Riot_model.Event.DepsResolutionRefreshingLock { path = lock_path_str });
                     Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
                     |> Result.map ~fn:(lockfile_with_dependency_hash current_dependency_hash)
                     |> Result.map ~fn:(fun lockfile -> (lockfile, false, true, solve_started))
@@ -228,7 +228,7 @@ let ensure_lock = fun
       in
       match lock_result with
       | Error err ->
-          emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+          emit (Riot_model.Event.DepsResolutionFailed { error = err });
           Error err
       | Ok (lockfile, used_existing_lock, should_write, solve_started) ->
           let write_result =
@@ -239,12 +239,11 @@ let ensure_lock = fun
           in
           match write_result with
           | Error err ->
-              emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+              emit (Riot_model.Event.DepsResolutionFailed { error = err });
               Error err
           | Ok () -> (
               if used_existing_lock then
-                emit
-                  (Riot_model.Event.DependencyResolutionUsingExistingLock { path = lock_path_str });
+                emit (Riot_model.Event.DepsResolutionUsingExistingLock { path = lock_path_str });
               if should_write then
                 emit_locked_packages ~emit ~previous_lock:existing_lock lockfile;
               let projection_emit =
@@ -265,21 +264,18 @@ let ensure_lock = fun
                         error = Lock_refresh.error_message err;
                       }
                       in
-                      emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+                      emit (Riot_model.Event.DepsResolutionFailed { error = err });
                       Error err
                   | Ok dependency_hash ->
                       let solve_started = Time.Instant.now () in
                       emit
                         (
-                          Riot_model.Event.DependencyResolutionStarted {
+                          Riot_model.Event.DepsResolutionStarted {
                             packages = event_package_names packages;
                             mode = `Refresh;
                           }
                         );
-                      emit
-                        (Riot_model.Event.DependencyResolutionRefreshingLock {
-                          path = lock_path_str;
-                        });
+                      emit (Riot_model.Event.DepsResolutionRefreshingLock { path = lock_path_str });
                       match Dep_solver.lock_deps
                         ~emit
                         ~mode:Dep_solver.Refresh
@@ -289,22 +285,22 @@ let ensure_lock = fun
                         ()
                       |> Result.map ~fn:(lockfile_with_dependency_hash dependency_hash) with
                       | Error err ->
-                          emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+                          emit (Riot_model.Event.DepsResolutionFailed { error = err });
                           Error err
                       | Ok refreshed_lock -> (
                           match write_lockfile refreshed_lock with
                           | Error err ->
-                              emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+                              emit (Riot_model.Event.DepsResolutionFailed { error = err });
                               Error err
                           | Ok () ->
                               emit_locked_packages ~emit ~previous_lock:existing_lock refreshed_lock;
                               match resolve_lockfile ~projection_emit:emit refreshed_lock with
                               | Error err ->
-                                  emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+                                  emit (Riot_model.Event.DepsResolutionFailed { error = err });
                                   Error err
                               | Ok resolved ->
                                   emit
-                                    (Riot_model.Event.DependencyResolutionFinished {
+                                    (Riot_model.Event.DepsResolutionFinished {
                                       duration_ms = duration_ms_since solve_started;
                                       resolved_packages = List.length resolved;
                                       resolved_edges = resolved_edge_count refreshed_lock;
@@ -313,12 +309,12 @@ let ensure_lock = fun
                         )
                 )
               | Error err ->
-                  emit (Riot_model.Event.DependencyResolutionFailed { error = err });
+                  emit (Riot_model.Event.DepsResolutionFailed { error = err });
                   Error err
               | Ok resolved ->
                   if not used_existing_lock then
                     emit
-                      (Riot_model.Event.DependencyResolutionFinished {
+                      (Riot_model.Event.DepsResolutionFinished {
                         duration_ms = duration_ms_since solve_started;
                         resolved_packages = List.length resolved;
                         resolved_edges = resolved_edge_count lockfile;

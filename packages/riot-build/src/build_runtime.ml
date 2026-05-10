@@ -37,24 +37,6 @@ type build_context = {
   record_cache_generation: bool;
 }
 
-let telemetry_handler_id = fun context ->
-  "riot-build:" ^ Riot_model.Session_id.to_string context.build.Build_context.session_id
-
-let with_telemetry_bridge = fun context fn ->
-  let _ = Std.Telemetry.start () in
-  let handler_id = telemetry_handler_id context in
-  Std.Telemetry.attach handler_id (Build_context.forward_telemetry_event context.build);
-  try
-    let result = fn () in
-    Build_context.flush_events context.build;
-    Std.Telemetry.detach handler_id;
-    result
-  with
-  | exn ->
-      Build_context.flush_events context.build;
-      Std.Telemetry.detach handler_id;
-      raise exn
-
 let emit_runtime_phase = fun context phase -> Build_context.emit_phase context.build phase
 
 let emit_targets_resolved = fun context targets ->
@@ -362,4 +344,4 @@ let do_build = fun context ->
 
 let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) build spec ->
   let* context = make_context ~allow_partial_failures ~record_cache_generation build spec in
-  with_telemetry_bridge context (fun () -> do_build context)
+  do_build context

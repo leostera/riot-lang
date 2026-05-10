@@ -179,8 +179,7 @@ let render_skipping = fun ~package ~version ->
 let render_skipping_not_public = fun ~package ~version ->
   "    \027[1;33mSkipping\027[0m " ^ package ^ " " ^ version ^ " (package is not public)"
 
-let write_publish_event = fun
-  ~workspace_root ~seen_registry_updates ~displayed_packages ~progress event ->
+let write_publish_event = fun ~workspace_root ~ui ~displayed_packages ~progress event ->
   match event with
   | Riot_publish.Fmt _ -> ()
   | Riot_publish.Fix (Riot_fix.Event.Start _) -> ()
@@ -188,8 +187,7 @@ let write_publish_event = fun
   | Riot_publish.Fix (Riot_fix.Event.FileProgress _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.FileResult _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.Summary _) -> ()
-  | Riot_publish.Build build_event ->
-      Build.write_build_event ~mode:Build.Human ~seen_registry_updates build_event
+  | Riot_publish.Build build_event -> Ui.send ui build_event
   | Riot_publish.CheckStarted { package; version; stage = `availability } ->
       out
         (render_resolving ~package:(Package_name.to_string package) ~version:(version_label version))
@@ -408,17 +406,17 @@ let run = fun (workspace: Workspace.t) matches ->
   | Ok request ->
       let json = ArgParser.get_flag matches "json" in
       if json then
-        Build.reset_json_clock ~started_at:(Time.Instant.now ());
+        Ui.reset_json_clock ~started_at:(Time.Instant.now ());
       let mode =
         if ArgParser.get_flag matches "dry-run" then
           Riot_publish.DryRun
         else
           Riot_publish.Publish
       in
-      let seen_registry_updates = HashSet.create () in
+      let ui = Ui.make ~mode:(Ui.mode_of_json_flag json) () in
       let displayed_packages = HashSet.create () in
       let progress =
-        Build.{
+        Ui.Common.{
           built_count = 0;
           cached_count = 0;
           failed_count = 0;
@@ -430,11 +428,7 @@ let run = fun (workspace: Workspace.t) matches ->
           if json then
             write_publish_event_json ~workspace_root:workspace.root
           else
-            write_publish_event
-              ~workspace_root:workspace.root
-              ~seen_registry_updates
-              ~displayed_packages
-              ~progress
+            write_publish_event ~workspace_root:workspace.root ~ui ~displayed_packages ~progress
         )
         ~workspace
         ~request:(publish_request

@@ -1,7 +1,6 @@
 open Std
 
 module Test = Std.Test
-module Telemetry_events = Riot_build.Internal.Telemetry_events
 
 let package_name = fun name ->
   Result.expect
@@ -16,71 +15,106 @@ let make_demo_package = fun () ->
     ~library:{ path = Path.v "src/lib.ml" }
     ()
 
-let expect_timestamp_field = fun ~expected event ->
-  match Riot_build.Event.timestamp (Riot_build.Event.Telemetry event) with
-  | Some (actual, _) ->
-      Test.assert_equal ~expected ~actual;
-      Ok ()
-  | None -> Error ("expected timestamp field " ^ expected)
+let event = fun kind ->
+  Riot_model.Event.create
+    ~session_id:(Riot_model.Session_id.make ())
+    ~level:Riot_model.Event.Info
+    kind
+
+let json_field = fun name json -> Data.Json.get_field name json
+
+let data_field = fun name json ->
+  match json_field "data" json with
+  | Some data -> Data.Json.get_field name data
+  | None -> None
+
+let expect_json_field = fun ~label ~expected ~actual ->
+  if expected = actual then
+    Ok ()
+  else
+    Error (label
+    ^ ": expected "
+    ^ Data.Json.to_string expected
+    ^ ", got "
+    ^ Data.Json.to_string actual)
+
+let expect_some_json_field = fun ~label ~expected actual ->
+  match actual with
+  | Some actual -> expect_json_field ~label ~expected ~actual
+  | None -> Error (label ^ ": expected field")
 
 let test_building_target_event_to_json = fun _ctx ->
   let target =
     Result.expect (Riot_model.Target.from_string "aarch64-unknown-linux-gnu") ~msg:"target"
   in
-  let actual =
-    Riot_build.Event.to_json (Riot_build.Event.BuildingTarget { target; host = false })
-  in
-  Test.assert_equal
-    ~expected:(Some (Data.Json.Object [
-      ("type", Data.Json.String "BuildingTarget");
-      ("target", Data.Json.String "aarch64-unknown-linux-gnu");
-      ("host", Data.Json.Bool false);
-    ]))
-    ~actual;
-  Ok ()
+  match Riot_build.Event.to_json
+    (event (Riot_model.Event.Build (Riot_model.Event.BuildTargetBuilding { target; host = false }))) with
+  | Some json ->
+      let open Std.Result.Syntax in
+      let* () =
+        expect_some_json_field
+          ~label:"event"
+          ~expected:(Data.Json.String "riot.build.target.building")
+          (json_field "event" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.target"
+          ~expected:(Data.Json.String "aarch64-unknown-linux-gnu")
+          (data_field "target" json)
+      in
+      expect_some_json_field
+        ~label:"data.host"
+        ~expected:(Data.Json.Bool false)
+        (data_field "host" json)
+  | None -> Error "expected JSON output"
 
-let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
-  let session_id = Riot_model.Session_id.make () in
-  let event =
-    Riot_model.Event.create
-      ~session_id
-      ~level:Riot_model.Event.Info
-      (Riot_model.Event.PackageDownloadStarted {
-        package = package_name "std";
-        version = "0.1.0";
-        path = "/tmp/std";
-      })
+let test_deps_event_to_json_uses_model_envelope = fun _ctx ->
+  let deps_event = Riot_model.Event.Deps (Riot_model.Event.DepsPackageDownloadStarted {
+    package = package_name "std";
+    version = "0.1.0";
+    path = "/tmp/std";
+  })
   in
-  match Riot_build.Event.to_json (Riot_build.Event.Pm event) with
-  | Some (Data.Json.Object fields) -> (
-      match List.find fields ~fn:(fun (name, _) -> String.equal name "event")
-      |> Option.map ~fn:(fun (_, value) -> value) with
-      | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
-      | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)
-      | None -> Error "expected PM event name in JSON"
-    )
-  | Some json -> Error ("expected JSON object, got " ^ Data.Json.to_string json)
-  | None -> Error "expected JSON output for PM event"
+  match Riot_build.Event.to_json (event deps_event) with
+  | Some json ->
+      expect_some_json_field
+        ~label:"event"
+        ~expected:(Data.Json.String "riot.deps.package.download.started")
+        (json_field "event" json)
+  | None -> Error "expected JSON output for deps event"
 
 let test_build_phase_event_to_json = fun _ctx ->
-  let actual =
-    Riot_build.Event.to_json
-      (Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count = 3 }))
-  in
-  Test.assert_equal
-    ~expected:(Some (Data.Json.Object [
-      ("type", Data.Json.String "BuildPhase");
-      ("phase", Data.Json.String "targets_resolved");
-      ("target_count", Data.Json.Int 3);
-    ]))
-    ~actual;
-  Ok ()
+  let session_id = Riot_model.Session_id.make () in
+  match Riot_build.Event.to_json
+    (Riot_build.Event.phase ~session_id (Riot_build.Event.TargetsResolved { target_count = 3 })) with
+  | Some json ->
+      let open Std.Result.Syntax in
+      let* () =
+        expect_some_json_field
+          ~label:"event"
+          ~expected:(Data.Json.String "riot.build.phase.targets.resolved")
+          (json_field "event" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.phase"
+          ~expected:(Data.Json.String "targets_resolved")
+          (data_field "phase" json)
+      in
+      expect_some_json_field
+        ~label:"data.target_count"
+        ~expected:(Data.Json.Int 3)
+        (data_field "target_count" json)
+  | None -> Error "expected JSON output"
 
 let test_package_planning_phase_event_to_json = fun _ctx ->
-  let actual =
-    Riot_build.Event.to_json
-      (
-        Riot_build.Event.Phase (
+  let session_id = Riot_model.Session_id.make () in
+  match Riot_build.Event.to_json
+    (
+      Riot_build.Event.phase
+        ~session_id
+        (
           Riot_build.Event.PackagePlanningFinished {
             lane_count = 2;
             package_count = 5;
@@ -93,33 +127,36 @@ let test_package_planning_phase_event_to_json = fun _ctx ->
             error_count = 0;
           }
         )
-      )
-  in
-  Test.assert_equal
-    ~expected:(Some (Data.Json.Object [
-      ("type", Data.Json.String "BuildPhase");
-      ("phase", Data.Json.String "package_planning_finished");
-      ("lane_count", Data.Json.Int 2);
-      ("package_count", Data.Json.Int 5);
-      ("deferred_count", Data.Json.Int 1);
-      ("execution_required_count", Data.Json.Int 2);
-      ("finalized_count", Data.Json.Int 2);
-      ("cached_count", Data.Json.Int 1);
-      ("skipped_count", Data.Json.Int 1);
-      ("failed_count", Data.Json.Int 0);
-      ("error_count", Data.Json.Int 0);
-    ]))
-    ~actual;
-  Ok ()
+    ) with
+  | Some json ->
+      let open Std.Result.Syntax in
+      let* () =
+        expect_some_json_field
+          ~label:"event"
+          ~expected:(Data.Json.String "riot.build.phase.package.planning.finished")
+          (json_field "event" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.package_count"
+          ~expected:(Data.Json.Int 5)
+          (data_field "package_count" json)
+      in
+      expect_some_json_field
+        ~label:"data.error_count"
+        ~expected:(Data.Json.Int 0)
+        (data_field "error_count" json)
+  | None -> Error "expected JSON output"
 
 let test_package_action_graph_planned_event_to_json = fun _ctx ->
   let target =
     Result.expect (Riot_model.Target.from_string "aarch64-unknown-linux-gnu") ~msg:"target"
   in
-  let actual =
-    Riot_build.Event.to_json
-      (
-        Riot_build.Event.Phase (
+  match Riot_build.Event.to_json
+    (
+      Riot_build.Event.phase
+        ~session_id:(Riot_model.Session_id.make ())
+        (
           Riot_build.Event.PackageActionGraphPlanned {
             package = make_demo_package ();
             build_target = target;
@@ -127,142 +164,34 @@ let test_package_action_graph_planned_event_to_json = fun _ctx ->
             planned_at = Time.Instant.now ();
           }
         )
-      )
-  in
-  Test.assert_equal
-    ~expected:(Some (Data.Json.Object [
-      ("type", Data.Json.String "BuildPhase");
-      ("phase", Data.Json.String "package_action_graph_planned");
-      ("package", Data.Json.String "demo");
-      ("target", Data.Json.String "aarch64-unknown-linux-gnu");
-      ("action_count", Data.Json.Int 42);
-    ]))
-    ~actual;
-  Ok ()
+    ) with
+  | Some json ->
+      let open Std.Result.Syntax in
+      let* () =
+        expect_some_json_field
+          ~label:"event"
+          ~expected:(Data.Json.String "riot.build.phase.package.action_graph.planned")
+          (json_field "event" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.target"
+          ~expected:(Data.Json.String "aarch64-unknown-linux-gnu")
+          (data_field "target" json)
+      in
+      expect_some_json_field
+        ~label:"data.action_count"
+        ~expected:(Data.Json.Int 42)
+        (data_field "action_count" json)
+  | None -> Error "expected JSON output"
 
-let test_telemetry_event_to_json = fun _ctx ->
-  let session_id = Riot_model.Session_id.make () in
-  let package = make_demo_package () in
-  let telemetry_event = Telemetry_events.PackageStarted {
-    session_id;
-    package;
-    target = Telemetry_events.Package package.name;
-    started_at = Time.Instant.now ();
-  }
-  in
-  let actual = Riot_build.Event.to_json (Riot_build.Event.Telemetry telemetry_event) in
-  let expected = Telemetry_events.to_json telemetry_event in
-  Test.assert_equal ~expected ~actual;
-  let actual_type =
-    match actual with
-    | Some json -> Data.Json.get_field "type" json
-    | None -> None
-  in
-  Test.assert_equal ~expected:(Some (Data.Json.String "PackageStarted")) ~actual:actual_type;
-  Ok ()
-
-let test_telemetry_timestamp_fields_describe_event_instants = fun _ctx ->
-  let session_id = Riot_model.Session_id.make () in
-  let package = make_demo_package () in
-  let target = Telemetry_events.Package package.name in
-  let build_target =
-    Result.expect (Riot_model.Target.from_string "aarch64-apple-darwin") ~msg:"target"
-  in
-  let now = Time.Instant.now () in
-  let events = [
-    (
-      "started_at_us",
-      Telemetry_events.PackageStarted {
-        session_id;
-        package;
-        target;
-        started_at = now;
-      }
-    );
-    (
-      "started_at_us",
-      Telemetry_events.CompilationStarted {
-        session_id;
-        package;
-        target;
-        build_target;
-        action_count = 4;
-        started_at = now;
-      }
-    );
-    (
-      "created_at_us",
-      Telemetry_events.SandboxCreated {
-        session_id;
-        package;
-        target;
-        build_target;
-        path = Path.v "/tmp/demo-sandbox";
-        created_at = now;
-        duration = Time.Duration.zero;
-      }
-    );
-    (
-      "copied_at_us",
-      Telemetry_events.SandboxInputsCopied {
-        session_id;
-        package;
-        target;
-        build_target;
-        input_count = 2;
-        copied_at = now;
-        duration = Time.Duration.zero;
-      }
-    );
-    (
-      "copied_at_us",
-      Telemetry_events.SandboxDependenciesCopied {
-        session_id;
-        package;
-        target;
-        build_target;
-        dependency_count = 1;
-        object_count = 3;
-        copied_at = now;
-        duration = Time.Duration.zero;
-      }
-    );
-    (
-      "prepared_at_us",
-      Telemetry_events.PackageExecutionPrepared {
-        session_id;
-        package;
-        target;
-        build_target;
-        input_count = 2;
-        dependency_count = 1;
-        dependency_object_count = 3;
-        prepared_at = now;
-        duration = Time.Duration.zero;
-      }
-    );
-  ]
-  in
-  let rec check = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> Ok ()
-    | (expected, event) :: rest ->
-        match expect_timestamp_field ~expected event with
-        | Ok () -> check rest
-        | Error err -> Error err
-  in
-  check events
-
-let test_package_execution_prepared_event_round_trips = fun _ctx ->
-  let session_id = Riot_model.Session_id.make () in
+let test_package_execution_prepared_event_to_json = fun _ctx ->
   let package = make_demo_package () in
   let build_target =
     Result.expect (Riot_model.Target.from_string "aarch64-apple-darwin") ~msg:"target"
   in
-  let event = Telemetry_events.PackageExecutionPrepared {
-    session_id;
+  let prepared = Riot_model.Event.BuildPackageExecutionPrepared {
     package;
-    target = Telemetry_events.Package package.name;
     build_target;
     input_count = 12;
     dependency_count = 4;
@@ -271,52 +200,47 @@ let test_package_execution_prepared_event_round_trips = fun _ctx ->
     duration = Time.Duration.from_millis 37;
   }
   in
-  match Telemetry_events.to_json event with
-  | Some (Data.Json.Object fields as json) ->
-      Test.assert_equal
-        ~expected:(Some (Data.Json.String "PackageExecutionPrepared"))
-        ~actual:(Data.Json.get_field "type" (Data.Json.Object fields));
-      Test.assert_equal
-        ~expected:(Some (Data.Json.Int 12))
-        ~actual:(Data.Json.get_field "input_count" (Data.Json.Object fields));
-      Test.assert_equal
-        ~expected:(Some (Data.Json.Int 4))
-        ~actual:(Data.Json.get_field "dependency_count" (Data.Json.Object fields));
-      Test.assert_equal
-        ~expected:(Some (Data.Json.Int 3))
-        ~actual:(Data.Json.get_field "dependency_object_count" (Data.Json.Object fields));
-      Test.assert_equal
-        ~expected:(Some (Data.Json.Int 37))
-        ~actual:(Data.Json.get_field "duration_ms" (Data.Json.Object fields));
-      (
-        match Telemetry_events.from_json json with
-        | Ok (Telemetry_events.PackageExecutionPrepared parsed) ->
-            Test.assert_equal ~expected:12 ~actual:parsed.input_count;
-            Test.assert_equal ~expected:4 ~actual:parsed.dependency_count;
-            Test.assert_equal ~expected:3 ~actual:parsed.dependency_object_count;
-            Test.assert_equal ~expected:37 ~actual:(Time.Duration.to_millis parsed.duration);
-            Ok ()
-        | Ok _ -> Error "expected PackageExecutionPrepared event"
-        | Error err ->
-            Error ("expected PackageExecutionPrepared event to decode: " ^ Data.Json.to_string err)
-      )
-  | Some _ -> Error "expected package preparation event JSON object"
-  | None -> Error "expected package preparation event to render JSON"
+  match Riot_build.Event.to_json (event (Riot_model.Event.Build prepared)) with
+  | Some json ->
+      let open Std.Result.Syntax in
+      let* () =
+        expect_some_json_field
+          ~label:"event"
+          ~expected:(Data.Json.String "riot.build.package.execution.prepared")
+          (json_field "event" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.input_count"
+          ~expected:(Data.Json.Int 12)
+          (data_field "input_count" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.dependency_count"
+          ~expected:(Data.Json.Int 4)
+          (data_field "dependency_count" json)
+      in
+      let* () =
+        expect_some_json_field
+          ~label:"data.dependency_object_count"
+          ~expected:(Data.Json.Int 3)
+          (data_field "dependency_object_count" json)
+      in
+      expect_some_json_field
+        ~label:"data.duration_ms"
+        ~expected:(Data.Json.Int 37)
+        (data_field "duration_ms" json)
+  | None -> Error "expected package preparation event JSON object"
 
 let tests = let open Test in
 [
   case "event: building target json" test_building_target_event_to_json;
-  case "event: pm events reuse riot-model json" test_pm_event_to_json_reuses_riot_model_event_shape;
+  case "event: deps events reuse riot-model json" test_deps_event_to_json_uses_model_envelope;
   case "event: build phase json" test_build_phase_event_to_json;
   case "event: package planning phase json" test_package_planning_phase_event_to_json;
   case "event: package action graph planned json" test_package_action_graph_planned_event_to_json;
-  case "event: telemetry json" test_telemetry_event_to_json;
-  case
-    "event: telemetry timestamps describe event instants"
-    test_telemetry_timestamp_fields_describe_event_instants;
-  case
-    "event: package execution prepared round trips"
-    test_package_execution_prepared_event_round_trips;
+  case "event: package execution prepared json" test_package_execution_prepared_event_to_json;
 ]
 
 let name = "Riot Build Event Tests"

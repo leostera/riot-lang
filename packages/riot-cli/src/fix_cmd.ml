@@ -5,9 +5,9 @@ let command = Riot_fix.Cli.command
 
 let build_mode_of_output_mode = fun __tmp1 ->
   match __tmp1 with
-  | Riot_fix.Report Riot_fix.Reporter.Json -> Build.Json
+  | Riot_fix.Report Riot_fix.Reporter.Json -> Ui.Json
   | Riot_fix.Report Riot_fix.Reporter.Text
-  | Riot_fix.Silent -> Build.Human
+  | Riot_fix.Silent -> Ui.Line
 
 let prepare_workspace = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let workspace_manager = Riot_model.Workspace_manager.create () in

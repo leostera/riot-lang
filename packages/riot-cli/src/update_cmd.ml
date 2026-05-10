@@ -35,9 +35,12 @@ let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);
   Error (Failure (message err))
 
-let write_event = fun ~mode ~pm_session_id ~seen_registry_updates kind ->
-  Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind
-  |> Build.write_pm_event ~mode ~seen_registry_updates
+let write_event = fun ~ui ~pm_session_id kind ->
+  Riot_model.Event.create
+    ~session_id:pm_session_id
+    ~level:Riot_model.Event.Info
+    (Riot_model.Event.Deps kind)
+  |> fun event -> Ui.send ui event
 
 let package_names_of_matches = fun matches ->
   let rec parse_all acc = fun __tmp1 ->
@@ -53,20 +56,15 @@ let package_names_of_matches = fun matches ->
   parse_all [] (ArgParser.get_many matches "package")
 
 let run = fun ~workspace matches ->
-  let mode =
-    if ArgParser.get_flag matches "json" then
-      Build.Json
-    else
-      Build.Human
-  in
+  let mode = Ui.mode_of_json_flag (ArgParser.get_flag matches "json") in
+  let ui = Ui.make ~mode () in
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let pm_session_id = Riot_model.Session_id.make () in
-  let seen_registry_updates = HashSet.create () in
   match package_names_of_matches matches with
   | Error err -> fail err
   | Ok packages -> (
       match Riot_deps.update
-        ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
+        ~on_event:(write_event ~ui ~pm_session_id)
         ~workspace_manager
         ~workspace
         ~request:Riot_deps.{ packages }

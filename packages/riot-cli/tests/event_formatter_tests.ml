@@ -9,7 +9,11 @@ let package_name = fun name ->
 
 let test_phase_events_are_silent = fun _ctx ->
   let displayed_packages = HashSet.create () in
-  let event = Riot_build.Event.Phase Riot_build.Event.RuntimeStarted in
+  let event =
+    Riot_build.Event.phase
+      ~session_id:(Riot_model.Session_id.make ())
+      Riot_build.Event.RuntimeStarted
+  in
   let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
   if String.equal rendered "" then
     Ok ()
@@ -22,7 +26,12 @@ let test_building_target_mentions_target = fun _ctx ->
     Riot_model.Target.from_string "aarch64-apple-darwin"
     |> Result.expect ~msg:"invalid target"
   in
-  let event = Riot_build.Event.BuildingTarget { target; host = false } in
+  let event =
+    Riot_model.Event.create
+      ~session_id:(Riot_model.Session_id.make ())
+      ~level:Riot_model.Event.Info
+      (Riot_model.Event.Build (Riot_model.Event.BuildTargetBuilding { target; host = false }))
+  in
   let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
   if String.contains rendered "aarch64-apple-darwin" then
     Ok ()
@@ -35,9 +44,12 @@ let test_pm_events_use_display_text = fun _ctx ->
     Riot_model.Event.create
       ~session_id:(Riot_model.Session_id.make ())
       ~level:Riot_model.Event.Info
-      (Riot_model.Event.PackageVersionLocked { package = package_name "std"; version = "1.0.0" })
+      (Riot_model.Event.Deps (Riot_model.Event.DepsPackageVersionLocked {
+        package = package_name "std";
+        version = "1.0.0";
+      }))
   in
-  let rendered = Riot_cli.Event_formatter.format ~displayed_packages (Riot_build.Event.Pm event) in
+  let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
   if String.contains rendered "std" then
     Ok ()
   else

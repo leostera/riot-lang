@@ -13,7 +13,7 @@
 7. Keep package/action execution inside the current schedulers: `package_scheduler`, `action_scheduler`, and shared `graph_scheduler`.
 8. Keep scheduler internals behind build-domain facades. Public events should expose package phases and build summaries, not generic graph nodes, worker tables, or mutation details.
 9. Successful builds record reachable cache generations through `riot-store`. Keep that bookkeeping lightweight and best-effort so cache metadata failures stay separate from build success.
-10. Build events and detailed telemetry should flow through the same `Std.Telemetry` path before invoking external callbacks. Render progress from events.
+10. Build progress should flow through the explicit `on_event` callback as `Riot_model.Event.t`; do not add global telemetry wrappers or package-local event variants.
 11. Actor-owned helpers should defer actor creation until runtime use so test binaries and embedded callers can boot their runtime first.
 12. Keep planner failures typed through the public build error path so `riot-cli` can render useful structured diagnostics.
 13. Cached action/package results carry full `Riot_store.Artifact.t` values. Use `artifact.input_hash` for store paths and export materialization; use `artifact.output_hash` only when strengthening downstream invalidation.

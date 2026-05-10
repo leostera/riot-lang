@@ -219,7 +219,7 @@ let ensure_lock = fun
 let collect_event_names = fun fn ->
   let names = ref [] in
   let emit event =
-    names := Riot_model.Event.name event :: !names
+    names := Riot_model.Event.name (Riot_model.Event.Deps event) :: !names
   in
   match fn emit with
   | Ok value -> Ok (value, List.reverse !names)
@@ -2331,7 +2331,7 @@ version = "0.2.0"
                                 !events
                                 ~fn:(fun __tmp1 ->
                                   match __tmp1 with
-                                  | Riot_model.Event.PackageVersionUpdated {
+                                  | Riot_model.Event.DepsPackageVersionUpdated {
                                       package;
                                       from_version;
                                       to_version;
@@ -3315,11 +3315,11 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
           if
             List.length lockfile.packages = 2
             && List.length resolved = 2
-            && List.contains event_names ~value:"riot.pm.resolution.started"
-            && List.contains event_names ~value:"riot.pm.resolution.refreshing_lock"
-            && List.contains event_names ~value:"riot.pm.lockfile.write.started"
-            && List.contains event_names ~value:"riot.pm.lockfile.write.finished"
-            && List.contains event_names ~value:"riot.pm.resolution.finished"
+            && List.contains event_names ~value:"riot.deps.resolution.started"
+            && List.contains event_names ~value:"riot.deps.resolution.refreshing_lock"
+            && List.contains event_names ~value:"riot.deps.lockfile.write.started"
+            && List.contains event_names ~value:"riot.deps.lockfile.write.finished"
+            && List.contains event_names ~value:"riot.deps.resolution.finished"
             && Result.unwrap_or ~default:false (Fs.exists lock_path)
           then
             Ok ()
@@ -3380,9 +3380,9 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
           if
             List.length lockfile.packages = 2
             && List.length resolved = 2
-            && List.contains event_names ~value:"riot.pm.resolution.using_existing_lock"
-            && not (List.contains event_names ~value:"riot.pm.lockfile.write.started")
-            && not (List.contains event_names ~value:"riot.pm.resolution.finished")
+            && List.contains event_names ~value:"riot.deps.resolution.using_existing_lock"
+            && not (List.contains event_names ~value:"riot.deps.lockfile.write.started")
+            && not (List.contains event_names ~value:"riot.deps.resolution.finished")
           then
             Ok ()
           else
@@ -3451,16 +3451,16 @@ let test_ensure_lock_materializes_registry_packages_during_projection = fun _ctx
           in
           if List.length resolved = 2
           && Result.unwrap_or ~default:false (Fs.exists manifest_path)
-          && List.contains event_names ~value:"riot.pm.universe.building"
-          && List.contains event_names ~value:"riot.pm.universe.built"
-          && List.contains event_names ~value:"riot.pm.package_metadata.fetch.started"
-          && List.contains event_names ~value:"riot.pm.package_metadata.fetch.finished"
-          && List.contains event_names ~value:"riot.pm.package.locked"
-          && List.contains event_names ~value:"riot.pm.package_materialization.started"
-          && List.contains event_names ~value:"riot.pm.package_materialization.finished"
-          && List.contains event_names ~value:"riot.pm.package_manifest.fetch.started"
-          && List.contains event_names ~value:"riot.pm.package_manifest.fetch.finished"
-          && List.contains event_names ~value:"riot.pm.package_resolved_for_build" then
+          && List.contains event_names ~value:"riot.deps.universe.building"
+          && List.contains event_names ~value:"riot.deps.universe.built"
+          && List.contains event_names ~value:"riot.deps.package.metadata.fetch.started"
+          && List.contains event_names ~value:"riot.deps.package.metadata.fetch.finished"
+          && List.contains event_names ~value:"riot.deps.package.version.locked"
+          && List.contains event_names ~value:"riot.deps.package.materialization.started"
+          && List.contains event_names ~value:"riot.deps.package.materialization.finished"
+          && List.contains event_names ~value:"riot.deps.package.manifest.fetch.started"
+          && List.contains event_names ~value:"riot.deps.package.manifest.fetch.finished"
+          && List.contains event_names ~value:"riot.deps.package.resolved_for_build" then
             Ok ()
           else
             Error "expected ensure_lock to lazily materialize external package manifests during projection")
@@ -3551,13 +3551,13 @@ let test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages 
       | Ok ((_, resolved), event_names) ->
           if
             List.length resolved = 2
-            && List.contains event_names ~value:"riot.pm.resolution.using_existing_lock"
-            && not (List.contains event_names ~value:"riot.pm.resolution.refreshing_lock")
+            && List.contains event_names ~value:"riot.deps.resolution.using_existing_lock"
+            && not (List.contains event_names ~value:"riot.deps.resolution.refreshing_lock")
             && Result.unwrap_or
               ~default:false
               (Fs.exists Path.(materialized_std_root / Path.v "riot.toml"))
-            && List.contains event_names ~value:"riot.pm.package_materialization.finished"
-            && not (List.contains event_names ~value:"riot.pm.lockfile.write.started")
+            && List.contains event_names ~value:"riot.deps.package.materialization.finished"
+            && not (List.contains event_names ~value:"riot.deps.lockfile.write.started")
           then
             Ok ()
           else
@@ -4228,9 +4228,9 @@ version = "0.5.0"
           match (std_resolved, kernel_resolved, fixme_resolved) with
           | (Some std_resolved, Some kernel_resolved, Some fixme_resolved) ->
               if List.length resolved = 4
-              && List.contains event_names ~value:"riot.pm.package_manifest.fetch.started"
-              && List.contains event_names ~value:"riot.pm.package_manifest.fetch.finished"
-              && List.contains event_names ~value:"riot.pm.package_resolved_for_build"
+              && List.contains event_names ~value:"riot.deps.package.manifest.fetch.started"
+              && List.contains event_names ~value:"riot.deps.package.manifest.fetch.finished"
+              && List.contains event_names ~value:"riot.deps.package.resolved_for_build"
               && Path.to_string std_resolved.materialized_root = Path.to_string std_root
               && List.length std_resolved.runtime_resolved = 1
               && List.length std_resolved.build_resolved = 1

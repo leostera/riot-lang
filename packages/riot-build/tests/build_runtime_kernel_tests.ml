@@ -44,13 +44,16 @@ let load_repo_workspace = fun () ->
         ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
 
 let render_build_event = fun (event: Riot_build.Event.t) ->
-  match event with
-  | Riot_build.Event.Pm event -> "Pm(" ^ Riot_model.Event.name event.kind ^ ")"
-  | Riot_build.Event.BuildingTarget { target; host } ->
+  match event.kind with
+  | Riot_model.Event.Deps _ -> "Deps(" ^ Riot_model.Event.name event.kind ^ ")"
+  | Riot_model.Event.Build (
+    Riot_model.Event.BuildTargetBuilding { target; host }
+  ) ->
       "BuildingTarget(" ^ Riot_model.Target.to_string target ^ "," ^ Bool.to_string host ^ ")"
-  | Riot_build.Event.CacheGc _ -> "CacheGc"
-  | Riot_build.Event.Telemetry _ -> "Telemetry"
-  | Riot_build.Event.Phase _ -> "Phase"
+  | Riot_model.Event.Cache _ -> "Cache"
+  | Riot_model.Event.Build (Riot_model.Event.BuildPhase _) -> "Phase"
+  | Riot_model.Event.Build _ -> "Build(" ^ Riot_model.Event.name event.kind ^ ")"
+  | _ -> Riot_model.Event.name event.kind
 
 let phase_name = fun __tmp1 ->
   match __tmp1 with
@@ -86,12 +89,9 @@ let public_phase_names = fun events ->
   List.reverse events
   |> List.filter_map
     ~fn:(fun __tmp1 ->
-      match __tmp1 with
-      | Riot_build.Event.Phase phase -> Some (phase_name phase)
-      | Riot_build.Event.Pm _
-      | Riot_build.Event.BuildingTarget _
-      | Riot_build.Event.Telemetry _
-      | Riot_build.Event.CacheGc _ -> None)
+      match __tmp1.Riot_model.Event.kind with
+      | Riot_model.Event.Build (Riot_model.Event.BuildPhase phase) -> Some (phase_name phase)
+      | _ -> None)
 
 let expect_public_phase_subsequence = fun events ->
   let haystack = public_phase_names events in
