@@ -8,7 +8,7 @@ Lightweight, streaming HTTP client built on Riot's process model with support fo
 - **Chunked transfer encoding** - Full support for streaming APIs
 - **Message-based API** - Receive status, headers, and data as separate messages
 - **Three abstraction levels** - Low-level streaming, batch processing, or buffered responses
-- **Managed client policies** - Configure retry, budget, telemetry, and connection reuse in `Blink.Client`
+- **Managed client controls** - Configure request budgets, telemetry, and connection reuse in `Blink.Client`
 - **Built on Std** - Uses `Net.TcpStream`, `IO.Reader/Writer`, and HTTP parsers from `packages/http`
 
 ## Quick Start
@@ -133,14 +133,12 @@ let post_json url data =
 
 ### Managed Client
 
-Use `Blink.Client` when callers should share retry, budget, telemetry, and connection reuse policy.
+Use `Blink.Client` when callers should share request budgets, telemetry, and connection reuse policy.
 
 ```ocaml
-let retry_policy = Blink.RetryPolicy.make ~max_attempts:3 () in
 let pool = Blink.Client.Config.pool ~max_idle_per_endpoint:4 () in
 let config =
   Blink.Client.Config.make
-    ~retry_policy
     ~connection_policy:(Blink.Client.Config.Pool pool)
     ()
 in
@@ -155,15 +153,15 @@ in
 
 match Blink.Client.execute client req with
 | Ok (response, telemetry) ->
-    Log.info "Status: %d attempts=%d" response.status (List.length telemetry.attempts)
+    Log.info "Status: %d events=%d" response.status (List.length telemetry.lifecycle)
 | Error error ->
     Log.error "Request failed: %s" (Blink.Client.error_to_string error)
 ```
 
 `Blink.Client` also exposes the same connection-oriented surface as the top-level module:
 `connect`, `request`, `stream`, `messages`, `await`, and `close`. Use this path when raw
-HTTP streams should still share the client's budget, retry, and pooling
-configuration. SSE and WebSocket helpers are available through `Blink.Client.SSE` and
+HTTP streams should still share the client's budget and pooling configuration.
+SSE and WebSocket helpers are available through `Blink.Client.SSE` and
 `Blink.Client.WebSocket`.
 
 Examples:

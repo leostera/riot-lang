@@ -7,7 +7,6 @@ type lifecycle =
   | Started
   | Completed
   | Failed
-  | Retrying
   | Blocked
 
 type attempt = {
@@ -20,7 +19,6 @@ type attempt = {
   status_class: Response.status_class option;
   error_class: Response.error_class option;
   error_message: string option;
-  planned_backoff: Time.Duration.t option;
 }
 
 type t = {
@@ -41,7 +39,6 @@ let lifecycle_to_string = fun value ->
   | Started -> "started"
   | Completed -> "completed"
   | Failed -> "failed"
-  | Retrying -> "retrying"
   | Blocked -> "blocked"
 
 let attempt = fun
@@ -52,7 +49,6 @@ let attempt = fun
   ?status
   ?error_class
   ?error_message
-  ?planned_backoff
   () ->
   {
     attempt;
@@ -64,7 +60,6 @@ let attempt = fun
     status_class = Option.map status ~fn:Response.status_class;
     error_class;
     error_message;
-    planned_backoff;
   }
 
 let make = fun

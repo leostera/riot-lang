@@ -3,7 +3,6 @@ open Std
 module Request = Super.Request
 module Response = Super.Response
 module Budget = Super.Budget
-module RetryPolicy = Super.Retry_policy
 module Telemetry = Super.Telemetry
 module Config = Super.Config
 
@@ -37,11 +36,20 @@ type t = {
 }
 
 type send_result = {
-  result: (Response.t, string) result;
+  result: (Response.t, Error.t) result;
   reusable: bool;
 }
 
 let blink_error_to_string = Error.to_string
+
+let exception_to_string = fun caught ->
+  match caught with
+  | Failure message -> "Failure: " ^ message
+  | Invalid_argument message -> "Invalid_argument: " ^ message
+  | Not_found -> "Not_found"
+  | End_of_file -> "End_of_file"
+  | Division_by_zero -> "Division_by_zero"
+  | exn -> Exception.to_string exn
 
 let method_to_net = fun value ->
   match value with
@@ -58,7 +66,26 @@ let apply_headers = fun request headers ->
     ~fn:(fun request (name, value) ->
       Net.Http.Request.with_header request name value)
 
-let endpoint_key = fun (request: Request.t) -> request.url
+let endpoint_key = fun uri ->
+  let scheme =
+    Net.Uri.scheme uri
+    |> Option.unwrap_or ~default:"http"
+  in
+  let host =
+    Net.Uri.host uri
+    |> Option.unwrap_or ~default:"localhost"
+  in
+  let default_port =
+    match scheme with
+    | "https"
+    | "wss" -> 443
+    | _ -> 80
+  in
+  let port =
+    Net.Uri.port uri
+    |> Option.unwrap_or ~default:default_port
+  in
+  scheme ^ "://" ^ host ^ ":" ^ Int.to_string port
 
 let expired = fun ~now ttl pooled ->
   let idle_for = Time.Instant.saturating_duration_since ~earlier:pooled.last_used_at now in
@@ -152,41 +179,70 @@ let release_connection = fun client key conn ~reusable ->
         else
           client.idle <- { key; conn; last_used_at } :: client.idle
 
-let response_of_net = fun response body ->
+let response_from_net = fun response body ->
   Response.make
     ~status:(Net.Http.Status.to_int (Net.Http.Response.status response))
     ~body
     ~headers:(Net.Http.Header.to_list (Net.Http.Response.headers response))
     ()
 
+let run_with_deadline = fun conn deadline operation ->
+  match deadline with
+  | None -> operation ()
+  | Some deadline ->
+      let cancelled = ref false in
+      let _ =
+        spawn
+          (fun () ->
+            sleep deadline;
+            if not !cancelled then
+              Connection.close conn;
+            Ok ())
+      in
+      let result = operation () in
+      cancelled := true;
+      result
+
 let send_on_connection = fun conn uri (request: Request.t) ->
-  let net_request = Net.Http.Request.create (method_to_net request.method_) uri in
-  let net_request = apply_headers net_request request.headers in
-  match Connection.request conn net_request ?body:request.body () with
-  | Error error ->
-      { result = Error ("request failed: " ^ blink_error_to_string error); reusable = false }
-  | Ok () ->
-      match Connection.await conn with
+  run_with_deadline
+    conn
+    request.deadline
+    (fun () ->
+      let net_request = Net.Http.Request.create (method_to_net request.method_) uri in
+      let net_request = apply_headers net_request request.headers in
+      match Connection.request conn net_request ?body:request.body () with
       | Error error ->
-          { result = Error ("response failed: " ^ blink_error_to_string error); reusable = false }
-      | Ok (response, body) -> { result = Ok (response_of_net response body); reusable = true }
+          { result = Error (Error.RequestFailed error); reusable = false }
+      | Ok () -> (
+          match Connection.await conn with
+          | Error error ->
+              {
+                result = Error (Error.ResponseFailed error);
+                reusable = false;
+              }
+          | Ok (response, body) ->
+              { result = Ok (response_from_net response body); reusable = true }
+        ))
 
 let low_level_transport = fun client (request: Request.t) ->
   match Net.Uri.from_string request.url with
-  | Error _ -> Error ("invalid request uri: " ^ request.url)
+  | Error _ -> Error (Error.ProtocolError (Error.InvalidRequestUri request.url))
   | Ok uri ->
-      let key = endpoint_key request in
+      let key = endpoint_key uri in
       match take_connection client key uri with
-      | Error error -> Error ("connect failed: " ^ blink_error_to_string error)
+      | Error error -> Error error
       | Ok conn ->
           let sent = send_on_connection conn uri request in
           release_connection client key conn ~reusable:sent.reusable;
           sent.result
 
 let transport = fun client request ->
-  match client.config.transport with
-  | Some transport -> transport request
-  | None -> low_level_transport client request
+  try
+    match client.config.transport with
+    | Some transport -> transport request
+    | None -> low_level_transport client request
+  with
+  | exn -> Error (Error.ProtocolError (Error.TransportRaised (exception_to_string exn)))
 
 let make = fun ?(config = Config.make ()) () ->
   let started = config.now () in
@@ -243,19 +299,48 @@ let execute = fun client (request: Request.t) ->
     in
     fail client Response.RateLimitedByBudget "request budget exhausted" telemetry
   else
-    let rec loop attempt attempts =
-      let attempt_started_at = client.config.now () in
-      match transport client request with
-      | Ok response ->
-          let completed_at = client.config.now () in
-          if Response.is_success response then (
+    let attempt_started_at = client.config.now () in
+    match transport client request with
+    | Ok response ->
+        let completed_at = client.config.now () in
+        if Response.is_success response then (
+          let attempt_record =
+            Telemetry.attempt
+              ~attempt:1
+              ~started_at:attempt_started_at
+              ~completed_at
+              ~lifecycle:Telemetry.Completed
+              ~status:response.status
+              ()
+          in
+          let telemetry =
+            make_telemetry
+              client
+              request
+              ~started_at
+              ~attempts:[ attempt_record ]
+              ~final_status:response.status
+              ~budget
+              ()
+          in
+          succeed client response telemetry
+        ) else
+          (
+            let class_ =
+              match Response.status_class response.status with
+              | Response.RateLimited -> Response.RateLimitedResponse
+              | _ -> Response.ServerRejected
+            in
+            let message = "HTTP status " ^ Int.to_string response.status in
             let attempt_record =
               Telemetry.attempt
-                ~attempt
+                ~attempt:1
                 ~started_at:attempt_started_at
                 ~completed_at
-                ~lifecycle:Telemetry.Completed
+                ~lifecycle:Telemetry.Failed
                 ~status:response.status
+                ~error_class:class_
+                ~error_message:message
                 ()
             in
             let telemetry =
@@ -263,147 +348,55 @@ let execute = fun client (request: Request.t) ->
                 client
                 request
                 ~started_at
-                ~attempts:(attempt_record :: attempts)
+                ~attempts:[ attempt_record ]
                 ~final_status:response.status
+                ~final_error_class:class_
                 ~budget
                 ()
             in
-            succeed client response telemetry
-          ) else if
-            RetryPolicy.should_retry_status client.config.retry_policy ~attempt response.status
-          then
-            let backoff = RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt in
-            let attempt_record =
-              Telemetry.attempt
-                ~attempt
-                ~started_at:attempt_started_at
-                ~completed_at
-                ~lifecycle:Telemetry.Retrying
-                ~status:response.status
-                ~planned_backoff:backoff
-                ()
-            in
-            client.config.sleep backoff;
-            loop (attempt + 1) (attempt_record :: attempts)
-          else
-            (
-              let class_ =
-                match Response.status_class response.status with
-                | Response.RateLimited -> Response.RateLimitedByBudget
-                | _ -> Response.ServerRejected
-              in
-              let attempt_record =
-                Telemetry.attempt
-                  ~attempt
-                  ~started_at:attempt_started_at
-                  ~completed_at
-                  ~lifecycle:Telemetry.Failed
-                  ~status:response.status
-                  ~error_class:class_
-                  ~error_message:("HTTP status " ^ Int.to_string response.status)
-                  ()
-              in
-              let telemetry =
-                make_telemetry
-                  client
-                  request
-                  ~started_at
-                  ~attempts:(attempt_record :: attempts)
-                  ~final_status:response.status
-                  ~final_error_class:class_
-                  ~budget
-                  ()
-              in
-              fail client class_ ("HTTP status " ^ Int.to_string response.status) telemetry
-            )
-      | Error message ->
-          let completed_at = client.config.now () in
-          let class_ = Response.error_class_of_transport_error message in
-          if RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_ then
-            let backoff = RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt in
-            let attempt_record =
-              Telemetry.attempt
-                ~attempt
-                ~started_at:attempt_started_at
-                ~completed_at
-                ~lifecycle:Telemetry.Retrying
-                ~error_class:class_
-                ~error_message:message
-                ~planned_backoff:backoff
-                ()
-            in
-            client.config.sleep backoff;
-            loop (attempt + 1) (attempt_record :: attempts)
-          else
-            (
-              let attempt_record =
-                Telemetry.attempt
-                  ~attempt
-                  ~started_at:attempt_started_at
-                  ~completed_at
-                  ~lifecycle:Telemetry.Failed
-                  ~error_class:class_
-                  ~error_message:message
-                  ()
-              in
-              let telemetry =
-                make_telemetry
-                  client
-                  request
-                  ~started_at
-                  ~attempts:(attempt_record :: attempts)
-                  ~final_error_class:class_
-                  ~budget
-                  ()
-              in
-              fail client class_ message telemetry
-            )
-    in
-    loop 1 []
+            fail client class_ message telemetry
+          )
+    | Error transport_error ->
+        let completed_at = client.config.now () in
+        let class_ = Response.error_class_from_transport_error transport_error in
+        let message = blink_error_to_string transport_error in
+        let attempt_record =
+          Telemetry.attempt
+            ~attempt:1
+            ~started_at:attempt_started_at
+            ~completed_at
+            ~lifecycle:Telemetry.Failed
+            ~error_class:class_
+            ~error_message:message
+            ()
+        in
+        let telemetry =
+          make_telemetry
+            client
+            request
+            ~started_at
+            ~attempts:[ attempt_record ]
+            ~final_error_class:class_
+            ~budget
+            ()
+        in
+        fail client class_ message telemetry
 
 let error_to_string = fun error ->
   Response.error_class_to_string error.class_ ^ ": " ^ error.message
 
-let error_class_of_blink_error = fun ~default value ->
-  match value with
-  | Error.NetError _
-  | Error.TlsError _ -> default
-  | Error.ParseError _
-  | Error.WebSocketParseError _
-  | Error.WebSocketSerializeError _ -> Response.ResponseFailed
-  | Error.ProtocolError _ -> Response.InvalidRequest
-  | Error.HandshakeFailed _ -> default
-  | Error.InvalidFrame -> Response.ResponseFailed
-  | Error.Eof
-  | Error.Closed -> default
-
-let with_blink_policy = fun client ~failure_class ~retry operation ->
+let with_budget = fun client operation ->
   let started_at = client.config.now () in
   let budget = client.budget in
   if not (Budget.allow ~now:started_at budget) then
-    Error (Error.ProtocolError "blink client request budget exhausted")
+    Error (Error.ProtocolError Error.RequestBudgetExhausted)
   else
-    let rec loop attempt =
-      match operation () with
-      | Ok value -> Ok value
-      | Error error ->
-          let class_ = error_class_of_blink_error ~default:failure_class error in
-          if
-            retry && RetryPolicy.should_retry_error client.config.retry_policy ~attempt class_
-          then (
-            client.config.sleep (RetryPolicy.delay_for_attempt client.config.retry_policy ~attempt);
-            loop (attempt + 1)
-          ) else
-            Error error
-    in
-    loop 1
+    operation ()
 
 let connect = fun client uri ->
   let key = Net.Uri.to_string uri in
-  with_blink_policy
+  with_budget
     client
-    ~failure_class:Response.ConnectFailed
-    ~retry:true
     (fun () ->
       take_connection client key uri)
   |> Result.map
@@ -422,14 +415,12 @@ let retire_connection = fun (connection: connection) ->
     connection.closed <- true
   )
 
-let with_connection = fun client (connection: connection) ~failure_class operation ->
+let with_connection = fun client (connection: connection) operation ->
   if connection.closed then
     Error Error.Closed
   else
-    with_blink_policy
+    with_budget
       client
-      ~failure_class
-      ~retry:false
       (fun () ->
         match operation connection.conn with
         | Ok value -> Ok value
@@ -441,7 +432,6 @@ let request = fun client connection net_request ?body () ->
   with_connection
     client
     connection
-    ~failure_class:Response.RequestFailed
     (fun conn ->
       Connection.request conn net_request ?body ())
 
@@ -449,21 +439,18 @@ let stream = fun client connection ->
   with_connection
     client
     connection
-    ~failure_class:Response.ResponseFailed
     Connection.stream
 
 let messages = fun ?on_message client connection ->
   with_connection
     client
     connection
-    ~failure_class:Response.ResponseFailed
     (fun conn -> Connection.messages ?on_message conn)
 
 let await = fun ?on_message client connection ->
   with_connection
     client
     connection
-    ~failure_class:Response.ResponseFailed
     (fun conn -> Connection.await ?on_message conn)
 
 let close = fun client connection ->
@@ -512,8 +499,8 @@ module SSE = struct
             | Ok messages ->
                 List.for_each
                   messages
-                  ~fn:(fun __tmp1 ->
-                    match __tmp1 with
+                  ~fn:(fun message ->
+                    match message with
                     | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
                     | Connection.Done -> state.done_ <- true
                     | Connection.Status _
@@ -560,55 +547,41 @@ module WebSocket = struct
     | Close of int option * string
 
   let connect = fun client uri ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.ConnectFailed
-      ~retry:true
       (fun () -> Websocket.connect uri)
 
   let send_text = fun client conn text ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.RequestFailed
-      ~retry:false
       (fun () -> Websocket.send_text conn text)
 
   let send_binary = fun client conn data ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.RequestFailed
-      ~retry:false
       (fun () -> Websocket.send_binary conn data)
 
   let send_ping = fun client conn ?payload () ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.RequestFailed
-      ~retry:false
       (fun () ->
         Websocket.send_ping conn ?payload ())
 
   let send_pong = fun client conn ?payload () ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.RequestFailed
-      ~retry:false
       (fun () ->
         Websocket.send_pong conn ?payload ())
 
   let send_close = fun client conn ?code ?reason () ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.RequestFailed
-      ~retry:false
       (fun () ->
         Websocket.send_close conn ?code ?reason ())
 
   let receive = fun client conn ->
-    with_blink_policy
+    with_budget
       client
-      ~failure_class:Response.ResponseFailed
-      ~retry:false
       (fun () -> Websocket.receive conn)
 
   let close = fun _client conn -> Websocket.close conn

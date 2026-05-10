@@ -14,12 +14,72 @@ end
 
 let discard_writer = IO.Writer.from_sink (module DiscardWriter) ()
 
+module ThrottledReader = struct
+  type t = {
+    payload: string;
+    max_chunk: int;
+    mutable offset: int;
+  }
+
+  let remaining state = String.length state.payload - state.offset
+
+  let read state ~into =
+    if remaining state <= 0 then
+      Ok 0
+    else
+      let writable = IO.Buffer.writable_bytes into in
+      let writable =
+        if writable <= 0 then
+          state.max_chunk
+        else
+          writable
+      in
+      let count = Int.min (remaining state) (Int.min state.max_chunk writable) in
+      match IO.Buffer.append_substring into state.payload ~off:state.offset ~len:count with
+      | Error _ -> Error IO.Buffer_full
+      | Ok () ->
+          state.offset <- state.offset + count;
+          Ok count
+
+  let read_vectored state ~into:_ = read state ~into:(IO.Buffer.create ~size:state.max_chunk)
+
+  let is_read_vectored _state = false
+end
+
+let throttled_reader payload ~max_chunk =
+  IO.Reader.from_source
+    (module ThrottledReader)
+    { ThrottledReader.payload; max_chunk; offset = 0 }
+
 let request () =
   H.Request.make
     ~method_:H.Request.Get
     ~url:"https://example.test/data"
     ~deadline:(Time.Duration.from_secs 5)
     ()
+
+let repeat_x count =
+  let rec loop acc remaining =
+    if remaining <= 0 then
+      String.concat "" acc
+    else
+      loop ("x" :: acc) (remaining - 1)
+  in
+  loop [] count
+
+let first_data_chunk messages =
+  let rec loop messages =
+    match messages with
+    | [] -> None
+    | message :: rest -> (
+        match message with
+        | Blink.Connection.Data chunk -> Some chunk
+        | Blink.Connection.Done
+        | Blink.Connection.Headers _
+        | Blink.Connection.Status _ -> loop rest
+      )
+  in
+  loop messages
 
 let test_connection_await_keeps_fixed_length_body = fun _ctx ->
   let response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok" in
@@ -31,8 +91,8 @@ let test_connection_await_keeps_fixed_length_body = fun _ctx ->
     Blink.Connection.make
       ~reader:(IO.Reader.from_string response)
       ~writer:discard_writer
-      ~from_io_error:Blink.Error.from_io_error
       ~uri
+      ()
   in
   match Blink.Connection.await conn with
   | Error error -> Error (Blink.Error.to_string error)
@@ -43,37 +103,75 @@ let test_connection_await_keeps_fixed_length_body = fun _ctx ->
       Test.assert_equal ~expected:"ok" ~actual:body;
       Ok ()
 
+let test_connection_streams_partial_chunked_body = fun _ctx ->
+  let body = repeat_x 10_000 in
+  let response =
+    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n"
+    ^ "2710\r\n"
+    ^ body
+    ^ "\r\n0\r\n\r\n"
+  in
+  let uri =
+    Net.Uri.from_string "http://example.test/data"
+    |> Result.expect ~msg:"invalid test uri"
+  in
+  let conn =
+    Blink.Connection.make
+      ~reader:(throttled_reader response ~max_chunk:64)
+      ~writer:discard_writer
+      ~uri
+      ()
+  in
+  match Blink.Connection.stream conn with
+  | Error error -> Error (Blink.Error.to_string error)
+  | Ok head ->
+      Test.assert_true
+        (
+          List.exists
+            (fun message ->
+              match message with
+              | Blink.Connection.Status status -> Net.Http.Status.to_int status = 200
+              | Blink.Connection.Data _
+              | Blink.Connection.Done
+              | Blink.Connection.Headers _ -> false)
+            head
+        );
+      (
+        match Blink.Connection.stream conn with
+        | Error error -> Error (Blink.Error.to_string error)
+        | Ok messages -> (
+            match first_data_chunk messages with
+            | None -> Error "expected partial chunk data"
+            | Some chunk ->
+                Test.assert_true (String.length chunk > 0);
+                Test.assert_true (String.length chunk < String.length body);
+                Ok ()
+          )
+      )
+
+let test_connection_close_invokes_close_callback = fun _ctx ->
+  let closed = ref false in
+  let uri =
+    Net.Uri.from_string "http://example.test/data"
+    |> Result.expect ~msg:"invalid test uri"
+  in
+  let conn =
+    Blink.Connection.make
+      ~reader:(IO.Reader.from_string "")
+      ~writer:discard_writer
+      ~on_close:(fun () -> closed := true)
+      ~uri
+      ()
+  in
+  Blink.Connection.close conn;
+  Test.assert_true !closed;
+  Ok ()
+
 let test_status_classification = fun _ctx ->
   Test.assert_equal ~expected:H.Response.Success ~actual:(H.Response.status_class 204);
   Test.assert_equal ~expected:H.Response.RateLimited ~actual:(H.Response.status_class 429);
   Test.assert_equal ~expected:H.Response.ServerError ~actual:(H.Response.status_class 503);
   Ok ()
-
-let test_retries_retryable_statuses = fun _ctx ->
-  let calls = ref 0 in
-  let transport _request =
-    calls := !calls + 1;
-    if !calls = 1 then
-      Ok (H.Response.make ~status:503 ~body:"try later" ())
-    else
-      Ok (H.Response.make ~status:200 ~body:"ok" ())
-  in
-  let config = H.Config.make
-    ~retry_policy:(H.RetryPolicy.make ~max_attempts:3 ())
-    ~transport
-    ()
-  in
-  let client = H.make ~config () in
-  match H.execute client (request ()) with
-  | Error error -> Error (H.error_to_string error)
-  | Ok (response, telemetry) ->
-      Test.assert_equal ~expected:200 ~actual:response.status;
-      Test.assert_equal ~expected:2 ~actual:(List.length telemetry.attempts);
-      Test.assert_true
-        (List.exists
-          (fun (entry: H.Telemetry.attempt) -> Option.is_some H.Telemetry.(entry.planned_backoff))
-          telemetry.attempts);
-      Ok ()
 
 let test_rate_budget_blocks = fun _ctx ->
   let client =
@@ -97,6 +195,17 @@ let test_rate_budget_blocks = fun _ctx ->
       | Error error ->
           Test.assert_equal ~expected:H.Response.RateLimitedByBudget ~actual:error.class_;
           Ok ())
+
+let test_http_429_is_external_rate_limit = fun _ctx ->
+  let client =
+    let transport _request = Ok (H.Response.make ~status:429 ~body:"slow down" ()) in
+    H.make ~config:(H.Config.make ~transport ()) ()
+  in
+  match H.execute client (request ()) with
+  | Ok _ -> Error "expected external rate limit error"
+  | Error error ->
+      Test.assert_equal ~expected:H.Response.RateLimitedResponse ~actual:error.class_;
+      Ok ()
 
 let test_connection_policy_telemetry = fun _ctx ->
   let observed = ref None in
@@ -127,8 +236,7 @@ let test_failure_telemetry_callback = fun _ctx ->
   let observed = ref None in
   let config =
     H.Config.make
-      ~retry_policy:(H.RetryPolicy.make ~max_attempts:1 ())
-      ~transport:(fun _request -> Error "connect failed: timeout")
+      ~transport:(fun _request -> Error (Blink.Error.NetError Net.Connection_refused))
       ~telemetry:(fun telemetry -> observed := Some telemetry)
       ()
   in
@@ -148,6 +256,24 @@ let test_failure_telemetry_callback = fun _ctx ->
             ~actual:telemetry.final_error_class;
           Ok ()
       | None -> Error "expected failure telemetry callback"
+
+let test_transport_exception_becomes_error = fun _ctx ->
+  let client =
+    H.make
+      ~config:(H.Config.make
+        ~transport:(fun _request -> raise (Failure "TLS handshake failed"))
+        ())
+      ()
+  in
+  match H.execute client (request ()) with
+  | Ok _ -> Error "expected transport exception to become managed error"
+  | Error error ->
+      Test.assert_equal ~expected:H.Response.UnknownError ~actual:error.class_;
+      Test.assert_true (String.contains error.message "TLS handshake failed");
+      Test.assert_equal
+        ~expected:(Some H.Response.UnknownError)
+        ~actual:error.telemetry.final_error_class;
+      Ok ()
 
 let test_budget_remaining_tracks_execute = fun _ctx ->
   let client =
@@ -191,8 +317,7 @@ let test_connect_budget_blocks = fun _ctx ->
   | Ok conn ->
       H.close client conn;
       Error "expected managed connect budget exhaustion"
-  | Error (Blink.Error.ProtocolError message) ->
-      Test.assert_true (String.contains message "budget");
+  | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) ->
       Ok ()
   | Error _ -> Error "expected budget protocol error"
 
@@ -206,8 +331,7 @@ let test_websocket_connect_budget_blocks = fun _ctx ->
   | Ok conn ->
       H.WebSocket.close client conn;
       Error "expected managed websocket connect budget exhaustion"
-  | Error (Blink.Error.ProtocolError message) ->
-      Test.assert_true (String.contains message "budget");
+  | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) ->
       Ok ()
   | Error _ -> Error "expected budget protocol error"
 
@@ -216,11 +340,16 @@ let tests =
     case
       "connection await keeps fixed-length response body"
       test_connection_await_keeps_fixed_length_body;
+    case
+      "connection stream returns partial chunked body data"
+      test_connection_streams_partial_chunked_body;
+    case "connection close invokes close callback" test_connection_close_invokes_close_callback;
     case "status classification" test_status_classification;
-    case "retries retryable statuses" test_retries_retryable_statuses;
     case "rate budget blocks" test_rate_budget_blocks;
+    case "http 429 is external rate limit" test_http_429_is_external_rate_limit;
     case "connection policy telemetry" test_connection_policy_telemetry;
     case "failure telemetry callback" test_failure_telemetry_callback;
+    case "transport exception becomes managed error" test_transport_exception_becomes_error;
     case "budget remaining tracks execute" test_budget_remaining_tracks_execute;
     case "pool config clamps negative idle limit" test_pool_config_clamps_negative_idle_limit;
     case "connect budget blocks" test_connect_budget_blocks;

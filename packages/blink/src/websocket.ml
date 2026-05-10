@@ -96,7 +96,7 @@ let connect_transport = fun uri host ->
             )
           | _ ->
               Net.TcpStream.close stream;
-              Error (Error.ProtocolError ("unsupported websocket scheme: " ^ scheme))
+              Error (Error.ProtocolError (Error.UnsupportedWebSocketScheme scheme))
         )
     )
 
@@ -116,7 +116,7 @@ let read_handshake_response = fun conn ->
     let chunk = IO.Buffer.create ~size:4_096 in
     match IO.read conn.reader ~into:chunk with
     | Error error -> Error (Error.from_io_error error)
-    | Ok 0 -> Error (Error.HandshakeFailed "Connection closed during handshake")
+    | Ok 0 -> Error (Error.HandshakeFailed Error.ConnectionClosedDuringHandshake)
     | Ok _ ->
         let readable = IO.Buffer.readable chunk in
         let _ =
@@ -139,7 +139,7 @@ let validate_handshake = fun expected_accept response ->
     |> String.trim
   in
   if not (String.contains status_line " 101 ") then
-    Error (Error.HandshakeFailed "Server did not return 101 Switching Protocols")
+    Error (Error.HandshakeFailed Error.SwitchingProtocolsExpected)
   else
     let has_correct_accept =
       List.any
@@ -157,7 +157,7 @@ let validate_handshake = fun expected_accept response ->
     if has_correct_accept then
       Ok ()
     else
-      Error (Error.HandshakeFailed "Invalid Sec-WebSocket-Accept header")
+      Error (Error.HandshakeFailed Error.InvalidAcceptHeader)
 
 let connect = fun uri ->
   let host =

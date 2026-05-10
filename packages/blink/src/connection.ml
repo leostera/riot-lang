@@ -11,39 +11,50 @@ type message =
 type response_state =
   | WaitingForHeaders
   | ReadingFixedBody of { length: int; received: int }
-  | ReadingChunkedBody
+  | ReadingChunkedBody of chunked_body_state
   | Complete
+
+and chunked_body_state =
+  | ReadingChunkSize
+  | ReadingChunkData of { remaining: int }
+  | ReadingChunkDataCrlf
 
 type t =
   | Conn: {
       protocol: (module Protocol.Intf);
       writer: IO.Writer.t;
       reader: IO.Reader.t;
+      close: unit -> unit;
       uri: Net.Uri.t;
       mutable buffer: Buffer.t;
       mutable state: response_state;
       mutable response: Net.Http.Response.t option;
-      from_io_error: IO.error -> Error.t;
+      mutable closed: bool;
     } -> t
 
 let make:
+  ?on_close:(unit -> unit) ->
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
-  from_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
-  t = fun ~reader ~writer ~from_io_error ~uri ->
+  unit ->
+  t = fun ?(on_close = fun () -> ()) ~reader ~writer ~uri () ->
   Conn {
     protocol = (module Protocol.Http1);
     reader;
     writer;
+    close = on_close;
     uri;
     buffer = Buffer.create ~size:4_096;
     state = WaitingForHeaders;
     response = None;
-    from_io_error;
+    closed = false;
   }
 
 let request = fun (Conn conn) req ?body () ->
+  if conn.closed then
+    Error Error.Closed
+  else
   let method_ = Net.Http.Request.method_ req in
   let version = Net.Http.Request.version req in
   let headers = Net.Http.Request.headers req in
@@ -100,9 +111,12 @@ let request = fun (Conn conn) req ?body () ->
       conn.response <- None;
       Buffer.clear conn.buffer;
       Ok ()
-  | Error e -> Error (conn.from_io_error e)
+  | Error e -> Error (Error.from_io_error e)
 
 let read_more = fun (Conn conn) ->
+  if conn.closed then
+    Error Error.Closed
+  else
   let chunk = IO.Buffer.create ~size:4_096 in
   match IO.read conn.reader ~into:chunk with
   | Ok 0 -> Error Error.Eof
@@ -113,7 +127,7 @@ let read_more = fun (Conn conn) ->
         |> Result.expect ~msg:"failed to append response chunk"
       in
       Ok ()
-  | Error e -> Error (conn.from_io_error e)
+  | Error e -> Error (Error.from_io_error e)
 
 let status_has_no_body = fun status ->
   let code = Net.Http.Status.to_int status in
@@ -123,6 +137,71 @@ let header_value_is_chunked = fun value ->
   String.equal
     (String.lowercase_ascii (String.trim value))
     "chunked"
+
+let find_crlf data =
+  let len = String.length data in
+  let rec loop index =
+    if index + 1 >= len then
+      None
+    else if
+      String.get_unchecked data ~at:index = '\r'
+      && String.get_unchecked data ~at:(index + 1) = '\n'
+    then
+      Some index
+    else
+      loop (index + 1)
+  in
+  loop 0
+
+let chunk_size_hex_digit c =
+  let code = Char.to_int c in
+  if code >= Char.to_int '0' && code <= Char.to_int '9' then
+    Some (code - Char.to_int '0')
+  else if code >= Char.to_int 'a' && code <= Char.to_int 'f' then
+    Some (code - Char.to_int 'a' + 10)
+  else if code >= Char.to_int 'A' && code <= Char.to_int 'F' then
+    Some (code - Char.to_int 'A' + 10)
+  else
+    None
+
+let parse_chunk_size_line line =
+  let size_part =
+    match String.index_of line ~char:';' with
+    | Some index -> String.sub line ~offset:0 ~len:index
+    | None -> line
+  in
+  let size_part = String.trim size_part in
+  let len = String.length size_part in
+  if len = 0 then
+    Error Error.EmptyChunkSize
+  else
+    let rec loop index acc =
+      if index >= len then
+        Ok acc
+      else
+        let c = String.get_unchecked size_part ~at:index in
+        match chunk_size_hex_digit c with
+        | None -> Error Error.InvalidChunkSize
+        | Some digit ->
+          if acc > (Int.max_int - digit) / 16 then
+              Error Error.ChunkSizeOverflow
+            else
+              loop (index + 1) ((acc * 16) + digit)
+    in
+    loop 0 0
+
+let replace_buffer_contents buffer data =
+  Buffer.clear buffer;
+  Buffer.add_string buffer data
+
+let consume_buffer_prefix buffer count =
+  let data = Buffer.contents buffer in
+  let len = String.length data in
+  let count = Int.min count len in
+  let consumed = String.sub data ~offset:0 ~len:count in
+  let remaining = String.sub data ~offset:count ~len:(len - count) in
+  replace_buffer_contents buffer remaining;
+  consumed
 
 let stream = fun (Conn conn as c) ->
   match conn.state with
@@ -144,7 +223,8 @@ let stream = fun (Conn conn as c) ->
                 Complete
               else
                 match transfer_encoding with
-                | Some value when header_value_is_chunked value -> ReadingChunkedBody
+                | Some value when header_value_is_chunked value ->
+                    ReadingChunkedBody ReadingChunkSize
                 | _ -> (
                     match content_length with
                     | Some len -> (
@@ -190,31 +270,64 @@ let stream = fun (Conn conn as c) ->
         | Ok () -> Ok []
         | Error e -> Error e
     )
-  | ReadingChunkedBody ->
-      let rec parse_chunks acc =
-        let data = Buffer.contents conn.buffer in
-        match Http.Http1.Chunk.parse data with
-        | Http.Http1.Common.Done { value = { data = chunk_data; remaining }; _ } ->
-            Buffer.clear conn.buffer;
-            Buffer.add_string conn.buffer remaining;
-            if chunk_data = "" then (
-              conn.state <- Complete;
-              Ok (List.reverse (Done :: acc))
-            ) else
-              (* Return the chunk immediately for streaming support *)
-              Ok (List.reverse (Data chunk_data :: acc))
-        | Http.Http1.Common.Need_more -> (
-            match read_more c with
-            | Ok () -> parse_chunks acc
-            | Error e ->
-                if not (List.is_empty acc) then
-                  Ok (List.reverse acc)
+  | ReadingChunkedBody chunked_state ->
+      let rec parse_chunked state =
+        match state with
+        | ReadingChunkSize ->
+            let data = Buffer.contents conn.buffer in
+            (
+              match find_crlf data with
+              | None -> (
+                  match read_more c with
+                  | Ok () -> parse_chunked ReadingChunkSize
+                  | Error e -> Error e
+                )
+              | Some line_end -> (
+                  let line = String.sub data ~offset:0 ~len:line_end in
+                  match parse_chunk_size_line line with
+                  | Error error -> Error (Error.ProtocolError error)
+                  | Ok 0 ->
+                      ignore (consume_buffer_prefix conn.buffer (line_end + 2));
+                      conn.state <- Complete;
+                      Ok [ Done ]
+                  | Ok size ->
+                      ignore (consume_buffer_prefix conn.buffer (line_end + 2));
+                      parse_chunked (ReadingChunkData { remaining = size })
+                )
+            )
+        | ReadingChunkData { remaining } ->
+            let available = Buffer.readable_bytes conn.buffer in
+            if available <= 0 then
+              match read_more c with
+              | Ok () -> parse_chunked state
+              | Error e -> Error e
+            else
+              let count = Int.min remaining available in
+              let chunk = consume_buffer_prefix conn.buffer count in
+              let next_remaining = remaining - count in
+              conn.state <- ReadingChunkedBody (
+                if next_remaining <= 0 then
+                  ReadingChunkDataCrlf
                 else
-                  Error e
-          )
-        | Http.Http1.Common.Error msg -> Error (Error.ParseError msg)
+                  ReadingChunkData { remaining = next_remaining }
+              );
+              Ok [ Data chunk ]
+        | ReadingChunkDataCrlf ->
+            let data = Buffer.contents conn.buffer in
+            if String.length data < 2 then
+              match read_more c with
+              | Ok () -> parse_chunked ReadingChunkDataCrlf
+              | Error e -> Error e
+            else if
+              String.get_unchecked data ~at:0 = '\r'
+              && String.get_unchecked data ~at:1 = '\n'
+            then (
+              ignore (consume_buffer_prefix conn.buffer 2);
+              parse_chunked ReadingChunkSize
+            ) else
+              Error (Error.ProtocolError Error.InvalidChunkDataLineEnding)
       in
-      parse_chunks []
+      parse_chunked chunked_state
 
 let messages = fun ?(on_message = fun _ -> ()) conn ->
   let rec loop acc =
@@ -241,13 +354,16 @@ let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
       let body_chunks =
         List.filter_map
           msgs
-          ~fn:(fun __tmp1 ->
-            match __tmp1 with
+          ~fn:(fun message ->
+            match message with
             | Data chunk -> Some chunk
             | _ -> None)
       in
       let body = String.concat "" body_chunks in
       Ok (response, body)
 
-let close = fun _conn -> ()
-(* Reader/writer don't need explicit close *)
+let close = fun (Conn conn) ->
+  if not conn.closed then (
+    conn.closed <- true;
+    conn.close ()
+  )

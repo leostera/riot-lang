@@ -14,6 +14,7 @@ type error_class =
   | RequestFailed
   | ResponseFailed
   | DeadlineExceeded
+  | RateLimitedResponse
   | RateLimitedByBudget
   | ServerRejected
   | UnknownError
@@ -23,16 +24,14 @@ type t = {
   headers: (string * string) list;
 }
 
-val make: ?headers:(string * string) list -> status:int -> body:string -> unit -> t
+val make : ?headers:(string * string) list -> status:int -> body:string -> unit -> t
 
-val status_class: int -> status_class
+val status_class : int -> status_class
 
-val status_class_to_string: status_class -> string
+val status_class_to_string : status_class -> string
 
-val error_class_to_string: error_class -> string
+val error_class_to_string : error_class -> string
 
-val is_success: t -> bool
+val is_success : t -> bool
 
-val retryable_status: int -> bool
-
-val error_class_of_transport_error: string -> error_class
+val error_class_from_transport_error : Error.t -> error_class

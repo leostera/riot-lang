@@ -15,6 +15,7 @@ type error_class =
   | RequestFailed
   | ResponseFailed
   | DeadlineExceeded
+  | RateLimitedResponse
   | RateLimitedByBudget
   | ServerRejected
   | UnknownError
@@ -60,6 +61,7 @@ let error_class_to_string = fun value ->
   | RequestFailed -> "request_failed"
   | ResponseFailed -> "response_failed"
   | DeadlineExceeded -> "deadline_exceeded"
+  | RateLimitedResponse -> "rate_limited"
   | RateLimitedByBudget -> "rate_limited_by_budget"
   | ServerRejected -> "server_rejected"
   | UnknownError -> "unknown_error"
@@ -74,27 +76,26 @@ let is_success = fun response ->
   | ServerError
   | UnknownStatus -> false
 
-let retryable_status = fun status ->
-  match status_class status with
-  | RateLimited
-  | ServerError -> true
-  | Informational
-  | Success
-  | Redirect
-  | ClientError
-  | UnknownStatus -> false
-
-let error_class_of_transport_error = fun message ->
-  let normalized = String.lowercase_ascii message in
-  if String.contains normalized "invalid" then
-    InvalidRequest
-  else if String.contains normalized "deadline" then
-    DeadlineExceeded
-  else if String.contains normalized "connect" then
-    ConnectFailed
-  else if String.contains normalized "request" then
-    RequestFailed
-  else if String.contains normalized "response" then
-    ResponseFailed
-  else
-    UnknownError
+let error_class_from_transport_error = fun error ->
+  match error with
+  | Error.ProtocolError (Error.InvalidRequestUri _) -> InvalidRequest
+  | Error.ProtocolError Error.RequestBudgetExhausted -> RateLimitedByBudget
+  | Error.ProtocolError (Error.TransportRaised _ | Error.ApplicationTransportError _) ->
+      UnknownError
+  | Error.ProtocolError
+      (Error.UnsupportedWebSocketScheme _
+      | Error.EmptyChunkSize
+      | Error.InvalidChunkSize
+      | Error.ChunkSizeOverflow
+      | Error.InvalidChunkDataLineEnding)
+  | Error.ParseError _
+  | Error.WebSocketParseError _
+  | Error.WebSocketSerializeError _
+  | Error.HandshakeFailed _
+  | Error.InvalidFrame -> ResponseFailed
+  | Error.RequestFailed _ -> RequestFailed
+  | Error.ResponseFailed _ -> ResponseFailed
+  | Error.NetError _
+  | Error.TlsError _
+  | Error.Eof
+  | Error.Closed -> ConnectFailed

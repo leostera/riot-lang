@@ -26,18 +26,6 @@ let bench_status_classification = fun () ->
     keep (String.length (H.Response.status_class_to_string class_))
   done
 
-let bench_retry_delay = fun () ->
-  let policy =
-    H.RetryPolicy.make
-      ~max_attempts:8
-      ~base_delay:(Time.Duration.from_millis 10)
-      ~max_delay:(Time.Duration.from_secs 2)
-      ()
-  in
-  for attempt = 1 to 20_000 do
-    keep (Time.Duration.to_millis (H.RetryPolicy.delay_for_attempt policy ~attempt))
-  done
-
 let bench_execute_injected_transport = fun () ->
   let calls = ref 0 in
   let transport _request =
@@ -47,7 +35,6 @@ let bench_execute_injected_transport = fun () ->
   let budget_policy = H.Budget.policy ~capacity:20_000 ~window:(Time.Duration.from_secs 60) in
   let config =
     H.Config.make
-      ~retry_policy:(H.RetryPolicy.make ~max_attempts:1 ())
       ~budget_policy
       ~transport
       ()
@@ -70,7 +57,6 @@ let benchmarks =
   Bench.[
     with_config ~config:hot_path "blink.client request construction" bench_request_make;
     with_config ~config:hot_path "blink.client status classification" bench_status_classification;
-    with_config ~config:hot_path "blink.client retry delay" bench_retry_delay;
     with_config
       ~config:managed_execute
       "blink.client execute with injected transport"

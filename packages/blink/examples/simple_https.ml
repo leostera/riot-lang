@@ -83,8 +83,14 @@ let main ~args =
         panic ("WebSocket parse error: " ^ Http.Ws.Parser.error_to_string error)
     | Error (Blink.Error.WebSocketSerializeError error) ->
         panic ("WebSocket serialize error: " ^ Http.Ws.Serializer.error_to_string error)
-    | Error (Blink.Error.ProtocolError msg) -> panic ("Protocol error: " ^ msg)
-    | Error (Blink.Error.HandshakeFailed msg) -> panic ("Handshake failed: " ^ msg)
+    | Error (Blink.Error.ProtocolError error) ->
+        panic ("Protocol error: " ^ Blink.Error.protocol_error_to_string error)
+    | Error (Blink.Error.HandshakeFailed error) ->
+        panic ("Handshake failed: " ^ Blink.Error.handshake_error_to_string error)
+    | Error (Blink.Error.RequestFailed error) ->
+        panic ("Request failed: " ^ Blink.Error.to_string error)
+    | Error (Blink.Error.ResponseFailed error) ->
+        panic ("Response failed: " ^ Blink.Error.to_string error)
     | Error Blink.Error.InvalidFrame -> panic "Invalid frame"
     | Error Blink.Error.Eof -> panic "EOF"
     | Error Blink.Error.Closed -> panic "Closed"

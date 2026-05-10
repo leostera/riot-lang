@@ -4,7 +4,6 @@ type lifecycle =
   | Started
   | Completed
   | Failed
-  | Retrying
   | Blocked
 type attempt = {
   attempt: int;
@@ -16,7 +15,6 @@ type attempt = {
   status_class: Response.status_class option;
   error_class: Response.error_class option;
   error_message: string option;
-  planned_backoff: Time.Duration.t option;
 }
 type t = {
   request: Request.t;
@@ -31,9 +29,9 @@ type t = {
   budget_remaining: int option;
 }
 
-val lifecycle_to_string: lifecycle -> string
+val lifecycle_to_string : lifecycle -> string
 
-val attempt:
+val attempt :
   attempt:int ->
   started_at:Time.Instant.t ->
   completed_at:Time.Instant.t ->
@@ -41,11 +39,10 @@ val attempt:
   ?status:int ->
   ?error_class:Response.error_class ->
   ?error_message:string ->
-  ?planned_backoff:Time.Duration.t ->
   unit ->
   attempt
 
-val make:
+val make :
   request:Request.t ->
   started_at:Time.Instant.t ->
   completed_at:Time.Instant.t ->

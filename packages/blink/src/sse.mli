@@ -6,9 +6,9 @@ open Std
 type event = {
   (** Event payload. *)
   data: string;
-  (** Optional [`event:`] field. *)
+  (** Optional `event:` field. *)
   event_type: string option;
-  (** Optional [`id:`] field. *)
+  (** Optional `id:` field. *)
   id: string option;
 }
 (** Parsed SSE frame from a buffered response chunk. *)
@@ -20,16 +20,16 @@ type parsed =
 (**
    Parse one complete SSE frame from a buffer.
 
-   Returns [None] when the buffer does not contain a complete event
-   delimiter yet. [Skip] represents comments or empty frames, and [Done]
-   represents the common [`data: [DONE]`] terminator.
+   Returns `None` when the buffer does not contain a complete event
+   delimiter yet. `Skip` represents comments or empty frames, and `Done`
+   represents the common `data: [DONE]` terminator.
 *)
 val parse_event: string -> (parsed * string) option
 
 (**
    Return a mutable iterator over SSE events from the connection.
 
-   The iterator parses [`data:`], [`event:`], and [`id:`] fields lazily as
+   The iterator parses `data:`, `event:`, and `id:` fields lazily as
    the response stream advances.
 
    ```ocaml

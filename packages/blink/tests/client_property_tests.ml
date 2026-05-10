@@ -26,41 +26,6 @@ let property_status_classes_are_range_based = fun _ctx ->
   done;
   Ok ()
 
-let property_retryable_statuses_match_status_class = fun _ctx ->
-  for status = (-20) to 620 do
-    let expected =
-      match H.Response.status_class status with
-      | H.Response.RateLimited
-      | H.Response.ServerError -> true
-      | H.Response.Informational
-      | H.Response.Success
-      | H.Response.Redirect
-      | H.Response.ClientError
-      | H.Response.UnknownStatus -> false
-    in
-    Test.assert_equal ~expected ~actual:(H.Response.retryable_status status)
-  done;
-  Ok ()
-
-let property_retry_delay_is_monotonic_until_max = fun _ctx ->
-  let max_delay = Time.Duration.from_millis 80 in
-  let policy =
-    H.RetryPolicy.make
-      ~max_attempts:10
-      ~base_delay:(Time.Duration.from_millis 10)
-      ~max_delay
-      ~jitter_nanos:0L
-      ()
-  in
-  let previous = ref Time.Duration.zero in
-  for attempt = 1 to 10 do
-    let delay = H.RetryPolicy.delay_for_attempt policy ~attempt in
-    Test.assert_true (Time.Duration.compare delay !previous != Order.LT);
-    Test.assert_true (Time.Duration.compare delay max_delay != Order.GT);
-    previous := delay
-  done;
-  Ok ()
-
 let property_budget_allows_capacity_per_window = fun _ctx ->
   let now = Time.Instant.now () in
   let window = Time.Duration.from_secs 10 in
@@ -98,10 +63,6 @@ let property_request_descriptions_include_method_and_url = fun _ctx ->
 let tests =
   Test.[
     case "property: status classes are range based" property_status_classes_are_range_based;
-    case
-      "property: retryable statuses match status class"
-      property_retryable_statuses_match_status_class;
-    case "property: retry delay is monotonic until max" property_retry_delay_is_monotonic_until_max;
     case "property: budget allows capacity per window" property_budget_allows_capacity_per_window;
     case
       "property: request descriptions include method and url"

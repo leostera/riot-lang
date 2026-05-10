@@ -7,7 +7,7 @@ module WebSocket = Websocket
 module Error = Error
 module SSE = Sse
 module Client = Client
-module RetryPolicy = Client.RetryPolicy
+module Testing = Testing
 
 type error = Error.t
 
