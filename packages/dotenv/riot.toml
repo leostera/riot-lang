@@ -1,0 +1,15 @@
+[package]
+name = "dotenv"
+version = "0.0.1"
+license = "Apache-2.0"
+description = "Load .env files in your application"
+public = true
+
+[lib]
+path = "src/Dotenv.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }
