@@ -323,6 +323,65 @@ let test_module_plan_cache_hit_skips_dynamic_source_dependencies = fun _ctx ->
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
+let test_source_analyzer_refreshes_changed_source = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_source_analysis_refresh"
+    (fun root ->
+      let package = package "sourcepkg" in
+      let package_path = Path.(root / Path.v "sourcepkg") in
+      let source = Path.v "src/sourcepkg.ml" in
+      let source_path = Path.(package_path / source) in
+      let* () =
+        Fs.create_dir_all Path.(package_path / Path.v "src")
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.write "let value = 1\n" source_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let workspace =
+        Riot_model.Workspace.make ~root ~target_dir:Path.(root / Path.v "target") ~packages:[] ()
+      in
+      let store = Riot_store.Store.create ~workspace in
+      let analyzer = Source_analyzer.create ~store () in
+      let task =
+        Riot_planner.Module_graph.{
+          task_node_id = G.Node_id.next ();
+          task_file = Riot_planner.Module_node.Concrete source;
+          task_path = source;
+          task_display_path = source_path;
+          task_module_path = Some [ "Sourcepkg" ];
+          task_implicit_opens = [];
+          task_implicit_open_paths = [];
+        }
+      in
+      let source_analysis = Source_analysis.make ~package ~task in
+      let* () =
+        Source_analyzer.execute analyzer source_analysis
+        |> Result.map_err ~fn:Error.message
+      in
+      let* first =
+        match Source_analyzer.find analyzer source_analysis.key with
+        | Some analysis -> Ok analysis.Riot_planner.Module_graph.analysis_source_hash
+        | None -> Error "expected first source analysis to be stored"
+      in
+      let* () =
+        Fs.write "let value = 2\n" source_path
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Source_analyzer.execute analyzer source_analysis
+        |> Result.map_err ~fn:Error.message
+      in
+      match Source_analyzer.find analyzer source_analysis.key with
+      | Some analysis
+        when not (Crypto.Hash.equal first analysis.Riot_planner.Module_graph.analysis_source_hash) ->
+          Ok ()
+      | Some _ -> Error "expected changed source to refresh the stored source analysis"
+      | None -> Error "expected refreshed source analysis to be stored") with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
 let action_package = fun root ->
   let name = package "action-pkg" in
   Riot_model.Package.make
@@ -510,6 +569,9 @@ let tests =
     case
       "module plan cache hit skips dynamic source dependencies"
       test_module_plan_cache_hit_skips_dynamic_source_dependencies;
+    case
+      "source analyzer refreshes changed source"
+      test_source_analyzer_refreshes_changed_source;
     case
       "action execution plans toolchain readiness for compiler action"
       test_action_execution_plans_toolchain_readiness_for_compiler_action;

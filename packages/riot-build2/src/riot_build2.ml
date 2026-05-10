@@ -19,6 +19,7 @@ module Module_provider_registry = Module_provider_registry
 module Package_finalizer = Package_finalizer
 module Package_planning = Package_planning
 module User_intent = User_intent
+module Source_analysis = Source_analysis
 module Source_analyzer = Source_analyzer
 module ExecutionSummary = ExecutionSummary
 module Toolchain_service = Toolchain_service
