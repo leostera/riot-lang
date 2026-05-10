@@ -2,6 +2,13 @@
 
 All notable changes to `sqlx-driver` are documented here.
 
+## 0.0.33 - 2026-05-10
+
+### Changed
+
+- Replaced driver error JSON callbacks with `Serde.Ser` error serializers.
+- Added `serde` as a driver-interface dependency so adapters can share typed error codecs.
+
 ## 0.0.32 - 2026-05-10
 
 ### Changed

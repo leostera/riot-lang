@@ -25,16 +25,12 @@ type isolation_level =
 module type Intf = sig
   (** Driver-specific configuration. *)
   type config
-
   (** Active driver-specific database connection. *)
   type connection
-
   (** Driver-specific prepared statement. *)
   type statement
-
   (** Driver-specific result set. *)
   type result_set
-
   (** Driver-specific structured error. *)
   type error
 
@@ -44,8 +40,8 @@ module type Intf = sig
   (** Render a driver error as a human-readable string. *)
   val error_to_string: error -> string
 
-  (** Render a driver error as JSON. *)
-  val error_to_json: error -> Data.Json.t
+  (** Serialize a driver error through a Serde backend. *)
+  val error_serializer: error Serde.Ser.t
 
   (**
      Establish a new database connection.
@@ -97,6 +93,5 @@ module type Intf = sig
 
      Not all databases support every isolation level.
   *)
-  val set_isolation_level:
-    connection -> isolation_level -> (unit, error) result
+  val set_isolation_level: connection -> isolation_level -> (unit, error) result
 end

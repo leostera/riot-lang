@@ -15,12 +15,9 @@ module type Intf = sig
 
   val name: string
 
-  (* Error conversion - optional but recommended *)
-
-  (* Error conversion - optional but recommended *)
   val error_to_string: error -> string
 
-  val error_to_json: error -> Data.Json.t
+  val error_serializer: error Serde.Ser.t
 
   val connect: config -> (connection, error) result
 
@@ -42,6 +39,5 @@ module type Intf = sig
 
   val rollback: connection -> (unit, error) result
 
-  val set_isolation_level:
-    connection -> isolation_level -> (unit, error) result
+  val set_isolation_level: connection -> isolation_level -> (unit, error) result
 end

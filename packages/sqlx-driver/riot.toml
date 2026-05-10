@@ -1,6 +1,6 @@
 [package]
 name = "sqlx-driver"
-version = "0.0.32"
+version = "0.0.33"
 description = "Database driver interface for sqlx"
 license = "Apache-2.0"
 public = true
@@ -10,4 +10,4 @@ path = "./src/sqlx_driver.ml"
 
 [dependencies]
 std = { path = "../std", version = "*" }
-# Add dependencies here
+serde = { path = "../serde", version = "*" }
