@@ -342,8 +342,8 @@ module Writer: sig
   (**
      Build a PostgreSQL extended-query Bind message.
 
-     [None] encodes a SQL NULL parameter with a [-1] value length. [Some ""]
-     encodes an empty but present value with a [0] value length.
+     `None` encodes a SQL NULL parameter with a `-1` value length. `Some ""`
+     encodes an empty but present value with a `0` value length.
   *)
   val bind_message:
     portal_name:string ->
@@ -387,7 +387,7 @@ module Reader: sig
   val parse_backend_message_result: int -> int -> bytes -> (backend_message, parse_error) result
 
   (**
-     Compatibility wrapper around [parse_backend_message_result].
+     Compatibility wrapper around `parse_backend_message_result`.
 
      This raises on malformed input and should only be used in tests or code
      that intentionally wants fail-fast behavior.

@@ -26,6 +26,24 @@ module Config = struct
     keepalives_idle: Time.Duration.t option;
   }
 
+  type parse_error =
+    | InvalidUserinfoFormat
+    | InvalidAuthorityFormat
+    | MissingUserCredentials
+    | InvalidPortNumber of string
+    | InvalidConnectionStringFormat
+    | InvalidUri
+
+  let parse_error_to_string = fun error ->
+    match error with
+    | InvalidUserinfoFormat -> "invalid userinfo format in URI"
+    | InvalidAuthorityFormat -> "invalid authority format in URI"
+    | MissingUserCredentials -> "missing user credentials in URI"
+    | InvalidPortNumber value -> "invalid port number: " ^ value
+    | InvalidConnectionStringFormat ->
+        "invalid connection string format (use 'postgresql://user:pass@host:port/db' or 'host:port:database:user:password')"
+    | InvalidUri -> "failed to parse connection string"
+
   let default = fun () ->
     {
       host = "localhost";
@@ -96,11 +114,11 @@ module Config = struct
                       connect_timeout = Time.Duration.from_secs 10;
                       keepalives_idle = None;
                     }
-                | _ -> Error "Invalid userinfo format in URI"
+                | _ -> Error InvalidUserinfoFormat
               )
-            | _ -> Error "Invalid authority format in URI"
+            | _ -> Error InvalidAuthorityFormat
           )
-        | None -> Error "Missing user credentials in URI"
+        | None -> Error MissingUserCredentials
       )
     | Ok _ -> (
         match String.split_on_char ':' str with
@@ -118,14 +136,11 @@ module Config = struct
                   connect_timeout = Time.Duration.from_secs 10;
                   keepalives_idle = None;
                 }
-            | None -> Error "Invalid port number"
+            | None -> Error (InvalidPortNumber port_str)
           )
-        | _ ->
-            Error "Invalid connection string format (use \
-               'postgresql://user:pass@host:port/db' or \
-               'host:port:database:user:password')"
+        | _ -> Error InvalidConnectionStringFormat
       )
-    | Error _ -> Error "Failed to parse connection string"
+    | Error _ -> Error InvalidUri
 end
 
 module Driver = struct
@@ -139,9 +154,36 @@ module Driver = struct
     | TransportError of Net.TcpStream.error
     | ProtocolError of Protocol.Error.t
     | ConnectionClosed
-    | AuthenticationNotSupported of string
-    | TlsNotSupported of string
-    | UnexpectedMessage of string
+    | AuthenticationNotSupported of authentication_error
+    | TlsNotSupported of tls_error
+    | UnexpectedMessage of unexpected_message
+
+  and authentication_error =
+    | UnsupportedSaslMechanisms of string list
+
+  and tls_error =
+    | RequiredTlsMode
+
+  and unexpected_message =
+    | ScramServerFirstInvalidIterationCount
+    | ScramServerFirstInvalidSalt
+    | ScramServerFirstMissingFields
+    | ScramServerSignatureMismatch
+    | ScramServerFinalMissingVerifier
+    | InvalidBackendMessageLength of int
+    | BackendMessageBodyTooLarge of {
+        length: int;
+        limit: int;
+      }
+    | InvalidBackendMessage of Protocol.Reader.parse_error
+    | ExpectedScramFinalMessage
+    | ExpectedScramContinueMessage
+    | ScramContinueWithoutSaslStart
+    | ScramFinalWithoutSaslStart
+    | HandshakeUnexpectedMessageType of int
+    | QueryUnexpectedMessageType of int
+    | TransactionAlreadyInProgress
+    | NoTransactionInProgress
 
   type connection = {
     id: string;
@@ -149,7 +191,6 @@ module Driver = struct
     config: config;
     mutable transaction_status: char;
     mutable closed: bool;
-    prepared_statements: (string, statement) Collections.HashMap.t;
   }
 
   and statement = {
@@ -165,20 +206,81 @@ module Driver = struct
 
   let name = "PostgreSQL"
 
-  let error_to_string = fun __tmp1 ->
-    match __tmp1 with
+  let authentication_error_to_string = fun error ->
+    match error with
+    | UnsupportedSaslMechanisms mechanisms ->
+        "SASL mechanisms: " ^ String.concat "," mechanisms
+
+  let tls_error_to_string = fun error ->
+    match error with
+    | RequiredTlsMode -> "require"
+
+  let unexpected_message_to_string = fun error ->
+    match error with
+    | ScramServerFirstInvalidIterationCount ->
+        "SCRAM server-first-message has invalid iteration count"
+    | ScramServerFirstInvalidSalt -> "SCRAM server-first-message has invalid salt"
+    | ScramServerFirstMissingFields ->
+        "SCRAM server-first-message is missing required fields"
+    | ScramServerSignatureMismatch -> "SCRAM server signature mismatch"
+    | ScramServerFinalMissingVerifier ->
+        "SCRAM server-final-message is missing verifier"
+    | InvalidBackendMessageLength length ->
+        "Invalid PostgreSQL backend message length: " ^ Int.to_string length
+    | BackendMessageBodyTooLarge { length; limit } ->
+        "PostgreSQL backend message exceeds maximum supported body length: "
+        ^ Int.to_string length
+        ^ " (limit "
+        ^ Int.to_string limit
+        ^ ")"
+    | InvalidBackendMessage error ->
+        "Invalid PostgreSQL backend message: " ^ Protocol.Reader.parse_error_to_string error
+    | ExpectedScramFinalMessage -> "Expected SCRAM final message"
+    | ExpectedScramContinueMessage -> "Expected SCRAM continue message"
+    | ScramContinueWithoutSaslStart -> "SCRAM continue without SASL start"
+    | ScramFinalWithoutSaslStart -> "SCRAM final without SASL start"
+    | HandshakeUnexpectedMessageType message_type ->
+        "During handshake: " ^ String.make ~len:1 ~char:(Char.from_int_unchecked message_type)
+    | QueryUnexpectedMessageType message_type ->
+        "During query: " ^ String.make ~len:1 ~char:(Char.from_int_unchecked message_type)
+    | TransactionAlreadyInProgress -> "Transaction already in progress"
+    | NoTransactionInProgress -> "No transaction in progress"
+
+  let unexpected_message_kind = fun error ->
+    match error with
+    | ScramServerFirstInvalidIterationCount -> "scram_server_first_invalid_iteration_count"
+    | ScramServerFirstInvalidSalt -> "scram_server_first_invalid_salt"
+    | ScramServerFirstMissingFields -> "scram_server_first_missing_fields"
+    | ScramServerSignatureMismatch -> "scram_server_signature_mismatch"
+    | ScramServerFinalMissingVerifier -> "scram_server_final_missing_verifier"
+    | InvalidBackendMessageLength _ -> "invalid_backend_message_length"
+    | BackendMessageBodyTooLarge _ -> "backend_message_body_too_large"
+    | InvalidBackendMessage _ -> "invalid_backend_message"
+    | ExpectedScramFinalMessage -> "expected_scram_final_message"
+    | ExpectedScramContinueMessage -> "expected_scram_continue_message"
+    | ScramContinueWithoutSaslStart -> "scram_continue_without_sasl_start"
+    | ScramFinalWithoutSaslStart -> "scram_final_without_sasl_start"
+    | HandshakeUnexpectedMessageType _ -> "handshake_unexpected_message_type"
+    | QueryUnexpectedMessageType _ -> "query_unexpected_message_type"
+    | TransactionAlreadyInProgress -> "transaction_already_in_progress"
+    | NoTransactionInProgress -> "no_transaction_in_progress"
+
+  let error_to_string = fun error ->
+    match error with
     | TransportError Net.TcpStream.Connection_refused -> "Connection refused"
     | TransportError Net.TcpStream.Closed -> "Connection closed"
     | TransportError (Net.TcpStream.System_error io_err) ->
         "Transport error: " ^ IO.error_message io_err
     | ProtocolError proto_err -> Protocol.Error.to_string proto_err
     | ConnectionClosed -> "Connection is closed"
-    | AuthenticationNotSupported method_ -> "Authentication method not supported: " ^ method_
-    | TlsNotSupported mode -> "PostgreSQL TLS mode is not supported yet: " ^ mode
-    | UnexpectedMessage msg -> "Unexpected message: " ^ msg
+    | AuthenticationNotSupported error ->
+        "Authentication method not supported: " ^ authentication_error_to_string error
+    | TlsNotSupported error ->
+        "PostgreSQL TLS mode is not supported yet: " ^ tls_error_to_string error
+    | UnexpectedMessage error -> "Unexpected message: " ^ unexpected_message_to_string error
 
-  let error_to_json = fun __tmp1 ->
-    match __tmp1 with
+  let error_to_json = fun error ->
+    match error with
     | TransportError Net.TcpStream.Connection_refused ->
         Data.Json.obj
           [
@@ -207,23 +309,48 @@ module Driver = struct
             ("type", Data.Json.string "connection_closed");
             ("message", Data.Json.string "Connection is closed");
           ]
-    | AuthenticationNotSupported method_ ->
+    | AuthenticationNotSupported auth_error ->
         Data.Json.obj
           [
             ("type", Data.Json.string "authentication_not_supported");
-            ("method", Data.Json.string method_);
-            ("message", Data.Json.string ("Authentication method not supported: " ^ method_));
+            ("message", Data.Json.string
+              ("Authentication method not supported: " ^ authentication_error_to_string auth_error));
           ]
-    | TlsNotSupported mode ->
+    | TlsNotSupported tls_error ->
         Data.Json.obj
           [
             ("type", Data.Json.string "tls_not_supported");
-            ("mode", Data.Json.string mode);
-            ("message", Data.Json.string ("PostgreSQL TLS mode is not supported yet: " ^ mode));
+            ("mode", Data.Json.string (tls_error_to_string tls_error));
+            ("message", Data.Json.string
+              ("PostgreSQL TLS mode is not supported yet: " ^ tls_error_to_string tls_error));
           ]
-    | UnexpectedMessage msg ->
-        Data.Json.obj
-          [ ("type", Data.Json.string "unexpected_message"); ("message", Data.Json.string msg) ]
+    | UnexpectedMessage unexpected ->
+        let fields =
+          [
+            ("type", Data.Json.string "unexpected_message");
+            ("kind", Data.Json.string (unexpected_message_kind unexpected));
+            ("message", Data.Json.string (unexpected_message_to_string unexpected));
+          ]
+        in
+        let fields =
+          match unexpected with
+          | InvalidBackendMessageLength length ->
+              fields @ [ ("length", Data.Json.int length) ]
+          | BackendMessageBodyTooLarge { length; limit } ->
+              fields @ [ ("length", Data.Json.int length); ("limit", Data.Json.int limit); ]
+          | HandshakeUnexpectedMessageType message_type
+          | QueryUnexpectedMessageType message_type ->
+              fields @ [ ("message_type", Data.Json.int message_type) ]
+          | InvalidBackendMessage error ->
+              fields
+              @ [
+                  ("message_type", Data.Json.int error.message_type);
+                  ("length", Data.Json.int error.length);
+                  ("offset", Data.Json.int error.offset);
+                ]
+          | _ -> fields
+        in
+        Data.Json.obj fields
 
   let write_message = fun stream msg ->
     let bytes = Bytes.from_string msg in
@@ -353,18 +480,18 @@ module Driver = struct
             in
             Ok (client_final_without_proof ^ ",p=" ^ client_proof, server_signature)
         | (None, _) ->
-            Error (UnexpectedMessage "SCRAM server-first-message has invalid iteration count")
+            Error (UnexpectedMessage ScramServerFirstInvalidIterationCount)
         | (Some _, Ok _) ->
-            Error (UnexpectedMessage "SCRAM server-first-message has invalid iteration count")
-        | (_, Error _) -> Error (UnexpectedMessage "SCRAM server-first-message has invalid salt")
+            Error (UnexpectedMessage ScramServerFirstInvalidIterationCount)
+        | (_, Error _) -> Error (UnexpectedMessage ScramServerFirstInvalidSalt)
       )
-    | _ -> Error (UnexpectedMessage "SCRAM server-first-message is missing required fields")
+    | _ -> Error (UnexpectedMessage ScramServerFirstMissingFields)
 
   let verify_scram_final = fun expected_signature payload ->
     match field_value "v" (parse_scram_attributes payload) with
     | Some signature when signature = expected_signature -> Ok ()
-    | Some _ -> Error (UnexpectedMessage "SCRAM server signature mismatch")
-    | None -> Error (UnexpectedMessage "SCRAM server-final-message is missing verifier")
+    | Some _ -> Error (UnexpectedMessage ScramServerSignatureMismatch)
+    | None -> Error (UnexpectedMessage ScramServerFinalMissingVerifier)
 
   let read_exact = fun stream buf len ->
     let rec loop offset remaining =
@@ -393,11 +520,12 @@ module Driver = struct
         let length = (b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4 in
         let body_len = length - 4 in
         if length < 4 then
-          Error (UnexpectedMessage ("Invalid PostgreSQL backend message length: "
-          ^ Int.to_string length))
+          Error (UnexpectedMessage (InvalidBackendMessageLength length))
         else if body_len > max_backend_message_body_length then
-          Error (UnexpectedMessage ("PostgreSQL backend message exceeds maximum supported body length: "
-          ^ Int.to_string body_len))
+          Error (UnexpectedMessage (BackendMessageBodyTooLarge {
+            length = body_len;
+            limit = max_backend_message_body_length;
+          }))
         else if body_len > 0 then
           let body = Bytes.create ~size:body_len in
           match read_exact stream body body_len with
@@ -409,9 +537,7 @@ module Driver = struct
   let parse_backend_message = fun msg_type length body ->
     match Protocol.Reader.parse_backend_message_result msg_type length body with
     | Ok message -> Ok message
-    | Error error ->
-        Error (UnexpectedMessage ("Invalid PostgreSQL backend message: "
-        ^ Protocol.Reader.parse_error_to_string error))
+    | Error error -> Error (UnexpectedMessage (InvalidBackendMessage error))
 
   let authenticate_cleartext = fun stream (cfg: Config.t) ->
     write_message
@@ -426,7 +552,7 @@ module Driver = struct
 
   let authenticate_scram_sha256 = fun stream (cfg: Config.t) mechanisms ->
     if not (has_mechanism mechanisms "SCRAM-SHA-256") then
-      Error (AuthenticationNotSupported ("SASL mechanisms: " ^ String.concat "," mechanisms))
+      Error (AuthenticationNotSupported (UnsupportedSaslMechanisms mechanisms))
     else
       let client_nonce = scram_nonce () in
       let client_first_bare = "n=" ^ sasl_escape cfg.user ^ ",r=" ^ client_nonce in
@@ -456,13 +582,13 @@ module Driver = struct
                               | Ok (Protocol.AuthenticationSASLFinal server_final) ->
                                   verify_scram_final server_signature server_final
                               | Ok (Protocol.ErrorResponse err) -> Error (ProtocolError err)
-                              | Ok _ -> Error (UnexpectedMessage "Expected SCRAM final message")
+                              | Ok _ -> Error (UnexpectedMessage ExpectedScramFinalMessage)
                             )
                         )
                     )
                 )
               | Ok (Protocol.ErrorResponse err) -> Error (ProtocolError err)
-              | Ok _ -> Error (UnexpectedMessage "Expected SCRAM continue message")
+              | Ok _ -> Error (UnexpectedMessage ExpectedScramContinueMessage)
             )
         )
 
@@ -495,9 +621,9 @@ module Driver = struct
                       authenticate_scram_sha256 stream cfg mechanisms
                       |> Result.and_then ~fn:read_until_ready
                   | Protocol.AuthenticationSASLContinue _ ->
-                      Error (UnexpectedMessage "SCRAM continue without SASL start")
+                      Error (UnexpectedMessage ScramContinueWithoutSaslStart)
                   | Protocol.AuthenticationSASLFinal _ ->
-                      Error (UnexpectedMessage "SCRAM final without SASL start")
+                      Error (UnexpectedMessage ScramFinalWithoutSaslStart)
                   | Protocol.ParameterStatus { name; value } ->
                       Log.debug ("PostgreSQL parameter: " ^ name ^ " = " ^ value);
                       read_until_ready ()
@@ -515,9 +641,7 @@ module Driver = struct
                   | Protocol.NoticeResponse err ->
                       Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                       read_until_ready ()
-                  | _ ->
-                      Error (UnexpectedMessage ("During handshake: "
-                      ^ String.make ~len:1 ~char:(Char.from_int_unchecked msg_type)))
+                  | _ -> Error (UnexpectedMessage (HandshakeUnexpectedMessageType msg_type))
                 )
             )
         in
@@ -568,7 +692,7 @@ module Driver = struct
       )
     in
     match cfg.ssl_mode with
-    | Require -> Error (TlsNotSupported "require")
+    | Require -> Error (TlsNotSupported RequiredTlsMode)
     | Disable
     | Prefer -> (
         match Net.Addr.from_host_and_port ~host:cfg.host ~port:cfg.port with
@@ -598,7 +722,6 @@ module Driver = struct
                           config = cfg;
                           transaction_status = 'I';
                           closed = false;
-                          prepared_statements = Collections.HashMap.create ();
                         }
                   )
               )
@@ -784,8 +907,6 @@ module Driver = struct
           )
       in
       let stmt = { name; sql; conn } in
-      let _ = Collections.HashMap.insert conn.prepared_statements ~key:name ~value:stmt in
-      ();
     Ok stmt
 
   let execute = fun stmt params ->
@@ -953,9 +1074,7 @@ module Driver = struct
                           | Protocol.NoticeResponse err ->
                               Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                               read_query_results ()
-                          | _ ->
-                              Error (UnexpectedMessage ("During query: "
-                              ^ String.make ~len:1 ~char:(Char.from_int_unchecked msg_type)))
+                          | _ -> Error (UnexpectedMessage (QueryUnexpectedMessageType msg_type))
                         )
                     )
                 in
@@ -979,7 +1098,7 @@ module Driver = struct
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'I' then
-      Error (UnexpectedMessage "Transaction already in progress")
+      Error (UnexpectedMessage TransactionAlreadyInProgress)
     else
       execute_simple_command conn "BEGIN"
 
@@ -987,7 +1106,7 @@ module Driver = struct
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'T' then
-      Error (UnexpectedMessage "No transaction in progress")
+      Error (UnexpectedMessage NoTransactionInProgress)
     else
       execute_simple_command conn "COMMIT"
 
@@ -995,16 +1114,16 @@ module Driver = struct
     if conn.closed then
       Error ConnectionClosed
     else if conn.transaction_status != 'T' then
-      Error (UnexpectedMessage "No transaction in progress")
+      Error (UnexpectedMessage NoTransactionInProgress)
     else
       execute_simple_command conn "ROLLBACK"
 
-  let isolation_level_sql = fun __tmp1 ->
-    match __tmp1 with
-    | `Read_uncommitted -> "READ UNCOMMITTED"
-    | `Read_committed -> "READ COMMITTED"
-    | `Repeatable_read -> "REPEATABLE READ"
-    | `Serializable -> "SERIALIZABLE"
+  let isolation_level_sql = fun level ->
+    match level with
+    | Sqlx_driver.Driver.ReadUncommitted -> "READ UNCOMMITTED"
+    | Sqlx_driver.Driver.ReadCommitted -> "READ COMMITTED"
+    | Sqlx_driver.Driver.RepeatableRead -> "REPEATABLE READ"
+    | Sqlx_driver.Driver.Serializable -> "SERIALIZABLE"
 
   let set_isolation_level = fun conn level ->
     if conn.closed then

@@ -1,7 +1,7 @@
 open Std
 
 (**
-   PostgreSQL driver support for [Sqlx].
+   PostgreSQL driver support for `Sqlx`.
 
    Use this package when a Riot application needs to talk to PostgreSQL
    through the shared SQL interface. The public surface here focuses on the
@@ -40,7 +40,7 @@ module Config: sig
   type t = {
     (** Database server hostname, IP address, or Unix-socket directory. *)
     host: string;
-    (** Database server port. PostgreSQL usually listens on [5432]. *)
+    (** Database server port. PostgreSQL usually listens on `5432`. *)
     port: int;
     (** Name of the database to connect to. *)
     database: string;
@@ -52,7 +52,7 @@ module Config: sig
        TLS policy used for the connection.
 
        Current implementation note: TLS negotiation is not implemented yet.
-       [Require] fails with a structured driver error. [Prefer] currently uses
+       `Require` fails with a structured driver error. `Prefer` currently uses
        the plaintext path.
     *)
     ssl_mode: ssl_mode;
@@ -74,15 +74,23 @@ module Config: sig
     keepalives_idle: Time.Duration.t option;
   }
 
+  type parse_error =
+    | InvalidUserinfoFormat
+    | InvalidAuthorityFormat
+    | MissingUserCredentials
+    | InvalidPortNumber of string
+    | InvalidConnectionStringFormat
+    | InvalidUri
+
   (**
      Build a configuration with development-friendly defaults.
 
      Example return values:
-     - [host = "localhost"]
-     - [port = 5432]
-     - [database = "postgres"]
-     - [user = "postgres"]
-     - [ssl_mode = Prefer]
+     - `host = "localhost"`
+     - `port = 5432`
+     - `database = "postgres"`
+     - `user = "postgres"`
+     - `ssl_mode = Prefer`
 
      Override at least the database name and credentials before using the
      result against a real server.
@@ -93,13 +101,16 @@ module Config: sig
      Parse a PostgreSQL connection string.
 
      Supported formats:
-     - URI form, such as [postgresql://user:password@localhost:5432/app]
-     - Simple colon-separated form, such as [localhost:5432:app:user:password]
+     - URI form, such as `postgresql://user:password@localhost:5432/app`
+     - Simple colon-separated form, such as `localhost:5432:app:user:password`
 
-     Use [from_string] when configuration comes from environment variables,
+     Use `from_string` when configuration comes from environment variables,
      command-line flags, or secrets storage.
   *)
-  val from_string: string -> (t, string) Result.t
+  val from_string: string -> (t, parse_error) Result.t
+
+  (** Render a PostgreSQL connection-string parse error. *)
+  val parse_error_to_string: parse_error -> string
 end
 
 (** Internal protocol modules exposed for package-level regression tests. *)
@@ -107,5 +118,5 @@ module Internal: sig
   module Protocol: module type of Protocol
 end
 
-(** [Sqlx_driver] implementation backed by PostgreSQL. *)
+(** `Sqlx_driver` implementation backed by PostgreSQL. *)
 module Driver: Sqlx_driver.Driver.Intf with type config = Config.t

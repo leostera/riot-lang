@@ -2,16 +2,24 @@ open Std
 open Result.Syntax
 
 let postgres_url () =
-  match Env.get Env.String ~var:"POSTGRES_TEST_URL" with
-  | Some url -> Some url
-  | None ->
-      match Env.get Env.String ~var:"MULE_TEST_POSTGRES_URL" with
-      | Some url -> Some url
-      | None -> Env.get Env.String ~var:"HYPEKIT_POSTGRES_URL"
+  match Dotenv.load_if_exists ~env:"test" () with
+  | Error error -> Error (Dotenv.error_to_string error)
+  | Ok _bindings ->
+      (
+        match Env.get Env.String ~var:"POSTGRES_TEST_URL" with
+        | Some url -> Ok (Some url)
+        | None ->
+            match Env.get Env.String ~var:"MULE_TEST_POSTGRES_URL" with
+            | Some url -> Ok (Some url)
+            | None ->
+                match Env.get Env.String ~var:"HYPEKIT_POSTGRES_URL" with
+                | Some url -> Ok (Some url)
+                | None -> Ok (Env.get Env.String ~var:"SURI_JOBS_TEST_POSTGRES_URL")
+      )
 
 let with_connection url fn =
   match Postgres.Config.from_string url with
-  | Error message -> Error ("invalid postgres test url: " ^ message)
+  | Error error -> Error ("invalid postgres test url: " ^ Postgres.Config.parse_error_to_string error)
   | Ok config ->
       match Postgres.Driver.connect config with
       | Error error -> Error (Postgres.Driver.error_to_string error)
@@ -64,8 +72,9 @@ let test_parameterized_query_handles_large_text = fun _ctx url ->
 
 let live_case = fun name fn ->
   match postgres_url () with
-  | None -> Test.skip ~size:Large name (fun _ctx -> Ok ())
-  | Some url -> Test.case ~size:Large name (fun ctx -> fn ctx url)
+  | Error error -> Test.case ~size:Large name (fun _ctx -> Error error)
+  | Ok None -> Test.skip ~size:Large name (fun _ctx -> Ok ())
+  | Ok (Some url) -> Test.case ~size:Large name (fun ctx -> fn ctx url)
 
 let tests =
   Test.[

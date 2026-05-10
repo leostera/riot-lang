@@ -1,7 +1,7 @@
 (**
    Read PostgreSQL wire values from a byte buffer.
 
-   Use [Binary_reader] when decoding fields from PostgreSQL's binary protocol.
+   Use `Binary_reader` when decoding fields from PostgreSQL's binary protocol.
    The reader keeps an internal cursor so higher-level decoders can pull
    values in sequence without managing offsets manually.
 *)
@@ -10,20 +10,20 @@ type t
 (**
    Create a reader over a byte buffer.
 
-   The initial position is [0].
+   The initial position is `0`.
 *)
 val create: bytes -> t
 
 (** Return the number of unread bytes remaining in the buffer. *)
 val remaining: t -> int
 
-(** Return [true] when the reader has reached the end of the buffer. *)
+(** Return `true` when the reader has reached the end of the buffer. *)
 val is_eof: t -> bool
 
 (**
    Read one byte and advance the cursor.
 
-   Returns [None] when there is no data left to read.
+   Returns `None` when there is no data left to read.
 *)
 val read_byte: t -> int option
 
@@ -45,14 +45,14 @@ val read_float32: t -> float option
 (**
    Read the remaining bytes as a string.
 
-   Returns [None] when the remaining payload cannot be decoded as a string.
+   Returns `None` when the remaining payload cannot be decoded as a string.
 *)
 val read_string: t -> string option
 
 (**
-   Read exactly [length] bytes.
+   Read exactly `length` bytes.
 
-   Returns [None] when fewer than [length] bytes remain.
+   Returns `None` when fewer than `length` bytes remain.
 *)
 val read_bytes: t -> int -> bytes option
 

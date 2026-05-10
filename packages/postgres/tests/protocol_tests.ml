@@ -191,14 +191,14 @@ let test_reader_parses_row_description_and_data_row = fun _ctx ->
 
 let test_config_parses_uri_and_legacy_forms = fun _ctx ->
   match Postgres.Config.from_string "postgresql://alice:secret@localhost:5433/app" with
-  | Error error -> Error error
+  | Error error -> Error (Postgres.Config.parse_error_to_string error)
   | Ok uri_config ->
       Test.assert_equal ~expected:5_433 ~actual:uri_config.port;
       Test.assert_equal ~expected:"app" ~actual:uri_config.database;
       Test.assert_equal ~expected:"alice" ~actual:uri_config.user;
       Test.assert_equal ~expected:"secret" ~actual:uri_config.password;
       match Postgres.Config.from_string "db.internal:5432:prod:bob:s3cr3t" with
-      | Error error -> Error error
+      | Error error -> Error (Postgres.Config.parse_error_to_string error)
       | Ok legacy_config ->
           Test.assert_equal ~expected:"db.internal" ~actual:legacy_config.host;
           Test.assert_equal ~expected:5_432 ~actual:legacy_config.port;

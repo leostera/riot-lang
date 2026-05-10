@@ -9,3 +9,6 @@ public = true
 std = "*"
 kernel = "*"
 sqlx-driver = "*"
+
+[dev-dependencies]
+dotenv = { path = "../dotenv", version = "*" }
