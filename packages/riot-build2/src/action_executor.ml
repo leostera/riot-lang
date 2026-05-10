@@ -526,10 +526,14 @@ let artifact_paths_with_extension = fun (artifact: Riot_store.Artifact.t) extens
       else
         None)
 
+let artifact_paths_with_extensions = fun artifact extensions ->
+  extensions
+  |> List.flat_map ~fn:(artifact_paths_with_extension artifact)
+
 let dependency_outputs_for_consumer = fun (consumer: Action_execution.t) artifact ->
   match consumer.action with
   | Action.CompileSource _
-  | Action.CompileSources _ -> artifact_paths_with_extension artifact ".cmi"
+  | Action.CompileSources _ -> artifact_paths_with_extensions artifact [ ".cmi"; ".cmx" ]
   | Action.CompileLibrary { sources = []; outputs; _ }
     when List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa") -> []
   | Action.CompileC _
@@ -561,7 +565,7 @@ let materialize_cached_dependencies_for_execution = fun t (action: Action_execut
             })
         | Some { Action_execution.status = Failed reason; _ } ->
             Error (Error.ActionExecutionFailed { package = action.ref_.package; reason })
-        | Some { Action_execution.status = Executed _; _ } -> loop rest
+        | Some { Action_execution.status = Executed artifact; _ }
         | Some { Action_execution.status = Cached artifact; _ } ->
             let files = dependency_outputs_for_consumer action artifact in
             if List.is_empty files then

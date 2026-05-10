@@ -52,6 +52,8 @@ val ref_from_action:
   Action.t ->
   ref_
 
+val sandbox_dir_for_ref: base_sandbox_dir:Path.t -> ref_ -> Path.t
+
 val make:
   package:Riot_model.Package.t ->
   profile:Riot_model.Profile.t ->

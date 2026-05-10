@@ -833,7 +833,18 @@ let rec copy_tree = fun ~src ~dst ->
   in
   loop ()
 
+let absolute_path = fun path ->
+  if Path.is_absolute path then
+    Path.normalize path
+  else
+    let cwd =
+      Env.current_dir ()
+      |> Result.expect ~msg:"failed to resolve benchmark current directory"
+    in
+    Path.normalize Path.(cwd / path)
+
 let isolated_kernel_workspace = fun root ->
+  let root = absolute_path root in
   let workspace = load_repo_workspace () in
   let manifest =
     List.find
@@ -952,14 +963,14 @@ let expect_kernel_partial_event_action_results = fun executor ->
   let failed = count_status `Failed in
   if
     Int.equal (List.length results) 220
-    && Int.equal cached 218
-    && Int.equal executed 2
+    && Int.equal cached 175
+    && Int.equal executed 45
     && Int.equal failed 0
   then
     ()
   else
     panic
-      ("kernel partial event benchmark expected actions total=220 cached=218 executed=2 failed=0, got total="
+      ("kernel partial event benchmark expected actions total=220 cached=175 executed=45 failed=0, got total="
       ^ Int.to_string (List.length results)
       ^ " cached="
       ^ Int.to_string cached

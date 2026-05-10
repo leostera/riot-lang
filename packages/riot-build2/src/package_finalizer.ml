@@ -2,7 +2,6 @@ open Std
 open Std.Result.Syntax
 
 module ConcurrentHashMap = Collections.ConcurrentHashMap
-module HashSet = Collections.HashSet
 
 type t = {
   workspace: Riot_model.Workspace.t;
@@ -91,19 +90,6 @@ let compute_export_entries = fun t (plan: Module_plan.t) ->
               ~fn:(fun out_path ->
                 Riot_store.Store.{ name = Path.basename out_path; path = out_path; action_hash }))
 
-let collect_package_outputs = fun (plan: Module_plan.t) ->
-  let seen = HashSet.create () in
-  plan.action_executions
-  |> List.flat_map
-    ~fn:(fun (action: Action_execution.t) -> Action.outputs action.Action_execution.action)
-  |> List.filter_map
-    ~fn:(fun out ->
-      let abs = Path.join plan.sandbox_dir out in
-      if HashSet.insert seen ~value:(Path.to_string abs) then
-        Some abs
-      else
-        None)
-
 let missing_action_results = fun t (plan: Module_plan.t) ->
   plan.action_executions
   |> List.filter_map
@@ -111,6 +97,23 @@ let missing_action_results = fun t (plan: Module_plan.t) ->
       match Action_executor.find_result t.action_executor action.Action_execution.ref_ with
       | Some _ -> None
       | None -> Some action.Action_execution.ref_)
+
+let completed_action_artifacts = fun t (plan: Module_plan.t) ->
+  let rec loop acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | (action: Action_execution.t) :: rest -> (
+        match Action_executor.artifact t.action_executor action.ref_ with
+        | Some artifact -> loop (artifact :: acc) rest
+        | None ->
+            Error (Error.ExecutorInvariantViolated {
+              message = "package finalization for "
+              ^ Riot_model.Package_name.to_string plan.package.name
+              ^ " could not find completed action artifact";
+            })
+      )
+  in
+  loop [] plan.action_executions
 
 let finalize = fun t (plan: Module_plan.t) ->
   let failed =
@@ -144,7 +147,6 @@ let finalize = fun t (plan: Module_plan.t) ->
         | Error error ->
             Error (store_error ~package:plan.package.name (Riot_store.Store.error_message error))
         | Ok () ->
-            let outputs = collect_package_outputs plan in
             let warnings =
               plan.action_executions
               |> List.filter_map
@@ -154,14 +156,14 @@ let finalize = fun t (plan: Module_plan.t) ->
                     action.Action_execution.ref_)
               |> List.flat_map ~fn:(fun result -> result.Action_execution.ocamlc_warnings)
             in
-            match Riot_store.Store.save_package
+            let* artifacts = completed_action_artifacts t plan in
+            match Riot_store.Store.save_package_from_action_artifacts
               t.store
               ~package:(Riot_model.Package_name.to_string plan.package.name)
               ~ocamlc_warnings:warnings
               ~exports
               ~input_hash:plan.package_hash
-              ~sandbox_dir:plan.sandbox_dir
-              ~outs:outputs with
+              ~artifacts with
             | Error error ->
                 Error (store_error ~package:plan.package.name (Riot_store.Store.error_message error))
             | Ok artifact ->

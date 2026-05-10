@@ -202,6 +202,14 @@ let action_executions = fun ~(package:Riot_model.Package.t) ~profile ~target ~to
             match dependencies [] action.dependency_indexes with
             | Error _ as error -> error
             | Ok dependencies ->
+                let ref_ =
+                  Action_execution.ref_from_action
+                    ~package
+                    ~profile
+                    ~target
+                    ~toolchain
+                    action.action
+                in
                 let execution =
                   Action_execution.make
                     ~package
@@ -210,7 +218,7 @@ let action_executions = fun ~(package:Riot_model.Package.t) ~profile ~target ~to
                     ~toolchain
                     ~action:action.action
                     ~dependencies
-                    ~sandbox_dir
+                    ~sandbox_dir:(Action_execution.sandbox_dir_for_ref ~base_sandbox_dir:sandbox_dir ref_)
                 in
                 loop (execution :: acc) (Int.succ index) rest
           )

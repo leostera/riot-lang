@@ -23,7 +23,7 @@ type source_info = {
   is_alias: bool;
 }
 
-let cache_key_version = "riot-build2-action-planner:v3"
+let cache_key_version = "riot-build2-action-planner:v5"
 
 let stdlib_flags = fun (package: Riot_model.Package.t) ->
   let has_stdlib_dep =
@@ -199,6 +199,35 @@ let source_info_for_module = fun node ->
         is_alias;
       })
 
+let module_of_source_info = fun info ->
+  match (G.value info.node).Module_node.kind with
+  | Module_node.ML mod_
+  | MLI mod_ -> Some mod_
+  | _ -> None
+
+let implementation_has_interface = fun source_infos info ->
+  match (info.source.Action.kind, module_of_source_info info) with
+  | (Action.LibraryImplementation, Some mod_) ->
+      List.any
+        source_infos
+        ~fn:(fun candidate ->
+          match (candidate.source.Action.kind, module_of_source_info candidate) with
+          | (Action.LibraryInterface, Some candidate_mod) ->
+              Riot_model.Module.eq candidate_mod mod_
+          | _ -> false)
+  | _ -> false
+
+let source_info_with_owned_outputs = fun source_infos info ->
+  if implementation_has_interface source_infos info then
+    {
+      info with
+      outputs =
+        info.outputs
+        |> List.filter ~fn:(fun output -> not (Path.extension output = Some ".cmi"));
+    }
+  else
+    info
+
 let native_compile_actions = fun (input: input) sorted_modules ->
   let base_ccflags = input.profile.Riot_model.Profile.cc_flags in
   let ccflags =
@@ -370,6 +399,14 @@ let final_library_action = fun input source_infos c_actions ->
         )
 
 let make_execution = fun input ~dependencies action ->
+  let ref_ =
+    Action_execution.ref_from_action
+      ~package:input.package
+      ~profile:input.profile
+      ~target:input.target
+      ~toolchain:input.toolchain
+      action
+  in
   Action_execution.make
     ~package:input.package
     ~profile:input.profile
@@ -377,7 +414,7 @@ let make_execution = fun input ~dependencies action ->
     ~toolchain:input.toolchain
     ~action
     ~dependencies
-    ~sandbox_dir:input.sandbox_dir
+    ~sandbox_dir:(Action_execution.sandbox_dir_for_ref ~base_sandbox_dir:input.sandbox_dir ref_)
 
 let source_dependencies = fun input source_refs info ->
   Dep_analysis.compile_dependency_ids input.dep_analysis input.module_graph info.node
@@ -395,6 +432,8 @@ let plan = fun input ->
       let source_infos =
         sorted_modules
         |> List.filter_map ~fn:source_info_for_module
+        |> fun source_infos ->
+            List.map source_infos ~fn:(source_info_with_owned_outputs source_infos)
       in
       let source_actions =
         source_infos

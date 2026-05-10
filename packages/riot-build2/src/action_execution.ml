@@ -63,6 +63,9 @@ let ref_from_action = fun ~package ~profile ~target ~toolchain action ->
     hash = Action.hash ~package ~toolchain action;
   }
 
+let sandbox_dir_for_ref = fun ~base_sandbox_dir ref_ ->
+  Path.(base_sandbox_dir / Path.v (Crypto.Digest.hex ref_.hash))
+
 let make = fun ~package ~profile ~target ~toolchain ~action ~dependencies ~sandbox_dir ->
   {
     ref_ = ref_from_action ~package ~profile ~target ~toolchain action;

@@ -142,6 +142,93 @@ let current_target = fun () -> Riot_model.Target.current
 let is_kernel_build = fun (build: Goal.build_package) ->
   Riot_model.Package_name.equal build.package kernel_package
 
+let profile_equal = fun (left: Riot_model.Profile.t) (right: Riot_model.Profile.t) ->
+  String.equal left.name right.name
+
+let build_matrix_targets = fun workspace ->
+  let toolchain_config = Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root in
+  let configured =
+    Riot_model.Target.configured_targets ~host:(current_target ()) toolchain_config
+    |> Riot_model.Target.Set.to_list
+  in
+  let installed =
+    configured
+    |> List.filter
+      ~fn:(fun target ->
+        let ocamlopt =
+          Path.(Riot_model.Riot_dirs.dot_riot
+          / Path.v "toolchains"
+          / Path.v toolchain_config.version
+          / Path.v (Riot_model.Target.to_string target)
+          / Path.v "bin/ocamlopt.opt")
+        in
+        match Fs.exists ocamlopt with
+        | Ok true -> true
+        | Ok false
+        | Error _ -> false)
+  in
+  let host = current_target () in
+  let non_host =
+    installed
+    |> List.filter ~fn:(fun target -> not (Riot_model.Target.equal target host))
+  in
+  match non_host with
+  | target :: _ -> Ok [ host; target ]
+  | [] ->
+      Error "expected at least one installed cross toolchain for kernel multi-target build test"
+
+let build_result_matches = fun package profile target result ->
+  Riot_model.Package_name.equal result.Build_result.package package
+  && profile_equal result.profile profile
+  && Riot_model.Target.equal result.target target
+
+let expect_successful_package_status = fun result ->
+  match result.Build_result.status with
+  | Build_result.Built _
+  | Cached _ -> Ok ()
+  | Failed error -> Error ("package build failed: " ^ Error.message error)
+
+let expect_kernel_build_matrix_results = fun result ~profiles ~targets ->
+  let package_results = Build_result.package_results result in
+  let expected_count = List.length profiles * List.length targets in
+  let kernel_results =
+    package_results
+    |> List.filter
+      ~fn:(fun result -> Riot_model.Package_name.equal result.Build_result.package kernel_package)
+  in
+  let actual_count = List.length kernel_results in
+  if not (Int.equal actual_count expected_count) then
+    Error ("expected kernel matrix build to produce "
+    ^ Int.to_string expected_count
+    ^ " package results, got "
+    ^ Int.to_string actual_count)
+  else
+    let expected =
+      profiles
+      |> List.flat_map
+        ~fn:(fun profile ->
+          List.map targets ~fn:(fun target -> (profile, target)))
+    in
+    let missing =
+      expected
+      |> List.filter
+        ~fn:(fun (profile, target) ->
+          not (
+            List.any
+              kernel_results
+              ~fn:(build_result_matches kernel_package profile target)
+          ))
+    in
+    match missing with
+    | _ :: _ -> Error "kernel matrix build missed at least one profile/target result"
+    | [] ->
+        kernel_results
+        |> List.fold_left
+          ~init:(Ok ())
+          ~fn:(fun acc result ->
+            let* () = acc in
+            expect_successful_package_status result)
+
 let expect_kernel_build_goal = fun actual ->
   match actual with
   | [
@@ -727,15 +814,15 @@ let expect_kernel_exact_warm_action_result_counts = fun executor summary ->
 
 let expected_kernel_event_change_action_result_counts = [
   ("kernel action results", 220);
-  ("kernel action results cached", 218);
-  ("kernel action results executed", 2);
+  ("kernel action results cached", 175);
+  ("kernel action results executed", 45);
   ("kernel action results failed", 0);
   ("kernel action results missing from summary", 0);
   ("kernel CompileC cached", 13);
   ("kernel CompileC executed", 0);
   ("kernel CompileC failed", 0);
-  ("kernel CompileSource cached", 205);
-  ("kernel CompileSource executed", 1);
+  ("kernel CompileSource cached", 162);
+  ("kernel CompileSource executed", 44);
   ("kernel CompileSource failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);
@@ -1022,7 +1109,14 @@ let expect_kernel_package_result = fun result ->
       Riot_model.Package_name.equal
         package_result.Build_result.package
         kernel_package) with
-  | None -> Error "expected kernel package result"
+  | None when Build_result.has_failures result ->
+      Error ("expected kernel package result; graph failed:\n"
+      ^ summary_errors result.Build_result.summary)
+  | None ->
+      Error ("expected kernel package result; package result count="
+      ^ Int.to_string (List.length (Build_result.package_results result))
+      ^ "; completed kinds: "
+      ^ completed_kind_names result.Build_result.summary)
   | Some package_result ->
       match package_result.Build_result.status with
       | Build_result.Built _
@@ -1036,7 +1130,14 @@ let expect_cached_kernel_package_result = fun result ->
       Riot_model.Package_name.equal
         package_result.Build_result.package
         kernel_package) with
-  | None -> Error "expected kernel package result"
+  | None when Build_result.has_failures result ->
+      Error ("expected kernel package result; graph failed:\n"
+      ^ summary_errors result.Build_result.summary)
+  | None ->
+      Error ("expected kernel package result; package result count="
+      ^ Int.to_string (List.length (Build_result.package_results result))
+      ^ "; completed kinds: "
+      ^ completed_kind_names result.Build_result.summary)
   | Some package_result ->
       match package_result.Build_result.status with
       | Build_result.Cached _ -> Ok ()
@@ -1256,6 +1357,47 @@ let test_kernel_event_change_partially_invalidates_cached_build = fun _ctx ->
         let* () = expect_kernel_event_change_action_result_counts second_executor summary in
         expect_cached_kernel_actions_defer_cache_promotion second_executor)
 
+let test_kernel_builds_multiple_profiles_and_targets = fun _ctx ->
+  with_kernel_workspace_target
+    (relative_target_dir "kernel-profile-target-matrix")
+    (fun workspace ->
+      let* targets = build_matrix_targets workspace in
+      let profiles = [
+        Riot_model.Profile.debug;
+        Riot_model.Profile.release;
+        Riot_model.Profile.fuzz;
+      ]
+      in
+      let intent =
+        User_intent.build
+          ~packages:(User_intent.NamedPackages [ kernel_package ])
+          ~targets:(User_intent.ManyTargets targets)
+          ~profiles:(User_intent.ManyProfiles profiles)
+          ()
+      in
+      let config = Config.make ~workspace () in
+      let* executor =
+        Riot_build2.create_executor ~config ()
+        |> Result.map_err ~fn:Error.message
+      in
+      let* result =
+        Riot_build2.execute executor intent
+        |> Result.map_err ~fn:Error.message
+      in
+      if Build_result.has_failures result then
+        Error ("kernel profile/target matrix build failed:\n" ^ summary_errors result.summary)
+      else
+        let* () = expect_kernel_build_matrix_results result ~profiles ~targets in
+        let expected_action_count = 220 * List.length profiles * List.length targets in
+        let actual_action_count = List.length (kernel_action_results executor) in
+        if Int.equal actual_action_count expected_action_count then
+          Ok ()
+        else
+          Error ("expected kernel matrix build to record "
+          ^ Int.to_string expected_action_count
+          ^ " action results, got "
+          ^ Int.to_string actual_action_count))
+
 let tests =
   Test.[
     case
@@ -1277,6 +1419,10 @@ let tests =
       ~size:Large
       "kernel async event source change partially invalidates cached build"
       test_kernel_event_change_partially_invalidates_cached_build;
+    case
+      ~size:Large
+      "kernel builds multiple profiles and targets"
+      test_kernel_builds_multiple_profiles_and_targets;
   ]
 
 let main ~args = Test.Cli.main ~name:"riot_build2_kernel_build_tests" ~tests ~args ()
