@@ -47,9 +47,9 @@ let rec expr_name = fun expr ->
   match Ast.Expr.view (unwrap_expr expr) with
   | Ident { ident } -> Some (ident_text ident)
   | FieldAccess { target; field } ->
-      match expr_name target with
+      (match expr_name target with
       | Some target_name -> Some (target_name ^ "." ^ Ast.Ident.text field)
-      | None -> None
+      | None -> None)
   | _ -> None
 
 let simple_expr_name = fun expr ->
@@ -93,26 +93,26 @@ let constructor_payload_of_pattern = fun pattern ->
 let is_constructor_expr = fun ~name expr ->
   match Ast.Expr.view (unwrap_expr expr) with
   | Constructor { constructor; payload = None } ->
-      match ident_last_name constructor with
+      (match ident_last_name constructor with
       | Some actual -> String.equal actual name
-      | None -> false
+      | None -> false)
   | Constructor { constructor; payload = Some _ } ->
-      match ident_last_name constructor with
+      (match ident_last_name constructor with
       | Some actual -> String.equal actual name
-      | None -> false
+      | None -> false)
   | Ident { ident } ->
-      match ident_last_name ident with
+      (match ident_last_name ident with
       | Some actual -> String.equal actual name
-      | None -> false
+      | None -> false)
   | Apply { callee; _ } -> path_matches ~expected:name callee
   | _ -> false
 
 let constructor_payload = fun ~name expr ->
   match Ast.Expr.view (unwrap_expr expr) with
   | Constructor { constructor; payload = Some payload } ->
-      match ident_last_name constructor with
+      (match ident_last_name constructor with
       | Some actual when String.equal actual name -> Some payload
-      | _ -> None
+      | _ -> None)
   | Apply { callee; argument } when path_matches ~expected:name callee -> Some argument
   | _ -> None
 

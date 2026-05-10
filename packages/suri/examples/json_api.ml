@@ -59,7 +59,7 @@ let user_handler = fun conn req ->
   let params = Conn.params conn in
   match Std.Collections.Proplist.get params ~key:"id" with
   | Some id_str ->
-      try
+      (try
         let id = Int.from_string id_str in
         match List.find users ~fn:(fun u -> u.id = id) with
         | Some user ->
@@ -83,7 +83,7 @@ let user_handler = fun conn req ->
           |> Conn.with_status BadRequest
           |> Conn.with_header "Content-Type" "application/json"
           |> Conn.with_body (Data.Json.to_string error)
-          |> Conn.send
+          |> Conn.send)
   | None ->
       let error = Data.Json.obj [ ("error", Data.Json.string "Missing user ID"); ] in
       conn

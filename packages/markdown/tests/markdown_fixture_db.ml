@@ -47,17 +47,17 @@ let line_field = fun fields name ->
 let get_string_field = fun fields name ->
   match line_field fields name with
   | Some value ->
-      match Data.Json.get_string value with
+      (match Data.Json.get_string value with
       | Some text -> Some text
-      | None -> None
+      | None -> None)
   | None -> None
 
 let get_int_field = fun fields name ->
   match line_field fields name with
   | Some value ->
-      match Data.Json.get_int value with
+      (match Data.Json.get_int value with
       | Some value -> Some value
-      | None -> None
+      | None -> None)
   | None -> None
 
 let parse_fixture_entry = fun json ->

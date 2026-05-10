@@ -138,7 +138,7 @@ curl http://localhost:4000/api/ip \
         let params = Conn.params conn in
         match Std.Collections.Proplist.get params ~key:"id" with
         | Some id ->
-            match find_user id with
+            (match find_user id with
             | Some (_, name, email) ->
                 let json =
                   "{\"id\":\""
@@ -161,7 +161,7 @@ curl http://localhost:4000/api/ip \
                   ~status:Net.Http.Status.NotFound
                   ~body:{|{"error":"User not found"}|}
                 |> Conn.with_header "content-type" "application/json"
-                |> Conn.send
+                |> Conn.send)
         | None ->
             conn
             |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|}

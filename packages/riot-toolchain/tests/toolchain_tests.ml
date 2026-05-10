@@ -161,7 +161,7 @@ let test_compile_impl_renders_warn_error_and_raw_flags = fun _ctx ->
 let test_parse_ocaml_warning_diagnostic = fun _ctx ->
   match Riot_toolchain.Ocamlc.Diagnostic.parse sample_ocaml_warning with
   | [ diagnostic ] ->
-      match Riot_toolchain.Ocamlc.Diagnostic.location diagnostic with
+      (match Riot_toolchain.Ocamlc.Diagnostic.location diagnostic with
       | Some location ->
           let rendered = Riot_toolchain.Ocamlc.Diagnostic.render diagnostic in
           if not (String.equal rendered sample_ocaml_warning) then
@@ -172,7 +172,7 @@ let test_parse_ocaml_warning_diagnostic = fun _ctx ->
             Error "expected parsed diagnostic to be classified as a warning"
           else
             Ok ()
-      | None -> Error "expected parsed warning to include a location"
+      | None -> Error "expected parsed warning to include a location")
   | diagnostics ->
       Error ("expected exactly one parsed warning block, got "
       ^ Int.to_string (List.length diagnostics))
@@ -199,11 +199,11 @@ let test_map_path_rewrites_rendered_diagnostic = fun _ctx ->
 let test_parse_c_error_diagnostic = fun _ctx ->
   match Riot_toolchain.Ocamlc.Diagnostic.parse sample_c_error with
   | [ diagnostic ] ->
-      match Riot_toolchain.Ocamlc.Diagnostic.location diagnostic with
+      (match Riot_toolchain.Ocamlc.Diagnostic.location diagnostic with
       | Some location when String.equal location.path "/tmp/sandbox/pkg/native/kernel_uuid.c" ->
           Ok ()
       | Some location -> Error ("unexpected parsed c diagnostic path: " ^ location.path)
-      | None -> Error "expected parsed c diagnostic to include a location"
+      | None -> Error "expected parsed c diagnostic to include a location")
   | _ -> Error "expected exactly one parsed c diagnostic"
 
 let test_unparseable_c_like_line_falls_back_to_raw = fun _ctx ->
@@ -221,14 +221,14 @@ let test_unparseable_c_like_line_falls_back_to_raw = fun _ctx ->
 let test_parse_colored_ocaml_warning_diagnostic = fun _ctx ->
   match Riot_toolchain.Ocamlc.Diagnostic.parse sample_colored_ocaml_warning with
   | [ diagnostic ] ->
-      match Riot_toolchain.Ocamlc.Diagnostic.location diagnostic with
+      (match Riot_toolchain.Ocamlc.Diagnostic.location diagnostic with
       | Some location when String.equal location.path "/tmp/sandbox/pkg/src/install.ml" ->
           if Riot_toolchain.Ocamlc.Diagnostic.is_warning diagnostic then
             Ok ()
           else
             Error "expected colored diagnostic to still be classified as a warning"
       | Some location -> Error ("unexpected colored diagnostic path: " ^ location.path)
-      | None -> Error "expected colored diagnostic to include a location"
+      | None -> Error "expected colored diagnostic to include a location")
   | diagnostics ->
       Error ("expected exactly one parsed colored warning block, got "
       ^ Int.to_string (List.length diagnostics))
@@ -334,7 +334,7 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
                       find_toolchain ~host:native_host ~target:cross_target
                     ) with
                     | (Some native, Some cross) ->
-                        match (native.kind, cross.kind) with
+                        (match (native.kind, cross.kind) with
                         | (Riot_toolchain.Native, Riot_toolchain.Cross) ->
                             if not (native.size_bytes = Some 123) then
                               Error "expected native toolchain size to be parsed"
@@ -347,7 +347,7 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
                               Error "expected cross artifact target to be parsed"
                             else
                               Ok ()
-                        | _ -> Error "expected native and cross kinds to be parsed"
+                        | _ -> Error "expected native and cross kinds to be parsed")
                     | _ -> Error "expected both native and cross toolchains to be present"))
 
 let test_get_host_triple_matches_std_host_triple = fun _ctx ->

@@ -310,9 +310,9 @@ let assert_stream_existing_fixture_subset = fun () ->
   let rec loop errors = fun __tmp1 ->
     match __tmp1 with
     | [] ->
-        match List.reverse errors with
+        (match List.reverse errors with
         | [] -> Ok ()
-        | errors -> Error (String.concat "\n\n" errors)
+        | errors -> Error (String.concat "\n\n" errors))
     | path :: rest ->
         match assert_stream_fixture_matches_approved path with
         | Ok () -> loop errors rest
@@ -324,9 +324,9 @@ let assert_stream_manifest_fixtures = fun () ->
   let rec loop errors = fun __tmp1 ->
     match __tmp1 with
     | [] ->
-        match List.reverse errors with
+        (match List.reverse errors with
         | [] -> Ok ()
-        | errors -> Error (String.concat "\n\n" errors)
+        | errors -> Error (String.concat "\n\n" errors))
     | path :: rest ->
         match assert_stream_fixture_matches_approved path with
         | Ok () -> loop errors rest

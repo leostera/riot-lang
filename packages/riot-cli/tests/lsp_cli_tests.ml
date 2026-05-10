@@ -13,10 +13,10 @@ let test_lsp_stdio_subcommand_parses = fun _ctx ->
   | Ok matches ->
       match ArgParser.get_subcommand matches with
       | Some ("lsp", lsp_matches) ->
-          match ArgParser.get_subcommand lsp_matches with
+          (match ArgParser.get_subcommand lsp_matches with
           | Some ("stdio", _) -> Ok ()
           | Some (name, _) -> Error ("expected stdio transport, got: " ^ name)
-          | None -> Error "expected lsp transport subcommand"
+          | None -> Error "expected lsp transport subcommand")
       | Some (name, _) -> Error ("expected lsp command, got: " ^ name)
       | None -> Error "expected top-level subcommand"
 

@@ -360,10 +360,10 @@ let test_run_fuzz_case_executes_single_input = fun _ctx ->
         let lines = parse_json_lines output.stdout in
         match lines with
         | [ json ] ->
-            match (Data.Json.get_field "type" json, Data.Json.get_field "status" json) with
+            (match (Data.Json.get_field "type" json, Data.Json.get_field "status" json) with
             | (Some (Data.Json.String "FuzzCaseCompleted"), Some (Data.Json.String "failed")) ->
                 Ok ()
-            | _ -> Error "expected run-fuzz-case to emit a failed fuzz case event"
+            | _ -> Error "expected run-fuzz-case to emit a failed fuzz case event")
         | _ -> Error "expected run-fuzz-case to emit one JSON line")
 
 let test_run_tests_replays_workspace_fuzz_corpus = fun _ctx ->

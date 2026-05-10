@@ -53,11 +53,11 @@ let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
   in
   match Riot_build.Event.to_json (Riot_build.Event.Pm event) with
   | Some (Data.Json.Object fields) ->
-      match List.find fields ~fn:(fun (name, _) -> String.equal name "event")
+      (match List.find fields ~fn:(fun (name, _) -> String.equal name "event")
       |> Option.map ~fn:(fun (_, value) -> value) with
       | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
       | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)
-      | None -> Error "expected PM event name in JSON"
+      | None -> Error "expected PM event name in JSON")
   | Some json -> Error ("expected JSON object, got " ^ Data.Json.to_string json)
   | None -> Error "expected JSON output for PM event"
 
@@ -287,7 +287,7 @@ let test_package_execution_prepared_event_round_trips = fun _ctx ->
       Test.assert_equal
         ~expected:(Some (Data.Json.Int 37))
         ~actual:(Data.Json.get_field "duration_ms" (Data.Json.Object fields));
-      match Telemetry_events.from_json json with
+      (match Telemetry_events.from_json json with
       | Ok (Telemetry_events.PackageExecutionPrepared parsed) ->
           Test.assert_equal ~expected:12 ~actual:parsed.input_count;
           Test.assert_equal ~expected:4 ~actual:parsed.dependency_count;
@@ -296,7 +296,7 @@ let test_package_execution_prepared_event_round_trips = fun _ctx ->
           Ok ()
       | Ok _ -> Error "expected PackageExecutionPrepared event"
       | Error err ->
-          Error ("expected PackageExecutionPrepared event to decode: " ^ Data.Json.to_string err)
+          Error ("expected PackageExecutionPrepared event to decode: " ^ Data.Json.to_string err))
   | Some _ -> Error "expected package preparation event JSON object"
   | None -> Error "expected package preparation event to render JSON"
 

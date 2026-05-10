@@ -42,16 +42,16 @@ let option_case_kind = fun case ->
   | Case { guard = Some _; _ } -> `Other
   | Unknown _ -> `Other
   | Case { pattern; _ } ->
-      match Ast.Pattern.view (H.unwrap_pattern pattern) with
+      (match Ast.Pattern.view (H.unwrap_pattern pattern) with
       | Constructor { constructor; payload = Some argument_pattern } ->
-          match (H.ident_last_name constructor, H.identifier_name_of_pattern argument_pattern) with
+          (match (H.ident_last_name constructor, H.identifier_name_of_pattern argument_pattern) with
           | (Some "Some", Some name) -> `SomeCase name
-          | _ -> `Other
+          | _ -> `Other)
       | Constructor { constructor; payload = None } ->
-          match H.ident_last_name constructor with
+          (match H.ident_last_name constructor with
           | Some "None" -> `NoneCase
-          | _ -> `Other
-      | _ -> `Other
+          | _ -> `Other)
+      | _ -> `Other)
 
 let is_none_expression = fun expr -> H.is_constructor_expr ~name:"None" expr
 
@@ -63,7 +63,7 @@ let is_some_expression = fun expr ->
 let matches_option_map_shape = fun expr ->
   match H.match_cases expr with
   | [ first_case; second_case ] ->
-      match (
+      (match (
         Ast.MatchCase.view first_case,
         Ast.MatchCase.view second_case,
         option_case_kind first_case,
@@ -81,7 +81,7 @@ let matches_option_map_shape = fun expr ->
           `NoneCase,
           `SomeCase _bound_name
         ) -> is_none_expression first_body && is_some_expression second_body
-      | _ -> false
+      | _ -> false)
   | _ -> false
 
 let make_diagnostic = fun expr ->

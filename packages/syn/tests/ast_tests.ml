@@ -493,7 +493,7 @@ let lower = value
           match Ast.Expr.view payload with
           | Ast.Expr.Record { base = None; fields } ->
               Test.assert_equal ~expected:1 ~actual:(Vector.length fields);
-              match Vector.get_unchecked fields ~at:0 with
+              (match Vector.get_unchecked fields ~at:0 with
               | Ast.RecordExprField { ident; value = Some value; _ } ->
                   assert_last_ident_text ident "moon";
                   (
@@ -505,7 +505,7 @@ let lower = value
               | Ast.RecordExprField { value = None; _ } ->
                   panic "expected record constructor payload field value"
               | Ast.UnknownRecordExprField _ ->
-                  panic "expected known record constructor payload field"
+                  panic "expected known record constructor payload field")
           | _ -> panic "expected record constructor payload"
         )
     | _ -> panic "expected record-payload constructor application"
@@ -909,9 +909,9 @@ let test_package_type_value_annotation_views = fun _ctx ->
       (
         match Ast.TypeExpr.view annotation with
         | Ast.TypeExpr.Arrow { arg; ret = _; _ } ->
-            match Ast.TypeExpr.view arg with
+            (match Ast.TypeExpr.view arg with
             | Ast.TypeExpr.Unknown _ -> Ok ()
-            | _ -> Error "expected package type annotation to lower as unknown type"
+            | _ -> Error "expected package type annotation to lower as unknown type")
         | _ -> Error "expected arrow value type"
       )
   | _ -> Error "expected value declaration"
@@ -963,12 +963,12 @@ val scoped_unit: M.unit
         (
           match Ast.TypeExpr.view annotation with
           | Ast.TypeExpr.Arrow { arg; ret; _ } ->
-              match (Ast.TypeExpr.view arg, Ast.TypeExpr.view ret) with
+              (match (Ast.TypeExpr.view arg, Ast.TypeExpr.view ret) with
               | (Ast.TypeExpr.Var { name = left_name }, Ast.TypeExpr.Var { name = right_name }) ->
                   Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text left_name);
                   Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text right_name);
                   Ok ()
-              | _ -> Error "expected type variables"
+              | _ -> Error "expected type variables")
           | _ -> Error "expected external arrow type"
         )
     | _ -> Error "expected external declaration"
@@ -1157,7 +1157,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
         | Ast.MatchCase.Case { pattern; _ } -> pattern
         | Ast.MatchCase.Unknown _ -> panic "expected first function case pattern"
       in
-      match Ast.Pattern.view pattern with
+      (match Ast.Pattern.view pattern with
       | Ast.Pattern.Literal { token } ->
           let sign =
             Ast.Pattern.literal_sign_token pattern
@@ -1166,7 +1166,7 @@ let test_poly_labeled_and_signed_views = fun _ctx ->
           Test.assert_equal ~expected:"-" ~actual:(Ast.Token.text sign);
           Test.assert_equal ~expected:"1" ~actual:(Ast.Token.text token);
           Ok ()
-      | _ -> Error "expected signed literal pattern"
+      | _ -> Error "expected signed literal pattern")
   | _ -> Error "expected function expression"
 
 let test_quoted_poly_let_annotation_views = fun _ctx ->
@@ -1240,9 +1240,9 @@ let assert_type_manifest_is_none = fun source ->
   in
   match Ast.SignatureItem.view type_item with
   | Ast.SignatureItem.Type (Ast.TypeDeclarationItem decl) ->
-      match Ast.TypeDeclaration.manifest decl with
+      (match Ast.TypeDeclaration.manifest decl with
       | None -> Ok ()
-      | Some _ -> Error "expected type declaration without manifest view"
+      | Some _ -> Error "expected type declaration without manifest view")
   | _ -> Error "expected type declaration"
 
 let test_non_manifest_type_declaration_bodies = fun _ctx ->
@@ -1405,10 +1405,10 @@ let test_type_declaration_body_group_views = fun _ctx ->
                   payload = Ast.VariantConstructor.TypeExpr payload;
                   _;
                 } ->
-                  match Ast.TypeExpr.view payload with
+                  (match Ast.TypeExpr.view payload with
                   | Ast.TypeExpr.Ident _ -> "ident"
                   | Ast.TypeExpr.Tuple _ -> "tuple"
-                  | _ -> "other"
+                  | _ -> "other")
               | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.Record _; _ }
               | Ast.VariantConstructor.Gadt _ -> "other"
             in
@@ -1735,10 +1735,10 @@ let test_type_extension_and_exception_views = fun _ctx ->
         (
           match rhs with
           | Ast.VariantConstructor.Payload { payload = Ast.VariantConstructor.TypeExpr payload; _ } ->
-              match Ast.TypeExpr.view payload with
+              (match Ast.TypeExpr.view payload with
               | Ast.TypeExpr.Var { name = payload_name } ->
                   Test.assert_equal ~expected:"a" ~actual:(Ast.Token.text payload_name)
-              | _ -> panic "expected type extension payload type variable"
+              | _ -> panic "expected type extension payload type variable")
           | _ -> panic "expected type extension payload"
         );
         Ok ()
@@ -1877,12 +1877,12 @@ let test_module_declaration_tokens = fun _ctx ->
         (
           match Ast.ModuleDeclaration.body decl with
           | Ast.ModuleDeclaration.Expr { body } ->
-              match Ast.ModuleExpr.view body with
+              (match Ast.ModuleExpr.view body with
               | Ast.ModuleExpr.Structure { body } ->
                   Test.assert_equal
                     ~expected:SyntaxKind.STRUCT_MODULE_EXPR
                     ~actual:(Ast.Node.kind body)
-              | _ -> panic "expected struct module declaration body"
+              | _ -> panic "expected struct module declaration body")
           | _ -> panic "expected struct module declaration body"
         )
     | _ -> panic "expected first module declaration"
@@ -1919,10 +1919,10 @@ let test_module_declaration_tokens = fun _ctx ->
         (
           match Ast.ModuleDeclaration.body decl with
           | Ast.ModuleDeclaration.Expr { body } ->
-              match Ast.ModuleExpr.view body with
+              (match Ast.ModuleExpr.view body with
               | Ast.ModuleExpr.Ident { ident } ->
                   Test.assert_equal ~expected:SyntaxKind.IDENT ~actual:(Ast.Ident.kind ident)
-              | _ -> panic "expected ident module declaration body"
+              | _ -> panic "expected ident module declaration body")
           | _ -> panic "expected ident module declaration body"
         );
         Test.assert_equal ~expected:[ "Foo"; "Bar" ] ~actual:segments
@@ -1953,10 +1953,10 @@ module Int_pair_show = Make_pair (Int_show) (Int_show)
         (
           match Ast.ModuleDeclaration.body decl with
           | Ast.ModuleDeclaration.Expr { body } ->
-              match Ast.ModuleExpr.view body with
+              (match Ast.ModuleExpr.view body with
               | Ast.ModuleExpr.Apply { callee = Some _; argument = Some _; _ } -> ()
               | Ast.ModuleExpr.Apply _ -> panic "expected complete applied module body"
-              | _ -> panic "expected applied module body"
+              | _ -> panic "expected applied module body")
           | _ -> panic "expected module expression body"
         );
         Ok ()
@@ -2101,9 +2101,9 @@ let test_signature_module_typeof_declaration = fun _ctx ->
       (
         match Ast.ModuleDeclaration.body decl with
         | Ast.ModuleDeclaration.Type { body } ->
-            match Ast.ModuleTypeExpr.view body with
+            (match Ast.ModuleTypeExpr.view body with
             | Ast.ModuleTypeExpr.Typeof _ -> ()
-            | _ -> panic "expected module type of declaration body"
+            | _ -> panic "expected module type of declaration body")
         | _ -> panic "expected module type of declaration body"
       );
       Ok ()
@@ -2161,10 +2161,10 @@ let test_module_type_declaration_tokens = fun _ctx ->
         (
           match Ast.ModuleTypeDeclaration.body decl with
           | Ast.ModuleTypeDeclaration.Manifest { body } ->
-              match Ast.ModuleTypeExpr.view body with
+              (match Ast.ModuleTypeExpr.view body with
               | Ast.ModuleTypeExpr.Ident { ident } ->
                   Test.assert_equal ~expected:SyntaxKind.IDENT ~actual:(Ast.Ident.kind ident)
-              | _ -> panic "expected ident module type body"
+              | _ -> panic "expected ident module type body")
           | _ -> panic "expected ident module type body"
         );
         Test.assert_equal ~expected:[ "Foo"; "S" ] ~actual:segments
@@ -2173,15 +2173,15 @@ let test_module_type_declaration_tokens = fun _ctx ->
   (
     match Ast.SignatureItem.view second_item with
     | Ast.SignatureItem.ModuleType decl ->
-        match Ast.ModuleTypeDeclaration.body decl with
+        (match Ast.ModuleTypeDeclaration.body decl with
         | Ast.ModuleTypeDeclaration.Manifest { body } ->
-            match Ast.ModuleTypeExpr.view body with
+            (match Ast.ModuleTypeExpr.view body with
             | Ast.ModuleTypeExpr.Signature { body } ->
                 Test.assert_equal
                   ~expected:SyntaxKind.SIGNATURE_MODULE_TYPE
                   ~actual:(Ast.Node.kind body)
-            | _ -> panic "expected signature module type body"
-        | _ -> panic "expected signature module type body"
+            | _ -> panic "expected signature module type body")
+        | _ -> panic "expected signature module type body")
     | _ -> panic "expected second module type declaration"
   );
   (
@@ -2208,11 +2208,11 @@ let test_module_type_with_constraint_views = fun _ctx ->
       (
         match Ast.ModuleTypeDeclaration.body decl with
         | Ast.ModuleTypeDeclaration.Manifest { body } ->
-            match Ast.ModuleTypeExpr.view body with
+            (match Ast.ModuleTypeExpr.view body with
             | Ast.ModuleTypeExpr.With { body; constraints; _ } ->
                 Test.assert_equal ~expected:SyntaxKind.WITH_MODULE_TYPE ~actual:(Ast.Node.kind body);
                 Test.assert_equal ~expected:2 ~actual:(Vector.length constraints)
-            | _ -> panic "expected constrained module type body"
+            | _ -> panic "expected constrained module type body")
         | _ -> panic "expected constrained module type body"
       );
       (
@@ -2437,16 +2437,16 @@ let render = function | (((Some (((item)))))) -> item
   in
   match Ast.Expr.view render_body with
   | Ast.Expr.Fun { body = Ast.Expr.Body_cases { first_case }; _ } ->
-      match Ast.MatchCase.view first_case with
+      (match Ast.MatchCase.view first_case with
       | Ast.MatchCase.Case { pattern; _ } ->
-          match Ast.Pattern.view pattern with
+          (match Ast.Pattern.view pattern with
           | Ast.Pattern.Constructor { payload = Some payload; _ } ->
               Test.assert_equal
                 ~expected:SyntaxKind.PATH_PATTERN
                 ~actual:(Ast.Node.kind (Ast.Pattern.as_node payload));
               Ok ()
-          | _ -> Error "expected constructor pattern"
-      | Ast.MatchCase.Unknown _ -> Error "expected function case pattern"
+          | _ -> Error "expected constructor pattern")
+      | Ast.MatchCase.Unknown _ -> Error "expected function case pattern")
   | _ -> Error "expected function expression"
 
 let last_ident_text = fun ident ->
@@ -2505,10 +2505,10 @@ let { x; y = z; _ } = record
   (
     match Ast.RecordExpr.base update_view with
     | Some base ->
-        match Ast.Expr.view base with
+        (match Ast.Expr.view base with
         | Ast.Expr.Ident { ident } ->
             Test.assert_equal ~expected:"base" ~actual:(last_ident_text ident)
-        | _ -> panic "expected record update base ident"
+        | _ -> panic "expected record update base ident")
     | None -> panic "expected record update base"
   );
   let update_fields = Vector.with_capacity ~size:(Ast.RecordExpr.field_count update_view) in
@@ -2668,9 +2668,9 @@ let test_binding_operator_views = fun _ctx ->
   (
     match Ast.BindingOperatorExpr.body binding_operator with
     | Some body ->
-        match Ast.Expr.view body with
+        (match Ast.Expr.view body with
         | Ast.Expr.Apply _ -> Ok ()
-        | _ -> Error "expected binding operator body application"
+        | _ -> Error "expected binding operator body application")
     | None -> Error "expected binding operator body"
   )
 
@@ -2796,7 +2796,7 @@ let test_local_open_views = fun _ctx ->
   | Ast.LocalOpenPattern.Delimited { opening_token; closing_token; pattern; _ } ->
       Test.assert_equal ~expected:"{" ~actual:(Ast.Token.text opening_token);
       Test.assert_equal ~expected:"}" ~actual:(Ast.Token.text closing_token);
-      match Ast.Pattern.view pattern with
+      (match Ast.Pattern.view pattern with
       | Ast.Pattern.Record { fields; open_wildcard } ->
           Test.assert_equal ~expected:1 ~actual:(Vector.length fields);
           Test.assert_equal ~expected:false ~actual:(Option.is_some open_wildcard);
@@ -2808,7 +2808,7 @@ let test_local_open_views = fun _ctx ->
                 Ok ()
             | Ast.UnknownRecordPatternField _ -> Error "expected record pattern field ident"
           )
-      | _ -> Error "expected local open record inner pattern"
+      | _ -> Error "expected local open record inner pattern")
   | Ast.LocalOpenPattern.Unknown _ -> Error "expected local open record inner pattern"
 
 let test_local_open_argument_views = fun _ctx ->
@@ -3045,10 +3045,10 @@ let test_let_module_expression_views = fun _ctx ->
   (
     match Ast.LetModuleExpr.body module_expr with
     | Some body ->
-        match Ast.Expr.view body with
+        (match Ast.Expr.view body with
         | Ast.Expr.Ident { ident } ->
             Test.assert_equal ~expected:"result" ~actual:(last_ident_text ident)
-        | _ -> panic "expected let module body ident"
+        | _ -> panic "expected let module body ident")
     | None -> panic "expected let module expression body"
   );
   let empty_expr =
@@ -3131,10 +3131,10 @@ let test_let_exception_expression_views = fun _ctx ->
   (
     match Ast.LetExceptionExpr.body exception_expr with
     | Some body ->
-        match Ast.Expr.view body with
+        (match Ast.Expr.view body with
         | Ast.Expr.Ident { ident } ->
             Test.assert_equal ~expected:"result" ~actual:(last_ident_text ident)
-        | _ -> panic "expected let exception body ident"
+        | _ -> panic "expected let exception body ident")
     | None -> panic "expected let exception expression body"
   );
   let bare_expr =
@@ -3176,9 +3176,9 @@ let test_unreachable_expression_views = fun _ctx ->
     ~fn:(fun match_case ->
       match Ast.MatchCase.view match_case with
       | Ast.MatchCase.Case { body; _ } ->
-          match Ast.cast_result_to_option (Ast.UnreachableExpr.cast body) with
+          (match Ast.cast_result_to_option (Ast.UnreachableExpr.cast body) with
           | Some _ -> unreachable := Some body
-          | None -> ()
+          | None -> ())
       | Ast.MatchCase.Unknown _ -> ());
   let unreachable =
     !unreachable
@@ -3258,9 +3258,9 @@ let test_attribute_views = fun _ctx ->
   (
     match Ast.AttributePattern.inner attribute_pattern with
     | Some inner ->
-        match Ast.Pattern.view inner with
+        (match Ast.Pattern.view inner with
         | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "x"
-        | _ -> panic "expected attributed pattern inner ident"
+        | _ -> panic "expected attributed pattern inner ident")
     | None -> panic "expected attribute pattern inner"
   );
   Test.assert_equal
@@ -3441,7 +3441,7 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
         Ast.Parameter.pattern first_class_module
         |> require_some ~msg:"expected first-class module parameter pattern"
       in
-      match Ast.Pattern.view first_class_module with
+      (match Ast.Pattern.view first_class_module with
       | Ast.Pattern.FirstClassModule { ascription; _ } ->
           let first_class_module =
             Ast.cast_result_to_option (Ast.FirstClassModulePattern.cast first_class_module)
@@ -3452,7 +3452,7 @@ let test_first_class_module_pattern_with_constraints_view = fun _ctx ->
             ~expected:Ast.FirstClassModulePattern.UnsupportedAscription
             ~actual:(Ast.FirstClassModulePattern.ascription first_class_module);
           Ok ()
-      | _ -> Error "expected first-class module pattern parameter"
+      | _ -> Error "expected first-class module pattern parameter")
   | _ -> Error "expected one constrained first-class module parameter"
 
 let test_typed_labeled_parameter_view = fun _ctx ->
@@ -3474,7 +3474,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ _locally_abstract; _iter; labeled ] ->
-      match Ast.Parameter.view labeled with
+      (match Ast.Parameter.view labeled with
       | Ast.Parameter.Param {
           label = Ast.Parameter.Labeled { name = Some label };
           pattern = Some pattern;
@@ -3495,7 +3495,7 @@ let test_typed_labeled_parameter_view = fun _ctx ->
                 )
             | _ -> Error "expected typed labeled parameter pattern"
           )
-      | _ -> Error "expected labeled parameter view with label and typed pattern"
+      | _ -> Error "expected labeled parameter view with label and typed pattern")
   | _ -> Error "expected locally abstract, positional, and labeled parameters"
 
 let test_optional_default_labeled_parameter_view = fun _ctx ->
@@ -3517,7 +3517,7 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
     ~fn:(fun pattern -> parameters := pattern :: !parameters);
   match List.reverse !parameters with
   | [ optional; _types ] ->
-      match Ast.Parameter.view optional with
+      (match Ast.Parameter.view optional with
       | Ast.Parameter.Param {
           label = Ast.Parameter.Optional { name = Some label; default = Some default };
           pattern = Some pattern;
@@ -3536,7 +3536,7 @@ let test_optional_default_labeled_parameter_view = fun _ctx ->
                 Ok ()
             | _ -> Error "expected optional default expression ident"
           )
-      | _ -> Error "expected optional default parameter view"
+      | _ -> Error "expected optional default parameter view")
   | _ -> Error "expected optional and positional parameters"
 
 let test_let_binding_parameters_are_parameter_views = fun _ctx ->
@@ -3560,9 +3560,9 @@ let test_let_binding_parameters_are_parameter_views = fun _ctx ->
   (
     match Ast.Parameter.view (Vector.get_unchecked parameters ~at:0) with
     | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
-        match Ast.Pattern.view pattern with
+        (match Ast.Pattern.view pattern with
         | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "name"
-        | _ -> panic "expected positional parameter ident"
+        | _ -> panic "expected positional parameter ident")
     | _ -> panic "expected positional parameter view"
   );
   (
@@ -3660,9 +3660,9 @@ let test_fun_expression_view_preserves_labeled_parameters_after_renamed_label = 
             (
               match (pattern, expected_pattern) with
               | (Some pattern, Some expected) ->
-                  match Ast.Pattern.view pattern with
+                  (match Ast.Pattern.view pattern with
                   | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident expected
-                  | _ -> panic "expected labeled parameter pattern ident"
+                  | _ -> panic "expected labeled parameter pattern ident")
               | (None, None) -> ()
               | _ -> panic "unexpected labeled parameter payload"
             )
@@ -3731,9 +3731,9 @@ let test_fun_expression_view_exposes_parameters_and_return_annotation = fun _ctx
       (
         match Ast.Parameter.view (Vector.get_unchecked parameters ~at:3) with
         | Ast.Parameter.Param { label = Ast.Parameter.NoLabel; pattern = Some pattern } ->
-            match Ast.Pattern.view pattern with
+            (match Ast.Pattern.view pattern with
             | Ast.Pattern.Ident { ident } -> assert_last_ident_text ident "manifest_toml"
-            | _ -> panic "expected manifest_toml positional parameter"
+            | _ -> panic "expected manifest_toml positional parameter")
         | _ -> panic "expected manifest_toml positional parameter"
       );
       assert_type_ident_last_segment return_annotation "release_source";
@@ -3785,9 +3785,9 @@ let parenthesized = fun (Some x) -> x
       (
         match Ast.Parameter.pattern (Vector.get_unchecked parameters ~at:0) with
         | Some pattern ->
-            match Ast.Pattern.view pattern with
+            (match Ast.Pattern.view pattern with
             | Ast.Pattern.Constructor { payload = Some _; _ } -> Ok ()
-            | _ -> Error "expected parenthesized constructor pattern payload"
+            | _ -> Error "expected parenthesized constructor pattern payload")
         | None -> Error "expected parenthesized parameter pattern"
       )
   | _ -> Error "expected parenthesized fun"
@@ -3809,9 +3809,9 @@ let test_if_then_branch_sequence_boundaries = fun _ctx ->
   (
     match Ast.Expr.view with_else_body with
     | Ast.Expr.If { then_branch; else_branch = Some _; _ } ->
-        match Ast.Expr.view then_branch with
+        (match Ast.Expr.view then_branch with
         | Ast.Expr.Sequence { left = _; right = Some _ } -> ()
-        | _ -> panic "expected then branch sequence to stay inside if with else"
+        | _ -> panic "expected then branch sequence to stay inside if with else")
     | _ -> panic "expected with_else body to be an if expression"
   );
   let without_else_body =
@@ -3824,9 +3824,9 @@ let test_if_then_branch_sequence_boundaries = fun _ctx ->
   in
   match Ast.Expr.view without_else_body with
   | Ast.Expr.Sequence { left; right = Some _ } ->
-      match Ast.Expr.view left with
+      (match Ast.Expr.view left with
       | Ast.Expr.If { else_branch = None; _ } -> Ok ()
-      | _ -> Error "expected outer sequence to keep no-else if on the left"
+      | _ -> Error "expected outer sequence to keep no-else if on the left")
   | _ -> Error "expected without_else body to stay a top-level sequence"
 
 let test_if_then_match_case_sequence_boundaries = fun _ctx ->
@@ -3853,15 +3853,15 @@ let test_if_then_match_case_sequence_boundaries = fun _ctx ->
   in
   match Ast.Expr.view body with
   | Ast.Expr.If { then_branch; _ } ->
-      match Ast.Expr.view then_branch with
+      (match Ast.Expr.view then_branch with
       | Ast.Expr.Match { first_case; _ } ->
-          match Ast.MatchCase.view first_case with
+          (match Ast.MatchCase.view first_case with
           | Ast.MatchCase.Case { body = case_body; _ } ->
-              match Ast.Expr.view case_body with
+              (match Ast.Expr.view case_body with
               | Ast.Expr.Sequence { left = _; right = Some _ } -> Ok ()
-              | _ -> Error "expected first match case body sequence to stay inside the case"
-          | Ast.MatchCase.Unknown _ -> Error "expected first match case body"
-      | _ -> Error "expected if then branch to remain a match expression"
+              | _ -> Error "expected first match case body sequence to stay inside the case")
+          | Ast.MatchCase.Unknown _ -> Error "expected first match case body")
+      | _ -> Error "expected if then branch to remain a match expression")
   | _ -> Error "expected classify body to be an if expression"
 
 let test_loop_body_sequence_boundaries = fun _ctx ->
@@ -3898,16 +3898,16 @@ let test_loop_body_sequence_boundaries = fun _ctx ->
   (
     match Ast.Expr.view poll_body with
     | Ast.Expr.While { body; _ } ->
-        match Ast.Expr.view body with
+        (match Ast.Expr.view body with
         | Ast.Expr.Sequence { left = _; right = Some _ } -> ()
-        | _ -> panic "expected while body sequence to stay inside the loop body"
+        | _ -> panic "expected while body sequence to stay inside the loop body")
     | _ -> panic "expected poll body to be a while expression"
   );
   match Ast.Expr.view count_body with
   | Ast.Expr.For { body; _ } ->
-      match Ast.Expr.view body with
+      (match Ast.Expr.view body with
       | Ast.Expr.Sequence { left = _; right = Some _ } -> Ok ()
-      | _ -> Error "expected for body sequence to stay inside the loop body"
+      | _ -> Error "expected for body sequence to stay inside the loop body")
   | _ -> Error "expected count body to be a for expression"
 
 let test_ast_visitor_threads_state_and_skips_subtrees = fun _ctx ->
@@ -3934,10 +3934,10 @@ let y = 3
         (
           match Ast.LetBinding.pattern binding with
           | Some pattern ->
-              match Ast.Node.first_descendant_token (Ast.Pattern.as_node pattern) with
+              (match Ast.Node.first_descendant_token (Ast.Pattern.as_node pattern) with
               | Some name ->
                   Vector.push (Syn.Visitor.ctx visitor).let_names ~value:(Ast.Token.text name)
-              | None -> ()
+              | None -> ())
           | None -> ()
         );
         (visitor, Syn.Visitor.Continue));

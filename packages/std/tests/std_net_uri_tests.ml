@@ -477,7 +477,7 @@ let test_uri_roundtrip_with_encoded_path = fun _ctx ->
 let test_uri_with_encoded_query = fun _ctx ->
   match Uri.from_string "https://example.com/search?q=hello+world&filter=name%3DJohn" with
   | Ok uri ->
-      match Uri.query uri with
+      (match Uri.query uri with
       | Some query_str ->
           let params = Uri.Query.parse query_str in
           (
@@ -485,7 +485,7 @@ let test_uri_with_encoded_query = fun _ctx ->
             | (Some "hello world", Some "name=John") -> Ok ()
             | _ -> Error "Failed to decode query in full URI"
           )
-      | None -> Error "No query found in URI"
+      | None -> Error "No query found in URI")
   | Error _ -> Error "Failed to parse URI"
 
 let test_uri_from_slice = fun _ctx ->
@@ -566,7 +566,7 @@ let test_full_roundtrip = fun _ctx ->
   let uri_str = "https://example.com/api?" ^ query_str in
   match Uri.from_string uri_str with
   | Ok uri ->
-      match Uri.query uri with
+      (match Uri.query uri with
       | Some q ->
           let parsed = Uri.Query.parse q in
           (
@@ -574,7 +574,7 @@ let test_full_roundtrip = fun _ctx ->
             | (Some "John Doe", Some "1") -> Ok ()
             | _ -> Error "Full round-trip failed"
           )
-      | None -> Error "No query in parsed URI"
+      | None -> Error "No query in parsed URI")
   | Error _ -> Error "Failed to parse URI"
 
 (* ==================== Test Suite ==================== *)

@@ -290,14 +290,14 @@ let test_liveview_rejects_missing_session_tokens = fun _ctx ->
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
   match Channel.initialize handler with
   | Channel.Error reported ->
-      match Channel.reported_error reported with
+      (match Channel.reported_error reported with
       | Channel.InitializationFailed _ ->
           Test.assert_true
             (String.contains
               (Channel.reported_error_to_string reported)
               "LiveView session token is required");
           Ok ()
-      | Channel.UnknownOpcode _ -> Error "expected LiveView initialization failure"
+      | Channel.UnknownOpcode _ -> Error "expected LiveView initialization failure")
   | Channel.Continue _ ->
       Error "expected missing LiveView session token to reject handler initialization"
   | Channel.Push _ ->
@@ -311,14 +311,14 @@ let test_liveview_rejects_invalid_session_tokens = fun _ctx ->
   let (_opts, handler) = Suri.LiveView.mount (module TestLiveViewComponent) conn in
   match Channel.initialize handler with
   | Channel.Error reported ->
-      match Channel.reported_error reported with
+      (match Channel.reported_error reported with
       | Channel.InitializationFailed _ ->
           Test.assert_true
             (String.contains
               (Channel.reported_error_to_string reported)
               "Invalid LiveView session token");
           Ok ()
-      | Channel.UnknownOpcode _ -> Error "expected LiveView initialization failure"
+      | Channel.UnknownOpcode _ -> Error "expected LiveView initialization failure")
   | Channel.Continue _ -> Error "expected invalid LiveView token to reject handler initialization"
   | Channel.Push _ -> Error "expected invalid LiveView token to reject handler initialization"
 

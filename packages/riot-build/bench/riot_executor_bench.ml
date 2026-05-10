@@ -89,7 +89,7 @@ let make_execute_node_write_miss_bench = fun root ~size ->
     in
     let result =
       Action_executor.execute_node
-        ~completed:(HashMap.create ())
+        ~completed:(ConcurrentHashMap.create ())
         ~store
         ~session_id
         ~build_target:test_build_target
@@ -130,7 +130,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
   in
   let warm_result =
     Action_executor.execute_node
-      ~completed:(HashMap.create ())
+      ~completed:(ConcurrentHashMap.create ())
       ~store
       ~session_id
       ~build_target:test_build_target
@@ -159,7 +159,7 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
     in
     let result =
       Action_executor.execute_node
-        ~completed:(HashMap.create ())
+        ~completed:(ConcurrentHashMap.create ())
         ~store
         ~session_id
         ~build_target:test_build_target

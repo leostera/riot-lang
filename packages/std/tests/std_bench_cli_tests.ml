@@ -204,9 +204,9 @@ let test_run_benchmarks_json_includes_gc_fields = fun _ctx ->
   else
     match Data.Json.get_field "benchmarks" (parse_json_output output.stdout) with
     | Some (Data.Json.Array ((Data.Json.Object first) :: _)) ->
-        match Data.Json.get_field "statistics" (Data.Json.Object first) with
+        (match Data.Json.get_field "statistics" (Data.Json.Object first) with
         | Some (Data.Json.Object stats) ->
-            match assoc_value "gc" stats with
+            (match assoc_value "gc" stats with
             | Some (Data.Json.Object gc_fields) ->
                 if (
                   assoc_value "minor_collections" gc_fields
@@ -223,8 +223,9 @@ let test_run_benchmarks_json_includes_gc_fields = fun _ctx ->
                   Ok ()
                 else
                   Error "expected benchmark json output to include gc fields"
-            | _ -> Error "expected benchmark statistics to include a gc object"
+            | _ -> Error "expected benchmark statistics to include a gc object")
         | _ -> Error "expected completed benchmark statistics in benchmark json output"
+        )
     | _ -> Error "expected benchmark json output to include at least one benchmark"
 
 let test_run_benchmarks_json_emits_case_started_progress = fun _ctx ->

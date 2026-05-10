@@ -40,18 +40,18 @@ let render_actual = fun ~fixture_path ->
   match Dep_analyzer.analyze
     ~source:fixture_path
     ~source_hash:(Crypto.hash_string source)
-    parse_result with
-  | Ok summary ->
-      match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
-      | Ok [ resolved ] ->
-          Dep_analyzer.ResolvedSource.modules resolved
-          @ Dep_analyzer.ResolvedSource.unresolved resolved
+	    parse_result with
+	  | Ok summary ->
+	      (match Dep_analyzer.resolve Dep_analyzer.Env.empty [ summary ] with
+	      | Ok [ resolved ] ->
+	          Dep_analyzer.ResolvedSource.modules resolved
+	          @ Dep_analyzer.ResolvedSource.unresolved resolved
           |> modules_json
-          |> Json.to_string_pretty
-          |> fun text -> text ^ "\n"
-      | Ok _ -> "expected one resolved source\n"
-      | Error _ -> "dependency resolution failed\n"
-  | Error (Dep_analyzer.Parse_diagnostics diagnostics) -> diagnostics_to_string diagnostics
+	          |> Json.to_string_pretty
+	          |> fun text -> text ^ "\n"
+	      | Ok _ -> "expected one resolved source\n"
+	      | Error _ -> "dependency resolution failed\n")
+	  | Error (Dep_analyzer.Parse_diagnostics diagnostics) -> diagnostics_to_string diagnostics
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   Test.Snapshot.assert_with

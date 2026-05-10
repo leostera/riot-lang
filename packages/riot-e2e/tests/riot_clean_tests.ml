@@ -39,9 +39,9 @@ let parse_json_lines = fun ~cmd (output: command_output) ->
 let json_type_is = fun expected json ->
   match Data.Json.get_field "type" json with
   | Some value ->
-      match Data.Json.get_string value with
+      (match Data.Json.get_string value with
       | Some actual -> String.equal actual expected
-      | None -> false
+      | None -> false)
   | None -> false
 
 let json_int_field = fun name json ->

@@ -609,7 +609,7 @@ let test_server_preface_disables_push_by_default = fun _ctx ->
   let preface = send_preface conn in
   match Parser.parse_frame preface with
   | Parser.Done { value = { Frame.payload = Frame.SettingsPayload settings; _ }; remaining = "" } ->
-      match settings with
+      (match settings with
       | [
           Frame.HeaderTableSize _;
           Frame.EnablePush false;
@@ -617,7 +617,7 @@ let test_server_preface_disables_push_by_default = fun _ctx ->
           Frame.InitialWindowSize _;
           Frame.MaxFrameSize _;
         ] -> Result.Ok ()
-      | _ -> Result.Error "server preface did not advertise EnablePush false"
+      | _ -> Result.Error "server preface did not advertise EnablePush false")
   | Parser.Done _ -> Result.Error "server preface left trailing bytes or wrong payload"
   | Parser.Need_more -> Result.Error "server preface was incomplete"
   | Parser.Error error ->
@@ -775,7 +775,7 @@ let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
   | Ok events when List.length events != 0 ->
       Result.Error "partial invalid frame should not emit events"
   | Ok _ ->
-      match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
+      (match Connection.process_data conn (Std.IO.Bytes.from_string rest) with
       | Error (
         Connection.ParserError (
           Parser.InvalidPayloadLength {
@@ -783,18 +783,18 @@ let test_process_data_clears_pending_input_after_parse_error = fun _ctx ->
             expected = Parser.Exactly 8;
             actual = 7;
           }
-        )
-      ) ->
-          match Connection.process_data conn (Std.IO.Bytes.from_string valid_settings) with
-          | Ok [
-              Connection.SettingsReceived [ Frame.HeaderTableSize size ];
-            ] when Int.equal size 1_024 -> Result.Ok ()
-          | Ok _ -> Result.Error "valid frame after parse error emitted unexpected events"
-          | Error err ->
-              Result.Error ("pending input was not cleared after parse error: "
-              ^ Connection.error_to_string err)
-      | Error err -> Result.Error ("wrong parse error: " ^ Connection.error_to_string err)
-      | Ok _ -> Result.Error "invalid frame was accepted"
+	        )
+	      ) ->
+	          (match Connection.process_data conn (Std.IO.Bytes.from_string valid_settings) with
+	          | Ok [
+	            Connection.SettingsReceived [ Frame.HeaderTableSize size ];
+	          ] when Int.equal size 1_024 -> Result.Ok ()
+	          | Ok _ -> Result.Error "valid frame after parse error emitted unexpected events"
+	          | Error err ->
+	              Result.Error ("pending input was not cleared after parse error: "
+	              ^ Connection.error_to_string err))
+	      | Error err -> Result.Error ("wrong parse error: " ^ Connection.error_to_string err)
+      | Ok _ -> Result.Error "invalid frame was accepted")
 
 let test_reader_parser_parses_full_data_frame = fun _ctx ->
   let frame = Frame.data ~stream_id:1 "hello" in
@@ -1335,10 +1335,10 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
   match Connection.process_data conn (Std.IO.Bytes.from_string (serialize_frame remote_settings)) with
   | Error err -> Result.Error ("Remote settings failed: " ^ Connection.error_to_string err)
   | Ok _ ->
-      match Connection.create_stream conn with
+      (match Connection.create_stream conn with
       | Error err -> Result.Error ("First local stream failed: " ^ Connection.error_to_string err)
       | Ok 1 ->
-          match Connection.create_stream conn with
+          (match Connection.create_stream conn with
           | Error (
             Connection.MaxConcurrentStreamsExceeded {
               initiator = Connection.LocalInitiated;
@@ -1349,8 +1349,8 @@ let test_create_stream_obeys_remote_max_concurrent = fun _ctx ->
           ) ->
               Result.Ok ()
           | Error err -> Result.Error ("Wrong connection error: " ^ Connection.error_to_string err)
-          | Ok _ -> Result.Error "Local stream over remote max concurrent streams was accepted"
-      | Ok stream_id -> Result.Error ("Expected first stream 1, got " ^ Int.to_string stream_id)
+          | Ok _ -> Result.Error "Local stream over remote max concurrent streams was accepted")
+      | Ok stream_id -> Result.Error ("Expected first stream 1, got " ^ Int.to_string stream_id))
 
 let test_create_stream_uses_remote_initial_window = fun _ctx ->
   let conn = create_client_connection () in

@@ -66,9 +66,9 @@ let test_large_json_response = fun _ctx ->
                     ^ string_of_int body_len)
                 | Ok json ->
                     (* Verify it has expected structure for OpenAI API *)
-                    match json with
+                    (match json with
                     | Data.Json.Object fields ->
-                        match fields
+                        (match fields
                         |> List.find ~fn:(fun (key, _value) -> key = "choices") with
                         | Some (_key, Data.Json.Array _choices) ->
                             (* Success! We got a complete JSON response with the expected structure *)
@@ -76,8 +76,8 @@ let test_large_json_response = fun _ctx ->
                         | Some _ -> Error "'choices' field is not an array"
                         | None ->
                             (* Some error responses may not have choices, which is OK *)
-                            Ok ()
-                    | _ -> Error "Response is not a JSON object"
+                            Ok ())
+                    | _ -> Error "Response is not a JSON object")
 
 let test_streamed_response = fun _ctx ->
   (* Test that we can read chunked/streamed responses without truncation.

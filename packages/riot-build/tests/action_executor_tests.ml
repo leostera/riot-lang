@@ -92,7 +92,7 @@ let test_execute_node_writes_file = fun _ctx ->
           ~outs:[ output ]
           ()
       in
-      let completed = HashMap.create () in
+      let completed = ConcurrentHashMap.create () in
       let result =
         Action_executor.execute_node
           ~completed
@@ -106,10 +106,10 @@ let test_execute_node_writes_file = fun _ctx ->
       match result.status with
       | Action_executor.Executed _ ->
           let output_path = Path.(sandbox / output) in
-          match Fs.read_to_string output_path with
+          (match Fs.read_to_string output_path with
           | Ok content when String.equal content "hello" -> Ok ()
           | Ok content -> Error ("unexpected output content: " ^ content)
-          | Error err -> Error ("failed to read output: " ^ IO.error_message err)
+          | Error err -> Error ("failed to read output: " ^ IO.error_message err))
       | Action_executor.Cached _
       | Action_executor.Failed _
       | Action_executor.Skipped -> Error "expected write action to execute") with
@@ -141,7 +141,7 @@ let test_execute_node_copies_file = fun _ctx ->
           ~outs:[ destination ]
           ()
       in
-      let completed = HashMap.create () in
+      let completed = ConcurrentHashMap.create () in
       let result =
         Action_executor.execute_node
           ~completed
@@ -155,10 +155,10 @@ let test_execute_node_copies_file = fun _ctx ->
       match result.status with
       | Action_executor.Executed _ ->
           let destination_path = Path.(sandbox / destination) in
-          match Fs.read_to_string destination_path with
+          (match Fs.read_to_string destination_path with
           | Ok content when String.equal content "copy me" -> Ok ()
           | Ok content -> Error ("unexpected copied content: " ^ content)
-          | Error err -> Error ("failed to read copied file: " ^ IO.error_message err)
+          | Error err -> Error ("failed to read copied file: " ^ IO.error_message err))
       | Action_executor.Cached _
       | Action_executor.Failed _
       | Action_executor.Skipped -> Error "expected copy action to execute") with
@@ -187,7 +187,7 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
           ~outs:[ declared_output ]
           ()
       in
-      let completed = HashMap.create () in
+      let completed = ConcurrentHashMap.create () in
       let result =
         Action_executor.execute_node
           ~completed
@@ -246,9 +246,9 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
           ~outs:[ Path.v "out.txt" ]
           ()
       in
-      let completed = HashMap.create () in
+      let completed = ConcurrentHashMap.create () in
       let _ =
-        HashMap.insert
+        ConcurrentHashMap.insert
           completed
           ~key:(node_id dependency)
           ~value:(failed_result (node_id dependency))

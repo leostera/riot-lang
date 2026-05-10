@@ -562,13 +562,13 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
         else
           Error "Root version changed in solver solution"
     | (pkg, version) :: rest ->
-        match (lookup_fuzz_package graph.packages pkg, fuzz_version_index_of_pubgrub version) with
+        (match (lookup_fuzz_package graph.packages pkg, fuzz_version_index_of_pubgrub version) with
         | (Some package, Some index) ->
-            match lookup_fuzz_version_spec package.versions index with
+            (match lookup_fuzz_version_spec package.versions index with
             | Some _ -> ensure_known_versions rest
-            | None -> Error ("Solver chose unavailable version for " ^ pkg)
+            | None -> Error ("Solver chose unavailable version for " ^ pkg))
         | (Some _, None) -> Error ("Solver chose unexpected version outside fuzz domain for " ^ pkg)
-        | (None, _) -> Error ("Solver returned unreachable unknown package " ^ pkg)
+        | (None, _) -> Error ("Solver returned unreachable unknown package " ^ pkg))
   in
   let rec walk reachable pending =
     match pending with
@@ -597,9 +597,9 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
   match ensure_known_versions solution with
   | Error _ as err -> err
   | Ok () ->
-      match lookup_solution_version solution "root" with
+      (match lookup_solution_version solution "root" with
       | Some version when Pubgrub.version_compare version (v 1 0 0) = Order.EQ ->
-          match walk [ "root" ] graph.root_deps with
+          (match walk [ "root" ] graph.root_deps with
           | Error _ as err -> err
           | Ok reachable ->
               let expected_packages = List.sort reachable ~compare:String.compare in
@@ -613,8 +613,8 @@ let validate_fuzz_solution = fun (graph: fuzz_graph) solution ->
                 ^ String.concat ", " actual_packages
                 ^ "], expected ["
                 ^ String.concat ", " expected_packages
-                ^ "]")
-      | _ -> Error "Solver solution is missing the root package"
+                ^ "]"))
+      | _ -> Error "Solver solution is missing the root package")
 
 let check_property = fun ~ctx ~name ~config property ->
   match Property.check ~config ~on_progress:(Test.Context.emit_progress ctx) property with
@@ -763,12 +763,12 @@ let test_solver_randomized_small_graphs_match_bruteforce =
                   "root"
                   (v 1 0 0)
               in
-              match (fuzz_find_solution graph, result) with
-              | (Some _, Ok (Pubgrub.Solver.Success solution)) ->
-                  match validate_fuzz_solution graph solution with
-                  | Ok () -> true
-                  | Error msg -> Property.fail msg
-              | (None, Ok (Pubgrub.Solver.Failure _)) -> true
+	              match (fuzz_find_solution graph, result) with
+	              | (Some _, Ok (Pubgrub.Solver.Success solution)) ->
+	                  (match validate_fuzz_solution graph solution with
+	                  | Ok () -> true
+	                  | Error msg -> Property.fail msg)
+	              | (None, Ok (Pubgrub.Solver.Failure _)) -> true
               | (Some witness, Ok (Pubgrub.Solver.Failure incompat)) ->
                   Property.fail
                     ("Solver reported failure for satisfiable graph. Witness: "
@@ -1842,14 +1842,14 @@ let test_incompatibility_from_dependency_nonempty =
       else
         match Pubgrub.Incompatibility.as_dependency incompat with
         | Some ("root", "dep") ->
-            match assert_term_incompat
+            (match assert_term_incompat
               ~package:"root"
               ~positive:true
               ~ranges:(Pubgrub.singleton (v 1 0 0))
               incompat with
             | Error _ as err -> err
             | Ok () ->
-                assert_term_incompat ~package:"dep" ~positive:false ~ranges:dep_ranges incompat
+                assert_term_incompat ~package:"dep" ~positive:false ~ranges:dep_ranges incompat)
         | _ -> Error "Expected dependency incompatibility to round-trip through as_dependency")
 
 let test_incompatibility_from_dependency_empty =
@@ -1919,7 +1919,7 @@ let test_incompatibility_merge_dependents_matching =
       in
       match Pubgrub.Incompatibility.merge_dependents left right with
       | Some merged ->
-          match assert_term_incompat
+          (match assert_term_incompat
             ~package:"root"
             ~positive:false
             ~ranges:(Pubgrub.Ranges.union
@@ -1928,7 +1928,7 @@ let test_incompatibility_merge_dependents_matching =
               (Pubgrub.singleton (v 2 0 0)))
             merged with
           | Error _ as err -> err
-          | Ok () -> assert_term_incompat ~package:"dep" ~positive:true ~ranges:dep_ranges merged
+          | Ok () -> assert_term_incompat ~package:"dep" ~positive:true ~ranges:dep_ranges merged)
       | None -> Error "Expected matching dependency causes to merge")
 
 let test_incompatibility_merge_dependents_different_ranges =
@@ -2323,7 +2323,7 @@ let test_solver_stats_expose_structured_counters =
       in
       match outcome.result with
       | Ok (Pubgrub.Solver.Success solution) ->
-          match assert_int_equal
+          (match assert_int_equal
             ~expected:2
             ~actual:(List.length solution)
             ~message:"Unexpected package count" with
@@ -2380,7 +2380,7 @@ let test_solver_stats_expose_structured_counters =
                                               assert_int_equal
                                                 ~expected:2
                                                 ~actual:outcome.stats.max_decision_depth
-                                                ~message:"Unexpected max decision depth"
+                                                ~message:"Unexpected max decision depth")
       | Ok (Pubgrub.Solver.Failure incompat) ->
           Error ("Expected success but got failure: " ^ Pubgrub.Report.explain_conflict incompat)
       | Error err -> Error ("Unexpected error: " ^ err))

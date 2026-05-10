@@ -1743,19 +1743,19 @@ let test_tcp_listener_bind_rejects_invalid_backlog = fun _ctx ->
 let test_socket_addr_rejects_negative_ports = fun _ctx ->
   match Kernel.Net.IpAddr.from_string "127.0.0.1" with
   | Kernel.Result.Ok ip ->
-      match Kernel.Net.SocketAddr.make ~ip ~port:(-1) with
+      (match Kernel.Net.SocketAddr.make ~ip ~port:(-1) with
       | Kernel.Result.Error (Kernel.Net.SocketAddr.InvalidPort { port = (-1) }) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Net.SocketAddr.error_to_string error)
-      | Kernel.Result.Ok _ -> Error "expected SocketAddr.make to reject negative ports"
+      | Kernel.Result.Ok _ -> Error "expected SocketAddr.make to reject negative ports")
   | Kernel.Result.Error error -> Error (Kernel.Net.IpAddr.error_to_string error)
 
 let test_socket_addr_rejects_ports_past_65535 = fun _ctx ->
   match Kernel.Net.IpAddr.from_string "127.0.0.1" with
   | Kernel.Result.Ok ip ->
-      match Kernel.Net.SocketAddr.make ~ip ~port:65_536 with
+      (match Kernel.Net.SocketAddr.make ~ip ~port:65_536 with
       | Kernel.Result.Error (Kernel.Net.SocketAddr.InvalidPort { port = 65_536 }) -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.Net.SocketAddr.error_to_string error)
-      | Kernel.Result.Ok _ -> Error "expected SocketAddr.make to reject ports above 65535"
+      | Kernel.Result.Ok _ -> Error "expected SocketAddr.make to reject ports above 65535")
   | Kernel.Result.Error error -> Error (Kernel.Net.IpAddr.error_to_string error)
 
 let test_socket_addr_ipv6_to_string_is_bracketed = fun _ctx ->

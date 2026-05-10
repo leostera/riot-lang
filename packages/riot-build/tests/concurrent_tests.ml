@@ -63,12 +63,12 @@ let build_package = fun ~workspace ~toolchain ~store package ->
                 prepared_execution.toolchain
                 ~concurrency:build_ctx.parallelism
             in
-            let completed = Std.Collections.HashMap.create () in
+            let completed = Std.Collections.ConcurrentHashMap.create () in
             List.for_each
               action_result.completed_actions
               ~fn:(fun completed_action ->
                 let _ =
-                  Std.Collections.HashMap.insert
+                  Std.Collections.ConcurrentHashMap.insert
                     completed
                     ~key:(Riot_planner.Action_node.id completed_action.node)
                     ~value:completed_action.result
@@ -255,7 +255,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
       let first_build = build_package ~workspace ~toolchain ~store package in
       match first_build with
       | Ok first_result ->
-          match first_result.Package_builder.status with
+          (match first_result.Package_builder.status with
           | Cached _ -> Error "first build should not be cached"
           | Skipped { reason } -> Error ("first build was unexpectedly skipped: " ^ reason)
           | Failed err ->
@@ -313,7 +313,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
                   Error (name ^ " build failed: " ^ err)
               | (_, BuildCompleteWithCache (name, _, Error err)) ->
                   Error (name ^ " build failed: " ^ err)
-              | _ -> Error "Unexpected message"
+              | _ -> Error "Unexpected message")
       | Error err -> Error ("First build failed: " ^ err)) with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

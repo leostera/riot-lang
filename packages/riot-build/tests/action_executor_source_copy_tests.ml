@@ -90,7 +90,7 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
           let store = Riot_store.Store.create ~workspace in
           let package = make_package ~root:tmpdir ~name:"kernel" in
           let node = make_node ~package ~srcs:[ Path.v "src/lib.ml" ] in
-          let completed = HashMap.create () in
+          let completed = ConcurrentHashMap.create () in
           let result =
             Action_executor.execute_node
               ~completed
@@ -104,9 +104,9 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
           match result.status with
           | Action_executor.Executed _ ->
               let copied = Path.(sandbox / Path.v "src/lib.ml") in
-              match Fs.exists copied with
+              (match Fs.exists copied with
               | Ok true -> Ok ()
-              | _ -> Error "expected package-relative source to be copied"
+              | _ -> Error "expected package-relative source to be copied")
           | _ -> Error "expected node execution to succeed")) with
   | Ok r -> r
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -122,7 +122,7 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
           let store = Riot_store.Store.create ~workspace in
           let package = make_package ~root:tmpdir ~name:"kernel" in
           let node = make_node ~package ~srcs:[ Path.v "packages/kernel/src/lib.ml" ] in
-          let completed = HashMap.create () in
+          let completed = ConcurrentHashMap.create () in
           let result =
             Action_executor.execute_node
               ~completed
@@ -136,9 +136,9 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
           match result.status with
           | Action_executor.Executed _ ->
               let copied = Path.(sandbox / Path.v "packages/kernel/src/lib.ml") in
-              match Fs.exists copied with
+              (match Fs.exists copied with
               | Ok true -> Ok ()
-              | _ -> Error "expected workspace-relative source to be copied"
+              | _ -> Error "expected workspace-relative source to be copied")
           | _ -> Error "expected node execution to succeed")) with
   | Ok r -> r
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -156,7 +156,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
       let store = Riot_store.Store.create ~workspace in
       let package = make_package ~root:tmpdir ~name:"kernel" in
       let node = make_cache_node ~package ~content:"cached output" in
-      let completed = HashMap.create () in
+      let completed = ConcurrentHashMap.create () in
       let session_id = Riot_model.Session_id.make () in
       let toolchain = test_toolchain () in
       let first =
@@ -189,13 +189,13 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
           (
             match second.status with
             | Action_executor.Cached _ ->
-                match Fs.exists output with
+                (match Fs.exists output with
                 | Ok true ->
                     if String.equal (read_file output) "cached output" then
                       Ok ()
                     else
                       Error "cached output content mismatch"
-                | _ -> Error "expected cached output to be materialized"
+                | _ -> Error "expected cached output to be materialized")
             | _ -> Error "expected second execution to hit cache"
           )
       | _ -> Error "expected first execution to populate cache") with

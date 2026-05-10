@@ -137,10 +137,10 @@ let test_from_string_returns_zero_after_eof = fun _ctx ->
   match IO.read reader ~into:buffer with
   | Ok 2 ->
       IO.Buffer.clear buffer;
-      match IO.read reader ~into:buffer with
+      (match IO.read reader ~into:buffer with
       | Ok 0 -> Ok ()
       | Ok _ -> Error "reads after EOF should keep returning 0"
-      | Error _ -> Error "reads after EOF should not fail"
+      | Error _ -> Error "reads after EOF should not fail")
   | Ok _ -> Error "the first read should consume the full string"
   | Error _ -> Error "from_string should not fail"
 

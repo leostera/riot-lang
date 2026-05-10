@@ -6,10 +6,10 @@ let test_simple_filename = fun _ctx ->
   let body = "test content" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_filename part with
+      (match get_filename part with
       | Some "test.txt" -> Ok ()
       | Some other -> Error ("Expected 'test.txt', got '" ^ other ^ "'")
-      | None -> Error "No filename found"
+      | None -> Error "No filename found")
   | _ -> Error "Parse failed"
 
 let test_rfc2231_encoded = fun _ctx ->
@@ -17,10 +17,10 @@ let test_rfc2231_encoded = fun _ctx ->
   let body = "test content" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_filename part with
+      (match get_filename part with
       | Some "Hello World.txt" -> Ok ()
       | Some other -> Error ("Expected 'Hello World.txt', got '" ^ other ^ "'")
-      | None -> Error "No filename found"
+      | None -> Error "No filename found")
   | _ -> Error "Parse failed"
 
 let test_rfc2231_continuation = fun _ctx ->
@@ -35,10 +35,10 @@ let test_rfc2231_continuation = fun _ctx ->
   let body = "test content" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_filename part with
+      (match get_filename part with
       | Some "LongFilename.pdf" -> Ok ()
       | Some other -> Error ("Expected 'LongFilename.pdf', got '" ^ other ^ "'")
-      | None -> Error "No filename found"
+      | None -> Error "No filename found")
   | _ -> Error "Parse failed"
 
 let test_base64_encoding = fun _ctx ->
@@ -46,10 +46,10 @@ let test_base64_encoding = fun _ctx ->
   let body = "SGVsbG8gV29ybGQ=" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_decoded_content part with
+      (match get_decoded_content part with
       | Ok "Hello World" -> Ok ()
       | Ok other -> Error ("Expected 'Hello World', got '" ^ other ^ "'")
-      | Error e -> Error ("Decode failed: " ^ e)
+      | Error e -> Error ("Decode failed: " ^ e))
   | _ -> Error "Parse failed"
 
 let test_quoted_printable = fun _ctx ->
@@ -61,10 +61,10 @@ let test_quoted_printable = fun _ctx ->
   let body = "Hello=20World=21" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_decoded_content part with
+      (match get_decoded_content part with
       | Ok "Hello World!" -> Ok ()
       | Ok other -> Error ("Expected 'Hello World!', got '" ^ other ^ "'")
-      | Error e -> Error ("Decode failed: " ^ e)
+      | Error e -> Error ("Decode failed: " ^ e))
   | _ -> Error "Parse failed"
 
 let test_nested_multipart = fun _ctx ->
@@ -94,14 +94,14 @@ let test_nested_multipart = fun _ctx ->
       if List.length parts != 2 then
         Error ("Expected 2 top-level parts, got " ^ string_of_int (List.length parts))
       else
-        match List.get parts ~at:0 with
+        (match List.get parts ~at:0 with
         | Some (MultiPart { parts = inner_parts; _ }) ->
             if List.length inner_parts = 2 then
               Ok ()
             else
               Error ("Expected 2 inner parts, got " ^ string_of_int (List.length inner_parts))
         | Some (SinglePart _) -> Error "First part is SinglePart, expected MultiPart"
-        | None -> Error "No first part found"
+        | None -> Error "No first part found")
   | Ok (SinglePart _) -> Error "Expected MultiPart, got SinglePart"
   | Error e -> Error ("Parse failed: " ^ e)
 
@@ -110,16 +110,16 @@ let test_content_type_parsing = fun _ctx ->
   let body = "test" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_content_type part with
+      (match get_content_type part with
       | Some ct ->
           if ct.media_type = "text" && ct.subtype = "html" then
-            match Std.Collections.Proplist.get ct.parameters ~key:"charset" with
+            (match Std.Collections.Proplist.get ct.parameters ~key:"charset" with
             | Some "utf-8" -> Ok ()
             | Some other -> Error ("Expected charset=utf-8, got " ^ other)
-            | None -> Error "No charset parameter found"
+            | None -> Error "No charset parameter found")
           else
             Error ("Expected text/html, got " ^ ct.media_type ^ "/" ^ ct.subtype)
-      | None -> Error "No Content-Type found"
+      | None -> Error "No Content-Type found")
   | _ -> Error "Parse failed"
 
 let test_encoding_detection = fun _ctx ->
@@ -127,10 +127,10 @@ let test_encoding_detection = fun _ctx ->
   let body = "test" in
   match parse ~headers ~body with
   | Ok (SinglePart part) ->
-      match get_encoding part with
+      (match get_encoding part with
       | Some Base64 -> Ok ()
       | Some other -> Error "Expected Base64 encoding"
-      | None -> Error "No encoding found"
+      | None -> Error "No encoding found")
   | _ -> Error "Parse failed"
 
 let tests = let open Test in
