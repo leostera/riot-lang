@@ -1,5 +1,7 @@
 open Std
 
+module Ser = Serde.Ser
+
 module Config = struct
   type t = {
     path: Path.t;
@@ -55,6 +57,8 @@ module Driver = struct
     | ExecutionFailed of string
     | UnsupportedOperation of string
 
+  type error_document = { type_: string; message: string }
+
   let name = "SQLite"
 
   let error_to_string = fun __tmp1 ->
@@ -64,19 +68,31 @@ module Driver = struct
     | ExecutionFailed msg -> "Failed to execute statement: " ^ msg
     | UnsupportedOperation msg -> "Unsupported operation: " ^ msg
 
-  let error_to_json = fun err ->
-    Data.Json.obj
-      [
-        ("type", Data.Json.string
+  let error_type = fun error ->
+    match error with
+    | ConnectionClosed -> "connection_closed"
+    | PrepareFailed _ -> "prepare_failed"
+    | ExecutionFailed _ -> "execution_failed"
+    | UnsupportedOperation _ -> "unsupported_operation"
+
+  let error_document = fun error -> {
+    type_ = error_type error;
+    message = error_to_string error;
+  }
+
+  let error_serializer =
+    Ser.contramap
+      error_document
+      (
+        Ser.record
           (
-            match err with
-            | ConnectionClosed -> "connection_closed"
-            | PrepareFailed _ -> "prepare_failed"
-            | ExecutionFailed _ -> "execution_failed"
-            | UnsupportedOperation _ -> "unsupported_operation"
-          ));
-        ("message", Data.Json.string (error_to_string err));
-      ]
+            Ser.fields
+              [
+                Ser.field "type" Ser.string (fun (error: error_document) -> error.type_);
+                Ser.field "message" Ser.string (fun error -> error.message);
+              ]
+          )
+      )
 
   let connect: config -> (connection, error) result = fun config ->
     let id =

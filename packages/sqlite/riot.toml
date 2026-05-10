@@ -1,6 +1,6 @@
 [package]
 name = "sqlite"
-version = "0.0.32"
+version = "0.0.33"
 description = "SQLite adapter for sqlx"
 license = "Apache-2.0"
 public = true
@@ -11,4 +11,4 @@ path = "src/sqlite.ml"
 [dependencies]
 std = { path = "../std", version = "*" }
 sqlx-driver = { path = "../sqlx-driver", version = "*" }
-# Add dependencies here
+serde = { path = "../serde", version = "*" }
