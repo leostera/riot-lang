@@ -111,17 +111,16 @@ let migrate = fun ?config ?source pool () ->
   | Ok _report -> Ok ()
   | Error error -> Error error
 
-let show_pool_error = fun __tmp1 ->
-  match __tmp1 with
+let show_pool_error = fun error ->
+  match error with
   | Pool.Exhausted { waiting; max_connections; timeout } ->
       "Pool exhausted: "
-      ^ string_of_int waiting
+      ^ Int.to_string waiting
       ^ " waiting, max "
-      ^ string_of_int max_connections
+      ^ Int.to_string max_connections
       ^ " connections, timeout "
       ^ (Time.Duration.to_secs_string timeout)
-  | Pool.ConnectionError (Connection.DriverError { error; to_string; _ }) ->
-      "Connection error: " ^ to_string error
+  | Pool.ConnectionError error -> "Connection error: " ^ Connection.error_to_string error
   | Pool.Timeout duration -> "Pool timeout after " ^ Time.Duration.to_secs_string duration
 
 let with_transaction = fun pool f ->
@@ -131,8 +130,8 @@ let with_transaction = fun pool f ->
 
 let shutdown = fun pool -> Pool.shutdown pool
 
-let show_error = fun __tmp1 ->
-  match __tmp1 with
+let show_error = fun error ->
+  match error with
   | PoolError pool_err -> show_pool_error pool_err
   | InvalidValue {
       field;

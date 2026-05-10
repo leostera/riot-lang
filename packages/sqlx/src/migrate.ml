@@ -7,23 +7,35 @@ module Value = Sqlx_driver.Value
 module Version = struct
   type t = int64
 
+  type error =
+    | NotPositive of int64
+    | InvalidInteger of string
+    | ExpectedIntegerValue
+
   let from_int64 = fun value ->
     if Int64.compare value 0L = Order.GT then
       Ok value
     else
-      Error "migration version must be greater than zero"
+      Error (NotPositive value)
 
   let from_int = fun value -> from_int64 (Int64.from_int value)
 
   let from_string = fun value ->
     match Int64.from_string_opt (String.trim value) with
     | Some version -> from_int64 version
-    | None -> Error ("invalid migration version: " ^ value)
+    | None -> Error (InvalidInteger value)
 
   let from_int64_unchecked = fun value ->
     match from_int64 value with
     | Ok version -> version
-    | Error message -> panic message
+    | Error error ->
+        panic
+          (
+            match error with
+            | NotPositive _ -> "migration version must be greater than zero"
+            | InvalidInteger value -> "invalid migration version: " ^ value
+            | ExpectedIntegerValue -> "expected integer migration version"
+          )
 
   let to_int64 = fun value -> value
 
@@ -32,10 +44,20 @@ module Version = struct
   let equal = Int64.equal
 
   let compare = Int64.compare
+
+  let error_to_string = fun error ->
+    match error with
+    | NotPositive _ -> "migration version must be greater than zero"
+    | InvalidInteger value -> "invalid migration version: " ^ value
+    | ExpectedIntegerValue -> "expected integer migration version"
 end
 
 module TableName = struct
   type t = string
+
+  type error =
+    | Empty
+    | InvalidIdentifier of string
 
   let char_between = fun char lower upper ->
     Char.compare char lower != Order.LT && Char.compare char upper != Order.GT
@@ -65,22 +87,33 @@ module TableName = struct
   let from_string = fun value ->
     let value = String.trim value in
     if String.is_empty value then
-      Error "migration table name must not be empty"
+      Error Empty
     else
       let parts = String.split ~by:"." value in
       if List.all parts ~fn:valid_part then
         Ok value
       else
-        Error ("invalid migration table name: " ^ value)
+        Error (InvalidIdentifier value)
 
   let from_string_unchecked = fun value ->
     match from_string value with
     | Ok table_name -> table_name
-    | Error message -> panic message
+    | Error error ->
+        panic
+          (
+            match error with
+            | Empty -> "migration table name must not be empty"
+            | InvalidIdentifier value -> "invalid migration table name: " ^ value
+          )
 
   let default = from_string_unchecked "_sqlx_migrations"
 
   let to_string = fun value -> value
+
+  let error_to_string = fun error ->
+    match error with
+    | Empty -> "migration table name must not be empty"
+    | InvalidIdentifier value -> "invalid migration table name: " ^ value
 end
 
 type migration_type =
@@ -88,14 +121,14 @@ type migration_type =
   | ReversibleUp
   | ReversibleDown
 
-let migration_type_to_string = fun __tmp1 ->
-  match __tmp1 with
+let migration_type_to_string = fun migration_type ->
+  match migration_type with
   | Simple -> "simple"
   | ReversibleUp -> "up"
   | ReversibleDown -> "down"
 
-let migration_type_suffix = fun __tmp1 ->
-  match __tmp1 with
+let migration_type_suffix = fun migration_type ->
+  match migration_type with
   | Simple -> ".sql"
   | ReversibleUp -> ".up.sql"
   | ReversibleDown -> ".down.sql"
@@ -108,14 +141,14 @@ let migration_type_from_filename = fun filename ->
   else
     Simple
 
-let is_up_migration = fun __tmp1 ->
-  match __tmp1 with
+let is_up_migration = fun migration_type ->
+  match migration_type with
   | Simple
   | ReversibleUp -> true
   | ReversibleDown -> false
 
-let is_down_migration = fun __tmp1 ->
-  match __tmp1 with
+let is_down_migration = fun migration_type ->
+  match migration_type with
   | ReversibleDown -> true
   | Simple
   | ReversibleUp -> false
@@ -124,7 +157,24 @@ let checksum = fun sql ->
   Crypto.Sha256.hash_string sql
   |> Crypto.Digest.hex
 
+let no_transaction_directive = "-- no-transaction"
+
+let strip_no_transaction_directive = fun sql ->
+  if String.starts_with ~prefix:no_transaction_directive sql then
+    let offset = String.length no_transaction_directive in
+    let len = String.length sql - offset in
+    let rest = String.sub sql ~offset ~len in
+    if String.starts_with ~prefix:"\r\n" rest then
+      String.sub rest ~offset:2 ~len:(String.length rest - 2)
+    else if String.starts_with ~prefix:"\n" rest then
+      String.sub rest ~offset:1 ~len:(String.length rest - 1)
+    else
+      rest
+  else
+    sql
+
 let checksum_ignoring = fun ignored sql ->
+  let sql = strip_no_transaction_directive sql in
   if Vector.is_empty ignored then
     checksum sql
   else
@@ -184,25 +234,51 @@ type locking =
   | PostgresAdvisory of {
       key: int64;
     }
+  | MysqlNamed of {
+      name: string;
+      timeout: Time.Duration.t;
+    }
+
+type dialect =
+  | Postgres
+  | Mysql
+
+type transaction_mode =
+  | Transactional
+  | NonTransactional
 
 module Config = struct
   type t = {
     table_name: TableName.t;
     ignore_missing: bool;
+    dialect: dialect;
     locking: locking;
+    transaction_mode: transaction_mode;
     create_schemas: string Vector.t;
   }
 
   let default = {
     table_name = TableName.default;
     ignore_missing = false;
+    dialect = Postgres;
     locking = NoLock;
+    transaction_mode = Transactional;
     create_schemas = Vector.create ();
   }
 
   let for_postgres = fun ?(lock_key = 4_392_003_337_890_001L) () -> {
     default with
+    dialect = Postgres;
     locking = PostgresAdvisory { key = lock_key };
+    transaction_mode = Transactional;
+  }
+
+  let for_mysql = fun
+    ?(lock_name = "riot_sqlx_migrations") ?(lock_timeout = Time.Duration.from_secs 30) () -> {
+    default with
+    dialect = Mysql;
+    locking = MysqlNamed { name = lock_name; timeout = lock_timeout };
+    transaction_mode = NonTransactional;
   }
 end
 
@@ -216,11 +292,27 @@ type run_report = {
   already_applied: AppliedMigration.t Vector.t;
 }
 
+type source_error =
+  | ReadMigrationFileFailed of {
+      path: Path.t;
+      reason: string;
+    }
+  | ReadMigrationDirectoryFailed of {
+      path: Path.t;
+      reason: string;
+    }
+  | InspectMigrationPathFailed of {
+      path: Path.t;
+      reason: string;
+    }
+  | MissingQueryField of string
+  | QueryFieldTypeMismatch of { field: string; expected: string }
+
 type error =
-  | SourceError of string
-  | InvalidVersion of string
-  | InvalidTableName of string
-  | InvalidSchemaName of string
+  | SourceError of source_error
+  | InvalidVersion of Version.error
+  | InvalidTableName of TableName.error
+  | InvalidSchemaName of TableName.error
   | PoolError of Pool.error
   | ConnectionError of Connection.error
   | MigrationExecutionError of {
@@ -228,16 +320,15 @@ type error =
       error: Connection.error;
     }
   | Dirty of Version.t
+  | LockUnavailable of string
   | VersionMissing of Version.t
   | VersionMismatch of Version.t
   | VersionNotPresent of Version.t
 
-let connection_error_to_string = fun (Connection.DriverError { error; to_string; _ }) ->
-  to_string
-    error
+let connection_error_to_string = Connection.error_to_string
 
-let pool_error_to_string = fun __tmp1 ->
-  match __tmp1 with
+let pool_error_to_string = fun error ->
+  match error with
   | Pool.Exhausted { waiting; max_connections; timeout } ->
       "pool exhausted: "
       ^ Int.to_string waiting
@@ -248,12 +339,30 @@ let pool_error_to_string = fun __tmp1 ->
   | Pool.ConnectionError error -> "connection error: " ^ connection_error_to_string error
   | Pool.Timeout duration -> "pool timeout after " ^ Time.Duration.to_secs_string duration
 
-let error_to_string = fun __tmp1 ->
-  match __tmp1 with
-  | SourceError message -> "migration source error: " ^ message
-  | InvalidVersion message -> "invalid migration version: " ^ message
-  | InvalidTableName message -> "invalid migration table name: " ^ message
-  | InvalidSchemaName message -> "invalid migration schema name: " ^ message
+let error_to_string = fun error ->
+  match error with
+  | SourceError source_error -> (
+      match source_error with
+      | ReadMigrationFileFailed { path; reason } ->
+          "migration source error: failed to read " ^ Path.to_string path ^ ": " ^ reason
+      | ReadMigrationDirectoryFailed { path; reason } ->
+          "migration source error: failed to read migration directory "
+          ^ Path.to_string path
+          ^ ": "
+          ^ reason
+      | InspectMigrationPathFailed { path; reason } ->
+          "migration source error: failed to inspect migration path "
+          ^ Path.to_string path
+          ^ ": "
+          ^ reason
+      | MissingQueryField field ->
+          "migration source error: migration query did not return field: " ^ field
+      | QueryFieldTypeMismatch { field; expected } ->
+          "migration source error: migration query field " ^ field ^ " is not " ^ expected
+    )
+  | InvalidVersion error -> "invalid migration version: " ^ Version.error_to_string error
+  | InvalidTableName error -> "invalid migration table name: " ^ TableName.error_to_string error
+  | InvalidSchemaName error -> "invalid migration schema name: " ^ TableName.error_to_string error
   | PoolError error -> pool_error_to_string error
   | ConnectionError error -> connection_error_to_string error
   | MigrationExecutionError { version; error } ->
@@ -265,6 +374,7 @@ let error_to_string = fun __tmp1 ->
       "migration "
       ^ Version.to_string version
       ^ " is partially applied; fix it and remove the dirty row"
+  | LockUnavailable name -> "migration lock is unavailable: " ^ name
   | VersionMissing version ->
       "migration "
       ^ Version.to_string version
@@ -314,7 +424,7 @@ module Source = struct
         else
           let version_text = String.sub filename ~offset:0 ~len:split_at in
           match Version.from_string version_text with
-          | Error message -> Error (InvalidVersion message)
+          | Error error -> Error (InvalidVersion error)
           | Ok version -> (
               let name =
                 String.sub
@@ -326,10 +436,10 @@ module Source = struct
               let description = description_from_filename name migration_type in
               match Fs.read path with
               | Error fs_error ->
-                  Error (SourceError ("failed to read "
-                  ^ Path.to_string path
-                  ^ ": "
-                  ^ IO.Error.message fs_error))
+                  Error (SourceError (ReadMigrationFileFailed {
+                    path;
+                    reason = IO.Error.message fs_error;
+                  }))
               | Ok sql ->
                   let no_tx = String.starts_with ~prefix:"-- no-transaction" sql in
                   let checksum = checksum_ignoring config.ignored_checksum_chars sql in
@@ -346,10 +456,10 @@ module Source = struct
   let resolve_directory = fun config dir ->
     match Fs.read_dir dir with
     | Error fs_error ->
-        Error (SourceError ("failed to read migration directory "
-        ^ Path.to_string dir
-        ^ ": "
-        ^ IO.Error.message fs_error))
+        Error (SourceError (ReadMigrationDirectoryFailed {
+          path = dir;
+          reason = IO.Error.message fs_error;
+        }))
     | Ok paths ->
         let migrations = Vector.create () in
         let rec loop paths =
@@ -372,10 +482,10 @@ module Source = struct
               (
                 match Fs.is_file path with
                 | Error fs_error ->
-                    Error (SourceError ("failed to inspect migration path "
-                    ^ Path.to_string path
-                    ^ ": "
-                    ^ IO.Error.message fs_error))
+                    Error (SourceError (InspectMigrationPathFailed {
+                      path;
+                      reason = IO.Error.message fs_error;
+                    }))
                 | Ok false -> loop paths
                 | Ok true -> (
                     match parse_file config path with
@@ -419,13 +529,13 @@ let version_from_value = fun value ->
   | None -> (
       match Value.to_int value with
       | Some value -> Version.from_int value
-      | None -> Error "expected integer migration version"
+      | None -> Error Version.ExpectedIntegerValue
     )
 
 let required_field = fun field row ->
   match Row.get field row with
   | Some value -> Ok value
-  | None -> Error (SourceError ("migration query did not return field: " ^ field))
+  | None -> Error (SourceError (MissingQueryField field))
 
 let version_field = fun field row ->
   match required_field field row with
@@ -433,7 +543,7 @@ let version_field = fun field row ->
   | Ok value -> (
       match version_from_value value with
       | Ok version -> Ok version
-      | Error message -> Error (InvalidVersion message)
+      | Error error -> Error (InvalidVersion error)
     )
 
 let string_field = fun field row ->
@@ -445,7 +555,7 @@ let string_field = fun field row ->
       | None -> (
           match Value.to_json value with
           | Some value -> Ok value
-          | None -> Error (SourceError ("migration query field is not text: " ^ field))
+          | None -> Error (SourceError (QueryFieldTypeMismatch { field; expected = "text" }))
         )
     )
 
@@ -500,37 +610,123 @@ let list_applied = fun ?(config = Config.default) pool ->
     pool
     (fun conn -> list_applied_direct conn config.table_name)
 
-let ensure_schema = fun conn schema_name ->
-  match TableName.from_string schema_name with
-  | Error message -> Error (InvalidSchemaName message)
-  | Ok schema_name ->
-      execute conn ("CREATE SCHEMA IF NOT EXISTS " ^ TableName.to_string schema_name) []
+let placeholder = fun dialect index ->
+  match dialect with
+  | Postgres -> "$" ^ Int.to_string index
+  | Mysql -> "?"
 
-let ensure_migrations_table = fun conn table_name ->
+let migration_table_sql = fun dialect table_name ->
   let table_name = TableName.to_string table_name in
+  match dialect with
+  | Postgres ->
+      "CREATE TABLE IF NOT EXISTS "
+      ^ table_name
+      ^ " ("
+      ^ "version BIGINT PRIMARY KEY,"
+      ^ "description TEXT NOT NULL,"
+      ^ "installed_on TIMESTAMPTZ NOT NULL DEFAULT now(),"
+      ^ "success BOOLEAN NOT NULL,"
+      ^ "checksum TEXT NOT NULL,"
+      ^ "execution_time BIGINT NOT NULL"
+      ^ ")"
+  | Mysql ->
+      "CREATE TABLE IF NOT EXISTS "
+      ^ table_name
+      ^ " ("
+      ^ "version BIGINT PRIMARY KEY,"
+      ^ "description TEXT NOT NULL,"
+      ^ "installed_on TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),"
+      ^ "success BOOLEAN NOT NULL,"
+      ^ "checksum TEXT NOT NULL,"
+      ^ "execution_time BIGINT NOT NULL"
+      ^ ") ENGINE=InnoDB"
+
+let boolish_value = fun value ->
+  match value with
+  | Value.Bool value -> Some value
+  | Value.Int value -> Some (value != 0)
+  | Value.Int16 value -> Some (value != 0)
+  | Value.Int64 value -> Some (not (Int64.equal value 0L))
+  | Value.String value -> (
+      match value with
+      | "1" -> Some true
+      | "0" -> Some false
+      | _ -> None
+    )
+  | _ -> None
+
+let ensure_schema = fun conn dialect schema_name ->
+  match TableName.from_string schema_name with
+  | Error error -> Error (InvalidSchemaName error)
+  | Ok schema_name ->
+      let sql =
+        match dialect with
+        | Postgres
+        | Mysql -> "CREATE SCHEMA IF NOT EXISTS " ^ TableName.to_string schema_name
+      in
+      execute conn sql []
+
+let ensure_migrations_table = fun conn dialect table_name ->
   execute
     conn
-    ("CREATE TABLE IF NOT EXISTS "
-    ^ table_name
-    ^ " ("
-    ^ "version BIGINT PRIMARY KEY,"
-    ^ "description TEXT NOT NULL,"
-    ^ "installed_on TIMESTAMPTZ NOT NULL DEFAULT now(),"
-    ^ "success BOOLEAN NOT NULL,"
-    ^ "checksum TEXT NOT NULL,"
-    ^ "execution_time BIGINT NOT NULL"
-    ^ ")")
+    (migration_table_sql dialect table_name)
     []
 
 let lock = fun conn locking ->
   match locking with
   | NoLock -> Ok ()
-  | PostgresAdvisory { key } -> execute conn "SELECT pg_advisory_lock($1)" [ Value.int64 key ]
+  | PostgresAdvisory { key } ->
+      let rec attempt () =
+        match query conn "SELECT pg_try_advisory_lock($1) AS locked" [ Value.int64 key ] with
+        | Error _ as error -> error
+        | Ok cursor -> (
+            match Cursor.fetch_one cursor with
+            | Some row when Row.bool "locked" row = Some true -> Ok ()
+            | Some _
+            | None ->
+                sleep (Time.Duration.from_millis 250);
+                attempt ()
+          )
+      in
+      attempt ()
+  | MysqlNamed { name; timeout } -> (
+      match query
+        conn
+        "SELECT GET_LOCK(?, ?) AS locked"
+        [ Value.string name; Value.int (Time.Duration.to_secs timeout) ] with
+      | Error _ as error -> error
+      | Ok cursor -> (
+          match Cursor.fetch_one cursor with
+          | Some row -> (
+              match Row.get "locked" row
+              |> Option.and_then ~fn:boolish_value with
+              | Some true -> Ok ()
+              | Some false
+              | None -> Error (LockUnavailable name)
+            )
+          | None -> Error (LockUnavailable name)
+        )
+    )
 
 let unlock = fun conn locking ->
   match locking with
   | NoLock -> Ok ()
   | PostgresAdvisory { key } -> execute conn "SELECT pg_advisory_unlock($1)" [ Value.int64 key ]
+  | MysqlNamed { name; _ } -> (
+      match query conn "SELECT RELEASE_LOCK(?) AS released" [ Value.string name ] with
+      | Error _ as error -> error
+      | Ok cursor -> (
+          match Cursor.fetch_one cursor with
+          | Some row -> (
+              match Row.get "released" row
+              |> Option.and_then ~fn:boolish_value with
+              | Some true -> Ok ()
+              | Some false
+              | None -> Error (LockUnavailable name)
+            )
+          | None -> Error (LockUnavailable name)
+        )
+    )
 
 let with_lock = fun conn locking fn ->
   match lock conn locking with
@@ -594,31 +790,43 @@ let validate_applied = fun ~ignore_missing applied migrations ->
   in
   loop 0
 
-let execute_migration_body = fun conn table_name migration ->
-  let table_name = TableName.to_string table_name in
-  match Connection.execute conn Migration.(migration.sql) [] with
-  | Error error ->
-      Error (MigrationExecutionError { version = Migration.(migration.version); error })
-  | Ok _ -> (
-      match Connection.execute
-        conn
-        ("INSERT INTO "
-        ^ table_name
-        ^ " (version, description, success, checksum, execution_time) VALUES ($1, $2, TRUE, $3, -1)")
-        [
-          Value.int64 (Version.to_int64 Migration.(migration.version));
-          Value.string Migration.(migration.description);
-          Value.string Migration.(migration.checksum);
-        ] with
-      | Error error -> Error (ConnectionError error)
-      | Ok _ -> Ok ()
-    )
-
-let finalize_migration = fun conn table_name migration elapsed ->
+let record_migration_start = fun conn dialect table_name migration ->
   let table_name = TableName.to_string table_name in
   match Connection.execute
     conn
-    ("UPDATE " ^ table_name ^ " SET execution_time = $1 WHERE version = $2")
+    ("INSERT INTO "
+    ^ table_name
+    ^ " (version, description, success, checksum, execution_time) VALUES ("
+    ^ placeholder dialect 1
+    ^ ", "
+    ^ placeholder dialect 2
+    ^ ", FALSE, "
+    ^ placeholder dialect 3
+    ^ ", -1)")
+    [
+      Value.int64 (Version.to_int64 Migration.(migration.version));
+      Value.string Migration.(migration.description);
+      Value.string Migration.(migration.checksum);
+    ] with
+  | Error error -> Error (ConnectionError error)
+  | Ok _ -> Ok ()
+
+let execute_migration_body = fun conn migration ->
+  match Connection.execute conn Migration.(migration.sql) [] with
+  | Error error ->
+      Error (MigrationExecutionError { version = Migration.(migration.version); error })
+  | Ok _ -> Ok ()
+
+let finalize_migration = fun conn dialect table_name migration elapsed ->
+  let table_name = TableName.to_string table_name in
+  match Connection.execute
+    conn
+    ("UPDATE "
+    ^ table_name
+    ^ " SET success = TRUE, execution_time = "
+    ^ placeholder dialect 1
+    ^ " WHERE version = "
+    ^ placeholder dialect 2)
     [
       Value.int64 (Time.Duration.to_nanos elapsed);
       Value.int64 (Version.to_int64 Migration.(migration.version));
@@ -643,23 +851,43 @@ let with_transaction = fun conn fn ->
           Error error
     )
 
-let apply_one = fun conn table_name migration ->
+let use_transaction = fun config migration ->
+  match (Config.(config.transaction_mode), Migration.(migration.no_tx)) with
+  | (_, true) -> false
+  | (Transactional, false) -> true
+  | (NonTransactional, false) -> false
+
+let apply_one = fun conn config migration ->
   let started_at = Time.Instant.now () in
+  let apply_body = fun body_conn ->
+    match record_migration_start
+      body_conn
+      Config.(config.dialect)
+      Config.(config.table_name)
+      migration with
+    | Error _ as error -> error
+    | Ok () -> execute_migration_body body_conn migration
+  in
   let result =
-    if Migration.(migration.no_tx) then
-      execute_migration_body conn table_name migration
+    if use_transaction config migration then
+      with_transaction conn apply_body
     else
-      with_transaction conn (fun tx_conn -> execute_migration_body tx_conn table_name migration)
+      apply_body conn
   in
   match result with
   | Error _ as error -> error
   | Ok () ->
       let elapsed = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) in
-      match finalize_migration conn table_name migration elapsed with
+      match finalize_migration
+        conn
+        Config.(config.dialect)
+        Config.(config.table_name)
+        migration
+        elapsed with
       | Error _ as error -> error
       | Ok () -> Ok { migration; elapsed }
 
-let revert_migration_body = fun conn table_name migration ->
+let revert_migration_body = fun conn dialect table_name migration ->
   let table_name = TableName.to_string table_name in
   match Connection.execute conn Migration.(migration.sql) [] with
   | Error error ->
@@ -667,19 +895,26 @@ let revert_migration_body = fun conn table_name migration ->
   | Ok _ -> (
       match Connection.execute
         conn
-        ("DELETE FROM " ^ table_name ^ " WHERE version = $1")
+        ("DELETE FROM " ^ table_name ^ " WHERE version = " ^ placeholder dialect 1)
         [ Value.int64 (Version.to_int64 Migration.(migration.version)) ] with
       | Error error -> Error (ConnectionError error)
       | Ok _ -> Ok ()
     )
 
-let revert_one = fun conn table_name migration ->
+let revert_one = fun conn config migration ->
   let started_at = Time.Instant.now () in
   let result =
-    if Migration.(migration.no_tx) then
-      revert_migration_body conn table_name migration
+    if use_transaction config migration then
+      with_transaction
+        conn
+        (fun tx_conn ->
+          revert_migration_body
+            tx_conn
+            Config.(config.dialect)
+            Config.(config.table_name)
+            migration)
     else
-      with_transaction conn (fun tx_conn -> revert_migration_body tx_conn table_name migration)
+      revert_migration_body conn Config.(config.dialect) Config.(config.table_name) migration
   in
   match result with
   | Error _ as error -> error
@@ -687,22 +922,25 @@ let revert_one = fun conn table_name migration ->
       let elapsed = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) in
       Ok { migration; elapsed }
 
-let create_schemas = fun conn schemas ->
+let create_schemas = fun conn dialect schemas ->
   let rec loop index =
     if index >= Vector.length schemas then
       Ok ()
     else
-      match ensure_schema conn (Vector.get_unchecked schemas ~at:index) with
+      match ensure_schema
+        conn
+        dialect
+        (Vector.get_unchecked schemas ~at:index) with
       | Error _ as error -> error
       | Ok () -> loop (index + 1)
   in
   loop 0
 
 let setup = fun conn config ->
-  match create_schemas conn Config.(config.create_schemas) with
+  match create_schemas conn Config.(config.dialect) Config.(config.create_schemas) with
   | Error _ as error -> error
   | Ok () -> (
-      match ensure_migrations_table conn Config.(config.table_name) with
+      match ensure_migrations_table conn Config.(config.dialect) Config.(config.table_name) with
       | Error _ as error -> error
       | Ok () -> (
           match dirty_version_direct conn Config.(config.table_name) with
@@ -742,7 +980,7 @@ let run_direct = fun ?target config conn migrations ->
                         match find_applied applied_migrations Migration.(migration.version) with
                         | Some _ -> loop (index + 1)
                         | None -> (
-                            match apply_one conn Config.(config.table_name) migration with
+                            match apply_one conn config migration with
                             | Error _ as error -> error
                             | Ok applied_migration ->
                                 Vector.push applied ~value:applied_migration;
@@ -794,7 +1032,7 @@ let undo_direct = fun config conn migrations target ->
                     && Option.is_some
                       (find_applied applied_migrations Migration.(migration.version))
                   then
-                    match revert_one conn Config.(config.table_name) migration with
+                    match revert_one conn config migration with
                     | Error _ as error -> error
                     | Ok applied_migration ->
                         Vector.push reverted ~value:applied_migration;

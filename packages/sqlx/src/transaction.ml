@@ -4,7 +4,11 @@ type t = {
   connection: Connection.t;
 }
 
-type isolation_level = [`Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable]
+type isolation_level = Sqlx_driver.Driver.isolation_level =
+  | ReadUncommitted
+  | ReadCommitted
+  | RepeatableRead
+  | Serializable
 
 let begin_transaction = fun conn ->
   match Connection.begin_transaction conn with

@@ -1,7 +1,11 @@
 open Std
 
 type t
-type isolation_level = [`Read_uncommitted | `Read_committed | `Repeatable_read | `Serializable]
+type isolation_level = Sqlx_driver.Driver.isolation_level =
+  | ReadUncommitted
+  | ReadCommitted
+  | RepeatableRead
+  | Serializable
 
 val begin_transaction: Connection.t -> (t, Connection.error) result
 

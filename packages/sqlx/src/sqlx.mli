@@ -78,8 +78,8 @@ val exec: Pool.t -> string -> Value.t list -> (int, error) result
 (**
    Run database migrations before the application starts handling work.
 
-   By default this resolves SQL migrations from [./migrations]. Use
-   {!Migrate.run} directly when the caller needs the full migration report.
+   By default this resolves SQL migrations from `./migrations`. Use
+   `Migrate.run` directly when the caller needs the full migration report.
 *)
 val migrate:
   ?config:Migrate.Config.t ->

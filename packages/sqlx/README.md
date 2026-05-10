@@ -4,8 +4,8 @@ High-level SQL API for Riot.
 
 `sqlx` gives you a database-facing API with connection pooling, transactions,
 queries, typed value/row abstractions, and migration management. It does not tie
-you to one backend: you provide a concrete driver such as `sqlite` or
-`postgres`.
+you to one backend: you provide a concrete driver such as `sqlite`, `postgres`,
+or `mysql`.
 
 ## Install
 
@@ -75,7 +75,8 @@ execution.
 
 Use `-- no-transaction` as the first line when a migration must run outside a
 transaction. Prefer transactional migrations whenever the database supports
-them.
+them. MySQL configs default to non-transactional migration bodies because MySQL
+DDL commonly commits implicitly.
 
 Use `Sqlx.Migrate.run` instead of `Sqlx.migrate` when you need the full report
 of applied migrations and already-applied versions:
@@ -83,6 +84,14 @@ of applied migrations and already-applied versions:
 ```ocaml
 let source = Sqlx.Migrate.Source.from_directory (Path.v "migrations")
 let config = Sqlx.Migrate.Config.for_postgres ()
+let result = Sqlx.Migrate.run ~config pool source
+```
+
+For MySQL/InnoDB, use the MySQL config helper:
+
+```ocaml
+let source = Sqlx.Migrate.Source.from_directory (Path.v "migrations")
+let config = Sqlx.Migrate.Config.for_mysql ()
 let result = Sqlx.Migrate.run ~config pool source
 ```
 
@@ -99,10 +108,16 @@ The migrator stores applied versions, checksums, and execution durations in
 applied migrations, and modified applied migrations unless the migration config
 explicitly opts out of the missing-file check.
 
+Backend-specific migration config controls placeholders, migration-table DDL,
+locking, and transaction defaults. PostgreSQL uses advisory locks and `$1`
+placeholders. MySQL uses `GET_LOCK`/`RELEASE_LOCK`, `?` placeholders, and an
+InnoDB migration table.
+
 ## Which driver should you use?
 
 - `sqlite` is great for local tools, tests, and embedded data.
 - `postgres` is the choice when you need a long-running server database.
+- `mysql` is the MySQL/InnoDB driver and uses `?` placeholders.
 
 ## Where to start
 

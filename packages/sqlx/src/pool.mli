@@ -19,15 +19,20 @@ type config =
       max_lifetime: Time.Duration.t option;
     } -> config
 type t
+type stat =
+  | TotalConnections of int
+  | AvailableConnections of int
+  | InUseConnections of int
+  | WaitingRequests of int
 
-val create: config -> (t, Connection.error) result
+val create : config -> (t, Connection.error) result
 
-val acquire: t -> (Connection.t, error) result
+val acquire : t -> (Connection.t, error) result
 
-val release: t -> Connection.t -> unit
+val release : t -> Connection.t -> unit
 
-val with_connection: t -> (Connection.t -> ('a, Connection.error) result) -> ('a, error) result
+val with_connection : t -> (Connection.t -> ('a, Connection.error) result) -> ('a, error) result
 
-val shutdown: t -> unit
+val shutdown : t -> unit
 
-val stats: t -> ([`Total of int | `Available of int | `InUse of int | `Waiting of int]) list
+val stats : t -> stat list
