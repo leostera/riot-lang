@@ -2,7 +2,7 @@
 
 All notable changes to `mysql` are documented here.
 
-## 0.0.32 - 2026-05-10
+## 0.0.33 - 2026-05-10
 
 ### Added
 
@@ -21,6 +21,7 @@ All notable changes to `mysql` are documented here.
 - Preserved configured hostnames until connect time so TLS SNI uses the original hostname.
 - Disabled multi-result client capability advertising until the driver exposes multi-result consumption.
 - Added timeout-aware TCP connect, read, and write paths.
+- Replaced the remaining `std.data.json` error adapter surface with serde serializers.
 
 ### Fixed
 
