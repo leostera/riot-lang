@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "e3fa2fe39de02b2c"
+dependency_hash = "b71289aadff6df07"
 
 [[packages]]
 name = "blink"
@@ -319,6 +319,14 @@ name = "syn"
 root = "packages/syn"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "colors", package = { name = "colors" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "testcontainers"
+root = "packages/testcontainers"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "docker-client", package = { name = "docker-client" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

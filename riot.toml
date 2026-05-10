@@ -47,6 +47,7 @@ members = [
   "packages/suri-mailer",
   "packages/swisstable",
   "packages/syn",
+  "packages/testcontainers",
   "packages/tty",
   "packages/typ",
   "packages/riot-cli",

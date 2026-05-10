@@ -51,6 +51,7 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/riot-install/AGENTS.md`: binary promotion/install orchestration on top of `riot-build`
 - `packages/riot-fix/AGENTS.md`: linting and auto-fix pipeline
 - `packages/fixme/AGENTS.md`: shared rule-authoring types used by riot-fix and generated `fixme-runner` providers
+- `packages/testcontainers/AGENTS.md`: test-oriented Docker container lifecycle helpers on top of docker-client
 - `packages/tty/AGENTS.md`: terminal control and rendering helpers
 - `packages/typ/AGENTS.md`: experimental lowered IR, prototype typing, and snapshot-driven type-analysis exploration
 - `compiler/asm/AGENTS.md`: typed assembly documents and per-ISA emission DSLs
