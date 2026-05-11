@@ -29,6 +29,8 @@ type state = {
 
 let buffer_capacity = 4_096
 
+let max_container_length = 1_000_000
+
 let error_at = fun pos message ->
   raise
     (Serde.Decode_error (`Msg (message ^ " at byte " ^ Int.to_string pos)))
@@ -192,6 +194,15 @@ let decode_length = fun state kind ->
   else
     value
 
+let decode_container_length = fun state kind ->
+  let value = decode_length state kind in
+  if value > max_container_length then
+    error_at
+      (position state.input)
+      ("decoded " ^ kind ^ " length exceeds maximum supported elements")
+  else
+    value
+
 let raise_int_out_of_range = fun pos -> error_at pos "decoded int does not fit in an OCaml int"
 
 let variant_uses_u8 = fun cases -> Array.length cases <= 0x100
@@ -259,20 +270,20 @@ let read_int = fun state ->
       )
 
 let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
-  let len = decode_length state "list" in
-  let values = Vector.with_capacity ~size:len in
+  let len = decode_container_length state "list" in
+  let values = Vector.with_capacity ~size:(min len 64) in
   for _index = 0 to len - 1 do
     Vector.push values ~value:(decode.run backend state)
   done;
   values
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
-  let len = decode_length state "array" in
+  let len = decode_container_length state "array" in
   Array.init ~count:len ~fn:(fun _index -> decode.run backend state)
 
 and dict_backend: 'value. state -> 'value De.t -> (string * 'value) vec = fun state decode ->
-  let len = decode_length state "dict" in
-  let values = Vector.with_capacity ~size:len in
+  let len = decode_container_length state "dict" in
+  let values = Vector.with_capacity ~size:(min len 64) in
   for _index = 0 to len - 1 do
     let key = read_string state in
     Vector.push values ~value:(key, decode.run backend state)

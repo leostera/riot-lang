@@ -338,6 +338,14 @@ let test_rejects_truncated_string = fun _ctx ->
   | Error err -> Error ("expected truncated string error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected truncated string input to fail"
 
+let test_rejects_oversized_container_length = fun _ctx ->
+  match Serde_bin.from_string (De.list De.string) "\x28\x69\x6f\x72\xda" with
+  | Error (`Msg msg) when String.starts_with
+    ~prefix:"decoded list length exceeds maximum supported elements"
+    msg -> Ok ()
+  | Error err -> Error ("expected oversized list error, got " ^ Serde.Error.to_string err)
+  | Ok _ -> Error "expected oversized list input to fail"
+
 let test_rejects_trailing_bytes = fun _ctx ->
   match Serde_bin.from_string De.bool "\001\000" with
   | Error (`Msg msg) when String.starts_with ~prefix:"extra input after binary value" msg -> Ok ()
@@ -373,6 +381,7 @@ let tests =
     case "serde-bin decode_prefix reports consumed bytes" test_decode_prefix_reports_consumed_bytes;
     case "serde-bin rejects invalid bools" test_rejects_invalid_bool;
     case "serde-bin rejects truncated strings" test_rejects_truncated_string;
+    case "serde-bin rejects oversized container lengths" test_rejects_oversized_container_length;
     case "serde-bin rejects trailing bytes" test_rejects_trailing_bytes;
   ]
 
