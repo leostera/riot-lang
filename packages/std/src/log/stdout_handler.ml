@@ -114,7 +114,8 @@ let flush = fun () ->
             Select ()
         | _ -> Skip
       in
-      receive ~selector ()
+      try receive ~selector ~timeout:(Time.Duration.from_millis 100) () with
+      | Receive_timeout -> ()
 
 (** Child spec for supervision *)
 let child_spec = fun () ->

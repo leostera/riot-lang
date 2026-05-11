@@ -2,6 +2,20 @@
 
 All notable changes to `std` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for structured data parsers, URI/glob/path parsers, scalar parsers, and encoding decoders.
+
+### Fixed
+
+- TOML arrays now reject unexpected tokens instead of recursing indefinitely.
+- Glob character classes now handle trailing and malformed ranges without unchecked reads.
+- `Log.flush` now returns after a bounded wait if the stdout handler is stale or unavailable instead of blocking forever.
+- Snapshot color tests and timer measurement tests were stabilized so they do not race shared environment state or scheduler wakeups.
+- Empty version requirements now return a typed parse error instead of reading past the input.
+
 ## 0.0.34 - 2026-05-10
 
 ### Added

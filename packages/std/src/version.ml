@@ -266,10 +266,11 @@ let parse_requirement = fun req_string ->
         (Some ReqGte, 2)
       else if starts_with "<=" then
         (Some ReqLte, 2)
-      else if len > 0 && String.get_unchecked s ~at:0 = '>' then
-        (Some ReqGt, 1)
-      else if len > 0 && String.get_unchecked s ~at:0 = '<' then
-        (Some ReqLt, 1)
+      else if len > 0 then
+        match String.get_unchecked s ~at:0 with
+        | '>' -> (Some ReqGt, 1)
+        | '<' -> (Some ReqLt, 1)
+        | _ -> (None, 0)
       else
         (None, 0)
     in

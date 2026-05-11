@@ -164,7 +164,13 @@ let parse = fun content ->
               advance ();
               Array (List.reverse !items)
           | None -> raise (Parse_exception (Unterminated_array { position = start_pos }))
-          | Some c -> parse_items ()
+          | Some c ->
+              raise
+                (Parse_exception (Unexpected_char {
+                  position = !pos;
+                  found = c;
+                  expected = ", or ]";
+                }))
         )
     in
     parse_items ()

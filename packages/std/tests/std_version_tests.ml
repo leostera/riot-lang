@@ -171,6 +171,14 @@ let test_parse_requirement_minor_prefix = fun _ctx ->
   | Version.PrefixMinorRequirement (1, 2) -> Ok ()
   | _ -> Error "expected Version.parse_requirement 1.2 to return a minor-prefix requirement"
 
+let test_parse_requirement_rejects_empty = fun _ctx ->
+  match Version.parse_requirement "" with
+  | Error (Version.Invalid_format "") -> Ok ()
+  | Ok requirement ->
+      Error ("expected empty requirement to be rejected but parsed "
+      ^ Version.requirement_to_string requirement)
+  | Error _ -> Error "expected empty requirement to return Invalid_format \"\""
+
 let test_requirement_to_string_roundtrips = fun _ctx ->
   let requirement = parse_requirement ">= 1.2.3" in
   if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
@@ -263,6 +271,7 @@ let tests =
     case "Version.parse_requirement parses tilde requirements" test_parse_requirement_tilde;
     case "Version.parse_requirement parses bare major prefixes" test_parse_requirement_major_prefix;
     case "Version.parse_requirement parses bare minor prefixes" test_parse_requirement_minor_prefix;
+    case "Version.parse_requirement rejects empty strings" test_parse_requirement_rejects_empty;
     case
       "Version.requirement_to_string renders canonical requirements"
       test_requirement_to_string_roundtrips;

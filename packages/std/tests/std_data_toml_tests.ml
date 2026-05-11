@@ -775,6 +775,13 @@ let test_unterminated_array =
     | Error _ -> Ok ()
     | Ok _ -> Error "Should have failed on unterminated array"
 
+let test_array_rejects_unexpected_token =
+  Test.case "detect unexpected token in array" @@ fun _ctx ->
+    let input = "arr = [ 0\n=}" in
+    match Toml.parse input with
+    | Error _ -> Ok ()
+    | Ok _ -> Error "Should have failed on unexpected array token"
+
 let test_unterminated_inline_table =
   Test.case "detect unterminated inline table" @@ fun _ctx ->
     let input = {|tbl = { a = "1", b = "2"|} in
@@ -857,6 +864,7 @@ let main ~args =
     test_mixed_inline_and_section_tables;
     test_unterminated_string;
     test_unterminated_array;
+    test_array_rejects_unexpected_token;
     test_unterminated_inline_table;
     test_missing_equals;
     test_duplicate_keys_in_section;
