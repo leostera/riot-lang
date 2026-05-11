@@ -2,6 +2,16 @@
 
 All notable changes to `blink` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for Blink server-sent event parsing.
+
+### Fixed
+
+- Blink server-sent event parsing now treats arbitrary byte streams safely when splitting and inspecting lines.
+
 ## 0.0.34 - 2026-05-10
 
 ### Changed

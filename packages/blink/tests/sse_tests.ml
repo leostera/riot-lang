@@ -59,6 +59,13 @@ let test_crlf_delimiter = fun _ctx ->
       Ok ()
   | _ -> Error "expected CRLF-delimited SSE event"
 
+let test_invalid_bytes_do_not_crash = fun _ctx ->
+  match S.parse_event "\x0a\xf9\xd7\x64\x0a\x0a\xe0" with
+  | Some (S.Skip, remaining) ->
+      Test.assert_equal ~expected:"\xe0" ~actual:remaining;
+      Ok ()
+  | _ -> Error "expected malformed byte event to be skipped"
+
 let test_incomplete_buffer_returns_none = fun _ctx ->
   Test.assert_equal ~expected:None ~actual:(S.parse_event "data: partial");
   Ok ()
@@ -72,6 +79,7 @@ let tests =
     case "empty frame is skipped" test_empty_frame_is_skipped;
     case "done marker stops stream" test_done_marker_stops_stream;
     case "crlf delimiter" test_crlf_delimiter;
+    case "invalid bytes do not crash" test_invalid_bytes_do_not_crash;
     case "incomplete buffer returns none" test_incomplete_buffer_returns_none;
   ]
 

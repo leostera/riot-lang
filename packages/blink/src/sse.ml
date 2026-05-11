@@ -59,14 +59,17 @@ let split_event = fun buffer ->
 
 let strip_trailing_cr = fun line ->
   let len = String.length line in
-  if len > 0 && String.get_unchecked line ~at:(len - 1) = '\r' then
+  if len = 0 then
+    line
+  else if String.get_unchecked line ~at:(len - 1) = '\r' then
     String.sub line ~offset:0 ~len:(len - 1)
   else
     line
 
 let find_colon = fun line ->
+  let len = String.length line in
   let rec loop offset =
-    if offset >= String.length line then
+    if offset >= len then
       None
     else if String.get_unchecked line ~at:offset = ':' then
       Some offset
@@ -76,18 +79,38 @@ let find_colon = fun line ->
   loop 0
 
 let field_value = fun line colon_at ->
-  let raw = String.sub line ~offset:(colon_at + 1) ~len:(String.length line - colon_at - 1) in
-  if String.starts_with ~prefix:" " raw then
-    String.sub raw ~offset:1 ~len:(String.length raw - 1)
-  else
-    raw
+  let len = String.length line in
+  let start =
+    let after_colon = colon_at + 1 in
+    if after_colon < len then
+      if String.get_unchecked line ~at:after_colon = ' ' then
+        after_colon + 1
+      else
+        after_colon
+    else
+      after_colon
+  in
+  String.sub line ~offset:start ~len:(len - start)
+
+let split_lines = fun input ->
+  let len = String.length input in
+  let rec loop start index acc =
+    if index >= len then
+      List.reverse (String.sub input ~offset:start ~len:(len - start) :: acc)
+    else if String.get_unchecked input ~at:index = '\n' then
+      let line = String.sub input ~offset:start ~len:(index - start) in
+      loop (index + 1) (index + 1) (line :: acc)
+    else
+      loop start (index + 1) acc
+  in
+  loop 0 0 []
 
 let parse_event = fun buffer ->
   match split_event buffer with
   | None -> None
   | Some ("", remaining) -> Some (Skip, remaining)
   | Some (event_text, remaining) ->
-      let lines = String.split ~by:"\n" event_text in
+      let lines = split_lines event_text in
       let data_lines = ref [] in
       let event_type = ref None in
       let id = ref None in
@@ -96,7 +119,9 @@ let parse_event = fun buffer ->
         lines
         ~fn:(fun raw_line ->
           let line = strip_trailing_cr raw_line in
-          if String.equal line "" || String.starts_with ~prefix:":" line then
+          if String.length line = 0 then
+            ()
+          else if String.get_unchecked line ~at:0 = ':' then
             ()
           else
             match find_colon line with
