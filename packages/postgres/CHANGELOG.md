@@ -2,6 +2,12 @@
 
 All notable changes to `postgres` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for PostgreSQL frontend writers, backend message reading, and connection-string parsing.
+
 ## Unreleased
 
 ### Changed
