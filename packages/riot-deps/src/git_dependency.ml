@@ -172,17 +172,25 @@ let parse_source_locator = fun source_locator ->
       if not (String.equal host "github.com") then
         Error (UnsupportedSourceHost { source = source_locator; host })
       else
-        let subdir =
+        let subdir_result =
           match rest with
-          | [] -> None
-          | _ -> Some (Path.v (String.concat "/" rest))
+          | [] -> Ok None
+          | _ ->
+              Path.from_string (String.concat "/" rest)
+              |> Result.map ~fn:(fun path -> Some path)
+              |> Result.map_err
+                ~fn:(fun _ ->
+                  InvalidSourceSpec { source = source_locator; reason = InvalidLocatorShape })
         in
-        Ok {
-          host;
-          owner;
-          repo;
-          subdir;
-        }
+        Result.map
+          subdir_result
+          ~fn:(fun subdir ->
+            {
+              host;
+              owner;
+              repo;
+              subdir;
+            })
   | _ -> Error (InvalidSourceSpec { source = source_locator; reason = InvalidLocatorShape })
 
 let run_git = fun ?cwd args ->

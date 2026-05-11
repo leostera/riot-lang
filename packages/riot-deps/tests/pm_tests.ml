@@ -2955,6 +2955,22 @@ let test_git_dependency_parse_source_locator_reports_invalid_shape = fun _ctx ->
       Error ("expected invalid locator shape error, got: " ^ Riot_deps.Git_dependency.message err)
   | Ok _ -> Error "expected incomplete source locator to fail"
 
+let test_git_dependency_parse_source_locator_rejects_invalid_subdir_path = fun _ctx ->
+  match Riot_deps.Git_dependency.parse_source_locator "github.com/riot/tests/\xd2" with
+  | Error (
+    Riot_deps.Git_dependency.InvalidSourceSpec {
+      source;
+      reason = Riot_deps.Git_dependency.InvalidLocatorShape;
+    }
+  ) ->
+      if String.equal source "github.com/riot/tests/\xd2" then
+        Ok ()
+      else
+        Error "expected invalid subdir locator to preserve raw source"
+  | Error err ->
+      Error ("expected invalid subdir locator error, got: " ^ Riot_deps.Git_dependency.message err)
+  | Ok _ -> Error "expected invalid subdir source locator to fail"
+
 let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
   with_tempdir
     "riot_deps_git_checkout"
@@ -4784,6 +4800,9 @@ let tests =
     case
       "git dependency: reports invalid source locator shape"
       test_git_dependency_parse_source_locator_reports_invalid_shape;
+    case
+      "git dependency: rejects invalid source locator subdir path"
+      test_git_dependency_parse_source_locator_rejects_invalid_subdir_path;
     case
       "git dependency: github shorthand locator parses for remote commands"
       test_git_dependency_parse_source_locator_accepts_github_shorthand;
