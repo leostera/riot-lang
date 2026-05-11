@@ -1,6 +1,6 @@
 [package]
 name = "riot-fuzz"
-version = "0.0.35"
+version = "0.0.36"
 description = "Coverage-guided fuzzing engine for Riot test binaries"
 license = "Apache-2.0"
 public = false

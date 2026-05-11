@@ -2,10 +2,11 @@
 
 All notable changes to `testcontainers` are documented here.
 
-## Unreleased
+## 0.0.36 - 2026-05-11
 
 ### Added
 
+- Added `Testcontainers.setup`, `Testcontainers.teardown`, and `Testcontainers.current_container` for suite-scoped container fixtures backed by `Std.Test.Context`.
 - Added `Testcontainers.docker_available` for packages that need to skip container-backed tests when Docker is unavailable.
 
 ### Changed

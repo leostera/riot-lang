@@ -2,6 +2,12 @@
 
 All notable changes to `std` are documented here.
 
+## 0.0.36 - 2026-05-11
+
+### Added
+
+- Added typed `Std.Test.Context` keys and suite context stores so setup hooks can pass fixture state to test cases without changing how tests are defined.
+
 ## 0.0.35 - 2026-05-11
 
 ### Added

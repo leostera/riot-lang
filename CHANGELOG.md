@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.36 - 2026-05-11
+
+### riot
+- `riot test` suite binaries can now share typed setup state between suite hooks and test cases. This keeps the existing case definition API while letting expensive fixtures be created once for a selected suite run.
+
 ## 0.0.35 - 2026-05-11
 
 ### riot
