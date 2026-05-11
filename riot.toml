@@ -14,6 +14,7 @@ members = [
   "packages/dotenv",
   "packages/fixme",
   "packages/gooey",
+  "packages/human-units",
   #"packages/hello-foreign",
   "packages/http",
   "packages/ignore",

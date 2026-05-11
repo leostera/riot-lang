@@ -7,6 +7,7 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/kernel/AGENTS.md`: C FFI, platform shims, file descriptors, event loop primitives
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
 - `packages/colors/AGENTS.md`: ANSI palette mapping, sRGB/XYZ/LUV conversions, and perceptual color blending
+- `packages/human-units/AGENTS.md`: human-readable byte and duration formatting/parsing
 - `packages/ignore/AGENTS.md`: ignore-aware recursive walking, gitignore-style precedence, and subtree pruning
 - `packages/jollyroger/AGENTS.md`: terminal design-system primitives for Riot CLI layout, colors, and status labels
 - `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior

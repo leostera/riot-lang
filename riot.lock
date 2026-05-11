@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "b9751989caf58238"
+dependency_hash = "961f187d0dc5e99c"
 
 [[packages]]
 name = "blink"
@@ -65,6 +65,14 @@ provenance = { kind = "workspace" }
 dependencies = [{ name = "colors", package = { name = "colors" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = []
 dev_dependencies = []
+
+[[packages]]
+name = "human-units"
+root = "packages/human-units"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }]
 
 [[packages]]
 name = "http"
@@ -200,7 +208,7 @@ root = "packages/sqlite"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "serde", package = { name = "serde" } }, { name = "sqlx-driver", package = { name = "sqlx-driver" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
-dev_dependencies = []
+dev_dependencies = [{ name = "propane", package = { name = "propane" } }, { name = "sqlx", package = { name = "sqlx" } }]
 
 [[packages]]
 name = "sqlx"
