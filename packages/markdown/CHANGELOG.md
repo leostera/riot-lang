@@ -2,6 +2,12 @@
 
 All notable changes to `markdown` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for markdown parsing.
+
 ## 0.0.27 - 2026-05-01
 
 ### Changed
