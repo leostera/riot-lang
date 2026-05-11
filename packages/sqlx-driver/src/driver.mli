@@ -73,6 +73,16 @@ module type Intf = sig
   *)
   val execute: statement -> Value.t list -> (result_set, error) result
 
+  (**
+     Prepare a raw migration body for execution.
+
+     SQLx keeps migration discovery, checksums, ordering, and metadata table
+     updates in the migration runner. Drivers receive the raw migration text
+     here and may return one executable statement, split the text into multiple
+     statements, or otherwise normalize it for the driver's execution path.
+  *)
+  val prepare_migration: string -> (string list, error) result
+
   (** Fetch the next row from a result set, or `None` when exhausted. *)
   val fetch_row: result_set -> Row.t option
 

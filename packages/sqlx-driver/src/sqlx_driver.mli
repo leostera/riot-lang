@@ -27,6 +27,7 @@
 
      let connect config = ...
      let execute stmt params = ...
+     let prepare_migration sql = Ok [ sql ]
      (* implement all required functions *)
    end
    ```

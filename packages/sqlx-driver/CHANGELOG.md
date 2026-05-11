@@ -2,6 +2,12 @@
 
 All notable changes to `sqlx-driver` are documented here.
 
+## Unreleased
+
+### Added
+
+- Added a driver migration preparation hook for backend-specific statement handling.
+
 ## 0.0.33 - 2026-05-10
 
 ### Changed

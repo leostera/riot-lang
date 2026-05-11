@@ -29,6 +29,8 @@ module type Intf = sig
 
   val execute: statement -> Value.t list -> (result_set, error) result
 
+  val prepare_migration: string -> (string list, error) result
+
   val fetch_row: result_set -> Row.t option
 
   val rows_affected: result_set -> int

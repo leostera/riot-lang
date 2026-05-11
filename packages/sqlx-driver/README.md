@@ -26,6 +26,8 @@ riot add sqlx-driver
 - the driver interface a backend must implement;
 - value and row abstractions shared across backends;
 - a common error vocabulary for SQL-facing code.
+- a migration preparation hook so adapters can split or normalize raw migration
+  bodies before SQLx executes them.
 
 ## Good references
 
