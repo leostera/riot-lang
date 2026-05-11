@@ -222,6 +222,8 @@ let fetch_row = fun result_set -> Queue.pop result_set.rows
 
 let rows_affected = fun result_set -> result_set.rows_affected
 
+let prepare_migration = fun sql -> Ok [ sql ]
+
 let execute_simple = fun conn sql ->
   let* native =
     Native.prepare conn.handle sql

@@ -2,6 +2,12 @@
 
 All notable changes to `sqlite` are documented here.
 
+## Unreleased
+
+### Changed
+
+- Implemented the SQLx driver migration preparation hook as a single-statement pass-through.
+
 ## 0.0.34 - 2026-05-11
 
 ### Added
