@@ -130,6 +130,19 @@ let test_content_type_parsing = fun _ctx ->
     )
   | _ -> Error "Parse failed"
 
+let test_empty_parameter_value = fun _ctx ->
+  let value = "tpart/mixed; boxe d; ndalet x =" in
+  let headers = [
+    ("Content-Type", value);
+    ("Content-Disposition", value);
+    ("Content-Transfer-Encoding", value);
+    ("Content-Id", value);
+  ]
+  in
+  match parse ~headers ~body:value with
+  | Ok _ -> Ok ()
+  | Error e -> Error ("Parse failed: " ^ e)
+
 let test_encoding_detection = fun _ctx ->
   let headers = [ ("Content-Transfer-Encoding", "base64"); ] in
   let body = "test" in
@@ -151,6 +164,7 @@ let tests = let open Test in
   case "Quoted-Printable Content-Transfer-Encoding" test_quoted_printable;
   case "Nested multipart parsing" test_nested_multipart;
   case "Content-Type parameter parsing" test_content_type_parsing;
+  case "Empty MIME parameter value parsing" test_empty_parameter_value;
   case "Encoding variant detection" test_encoding_detection;
 ]
 

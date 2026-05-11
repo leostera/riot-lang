@@ -94,6 +94,13 @@ let find_char_from = fun value ~start ~char ->
   else
     loop start
 
+let slice = fun value ~offset ~len ->
+  let value_len = String.length value in
+  if offset < 0 || len <= 0 || offset > value_len - len then
+    ""
+  else
+    String.sub value ~offset ~len
+
 let parse_rfc2231_value = fun value ->
   match String.split_on_char '\'' value with
   | [ charset; _lang; encoded ] -> (Some charset, percent_decode encoded)
@@ -122,21 +129,20 @@ let rec parse_content_type_string = fun value ->
     | None -> List.rev acc
     | Some eq_idx ->
         let key =
-          String.trim (String.sub str ~offset:0 ~len:eq_idx)
+          String.trim (slice str ~offset:0 ~len:eq_idx)
           |> String.lowercase_ascii
         in
-        let rest = String.sub str ~offset:(eq_idx + 1) ~len:(String.length str - eq_idx - 1) in
+        let rest = slice str ~offset:(eq_idx + 1) ~len:(String.length str - eq_idx - 1) in
         let value_end =
-          if String.length rest > 0 && String.get_unchecked rest ~at:0 = '"' then
+          if String.length rest = 0 then
+            ("", "")
+          else if String.get_unchecked rest ~at:0 = '"' then
             match find_char_from rest ~start:1 ~char:'"' with
             | Some close_idx ->
-                let value = String.sub rest ~offset:1 ~len:(close_idx - 1) in
+                let value = slice rest ~offset:1 ~len:(close_idx - 1) in
                 let remaining =
                   if close_idx + 1 < String.length rest then
-                    String.sub
-                      rest
-                      ~offset:(close_idx + 1)
-                      ~len:(String.length rest - close_idx - 1)
+                    slice rest ~offset:(close_idx + 1) ~len:(String.length rest - close_idx - 1)
                   else
                     ""
                 in
@@ -145,10 +151,10 @@ let rec parse_content_type_string = fun value ->
           else
             match String.index_of rest ~char:';' with
             | Some semi_idx ->
-                let value = String.trim (String.sub rest ~offset:0 ~len:semi_idx) in
+                let value = String.trim (slice rest ~offset:0 ~len:semi_idx) in
                 let remaining =
                   String.trim
-                    (String.sub rest ~offset:(semi_idx + 1) ~len:(String.length rest - semi_idx - 1))
+                    (slice rest ~offset:(semi_idx + 1) ~len:(String.length rest - semi_idx - 1))
                 in
                 (value, remaining)
             | None -> (String.trim rest, "")
@@ -159,9 +165,9 @@ let rec parse_content_type_string = fun value ->
   match String.index_of value ~char:';' with
   | None -> (String.trim value, [])
   | Some idx ->
-      let main_type = String.trim (String.sub value ~offset:0 ~len:idx) in
+      let main_type = String.trim (slice value ~offset:0 ~len:idx) in
       let params_str =
-        String.trim (String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1))
+        String.trim (slice value ~offset:(idx + 1) ~len:(String.length value - idx - 1))
       in
       let raw_params = parse_params params_str [] in
       let params = combine_rfc2231_params raw_params in
@@ -185,15 +191,15 @@ and combine_rfc2231_params = fun raw_params ->
     match String.last_index key '*' with
     | None -> `Regular (key, value)
     | Some idx ->
-        let name = String.sub key ~offset:0 ~len:idx in
-        let suffix = String.sub key ~offset:(idx + 1) ~len:(String.length key - idx - 1) in
+        let name = slice key ~offset:0 ~len:idx in
+        let suffix = slice key ~offset:(idx + 1) ~len:(String.length key - idx - 1) in
         if suffix = "" then
           `Encoded (name, value)
         else
           let is_encoded = String.ends_with ~suffix:"*" suffix in
           let num_str =
             if is_encoded then
-              String.sub suffix ~offset:0 ~len:(String.length suffix - 1)
+              slice suffix ~offset:0 ~len:(String.length suffix - 1)
             else
               suffix
           in
@@ -235,10 +241,8 @@ let parse_content_type = fun value ->
   match String.index_of main_type ~char:'/' with
   | None -> { media_type = main_type; subtype = ""; parameters = params }
   | Some slash ->
-      let media = String.sub main_type ~offset:0 ~len:slash in
-      let sub =
-        String.sub main_type ~offset:(slash + 1) ~len:(String.length main_type - slash - 1)
-      in
+      let media = slice main_type ~offset:0 ~len:slash in
+      let sub = slice main_type ~offset:(slash + 1) ~len:(String.length main_type - slash - 1) in
       { media_type = media; subtype = sub; parameters = params }
 
 let parse_content_disposition = fun value ->
@@ -247,8 +251,8 @@ let parse_content_disposition = fun value ->
     match String.index_of value ~char:';' with
     | None -> (value, [])
     | Some idx ->
-        let dtype = String.trim (String.sub value ~offset:0 ~len:idx) in
-        let rest = String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1) in
+        let dtype = String.trim (slice value ~offset:0 ~len:idx) in
+        let rest = slice value ~offset:(idx + 1) ~len:(String.length value - idx - 1) in
         let (_, parameters) = parse_content_type_string ("x;" ^ rest) in
         (dtype, parameters)
   in
