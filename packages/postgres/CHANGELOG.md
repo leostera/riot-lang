@@ -8,8 +8,6 @@ All notable changes to `postgres` are documented here.
 
 - Added fuzz coverage for PostgreSQL frontend writers, backend message reading, and connection-string parsing.
 
-## Unreleased
-
 ### Changed
 
 - Implemented the SQLx driver migration preparation hook as a single-statement pass-through.

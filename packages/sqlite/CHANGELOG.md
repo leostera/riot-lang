@@ -2,7 +2,7 @@
 
 All notable changes to `sqlite` are documented here.
 
-## Unreleased
+## 0.0.35 - 2026-05-11
 
 ### Changed
 

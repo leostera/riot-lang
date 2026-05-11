@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.35 - 2026-05-11
+
+### riot
+- `riot test` and `riot fuzz` keep fuzz cases discovered automatically from suite metadata, so packages can run campaigns without hand-maintained target declarations.
+- `riot-planner` exposes resolved dependency analysis, and `riot-store` can save prehashed action artifacts. Build tooling can reuse normalized dependency information and avoid hashing artifacts twice when hashes are already known.
+- `riot-toolchain` can disable OCaml binary annotation emission for build modes that do not need `.cmt` or `.cmti` files.
+- `riot-deps` rejects invalid source subdirectories before they enter manifest or lockfile flows.
+
 ## 0.0.34 - 2026-05-10
 
 ### riot

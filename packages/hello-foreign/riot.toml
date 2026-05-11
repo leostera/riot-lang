@@ -1,6 +1,6 @@
 [package]
 name = "hello-foreign"
-version = "0.0.34"
+version = "0.0.35"
 description = "OCaml-to-Rust FFI smoke tests"
 license = "Apache-2.0"
 

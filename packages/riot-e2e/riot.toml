@@ -1,6 +1,6 @@
 [package]
 name = "riot-e2e"
-version = "0.0.34"
+version = "0.0.35"
 description = "End-to-end black-box tests for the Riot binary"
 license = "Apache-2.0"
 public = false
