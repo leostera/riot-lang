@@ -855,6 +855,8 @@ let fetch_row = fun result_set -> Collections.Queue.pop result_set.rows
 
 let rows_affected = fun result_set -> result_set.rows_affected
 
+let prepare_migration = fun sql -> Ok [ sql ]
+
 let execute_simple_command = fun conn sql ->
   match prepare conn sql with
   | Error error -> Error error
