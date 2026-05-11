@@ -69,7 +69,7 @@ let test_package_commands_handle_multiple_local_dependencies =
             assert_output_contains
               ~cmd:"riot add -p package-cmd-e2e"
               add_output
-              "riot.pm.manifest.updated"
+              "riot.deps.manifest.updated"
           in
           let* () = assert_contains starter_manifest {|widgets = { path = "../../vendor/widgets" }|} in
           let* () = assert_contains starter_manifest {|gadgets = { path = "../../vendor/gadgets" }|} in
@@ -90,7 +90,7 @@ let test_package_commands_handle_multiple_local_dependencies =
             assert_output_contains
               ~cmd:"riot rm -p package-cmd-e2e"
               remove_output
-              "riot.pm.manifest.updated"
+              "riot.deps.manifest.updated"
           in
           let* () = assert_not_contains starter_manifest "widgets" in
           let* () = assert_not_contains starter_manifest "gadgets" in

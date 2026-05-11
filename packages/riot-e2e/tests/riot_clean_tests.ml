@@ -45,6 +45,20 @@ let json_type_is = fun expected json ->
     )
   | None -> false
 
+let json_event_is = fun expected json ->
+  match Data.Json.get_field "event" json with
+  | Some value -> (
+      match Data.Json.get_string value with
+      | Some actual -> String.equal actual expected
+      | None -> false
+    )
+  | None -> false
+
+let json_payload = fun json ->
+  match Data.Json.get_field "data" json with
+  | Some data -> data
+  | None -> json
+
 let json_int_field = fun name json ->
   match Data.Json.get_field name json with
   | Some value -> Data.Json.get_int value
@@ -56,12 +70,14 @@ let json_positive_field = fun name json ->
   | None -> false
 
 let clean_plan_removes_cache = fun json ->
-  if json_type_is "CacheGcPlanComputed" json then
-    json_positive_field "deleted_entries" json || json_positive_field "deleted_generations" json
+  if json_type_is "CacheGcPlanComputed" json || json_event_is "riot.cache.gc.plan.computed" json then
+    let payload = json_payload json in
+    json_positive_field "deleted_entries" payload || json_positive_field "deleted_generations" payload
   else
     false
 
-let clean_completed = fun json -> json_type_is "CacheGcCompleted" json
+let clean_completed = fun json ->
+  json_type_is "CacheGcCompleted" json || json_event_is "riot.cache.gc.completed" json
 
 let assert_clean_removed_entries = fun (output: command_output) ->
   let* jsons = parse_json_lines ~cmd:"riot clean --json" output in
