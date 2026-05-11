@@ -7,6 +7,7 @@ val create:
   catalog:Package_catalog.t ->
   store:Riot_store.Store.t ->
   package_planning:Package_planning.t ->
+  package_sandbox:Package_sandbox.t ->
   module_planning:Module_planning.t ->
   action_executor:Action_executor.t ->
   unit ->
@@ -46,6 +47,9 @@ val plan_ocaml_generated:
   t -> Rule.ocaml_generated -> (Work_request.t list, Error.t) result
 
 val execute_ocaml_interface:
+  t -> Work_registry.t -> Rule.ocaml_source -> (Work_result.t, Error.t) result
+
+val execute_ocaml_byte_implementation:
   t -> Work_registry.t -> Rule.ocaml_source -> (Work_result.t, Error.t) result
 
 val execute_ocaml_implementation:

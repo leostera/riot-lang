@@ -158,12 +158,19 @@ let native_action_toolchain = fun root target ->
     ~config:(Riot_model.Toolchain_config.from_root ~root)
     ~target
 
-let module_output_paths = fun module_stem -> [
-  Path.v (module_stem ^ ".cmt");
-  Path.v (module_stem ^ ".cmi");
-  Path.v (module_stem ^ ".cmx");
-  Path.v (module_stem ^ ".o");
-]
+let module_output_paths = fun ?dir module_stem ->
+  let output = fun extension ->
+    let path = Path.v (module_stem ^ extension) in
+    match dir with
+    | Some dir -> Path.(dir / path)
+    | None -> path
+  in
+  [
+    output ".cmt";
+    output ".cmi";
+    output ".cmx";
+    output ".o";
+  ]
 
 let native_compile_library_action = fun ~source_count ~revision:_revision ->
   let rec loop index objects =
@@ -195,19 +202,18 @@ let native_compile_sources_action = fun ~source_count ~revision ->
       }
     else
       let module_stem = "BenchMod" ^ Int.to_string index in
+      let source_dir = Path.v "generated" in
       let content = "let value = " ^ Int.to_string (revision + index) ^ "\n" in
       let source =
         Action.{
-          source = Path.v ("generated/" ^ module_stem ^ ".ml");
-          staged = Path.v (module_stem ^ ".ml");
+          source = Path.(source_dir / Path.v (module_stem ^ ".ml"));
           kind = LibraryImplementation;
           content = Some content;
-          opens = [];
         }
       in
       let outputs =
         List.fold_left
-          (module_output_paths module_stem)
+          (module_output_paths ~dir:source_dir module_stem)
           ~init:outputs
           ~fn:(fun outputs output -> output :: outputs)
       in
@@ -221,10 +227,8 @@ let native_compile_source_action = fun ~revision ->
     source =
       {
         Action.source = Path.v "generated/BenchSource.ml";
-        staged = Path.v "BenchSource.ml";
         kind = Action.LibraryImplementation;
         content = Some ("let value = " ^ Int.to_string revision ^ "\n");
-        opens = [];
       };
     outputs = module_output_paths module_stem;
     output = Path.v "BenchSource.cmx";
@@ -962,15 +966,15 @@ let expect_kernel_partial_event_action_results = fun executor ->
   let executed = count_status `Executed in
   let failed = count_status `Failed in
   if
-    Int.equal (List.length results) 220
-    && Int.equal cached 218
+    Int.equal (List.length results) 254
+    && Int.equal cached 252
     && Int.equal executed 2
     && Int.equal failed 0
   then
     ()
   else
     panic
-      ("kernel partial event benchmark expected actions total=220 cached=218 executed=2 failed=0, got total="
+      ("kernel partial event benchmark expected actions total=254 cached=252 executed=2 failed=0, got total="
       ^ Int.to_string (List.length results)
       ^ " cached="
       ^ Int.to_string cached

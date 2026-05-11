@@ -15,6 +15,7 @@ let execute_node = fun _registry node ->
   | ActionPlan _
   | ModuleDependencies _
   | OCamlInterface _
+  | OCamlByteImplementation _
   | OCamlImplementation _
   | OCamlGenerated _
   | CObject _
@@ -42,6 +43,7 @@ let run_intent = fun ~config intent ->
     | ActionPlan _
     | ModuleDependencies _
     | OCamlInterface _
+    | OCamlByteImplementation _
     | OCamlImplementation _
     | OCamlGenerated _
     | CObject _
@@ -68,6 +70,7 @@ let run_intent = fun ~config intent ->
       | ActionPlan _
       | ModuleDependencies _
       | OCamlInterface _
+      | OCamlByteImplementation _
       | OCamlImplementation _
       | OCamlGenerated _
       | CObject _

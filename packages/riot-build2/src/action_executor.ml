@@ -139,100 +139,75 @@ let resolve_source = fun ~package_root ~sandbox_dir source ->
   if Path.is_absolute source then
     source
   else
-    let package_source = Path.join package_root source in
-    match Fs.exists package_source with
-    | Ok true -> package_source
+    let sandbox_source = Path.join sandbox_dir source in
+    match Fs.exists sandbox_source with
+    | Ok true -> sandbox_source
     | Ok false
-    | Error _ -> Path.join sandbox_dir source
+    | Error _ ->
+        let package_source = Path.join package_root source in
+        match Fs.exists package_source with
+        | Ok true -> package_source
+        | Ok false
+        | Error _ -> sandbox_source
 
 let source_include_dir = fun source ->
   match Path.parent source with
   | Some dir -> dir
   | None -> Path.v "."
 
-let stage_single_compile_library_source = fun ~package ~package_root ~sandbox_dir source ->
-  let dst = Path.join sandbox_dir source.Action.staged in
-  let* () =
-    ensure_parent_dir dst
-    |> Result.map_err
-      ~fn:(fun error ->
-        Error.ActionExecutionFailed {
-          package;
-          reason = "failed to create compile-library staging parent: " ^ IO.error_message error;
-        })
-  in
-  let source_path = resolve_source ~package_root ~sandbox_dir source.source in
-  let* raw =
-    match source.content with
-    | Some content -> Ok content
-    | None ->
-        Fs.read source_path
-        |> Result.map_err
-          ~fn:(fun error ->
-            Error.ExecutorInvariantViolated {
-              message = "failed to read compile-library source "
-              ^ Path.to_string source_path
-              ^ ": "
-              ^ IO.error_message error;
-            })
-  in
-  let prefix =
-    let opens =
-      source.opens
-      |> List.map ~fn:(fun module_name -> "open! " ^ module_name)
-      |> String.concat "\n"
-    in
-    let directive = "# 1 \"" ^ String.escaped (Path.to_string source_path) ^ "\"" in
-    if String.is_empty opens then
-      directive ^ "\n"
-    else
-      opens ^ "\n" ^ directive ^ "\n"
-  in
-  Fs.write (prefix ^ raw) dst
-  |> Result.map_err
-    ~fn:(fun error ->
-      Error.ExecutorInvariantViolated {
-        message = "failed to stage compile-library source "
-        ^ Path.to_string dst
-        ^ ": "
-        ^ IO.error_message error;
-      })
+let generated_source_path = fun ~sandbox_dir source ->
+  Path.join sandbox_dir source.Action.source
 
-let stage_compile_library_interface_if_present = fun ~package ~package_root ~sandbox_dir source ->
-  match (source.Action.kind, source.content, Path.extension source.source) with
-  | (Action.LibraryImplementation, None, Some ".ml") ->
-      let interface_source = Path.replace_extension source.source ~ext:"mli" in
-      let interface_path = resolve_source ~package_root ~sandbox_dir interface_source in
-      (
-        match Fs.exists interface_path with
-        | Ok true ->
-            let interface =
-              {
-                source with
-                source = interface_source;
-                staged = Path.replace_extension source.staged ~ext:"mli";
-                kind = Action.LibraryInterface;
-              }
-            in
-            stage_single_compile_library_source ~package ~package_root ~sandbox_dir interface
-        | Ok false -> Ok ()
-        | Error error ->
-            Error (Error.ExecutorInvariantViolated {
-              message = "failed to check compile-library interface source "
-              ^ Path.to_string interface_path
-              ^ ": "
-              ^ IO.error_message error;
-            })
-      )
-  | _ -> Ok ()
+let compile_source_path = fun ~package_root ~sandbox_dir source ->
+  match source.Action.content with
+  | Some _ -> generated_source_path ~sandbox_dir source
+  | None -> resolve_source ~package_root ~sandbox_dir source.source
 
-let stage_compile_library_source = fun ~package ~package_root ~sandbox_dir source ->
-  let* () = stage_single_compile_library_source ~package ~package_root ~sandbox_dir source in
-  stage_compile_library_interface_if_present ~package ~package_root ~sandbox_dir source
+let materialize_generated_source = fun ~package ~sandbox_dir source ->
+  match source.Action.content with
+  | None -> Ok ()
+  | Some content ->
+      let dst = generated_source_path ~sandbox_dir source in
+      match Fs.exists dst with
+      | Ok true -> Ok ()
+      | Ok false
+      | Error _ ->
+          let* () =
+            ensure_parent_dir dst
+            |> Result.map_err
+              ~fn:(fun error ->
+                Error.ActionExecutionFailed {
+                  package;
+                  reason = "failed to create generated source parent: " ^ IO.error_message error;
+                })
+          in
+          Fs.write content dst
+          |> Result.map_err
+            ~fn:(fun error ->
+              Error.ExecutorInvariantViolated {
+                message = "failed to write generated source "
+                ^ Path.to_string dst
+                ^ ": "
+                ^ IO.error_message error;
+              })
 
-let stage_compile_library_sources = fun ~package ~package_root ~sandbox_dir sources ->
+let prepare_compile_source = fun ~package ~package_root ~sandbox_dir source ->
+  match source.Action.content with
+  | None -> (Ok (compile_source_path ~package_root ~sandbox_dir source), Time.Duration.zero)
+  | Some _ ->
+      timed
+        (fun () ->
+          let* () = materialize_generated_source ~package ~sandbox_dir source in
+          Ok (compile_source_path ~package_root ~sandbox_dir source))
+
+let prepare_compile_sources = fun ~package ~package_root ~sandbox_dir sources ->
   if List.is_empty sources then
     (Ok [], Time.Duration.zero)
+  else if List.all sources ~fn:(fun source -> Option.is_none source.Action.content) then
+    (
+      Ok (List.map sources ~fn:(compile_source_path ~package_root ~sandbox_dir)),
+      Time.Duration.zero
+    )
   else
     timed
       (fun () ->
@@ -241,20 +216,59 @@ let stage_compile_library_sources = fun ~package ~package_root ~sandbox_dir sour
           ~init:(Ok [])
           ~fn:(fun acc source ->
             let* acc = acc in
-            let* () = stage_compile_library_source ~package ~package_root ~sandbox_dir source in
-            Ok (source.Action.staged :: acc)))
+            let* () = materialize_generated_source ~package ~sandbox_dir source in
+            Ok (compile_source_path ~package_root ~sandbox_dir source :: acc))
+        |> Result.map ~fn:List.reverse)
+
+let generated_check_cmi_outputs = fun outputs ->
+  List.filter outputs ~fn:(fun output -> Path.extension output = Some ".cmi")
+
+let copy_generated_cmi_to_check_store = fun ~package ~sandbox_dir outputs ->
+  let rec loop = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok ()
+    | check_output :: rest ->
+        let dst = Path.join sandbox_dir check_output in
+        (
+          match Fs.exists dst with
+          | Ok true -> Ok ()
+          | Ok false
+          | Error _ ->
+              let src =
+                Path.(sandbox_dir / Package_sandbox.link_dir / Path.v (Path.basename check_output))
+              in
+              let* () = ensure_parent_dir dst in
+              Fs.copy ~src ~dst
+        )
+        |> Result.map_err
+          ~fn:(fun error ->
+            Error.ActionExecutionFailed {
+              package;
+              reason = "failed to materialize generated cmi in check store: "
+              ^ IO.error_message error;
+            })
+        |> Result.and_then ~fn:(fun () -> loop rest)
+  in
+  loop (generated_check_cmi_outputs outputs)
+
+let compiler_output_path = fun sandbox_dir output ->
+  if Path.is_absolute output then
+    output
+  else
+    Path.join sandbox_dir output
 
 let run_action = fun
   ~(package:Riot_model.Package_name.t)
   ~(package_root:Path.t)
   ?c_compiler
-  ocamlc
+  ~byte_ocamlc
+  ~native_ocamlc
   sandbox_dir
   action ->
   match action with
   | Action.CompileC { source; outputs = output :: _; ccflags } ->
       with_toolchain
-        ocamlc
+        native_ocamlc
         (fun ocamlc ->
           let source = resolve_source ~package_root ~sandbox_dir source in
           let source_dir = [ source_include_dir source ] in
@@ -265,7 +279,7 @@ let run_action = fun
               ~includes:source_dir
               ?cc:c_compiler
               ~ccflags
-              ~output:(Path.join sandbox_dir output)
+              ~output:(compiler_output_path sandbox_dir output)
               source
           in
           let result, command_execution_duration =
@@ -274,24 +288,24 @@ let run_action = fun
           action_run_result ~command_execution_duration result)
   | Action.CompileSource {
       source;
-      outputs = _ :: _;
+      outputs = _ :: _ as outputs;
       output;
       includes;
       flags;
     } ->
       with_toolchain
-        ocamlc
+        native_ocamlc
         (fun ocamlc ->
-          let stage_result, source_staging_duration =
-            timed (fun () -> stage_compile_library_source ~package ~package_root ~sandbox_dir source)
+          let source_result, source_staging_duration =
+            prepare_compile_source ~package ~package_root ~sandbox_dir source
           in
-          match stage_result with
+          match source_result with
           | Error (Error.ExecutorInvariantViolated { message }) ->
               action_run_failed ~source_staging_duration message
           | Error (Error.ActionExecutionFailed { reason; _ }) ->
               action_run_failed ~source_staging_duration reason
           | Error error -> action_run_failed ~source_staging_duration (Error.message error)
-          | Ok () ->
+          | Ok source_path ->
               let invocation =
                 match source.kind with
                 | Action.LibraryInterface ->
@@ -300,16 +314,127 @@ let run_action = fun
                       ~cwd:sandbox_dir
                       ~includes:(resolve_include_paths sandbox_dir includes)
                       ~flags:(make_flags_absolute sandbox_dir flags)
-                      ~output
-                      source.staged
+                      ~output:(compiler_output_path sandbox_dir output)
+                      source_path
                 | Action.LibraryImplementation ->
                     Riot_toolchain.Ocamlc.compile_impl
                       ocamlc
                       ~cwd:sandbox_dir
                       ~includes:(resolve_include_paths sandbox_dir includes)
                       ~flags:(make_flags_absolute sandbox_dir flags)
-                      ~output
-                      source.staged
+                      ~output:(compiler_output_path sandbox_dir output)
+                      source_path
+              in
+              let result, command_execution_duration =
+                timed
+                  (fun () ->
+                    let result = Riot_toolchain.Ocamlc.run invocation in
+                    match (source.kind, result) with
+                    | (Action.LibraryImplementation, Riot_toolchain.Ocamlc.Success _) ->
+                        copy_generated_cmi_to_check_store ~package ~sandbox_dir outputs
+                        |> Result.fold
+                          ~ok:(fun () -> result)
+                          ~error:(fun error ->
+                            ocamlc_failed (Error.message error))
+                    | _ -> result)
+              in
+              action_run_result ~source_staging_duration ~command_execution_duration result)
+  | Action.CompileInterface {
+      source;
+      outputs = _ :: _;
+      output;
+      includes;
+      flags;
+    } ->
+      with_toolchain
+        byte_ocamlc
+        (fun ocamlc ->
+          let source_result, source_staging_duration =
+            prepare_compile_source ~package ~package_root ~sandbox_dir source
+          in
+          match source_result with
+          | Error (Error.ExecutorInvariantViolated { message }) ->
+              action_run_failed ~source_staging_duration message
+          | Error (Error.ActionExecutionFailed { reason; _ }) ->
+              action_run_failed ~source_staging_duration reason
+          | Error error -> action_run_failed ~source_staging_duration (Error.message error)
+          | Ok source_path ->
+              let invocation =
+                Riot_toolchain.Ocamlc.compile_interface
+                  ocamlc
+                  ~cwd:sandbox_dir
+                  ~includes:(resolve_include_paths sandbox_dir includes)
+                  ~flags:(make_flags_absolute sandbox_dir flags)
+                  ~output:(compiler_output_path sandbox_dir output)
+                  source_path
+              in
+              let result, command_execution_duration =
+                timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
+              in
+              action_run_result ~source_staging_duration ~command_execution_duration result)
+  | Action.CompileByteImplementation {
+      source;
+      outputs = _ :: _;
+      output;
+      includes;
+      flags;
+    } ->
+      with_toolchain
+        byte_ocamlc
+        (fun ocamlc ->
+          let source_result, source_staging_duration =
+            prepare_compile_source ~package ~package_root ~sandbox_dir source
+          in
+          match source_result with
+          | Error (Error.ExecutorInvariantViolated { message }) ->
+              action_run_failed ~source_staging_duration message
+          | Error (Error.ActionExecutionFailed { reason; _ }) ->
+              action_run_failed ~source_staging_duration reason
+          | Error error -> action_run_failed ~source_staging_duration (Error.message error)
+          | Ok source_path ->
+              let invocation =
+                Riot_toolchain.Ocamlc.compile_impl
+                  ocamlc
+                  ~cwd:sandbox_dir
+                  ~includes:(resolve_include_paths sandbox_dir includes)
+                  ~flags:(make_flags_absolute sandbox_dir flags)
+                  ~output:(compiler_output_path sandbox_dir output)
+                  source_path
+              in
+              let result, command_execution_duration =
+                timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
+              in
+              action_run_result ~source_staging_duration ~command_execution_duration result)
+  | Action.CompileNativeImplementation {
+      source;
+      outputs = _ :: _;
+      output;
+      cmi_file;
+      includes;
+      flags;
+    } ->
+      with_toolchain
+        native_ocamlc
+        (fun ocamlc ->
+          let source_result, source_staging_duration =
+            prepare_compile_source ~package ~package_root ~sandbox_dir source
+          in
+          match source_result with
+          | Error (Error.ExecutorInvariantViolated { message }) ->
+              action_run_failed ~source_staging_duration message
+          | Error (Error.ActionExecutionFailed { reason; _ }) ->
+              action_run_failed ~source_staging_duration reason
+          | Error error -> action_run_failed ~source_staging_duration (Error.message error)
+          | Ok source_path ->
+              let invocation =
+                Riot_toolchain.Ocamlc.compile_impl
+                  ocamlc
+                  ~cwd:sandbox_dir
+                  ~includes:(resolve_include_paths sandbox_dir includes)
+                  ~flags:(make_flags_absolute sandbox_dir flags)
+                  ?cmi_file
+                  ~output:(compiler_output_path sandbox_dir output)
+                  source_path
               in
               let result, command_execution_duration =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
@@ -322,25 +447,25 @@ let run_action = fun
       flags;
     } ->
       with_toolchain
-        ocamlc
+        native_ocamlc
         (fun ocamlc ->
-          let staged, source_staging_duration =
-            stage_compile_library_sources ~package ~package_root ~sandbox_dir sources
+          let source_paths, source_staging_duration =
+            prepare_compile_sources ~package ~package_root ~sandbox_dir sources
           in
-          match staged with
+          match source_paths with
           | Error (Error.ExecutorInvariantViolated { message }) ->
               action_run_failed ~source_staging_duration message
           | Error (Error.ActionExecutionFailed { reason; _ }) ->
               action_run_failed ~source_staging_duration reason
           | Error error -> action_run_failed ~source_staging_duration (Error.message error)
-          | Ok staged ->
+          | Ok source_paths ->
               let invocation =
                 Riot_toolchain.Ocamlc.compile_sources
                   ocamlc
                   ~cwd:sandbox_dir
                   ~includes:(resolve_include_paths sandbox_dir includes)
                   ~flags:(make_flags_absolute sandbox_dir flags)
-                  (List.reverse staged)
+                  source_paths
               in
               let result, command_execution_duration =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
@@ -355,18 +480,18 @@ let run_action = fun
       flags;
     } ->
       with_toolchain
-        ocamlc
+        native_ocamlc
         (fun ocamlc ->
-          let staged, source_staging_duration =
-            stage_compile_library_sources ~package ~package_root ~sandbox_dir sources
+          let source_paths, source_staging_duration =
+            prepare_compile_sources ~package ~package_root ~sandbox_dir sources
           in
-          match staged with
+          match source_paths with
           | Error (Error.ExecutorInvariantViolated { message }) ->
               action_run_failed ~source_staging_duration message
           | Error (Error.ActionExecutionFailed { reason; _ }) ->
               action_run_failed ~source_staging_duration reason
           | Error error -> action_run_failed ~source_staging_duration (Error.message error)
-          | Ok staged ->
+          | Ok source_paths ->
               let invocation =
                 Riot_toolchain.Ocamlc.compile_library
                   ocamlc
@@ -374,7 +499,7 @@ let run_action = fun
                   ~includes:(resolve_include_paths sandbox_dir includes)
                   ~flags:(make_flags_absolute sandbox_dir flags)
                   ~output
-                  (List.reverse staged @ objects)
+                  (source_paths @ objects)
               in
               let result, command_execution_duration =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
@@ -407,6 +532,9 @@ let run_action = fun
       action_run_result ~command_execution_duration result
   | Action.CompileC { outputs = []; _ }
   | Action.CompileSource { outputs = []; _ }
+  | Action.CompileInterface { outputs = []; _ }
+  | Action.CompileByteImplementation { outputs = []; _ }
+  | Action.CompileNativeImplementation { outputs = []; _ }
   | Action.CompileSources { outputs = []; _ }
   | Action.CompileLibrary { outputs = []; _ } -> action_run_failed "action has no outputs"
 
@@ -427,91 +555,6 @@ let verify_outputs = fun outputs ->
 
 let finish_timing = fun started_at (timing: Action_execution.timing) ->
   { timing with total = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) }
-
-let is_final_archive_action = fun __tmp1 ->
-  match __tmp1 with
-  | Action.CompileLibrary { sources = []; outputs; _ } ->
-      List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa")
-  | _ -> false
-
-let same_relative_path = fun left right ->
-  String.equal (Path.to_string (Path.normalize left)) (Path.to_string (Path.normalize right))
-
-let artifact_file_path = fun t (artifact: Riot_store.Artifact.t) path ->
-  if Path.is_absolute path then
-    Ok (Some path)
-  else
-    artifact.files
-    |> List.find ~fn:(fun (entry: Riot_store.Manifest.file_entry) ->
-      same_relative_path entry.path path)
-    |> Option.map
-      ~fn:(fun (entry: Riot_store.Manifest.file_entry) ->
-        Path.(Riot_store.Store.action_hash_dir_of t.store artifact.input_hash / entry.path))
-    |> Option.map ~fn:absolute_path
-    |> Option.transpose
-
-let dependency_artifact_for_ref = fun t (ref_: Action_execution.ref_) ->
-  match find_result t ref_ with
-  | None -> None
-  | Some result -> Action_execution.artifact result
-
-let dependency_file_path = fun t (action: Action_execution.t) path ->
-  let rec loop = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> Ok None
-    | ref_ :: rest -> (
-        match dependency_artifact_for_ref t ref_ with
-        | None -> loop rest
-        | Some artifact -> (
-            match artifact_file_path t artifact path with
-            | Ok (Some path) -> Ok (Some path)
-            | Ok None -> loop rest
-            | Error error -> Error error
-          )
-      )
-  in
-  loop action.dependencies
-
-let resolve_archive_objects_from_dependencies = fun t (action: Action_execution.t) objects ->
-  let rec loop acc = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> Ok (List.reverse acc)
-    | object_ :: rest -> (
-        match dependency_file_path t action object_ with
-        | Ok (Some path) -> loop (path :: acc) rest
-        | Ok None ->
-            Error (Error.ExecutorInvariantViolated {
-              message = "archive action for "
-              ^ Riot_model.Package_name.to_string action.ref_.package
-              ^ " could not find dependency object "
-              ^ Path.to_string object_
-              ^ " in completed action artifacts";
-            })
-        | Error error -> Error error
-      )
-  in
-  loop [] objects
-
-let action_for_execution = fun t (action: Action_execution.t) ->
-  match action.action with
-  | Action.CompileLibrary {
-      sources = [];
-      objects;
-      outputs;
-      output;
-      includes;
-      flags;
-    } when is_final_archive_action action.action ->
-      let* objects = resolve_archive_objects_from_dependencies t action objects in
-      Ok (Action.CompileLibrary {
-        sources = [];
-        objects;
-        outputs;
-        output;
-        includes;
-        flags;
-      })
-  | _ -> Ok action.action
 
 let artifact_paths = fun (artifact: Riot_store.Artifact.t) ->
   artifact.files
@@ -542,6 +585,10 @@ let dependency_outputs_for_consumer = fun (consumer: Action_execution.t) artifac
   match consumer.action with
   | Action.CompileSource { flags; _ } when flags_include_opaque flags ->
       artifact_paths_with_extension artifact ".cmi"
+  | Action.CompileInterface _
+  | Action.CompileByteImplementation _
+  | Action.CompileNativeImplementation _ ->
+      artifact_paths_with_extension artifact ".cmi"
   | Action.CompileSources { flags; _ } when flags_include_opaque flags ->
       artifact_paths_with_extension artifact ".cmi"
   | Action.CompileSource _
@@ -558,6 +605,9 @@ let dependency_promotion_preserves_permissions = fun (consumer: Action_execution
   match consumer.action with
   | Action.CompileC _
   | Action.CompileSource _
+  | Action.CompileInterface _
+  | Action.CompileByteImplementation _
+  | Action.CompileNativeImplementation _
   | Action.CompileSources _
   | Action.CompileLibrary _ -> false
   | Action.CopyFile _
@@ -580,20 +630,23 @@ let materialize_cached_dependencies_for_execution = fun t (action: Action_execut
             Error (Error.ActionExecutionFailed { package = action.ref_.package; reason })
         | Some { Action_execution.status = Executed artifact; _ }
         | Some { Action_execution.status = Cached artifact; _ } ->
-            let files = dependency_outputs_for_consumer action artifact in
-            if List.is_empty files then
+            if Riot_model.Package_name.equal ref_.package action.ref_.package then
               loop rest
             else
-              Riot_store.Store.promote_action_artifact_files
-                ~preserve_permissions
-                t.store
-                artifact
-                ~files
-                ~target_dir:sandbox_dir
-              |> Result.map_err
-                ~fn:(fun error ->
-                  store_error ~package:action.ref_.package (Riot_store.Store.error_message error))
-              |> Result.and_then ~fn:(fun () -> loop rest)
+              let files = dependency_outputs_for_consumer action artifact in
+              if List.is_empty files then
+                loop rest
+              else
+                Riot_store.Store.promote_action_artifact_files
+                  ~preserve_permissions
+                  t.store
+                  artifact
+                  ~files
+                  ~target_dir:sandbox_dir
+                |> Result.map_err
+                  ~fn:(fun error ->
+                    store_error ~package:action.ref_.package (Riot_store.Store.error_message error))
+                |> Result.and_then ~fn:(fun () -> loop rest)
       )
   in
   loop action.dependencies
@@ -615,21 +668,22 @@ let execute_uncached = fun
         Ok (sandbox_dir, package_root))
   in
   let* (sandbox_dir, package_root) = sandbox_result in
-  let ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
+  let byte_ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc_bytecode in
+  let native_ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
   let c_compiler = Option.and_then toolchain ~fn:Riot_toolchain.c_compiler in
   let dependency_materialization_result, dependency_materialization_duration =
     timed (fun () -> materialize_cached_dependencies_for_execution t action ~sandbox_dir)
   in
   let* () = dependency_materialization_result in
-  let* action_to_run = action_for_execution t action in
   let action_run =
     run_action
       ~package:package.name
       ~package_root
       ?c_compiler
-      ocamlc
+      ~byte_ocamlc
+      ~native_ocamlc
       sandbox_dir
-      action_to_run
+      action.action
   in
   let timing: Action_execution.timing = {
     timing with
@@ -694,6 +748,32 @@ let promote_cached = fun
   (artifact: Riot_store.Artifact.t)
   ~started_at
   ~(timing: Action_execution.timing) ->
+  let promote_result, cache_promotion =
+    timed
+      (fun () ->
+        let* sandbox_dir = absolute_path action.sandbox_dir in
+        let* () =
+          Fs.create_dir_all sandbox_dir
+          |> Result.map_err
+            ~fn:(fun error ->
+              Error.ActionExecutionFailed {
+                package = action.ref_.package;
+                reason = "failed to create package sandbox for cached action: "
+                ^ IO.error_message error;
+              })
+        in
+        Riot_store.Store.promote_action_artifact_files
+          ~preserve_permissions:(dependency_promotion_preserves_permissions action)
+          t.store
+          artifact
+          ~files:(Action.outputs action.action)
+          ~target_dir:sandbox_dir
+        |> Result.map_err
+          ~fn:(fun error ->
+            store_error ~package:action.ref_.package (Riot_store.Store.error_message error)))
+  in
+  let* () = promote_result in
+  let timing: Action_execution.timing = { timing with cache_promotion } in
   let timing = finish_timing started_at timing in
   store_result
     t

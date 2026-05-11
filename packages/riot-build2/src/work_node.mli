@@ -17,7 +17,7 @@ end
 type status =
   | Unplanned
   | Planning
-  | Waiting
+  | Parked
   | Ready
   | Running
   | Completed
@@ -52,6 +52,7 @@ type key =
   | ActionPlanKey of Goal.build_package
   | ModuleDependenciesKey of Goal.build_package
   | OCamlInterfaceKey of Rule.ocaml_source
+  | OCamlByteImplementationKey of Rule.ocaml_source
   | OCamlImplementationKey of Rule.ocaml_source
   | OCamlGeneratedKey of Rule.ocaml_generated
   | CObjectKey of Rule.c_object
@@ -70,6 +71,7 @@ type kind =
   | ActionPlan of Goal.build_package
   | ModuleDependencies of Goal.build_package
   | OCamlInterface of Rule.ocaml_source
+  | OCamlByteImplementation of Rule.ocaml_source
   | OCamlImplementation of Rule.ocaml_source
   | OCamlGenerated of Rule.ocaml_generated
   | CObject of Rule.c_object
@@ -105,6 +107,8 @@ val module_dependencies: id:Node_id.t -> Goal.build_package -> t
 
 val ocaml_interface: id:Node_id.t -> Rule.ocaml_source -> t
 
+val ocaml_byte_implementation: id:Node_id.t -> Rule.ocaml_source -> t
+
 val ocaml_implementation: id:Node_id.t -> Rule.ocaml_source -> t
 
 val ocaml_generated: id:Node_id.t -> Rule.ocaml_generated -> t
@@ -139,7 +143,7 @@ val dependencies_ready: t -> bool
 
 val mark_as_planning: t -> unit
 
-val mark_as_waiting: t -> unit
+val mark_as_parked: t -> unit
 
 val mark_as_ready: t -> unit
 

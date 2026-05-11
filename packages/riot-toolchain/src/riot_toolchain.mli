@@ -49,6 +49,8 @@ val check_health: t -> (unit, string) result
 (** Access toolchain components *)
 val ocamlc: t -> Ocamlc.t
 
+val ocamlc_bytecode: t -> Ocamlc.t
+
 val ocamlopt_path: t -> Path.t
 
 val ocamldep: t -> Ocamldep.t

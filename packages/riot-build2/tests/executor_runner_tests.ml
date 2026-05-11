@@ -125,6 +125,33 @@ let event_ids_by_kind = fun events kind ->
         None)
   |> List.sort ~compare:Int.compare
 
+let count_event_for_node = fun events node ~fn ->
+  Queue.to_list events
+  |> List.filter
+    ~fn:(fun event ->
+      match fn event with
+      | Some event_node -> Work_node.Node_id.equal (Work_node.id event_node) (Work_node.id node)
+      | None -> false)
+  |> List.length
+
+let queued_count = fun events node ->
+  count_event_for_node
+    events
+    node
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
+      | Event.WorkQueued { node } -> Some node
+      | _ -> None)
+
+let started_count = fun events node ->
+  count_event_for_node
+    events
+    node
+    ~fn:(fun __tmp1 ->
+      match __tmp1 with
+      | Event.WorkStarted { node } -> Some node
+      | _ -> None)
+
 let result_ids = fun summary ->
   summary.Executor.Summary.results
   |> List.map
@@ -211,7 +238,7 @@ let test_registry_finds_packages_and_modules = fun _ctx ->
 let test_work_node_accepts_valid_status_transitions = fun _ctx ->
   let ready_node = sample_seed () in
   let planned_node = sample_intent_seed 3 in
-  let waiting_node = sample_intent_seed 2 in
+  let parked_node = sample_intent_seed 2 in
   Work_node.mark_as_planning planned_node;
   Work_node.mark_as_ready planned_node;
   Work_node.mark_as_running planned_node;
@@ -219,17 +246,17 @@ let test_work_node_accepts_valid_status_transitions = fun _ctx ->
   Work_node.mark_as_ready ready_node;
   Work_node.mark_as_running ready_node;
   Work_node.mark_as_completed ready_node;
-  Work_node.mark_as_waiting waiting_node;
-  Work_node.mark_as_ready waiting_node;
-  Work_node.mark_as_running waiting_node;
-  Work_node.mark_as_waiting waiting_node;
-  Work_node.mark_as_ready waiting_node;
-  Work_node.mark_as_running waiting_node;
-  Work_node.mark_as_completed waiting_node;
+  Work_node.mark_as_parked parked_node;
+  Work_node.mark_as_ready parked_node;
+  Work_node.mark_as_running parked_node;
+  Work_node.mark_as_parked parked_node;
+  Work_node.mark_as_ready parked_node;
+  Work_node.mark_as_running parked_node;
+  Work_node.mark_as_completed parked_node;
   if
     Work_node.status ready_node = Work_node.Completed
     && Work_node.status planned_node = Work_node.Completed
-    && Work_node.status waiting_node = Work_node.Completed
+    && Work_node.status parked_node = Work_node.Completed
   then
     Ok ()
   else
@@ -634,7 +661,121 @@ let test_multiple_dependencies_wait_for_all_to_complete = fun _ctx ->
   else
     Error "expected parent to run only after all dependencies completed"
 
-let test_waiting_node_is_not_planned_again = fun _ctx ->
+let test_execution_time_multiple_dependencies_park_until_all_complete = fun _ctx ->
+  let parent_attempts = Sync.Atomic.make 0 in
+  let second_saw_parent_parked = Sync.Atomic.make false in
+  let events = Queue.create () in
+  let parent_action = sample_goal "dynamic-multi-parent" in
+  let first_action = sample_goal "dynamic-dep-b" in
+  let second_action = sample_goal "dynamic-dep-c" in
+  let seed = goal_node 10 parent_action in
+  let execute _context node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = first_action -> Ok (Work_result.Complete [])
+    | Work_node.Goal action when action = second_action ->
+        if
+          Work_node.status seed = Work_node.Parked
+          && Int.equal (Work_node.pending_dependency_count seed) 1
+          && Int.equal (Sync.Atomic.get parent_attempts) 1
+        then
+          Sync.Atomic.set second_saw_parent_parked true;
+        Ok (Work_result.Complete [])
+    | Work_node.Goal action when action = parent_action ->
+        let attempt = Sync.Atomic.fetch_and_add parent_attempts 1 in
+        if Int.equal attempt 0 then
+          Ok (Work_result.RequeueWithDependencies [
+            goal_request first_action;
+            goal_request second_action;
+          ])
+        else if Sync.Atomic.get second_saw_parent_parked then
+          Ok (Work_result.Complete [])
+        else
+          Error (Error.ExecutorInvariantViolated {
+            message = "parent requeued before all execution-time dependencies completed";
+          })
+    | Work_node.Goal _ -> Ok (Work_result.Complete [])
+    | _ -> unexpected_node node
+  in
+  let summary =
+    run_executor
+      ~parallelism:1
+      ~on_event:(fun event -> Queue.push events ~value:event)
+      ~seeds:[ seed ]
+      ~execute
+      ()
+  in
+  match (find_goal_node summary first_action, find_goal_node summary second_action) with
+  | (Some first, Some second) ->
+      if not (Sync.Atomic.get second_saw_parent_parked) then
+        Error "expected parent to remain parked after only one dependency completed"
+      else if not (Int.equal (Sync.Atomic.get parent_attempts) 2) then
+        Error "expected parent to execute once before parking and once after wakeup"
+      else if not (Int.equal (started_count events seed) 2) then
+        Error "expected parent to be started exactly twice"
+      else if not (Int.equal (started_count events first) 1) then
+        Error "expected first dynamic dependency to start once"
+      else if not (Int.equal (started_count events second) 1) then
+        Error "expected second dynamic dependency to start once"
+      else if
+        Int.equal summary.Executor.Summary.completed_count 3
+        && Int.equal summary.failed_count 0
+        && Work_node.status seed = Work_node.Completed
+        && Int.equal (Work_node.pending_dependency_count seed) 0
+      then
+        Ok ()
+      else
+        Error "expected parked parent and both dependencies to complete"
+  | _ -> Error "expected both execution-time dependencies to be interned"
+
+let test_shared_unplanned_dependency_is_queued_once = fun _ctx ->
+  let dependency_runs = Sync.Atomic.make 0 in
+  let events = Queue.create () in
+  let first_parent = sample_goal "shared-parent-a" in
+  let second_parent = sample_goal "shared-parent-b" in
+  let dependency_action = sample_goal "shared-dependency" in
+  let plan_dependencies _registry node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = first_parent || action = second_parent ->
+        Ok [ goal_request dependency_action ]
+    | Work_node.Goal _ -> Ok []
+    | _ -> unexpected_node node
+  in
+  let execute _context node =
+    match Work_node.kind node with
+    | Work_node.Goal action when action = dependency_action ->
+        ignore (Sync.Atomic.fetch_and_add dependency_runs 1);
+        Ok (Work_result.Complete [])
+    | Work_node.Goal _ -> Ok (Work_result.Complete [])
+    | _ -> unexpected_node node
+  in
+  let summary =
+    run_default_executor
+      ~parallelism:1
+      ~plan_dependencies
+      ~on_event:(fun event -> Queue.push events ~value:event)
+      ~seeds:[ goal_node 10 first_parent; goal_node 11 second_parent ]
+      ~execute
+      ()
+  in
+  match find_goal_node summary dependency_action with
+  | None -> Error "expected shared dependency to be interned"
+  | Some dependency ->
+      if not (Int.equal (Sync.Atomic.get dependency_runs) 1) then
+        Error "expected shared dependency to execute once"
+      else if not (Int.equal (queued_count events dependency) 2) then
+        Error "expected shared dependency to be queued once for planning and once for execution"
+      else if not (Int.equal (List.length (Work_node.dependents dependency)) 2) then
+        Error "expected shared dependency to record both parked dependents"
+      else if
+        Int.equal summary.Executor.Summary.completed_count 3
+        && Int.equal summary.failed_count 0
+        && Work_node.status dependency = Work_node.Completed
+      then
+        Ok ()
+      else
+        Error "expected both parents and their shared dependency to complete"
+
+let test_parked_node_is_not_planned_again = fun _ctx ->
   let plan_calls = Sync.Atomic.make 0 in
   let parent_action = sample_goal "plan-once-parent" in
   let dependency_action = sample_goal "plan-once-dependency" in
@@ -666,7 +807,7 @@ let test_waiting_node_is_not_planned_again = fun _ctx ->
   then
     Ok ()
   else
-    Error "expected waiting node dependencies to be planned exactly once"
+    Error "expected parked node dependencies to be planned exactly once"
 
 let test_completed_dependency_makes_node_ready_immediately = fun _ctx ->
   let parent_runs = Sync.Atomic.make 0 in
@@ -1006,7 +1147,13 @@ let tests =
     case
       "multiple dependencies wait for all to complete"
       test_multiple_dependencies_wait_for_all_to_complete;
-    case "waiting node is not planned again" test_waiting_node_is_not_planned_again;
+    case
+      "execution-time multiple dependencies park until all complete"
+      test_execution_time_multiple_dependencies_park_until_all_complete;
+    case
+      "shared unplanned dependency is queued once"
+      test_shared_unplanned_dependency_is_queued_once;
+    case "parked node is not planned again" test_parked_node_is_not_planned_again;
     case
       "completed dependency makes node ready immediately"
       test_completed_dependency_makes_node_ready_immediately;

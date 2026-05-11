@@ -10,10 +10,8 @@ type compile_library_source_kind =
 
 type compile_library_source = {
   source: Path.t;
-  staged: Path.t;
   kind: compile_library_source_kind;
   content: string option;
-  opens: string list;
 }
 
 type t =
@@ -26,6 +24,28 @@ type t =
       source: compile_library_source;
       outputs: Path.t list;
       output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
+  | CompileInterface of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
+  | CompileByteImplementation of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
+  | CompileNativeImplementation of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      cmi_file: Path.t option;
       includes: Path.t list;
       flags: Riot_toolchain.Ocamlc.compiler_flag list;
     }
@@ -56,6 +76,9 @@ let outputs = fun __tmp1 ->
   match __tmp1 with
   | CompileC { outputs; _ }
   | CompileSource { outputs; _ }
+  | CompileInterface { outputs; _ }
+  | CompileByteImplementation { outputs; _ }
+  | CompileNativeImplementation { outputs; _ }
   | CompileSources { outputs; _ }
   | CompileLibrary { outputs; _ } -> outputs
   | CopyFile { destination; _ } -> [ destination ]
@@ -73,6 +96,9 @@ let export_outputs = fun __tmp1 ->
       | _ -> false)
   | CompileC _
   | CompileSource _
+  | CompileInterface _
+  | CompileByteImplementation _
+  | CompileNativeImplementation _
   | CompileSources _
   | CopyFile _
   | WriteFile _ -> []
@@ -81,6 +107,9 @@ let requires_toolchain = fun __tmp1 ->
   match __tmp1 with
   | CompileC _
   | CompileSource _
+  | CompileInterface _
+  | CompileByteImplementation _
+  | CompileNativeImplementation _
   | CompileSources _
   | CompileLibrary _ -> true
   | CopyFile _
@@ -90,6 +119,9 @@ let kind = fun __tmp1 ->
   match __tmp1 with
   | CompileC _ -> "CompileC"
   | CompileSource _ -> "CompileSource"
+  | CompileInterface _ -> "CompileInterface"
+  | CompileByteImplementation _ -> "CompileByteImplementation"
+  | CompileNativeImplementation _ -> "CompileNativeImplementation"
   | CompileSources _ -> "CompileSources"
   | CompileLibrary _ -> "CompileLibrary"
   | CopyFile _ -> "CopyFile"
@@ -130,6 +162,13 @@ let write_path = fun hasher path -> Crypto.Sha256.write hasher (Path.to_string p
 let write_paths = fun hasher paths ->
   List.for_each paths ~fn:(write_path hasher)
 
+let write_optional_path = fun hasher path ->
+  match path with
+  | Some path ->
+      Crypto.Sha256.write_bool hasher true;
+      write_path hasher path
+  | None -> Crypto.Sha256.write_bool hasher false
+
 let write_strings = fun hasher values ->
   List.for_each values ~fn:(Crypto.Sha256.write hasher)
 
@@ -149,7 +188,7 @@ let write_source_content = fun hasher ~package source content ->
 
 let hash = fun ~(package:Riot_model.Package.t) ~toolchain action ->
   let hasher = Crypto.Sha256.create () in
-  Crypto.Sha256.write hasher "riot-build2-action:v2";
+  Crypto.Sha256.write hasher "riot-build2-action:v4";
   Crypto.Sha256.write hasher (Riot_model.Package_name.to_string package.name);
   Crypto.Sha256.write_hash hasher (Riot_toolchain.hash toolchain);
   (
@@ -174,11 +213,53 @@ let hash = fun ~(package:Riot_model.Package.t) ~toolchain action ->
           | LibraryImplementation -> Crypto.Sha256.write hasher "implementation"
         );
         write_path hasher source.source;
-        write_path hasher source.staged;
         write_source_content hasher ~package source.source source.content;
-        write_strings hasher source.opens;
         write_paths hasher outputs;
         write_path hasher output;
+        write_paths hasher includes;
+        write_flags hasher flags
+    | CompileInterface {
+        source;
+        outputs;
+        output;
+        includes;
+        flags;
+      } ->
+        Crypto.Sha256.write hasher "CompileInterface";
+        write_path hasher source.source;
+        write_source_content hasher ~package source.source source.content;
+        write_paths hasher outputs;
+        write_path hasher output;
+        write_paths hasher includes;
+        write_flags hasher flags
+    | CompileByteImplementation {
+        source;
+        outputs;
+        output;
+        includes;
+        flags;
+      } ->
+        Crypto.Sha256.write hasher "CompileByteImplementation";
+        write_path hasher source.source;
+        write_source_content hasher ~package source.source source.content;
+        write_paths hasher outputs;
+        write_path hasher output;
+        write_paths hasher includes;
+        write_flags hasher flags
+    | CompileNativeImplementation {
+        source;
+        outputs;
+        output;
+        cmi_file;
+        includes;
+        flags;
+      } ->
+        Crypto.Sha256.write hasher "CompileNativeImplementation";
+        write_path hasher source.source;
+        write_source_content hasher ~package source.source source.content;
+        write_paths hasher outputs;
+        write_path hasher output;
+        write_optional_path hasher cmi_file;
         write_paths hasher includes;
         write_flags hasher flags
     | CompileSources {
@@ -197,9 +278,8 @@ let hash = fun ~(package:Riot_model.Package.t) ~toolchain action ->
               | LibraryImplementation -> Crypto.Sha256.write hasher "implementation"
             );
             write_path hasher source.source;
-            write_path hasher source.staged;
             write_source_content hasher ~package source.source source.content;
-            write_strings hasher source.opens);
+            ());
         write_paths hasher outputs;
         write_paths hasher includes;
         write_flags hasher flags
@@ -221,9 +301,8 @@ let hash = fun ~(package:Riot_model.Package.t) ~toolchain action ->
               | LibraryImplementation -> Crypto.Sha256.write hasher "implementation"
             );
             write_path hasher source.source;
-            write_path hasher source.staged;
             write_source_content hasher ~package source.source source.content;
-            write_strings hasher source.opens);
+            ());
         write_paths hasher objects;
         write_paths hasher outputs;
         write_path hasher output;
@@ -288,26 +367,20 @@ let source_kind_serialize =
 
 type source_field =
   | Source_path
-  | Source_staged
   | Source_kind
   | Source_content
-  | Source_opens
 
 type source_builder = {
   mutable source: Path.t option;
-  mutable staged: Path.t option;
   mutable kind: compile_library_source_kind option;
   mutable content: string option option;
-  mutable opens: string list option;
 }
 
 let source_fields =
   De.fields [
     De.field "source" Source_path;
-    De.field "staged" Source_staged;
     De.field "kind" Source_kind;
     De.field "content" Source_content;
-    De.field "opens" Source_opens;
   ]
 
 let source_deserialize =
@@ -315,23 +388,19 @@ let source_deserialize =
     ~fields:source_fields
     ~create:(fun () -> {
       source = None;
-      staged = None;
       kind = None;
       content = Some None;
-      opens = Some [];
     })
     ~step:(fun reader builder field ->
       match field with
       | Some Source_path -> builder.source <- Some (De.read reader path_deserialize)
-      | Some Source_staged -> builder.staged <- Some (De.read reader path_deserialize)
       | Some Source_kind -> builder.kind <- Some (De.read reader source_kind_deserialize)
       | Some Source_content -> builder.content <- Some (De.read reader (De.option De.string))
-      | Some Source_opens -> builder.opens <- Some (De.read reader (de_list De.string))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
-      match (builder.source, builder.staged, builder.kind, builder.content, builder.opens) with
-      | (Some source, Some staged, Some kind, Some content, Some opens) ->
-          ({ source; staged; kind; content; opens }: compile_library_source)
+      match (builder.source, builder.kind, builder.content) with
+      | (Some source, Some kind, Some content) ->
+          ({ source; kind; content }: compile_library_source)
       | _ -> De.missing_field ())
 
 let source_serialize =
@@ -339,10 +408,8 @@ let source_serialize =
     (
       Ser.fields [
         Ser.field "source" path_serialize (fun (value: compile_library_source) -> value.source);
-        Ser.field "staged" path_serialize (fun (value: compile_library_source) -> value.staged);
         Ser.field "kind" source_kind_serialize (fun (value: compile_library_source) -> value.kind);
         Ser.field "content" (Ser.option Ser.string) (fun (value: compile_library_source) -> value.content);
-        Ser.field "opens" (ser_list Ser.string) (fun (value: compile_library_source) -> value.opens);
       ]
     )
 
@@ -367,6 +434,15 @@ type compile_source_payload = {
   source_output: Path.t;
   source_includes: Path.t list;
   source_flags: Riot_toolchain.Ocamlc.compiler_flag list;
+}
+
+type compile_native_source_payload = {
+  native_source: compile_library_source;
+  native_outputs: Path.t list;
+  native_output: Path.t;
+  native_cmi_file: Path.t option;
+  native_includes: Path.t list;
+  native_flags: Riot_toolchain.Ocamlc.compiler_flag list;
 }
 
 type compile_sources_payload = {
@@ -506,6 +582,86 @@ let compile_source_serialize =
         Ser.field "output" path_serialize (fun (value: compile_source_payload) -> value.source_output);
         Ser.field "includes" (ser_list path_serialize) (fun (value: compile_source_payload) -> value.source_includes);
         Ser.field "flags" flags_serialize (fun (value: compile_source_payload) -> value.source_flags);
+      ]
+    )
+
+type compile_native_source_field =
+  | Native_source
+  | Native_outputs
+  | Native_output
+  | Native_cmi_file
+  | Native_includes
+  | Native_flags
+
+type compile_native_source_builder = {
+  mutable native_source: compile_library_source option;
+  mutable native_outputs: Path.t list option;
+  mutable native_output: Path.t option;
+  mutable native_cmi_file: Path.t option option;
+  mutable native_includes: Path.t list option;
+  mutable native_flags: Riot_toolchain.Ocamlc.compiler_flag list option;
+}
+
+let compile_native_source_fields =
+  De.fields [
+    De.field "source" Native_source;
+    De.field "outputs" Native_outputs;
+    De.field "output" Native_output;
+    De.field "cmi_file" Native_cmi_file;
+    De.field "includes" Native_includes;
+    De.field "flags" Native_flags;
+  ]
+
+let compile_native_source_deserialize =
+  De.record_mut
+    ~fields:compile_native_source_fields
+    ~create:(fun () -> {
+      native_source = None;
+      native_outputs = Some [];
+      native_output = None;
+      native_cmi_file = Some None;
+      native_includes = Some [];
+      native_flags = Some [];
+    })
+    ~step:(fun reader builder field ->
+      match field with
+      | Some Native_source -> builder.native_source <- Some (De.read reader source_deserialize)
+      | Some Native_outputs -> builder.native_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Native_output -> builder.native_output <- Some (De.read reader path_deserialize)
+      | Some Native_cmi_file -> builder.native_cmi_file <- Some (De.read reader (De.option path_deserialize))
+      | Some Native_includes -> builder.native_includes <- Some (De.read reader (de_list path_deserialize))
+      | Some Native_flags -> builder.native_flags <- Some (De.read reader flags_deserialize)
+      | None -> ignore (De.read reader De.skip_any))
+    ~finish:(fun builder ->
+      match (
+        builder.native_source,
+        builder.native_outputs,
+        builder.native_output,
+        builder.native_cmi_file,
+        builder.native_includes,
+        builder.native_flags
+      ) with
+      | (Some native_source, Some native_outputs, Some native_output, Some native_cmi_file, Some native_includes, Some native_flags) ->
+          ({
+            native_source;
+            native_outputs;
+            native_output;
+            native_cmi_file;
+            native_includes;
+            native_flags;
+          }: compile_native_source_payload)
+      | _ -> De.missing_field ())
+
+let compile_native_source_serialize =
+  Ser.record
+    (
+      Ser.fields [
+        Ser.field "source" source_serialize (fun (value: compile_native_source_payload) -> value.native_source);
+        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_native_source_payload) -> value.native_outputs);
+        Ser.field "output" path_serialize (fun (value: compile_native_source_payload) -> value.native_output);
+        Ser.field "cmi_file" (Ser.option path_serialize) (fun (value: compile_native_source_payload) -> value.native_cmi_file);
+        Ser.field "includes" (ser_list path_serialize) (fun (value: compile_native_source_payload) -> value.native_includes);
+        Ser.field "flags" flags_serialize (fun (value: compile_native_source_payload) -> value.native_flags);
       ]
     )
 
@@ -766,6 +922,40 @@ let deserialize =
           flags = payload.source_flags;
         });
     De.Variant.newtype
+      "CompileInterface"
+      compile_source_deserialize
+      (fun payload ->
+        CompileInterface {
+          source = payload.source_source;
+          outputs = payload.source_outputs;
+          output = payload.source_output;
+          includes = payload.source_includes;
+          flags = payload.source_flags;
+        });
+    De.Variant.newtype
+      "CompileByteImplementation"
+      compile_source_deserialize
+      (fun payload ->
+        CompileByteImplementation {
+          source = payload.source_source;
+          outputs = payload.source_outputs;
+          output = payload.source_output;
+          includes = payload.source_includes;
+          flags = payload.source_flags;
+        });
+    De.Variant.newtype
+      "CompileNativeImplementation"
+      compile_native_source_deserialize
+      (fun payload ->
+        CompileNativeImplementation {
+          source = payload.native_source;
+          outputs = payload.native_outputs;
+          output = payload.native_output;
+          cmi_file = payload.native_cmi_file;
+          includes = payload.native_includes;
+          flags = payload.native_flags;
+        });
+    De.Variant.newtype
       "CompileSources"
       compile_sources_deserialize
       (fun payload ->
@@ -825,6 +1015,68 @@ let serialize =
               source_output = output;
               source_includes = includes;
               source_flags = flags;
+            }
+        | _ -> None);
+    Ser.Variant.newtype
+      "CompileInterface"
+      compile_source_serialize
+      (fun __tmp1 ->
+        match __tmp1 with
+        | CompileInterface {
+            source;
+            outputs;
+            output;
+            includes;
+            flags;
+          } ->
+            Some {
+              source_source = source;
+              source_outputs = outputs;
+              source_output = output;
+              source_includes = includes;
+              source_flags = flags;
+            }
+        | _ -> None);
+    Ser.Variant.newtype
+      "CompileByteImplementation"
+      compile_source_serialize
+      (fun __tmp1 ->
+        match __tmp1 with
+        | CompileByteImplementation {
+            source;
+            outputs;
+            output;
+            includes;
+            flags;
+          } ->
+            Some {
+              source_source = source;
+              source_outputs = outputs;
+              source_output = output;
+              source_includes = includes;
+              source_flags = flags;
+            }
+        | _ -> None);
+    Ser.Variant.newtype
+      "CompileNativeImplementation"
+      compile_native_source_serialize
+      (fun __tmp1 ->
+        match __tmp1 with
+        | CompileNativeImplementation {
+            source;
+            outputs;
+            output;
+            cmi_file;
+            includes;
+            flags;
+          } ->
+            Some {
+              native_source = source;
+              native_outputs = outputs;
+              native_output = output;
+              native_cmi_file = cmi_file;
+              native_includes = includes;
+              native_flags = flags;
             }
         | _ -> None);
     Ser.Variant.newtype

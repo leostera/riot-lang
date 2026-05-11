@@ -17,6 +17,7 @@ module Intent_planner = Intent_planner
 module Module_plan = Module_plan
 module Module_planning = Module_planning
 module Module_provider_registry = Module_provider_registry
+module Package_sandbox = Package_sandbox
 module Package_finalizer = Package_finalizer
 module Package_planning = Package_planning
 module Rule = Rule

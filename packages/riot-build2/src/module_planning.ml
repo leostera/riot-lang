@@ -8,6 +8,7 @@ type t = {
   catalog: Package_catalog.t;
   store: Riot_store.Store.t;
   package_planning: Package_planning.t;
+  package_sandbox: Package_sandbox.t;
   module_providers: Module_provider_registry.t;
   source_analyzer: Source_analyzer.t;
   module_plan_cache: Module_plan_cache.payload Graph_cache.t;
@@ -18,12 +19,20 @@ type t = {
 }
 
 let create = fun
-  ~workspace ~catalog ~store ~package_planning ~module_providers ~source_analyzer () ->
+  ~workspace
+  ~catalog
+  ~store
+  ~package_planning
+  ~package_sandbox
+  ~module_providers
+  ~source_analyzer
+  () ->
   {
     workspace;
     catalog;
     store;
     package_planning;
+    package_sandbox;
     module_providers;
     source_analyzer;
     module_plan_cache = Module_plan_cache.create_cache ~store;
@@ -38,24 +47,6 @@ let begin_execution = fun t ->
   ConcurrentHashMap.clear t.plans
 
 let find = fun t build -> ConcurrentHashMap.get t.plans ~key:build
-
-let path_error_message = fun __tmp1 ->
-  match __tmp1 with
-  | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
-  | Path.SystemInvalidUtf8 { syscall; path } -> syscall ^ " returned invalid utf8 path: " ^ path
-  | Path.SystemError message -> message
-
-let absolute_path = fun path ->
-  if Path.is_absolute path then
-    Ok path
-  else
-    Env.current_dir ()
-    |> Result.map ~fn:(fun cwd -> Path.normalize Path.(cwd / path))
-    |> Result.map_err
-      ~fn:(fun error ->
-        Error.ExecutorInvariantViolated {
-          message = "failed to resolve current directory: " ^ path_error_message error;
-        })
 
 let source_groups = fun (package: Riot_model.Package.t) ->
   let source_dir = Path.v "src" in
@@ -305,14 +296,8 @@ let plan_dependencies = fun t _registry build ->
   let* source_dependencies = source_dependency_requests t build in
   Ok (Work_request.from_keys package_dependencies @ source_dependencies)
 
-let sandbox_dir = fun t (input: Package_planning.input) ->
-  Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace
-    ~workspace:t.workspace
-    ~profile:input.Package_planning.profile.name
-    ~target:input.target
-  / Path.v (Riot_model.Package_name.to_string input.package.name)
-  / Path.v (Crypto.Digest.hex input.package_hash))
-  |> absolute_path
+let sandbox_dir = fun t (input: Package_planning.input) ~depset ->
+  Package_sandbox.prepare t.package_sandbox input ~depset
 
 let is_final_archive_action = fun __tmp1 ->
   match __tmp1 with
@@ -327,6 +312,7 @@ let classify_action_executions = fun action_executions ->
       ~fn:(fun action ->
         match action.Action_execution.action with
         | Action.CompileSource _
+        | Action.CompileNativeImplementation _
         | Action.CompileSources _ -> true
         | _ -> false)
   in
@@ -336,8 +322,11 @@ let classify_action_executions = fun action_executions ->
   in
   (ocaml_libraries, ocaml_archive)
 
-let module_plan_from_actions = fun t (input: Package_planning.input) ~module_plan_hash action_executions ->
-  let* sandbox_dir = sandbox_dir t input in
+let module_plan_from_actions = fun
+  (input: Package_planning.input)
+  ~module_plan_hash
+  ~sandbox_dir
+  action_executions ->
   let (ocaml_libraries, ocaml_archive) = classify_action_executions action_executions in
   Ok Module_plan.{
     build = input.build;
@@ -354,12 +343,12 @@ let module_plan_from_actions = fun t (input: Package_planning.input) ~module_pla
     module_plan_hash;
   }
 
-let load_cached_plan = fun t (input: Package_planning.input) ~module_plan_hash ->
+let load_cached_plan = fun t (input: Package_planning.input) ~depset ~module_plan_hash ->
   match Graph_cache.get t.module_plan_cache module_plan_hash with
   | None -> Ok None
   | Some (Error error) -> Error error
   | Some (Ok payload) ->
-      let* sandbox_dir = sandbox_dir t input in
+      let* sandbox_dir = sandbox_dir t input ~depset in
       let* action_executions =
         Module_plan_cache.action_executions
           ~package:input.package
@@ -511,7 +500,7 @@ let plan = fun t _registry (build: Goal.build_package) ->
     let* (module_graph, dep_analysis) =
       build_module_graph t input ~depset ~dependency_packages
     in
-    let* sandbox_dir = sandbox_dir t input in
+    let* sandbox_dir = sandbox_dir t input ~depset in
     let* action_executions =
       Action_planner.plan
         {
@@ -526,7 +515,13 @@ let plan = fun t _registry (build: Goal.build_package) ->
           dep_analysis;
         }
     in
-    let* module_plan = module_plan_from_actions t input ~module_plan_hash action_executions in
+    let* module_plan =
+      module_plan_from_actions
+        input
+        ~module_plan_hash
+        ~sandbox_dir
+        action_executions
+    in
     let* () =
       Graph_cache.put
         t.module_plan_cache
@@ -553,7 +548,7 @@ let execute = fun t registry (build: Goal.build_package) ->
         })
       else
         let* module_plan_hash = module_plan_cache_key t input tasks in
-        match load_cached_plan t input ~module_plan_hash with
+        match load_cached_plan t input ~depset ~module_plan_hash with
         | Error _ as error -> error
         | Ok (Some _) -> Ok (Work_result.Complete [])
         | Ok None -> plan t registry build

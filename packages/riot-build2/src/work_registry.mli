@@ -51,6 +51,8 @@ val intern_module_dependencies: t -> Goal.build_package -> Work_node.t
 
 val intern_ocaml_interface: t -> Rule.ocaml_source -> Work_node.t
 
+val intern_ocaml_byte_implementation: t -> Rule.ocaml_source -> Work_node.t
+
 val intern_ocaml_implementation: t -> Rule.ocaml_source -> Work_node.t
 
 val intern_ocaml_generated: t -> Rule.ocaml_generated -> Work_node.t

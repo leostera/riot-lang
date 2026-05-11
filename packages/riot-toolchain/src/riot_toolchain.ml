@@ -24,6 +24,7 @@ type t = {
   target: Riot_model.Target.t;
   (* Target triple this toolchain compiles for *)
   ocamlc: Ocamlc.t;
+  ocamlc_bytecode: Ocamlc.t;
   ocamlopt: Path.t;
   ocamldep: Ocamldep.t;
 }
@@ -76,6 +77,7 @@ let make_toolchain = fun version source ~target ->
     source;
     target;
     ocamlc = Ocamlc.make (bin_path "ocamlopt.opt");
+    ocamlc_bytecode = Ocamlc.make (bin_path "ocamlc.opt");
     ocamlopt = bin_path "ocamlopt.opt";
     ocamldep = Ocamldep.make (bin_path "ocamldep.opt");
   }
@@ -86,6 +88,8 @@ let from_config_for_target = fun ~config ~target ->
   make_toolchain version source ~target
 
 let ocamlc = fun t -> t.ocamlc
+
+let ocamlc_bytecode = fun t -> t.ocamlc_bytecode
 
 let ocamlopt_path = fun t -> t.ocamlopt
 
@@ -102,15 +106,24 @@ let c_compiler = fun t ->
 
 let check_binaries_exist = fun toolchain ->
   let ocamlc_path = Ocamlc.path toolchain.ocamlc in
+  let ocamlc_bytecode_path = Ocamlc.path toolchain.ocamlc_bytecode in
   let ocamldep_path = Ocamldep.path toolchain.ocamldep in
-  match (Fs.exists ocamlc_path, Fs.exists toolchain.ocamlopt, Fs.exists ocamldep_path) with
-  | (Ok true, Ok true, Ok true) -> Ok ()
-  | (Ok false, _, _) -> Error ("ocamlc not found at " ^ Path.to_string ocamlc_path)
-  | (_, Ok false, _) -> Error ("ocamlopt not found at " ^ Path.to_string toolchain.ocamlopt)
-  | (_, _, Ok false) -> Error ("ocamldep not found at " ^ Path.to_string ocamldep_path)
-  | (Error err, _, _)
-  | (_, Error err, _)
-  | (_, _, Error err) -> Error ("Failed to check binaries: " ^ IO.error_message err)
+  match (
+    Fs.exists ocamlc_path,
+    Fs.exists ocamlc_bytecode_path,
+    Fs.exists toolchain.ocamlopt,
+    Fs.exists ocamldep_path
+  ) with
+  | (Ok true, Ok true, Ok true, Ok true) -> Ok ()
+  | (Ok false, _, _, _) -> Error ("ocamlc not found at " ^ Path.to_string ocamlc_path)
+  | (_, Ok false, _, _) ->
+      Error ("ocamlc.opt not found at " ^ Path.to_string ocamlc_bytecode_path)
+  | (_, _, Ok false, _) -> Error ("ocamlopt not found at " ^ Path.to_string toolchain.ocamlopt)
+  | (_, _, _, Ok false) -> Error ("ocamldep not found at " ^ Path.to_string ocamldep_path)
+  | (Error err, _, _, _)
+  | (_, Error err, _, _)
+  | (_, _, Error err, _)
+  | (_, _, _, Error err) -> Error ("Failed to check binaries: " ^ IO.error_message err)
 
 let path_exists = fun path ->
   match Fs.exists path with
@@ -527,6 +540,7 @@ let hash = fun t ->
         write_legacy_path_fingerprint
           [
             Ocamlc.path t.ocamlc;
+            Ocamlc.path t.ocamlc_bytecode;
             t.ocamlopt;
             Ocamldep.path t.ocamldep;
             Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "stdlib.cmxa");

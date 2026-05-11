@@ -95,6 +95,7 @@ let key_name = fun request ->
   | ActionPlanKey _ -> "ActionPlanKey"
   | ModuleDependenciesKey _ -> "ModuleDependenciesKey"
   | OCamlInterfaceKey _ -> "OCamlInterfaceKey"
+  | OCamlByteImplementationKey _ -> "OCamlByteImplementationKey"
   | OCamlImplementationKey _ -> "OCamlImplementationKey"
   | OCamlGeneratedKey _ -> "OCamlGeneratedKey"
   | CObjectKey _ -> "CObjectKey"
@@ -258,6 +259,16 @@ let compile_source_is = fun path kind action ->
   match action.Action_execution.action with
   | Action.CompileSource { source; _ } ->
       Path.equal source.source path && source.kind = kind
+  | Action.CompileInterface { source; _ } ->
+      kind = Action.LibraryInterface && Path.equal source.source path
+  | Action.CompileNativeImplementation { source; _ } ->
+      kind = Action.LibraryImplementation && Path.equal source.source path
+  | _ -> false
+
+let compile_byte_implementation_is = fun path action ->
+  match action.Action_execution.action with
+  | Action.CompileByteImplementation { source; _ } ->
+      Path.equal source.source path
   | _ -> false
 
 let require_compile_source = fun (plan: Module_plan.t) path kind ->
@@ -269,9 +280,21 @@ let require_compile_source = fun (plan: Module_plan.t) path kind ->
   | Some action -> Ok action
   | None -> Error ("expected compile source action for " ^ Path.to_string path)
 
+let require_compile_byte_implementation = fun (plan: Module_plan.t) path ->
+  match
+    List.find
+      plan.action_executions
+      ~fn:(compile_byte_implementation_is path)
+  with
+  | Some action -> Ok action
+  | None -> Error ("expected byte implementation action for " ^ Path.to_string path)
+
 let compile_action_flags_include_opaque = fun action ->
   match action.Action_execution.action with
   | Action.CompileSource { flags; _ }
+  | Action.CompileInterface { flags; _ }
+  | Action.CompileByteImplementation { flags; _ }
+  | Action.CompileNativeImplementation { flags; _ }
   | Action.CompileSources { flags; _ } ->
       List.any
         flags
@@ -281,8 +304,62 @@ let compile_action_flags_include_opaque = fun action ->
           | _ -> false)
   | _ -> false
 
+let flags_include_impl = fun flags path ->
+  List.any
+    flags
+    ~fn:(fun flag ->
+      match flag with
+      | Riot_toolchain.Ocamlc.Impl impl_path -> Path.equal impl_path path
+      | _ -> false)
+
+let generated_implementations_use_impl_flags = fun (plan: Module_plan.t) ->
+  let generated =
+    plan.action_executions
+    |> List.filter_map
+      ~fn:(fun action ->
+        match action.Action_execution.action with
+        | Action.CompileSource {
+            source = { source; kind = Action.LibraryImplementation; content = Some _ };
+            flags;
+            _;
+          }
+        | Action.CompileByteImplementation {
+            source = { source; kind = Action.LibraryImplementation; content = Some _ };
+            flags;
+            _;
+          }
+        | Action.CompileNativeImplementation {
+            source = { source; kind = Action.LibraryImplementation; content = Some _ };
+            flags;
+            _;
+          } -> Some (source, flags)
+        | _ -> None)
+  in
+  not (List.is_empty generated)
+  && List.all generated ~fn:(fun (source, flags) -> flags_include_impl flags source)
+
 let action_depends_on_source = fun deps path kind ->
   List.any deps ~fn:(compile_source_is path kind)
+
+let action_depends_on_byte_implementation = fun deps path ->
+  List.any deps ~fn:(compile_byte_implementation_is path)
+
+let action_output_extensions = fun action ->
+  Action.outputs action.Action_execution.action
+  |> List.map ~fn:Path.extension
+
+let expect_output_extensions = fun label action expected ->
+  let actual = action_output_extensions action in
+  if actual = expected then
+    Ok ()
+  else
+    Error (
+      label
+      ^ " expected output extensions "
+      ^ Int.to_string (List.length expected)
+      ^ " entries, got "
+      ^ Int.to_string (List.length actual)
+    )
 
 let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in
@@ -524,14 +601,115 @@ let test_opaque_implementation_dependencies_use_cmi_producers = fun _ctx ->
       let deps = dependencies_for_action plan b_action in
       if not (compile_action_flags_include_opaque b_action) then
         Error "expected library implementation compile to use -opaque"
+      else if not (generated_implementations_use_impl_flags plan) then
+        Error "expected generated implementation sources to compile through -impl flags"
       else if not (action_depends_on_source deps a_mli_path Action.LibraryInterface) then
         Error "expected opaque B.ml compile to depend on A.mli as the CMI producer"
       else if action_depends_on_source deps a_ml_path Action.LibraryImplementation then
         Error "expected opaque B.ml compile not to depend on A.ml implementation CMX"
-      else if not (action_depends_on_source deps c_ml_path Action.LibraryImplementation) then
-        Error "expected opaque B.ml compile to depend on C.ml when C has no interface"
+      else if not (action_depends_on_byte_implementation deps c_ml_path) then
+        Error "expected opaque B.ml compile to depend on C.ml byte CMI producer when C has no interface"
+      else if action_depends_on_source deps c_ml_path Action.LibraryImplementation then
+        Error "expected opaque B.ml compile not to depend on C.ml native implementation"
       else
         Ok ()) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_opaque_implementation_dependencies_use_direct_cmi_frontier = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_direct_cmi_frontier"
+    (fun root ->
+      let* workspace = interface_dependency_workspace root in
+      let build = build_package "sourcepkg" in
+      let services =
+        Build_services.create
+          ~config:(Config.make ~workspace ~parallelism:1 ())
+          ()
+      in
+      let registry = Work_registry.create () in
+      let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
+      let* source_keys =
+        Build_services.plan_dependencies services registry node
+        |> Result.map_err ~fn:Error.message
+        |> Result.map ~fn:source_analysis_requests
+      in
+      let* () = execute_source_requests services registry source_keys in
+      let* () =
+        match Build_services.execute_node services registry node with
+        | Ok (Work_result.Complete []) -> Ok ()
+        | Ok _ -> Error "expected module plan to complete after source analysis"
+        | Error error -> Error (Error.message error)
+      in
+      let* plan = require_module_plan services build in
+      let root_path = Path.v "src/sourcepkg.ml" in
+      let a_mli_path = Path.v "src/a.mli" in
+      let b_path = Path.v "src/b.ml" in
+      let c_path = Path.v "src/c.ml" in
+      let* root_action = require_compile_source plan root_path Action.LibraryImplementation in
+      let deps = dependencies_for_action plan root_action in
+      if not (action_depends_on_byte_implementation deps b_path) then
+        Error "expected root implementation to depend on direct B.ml CMI producer"
+      else if action_depends_on_byte_implementation deps c_path then
+        Error "expected root implementation not to depend on transitive C.ml CMI producer"
+      else if action_depends_on_source deps a_mli_path Action.LibraryInterface then
+        Error "expected root implementation not to depend on transitive A.mli CMI producer"
+      else
+        Ok ()) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_ocaml_compile_actions_declare_only_graph_required_outputs = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_ocaml_required_outputs"
+    (fun root ->
+      let* workspace = interface_dependency_workspace root in
+      let build = build_package "sourcepkg" in
+      let services =
+        Build_services.create
+          ~config:(Config.make ~workspace ~parallelism:1 ())
+          ()
+      in
+      let registry = Work_registry.create () in
+      let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
+      let* source_keys =
+        Build_services.plan_dependencies services registry node
+        |> Result.map_err ~fn:Error.message
+        |> Result.map ~fn:source_analysis_requests
+      in
+      let* () = execute_source_requests services registry source_keys in
+      let* () =
+        match Build_services.execute_node services registry node with
+        | Ok (Work_result.Complete []) -> Ok ()
+        | Ok _ -> Error "expected module plan to complete after source analysis"
+        | Error error -> Error (Error.message error)
+      in
+      let* plan = require_module_plan services build in
+      let* interface_action =
+        require_compile_source plan (Path.v "src/a.mli") Action.LibraryInterface
+      in
+      let* byte_action =
+        require_compile_byte_implementation plan (Path.v "src/c.ml")
+      in
+      let* native_action =
+        require_compile_source plan (Path.v "src/a.ml") Action.LibraryImplementation
+      in
+      let* () =
+        expect_output_extensions
+          "interface CMI producer"
+          interface_action
+          [ Some ".cmi" ]
+      in
+      let* () =
+        expect_output_extensions
+          "byte implementation CMI producer"
+          byte_action
+          [ Some ".cmi" ]
+      in
+      expect_output_extensions
+        "native implementation compiler"
+        native_action
+        [ Some ".cmx"; Some ".o" ]) with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -975,6 +1153,51 @@ let test_action_execution_requires_planned_action_dependencies = fun _ctx ->
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
+let test_package_sandbox_prepares_package_scoped_layout = fun _ctx ->
+  let expect_exists = fun path ->
+    match Fs.exists path with
+    | Ok true -> Ok ()
+    | Ok false -> Error ("expected package sandbox path to exist: " ^ Path.to_string path)
+    | Error error ->
+        Error ("failed to check package sandbox path: " ^ IO.error_message error)
+  in
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_package_sandbox"
+    (fun root ->
+      let* workspace = source_package_workspace root in
+      let catalog = Package_catalog.create workspace in
+      let store = Riot_store.Store.create ~workspace in
+      let toolchains = Toolchain_service.create ~root () in
+      let package_planning =
+        Package_planning.create
+          ~workspace
+          ~catalog
+          ~store
+          ~session_id:(Riot_model.Session_id.make ())
+          ~parallelism:1
+          ~toolchains
+          ()
+      in
+      let package_sandbox = Package_sandbox.create ~workspace ~store () in
+      let build = build_package "sourcepkg" in
+      let* input =
+        Package_planning.resolve package_planning build
+        |> Result.map_err ~fn:Error.message
+      in
+      let* sandbox_root =
+        Package_sandbox.prepare package_sandbox input ~depset:[]
+        |> Result.map_err ~fn:Error.message
+      in
+      let sandbox_name = Path.basename sandbox_root in
+      if not (String.starts_with ~prefix:"sourcepkg-" sandbox_name) then
+        Error ("expected package sandbox name to start with sourcepkg-, got " ^ sandbox_name)
+      else
+        let* () = expect_exists Path.(sandbox_root / Package_sandbox.check_dir) in
+        let* () = expect_exists Path.(sandbox_root / Package_sandbox.link_dir) in
+        expect_exists Path.(sandbox_root / Path.v "src/sourcepkg.ml")) with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
 let tests =
   Test.[
     case
@@ -1001,6 +1224,12 @@ let tests =
     case
       "opaque implementation dependencies use CMI producers"
       test_opaque_implementation_dependencies_use_cmi_producers;
+    case
+      "opaque implementation dependencies use direct CMI frontier"
+      test_opaque_implementation_dependencies_use_direct_cmi_frontier;
+    case
+      "OCaml compile actions declare only graph-required outputs"
+      test_ocaml_compile_actions_declare_only_graph_required_outputs;
     case
       "source analyzer refreshes changed source"
       test_source_analyzer_refreshes_changed_source;
@@ -1031,6 +1260,9 @@ let tests =
     case
       "action execution requires planned action dependencies"
       test_action_execution_requires_planned_action_dependencies;
+    case
+      "package sandbox prepares package-scoped layout"
+      test_package_sandbox_prepares_package_scoped_layout;
   ]
 
 let main ~args = Test.Cli.main ~name:"riot_build2_build_services_tests" ~tests ~args ()

@@ -8,6 +8,7 @@ type t = {
   catalog: Package_catalog.t;
   store: Riot_store.Store.t;
   package_planning: Package_planning.t;
+  package_sandbox: Package_sandbox.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
   rule_indexes: (Goal.build_package, rule_index) ConcurrentHashMap.t;
@@ -18,18 +19,32 @@ and rule_index = {
   actions_by_ref: (Action_execution.ref_, Action_execution.t) ConcurrentHashMap.t;
   action_keys_by_ref: (Action_execution.ref_, Work_node.key) ConcurrentHashMap.t;
   ocaml_sources_by_path: (Path.t, Rule.ocaml_source) ConcurrentHashMap.t;
-  ocaml_actions_by_path_and_kind:
-    (Path.t * Action.compile_library_source_kind, Action_execution.t) ConcurrentHashMap.t;
+  ocaml_actions_by_path_and_role:
+    (Path.t * ocaml_action_role, Action_execution.t) ConcurrentHashMap.t;
   c_objects_by_source: (Path.t, Rule.c_object) ConcurrentHashMap.t;
   c_actions_by_source: (Path.t, Action_execution.t) ConcurrentHashMap.t;
 }
 
-let create = fun ~workspace ~catalog ~store ~package_planning ~module_planning ~action_executor () ->
+and ocaml_action_role =
+  | Interface
+  | ByteImplementation
+  | NativeImplementation
+
+let create = fun
+  ~workspace
+  ~catalog
+  ~store
+  ~package_planning
+  ~package_sandbox
+  ~module_planning
+  ~action_executor
+  () ->
   {
     workspace;
     catalog;
     store;
     package_planning;
+    package_sandbox;
     module_planning;
     action_executor;
     rule_indexes = ConcurrentHashMap.with_capacity ~size:128;
@@ -134,7 +149,7 @@ let create_rule_index = fun t (plan: Module_plan.t) ->
     actions_by_ref = ConcurrentHashMap.with_capacity ~size:(List.length plan.action_executions);
     action_keys_by_ref = ConcurrentHashMap.with_capacity ~size:(List.length plan.action_executions);
     ocaml_sources_by_path = ConcurrentHashMap.with_capacity ~size:source_capacity;
-    ocaml_actions_by_path_and_kind = ConcurrentHashMap.with_capacity ~size:source_capacity;
+    ocaml_actions_by_path_and_role = ConcurrentHashMap.with_capacity ~size:(source_capacity * 2);
     c_objects_by_source = ConcurrentHashMap.with_capacity ~size:c_capacity;
     c_actions_by_source = ConcurrentHashMap.with_capacity ~size:c_capacity;
   }
@@ -165,8 +180,34 @@ let create_rule_index = fun t (plan: Module_plan.t) ->
       | Action.CompileSource { source; _ } ->
           ignore (
             ConcurrentHashMap.insert
-              index.ocaml_actions_by_path_and_kind
-              ~key:(source.source, source.kind)
+              index.ocaml_actions_by_path_and_role
+              ~key:(
+                source.source,
+                match source.kind with
+                | Action.LibraryInterface -> Interface
+                | Action.LibraryImplementation -> NativeImplementation
+              )
+              ~value:action
+          )
+      | Action.CompileInterface { source; _ } ->
+          ignore (
+            ConcurrentHashMap.insert
+              index.ocaml_actions_by_path_and_role
+              ~key:(source.source, Interface)
+              ~value:action
+          )
+      | Action.CompileByteImplementation { source; _ } ->
+          ignore (
+            ConcurrentHashMap.insert
+              index.ocaml_actions_by_path_and_role
+              ~key:(source.source, ByteImplementation)
+              ~value:action
+          )
+      | Action.CompileNativeImplementation { source; _ } ->
+          ignore (
+            ConcurrentHashMap.insert
+              index.ocaml_actions_by_path_and_role
+              ~key:(source.source, NativeImplementation)
               ~value:action
           )
       | Action.CompileC { source; _ } ->
@@ -214,10 +255,23 @@ let action_key = fun t (plan: Module_plan.t) (action: Action_execution.t) ->
   match action.action with
   | Action.CompileSource { source = { content = Some _; _ }; _ } ->
       Ok (Work_node.OCamlGeneratedKey (Rule.ocaml_generated ~build:plan.build action))
+  | Action.CompileInterface { source = { content = Some _; _ }; _ }
+  | Action.CompileByteImplementation { source = { content = Some _; _ }; _ }
+  | Action.CompileNativeImplementation { source = { content = Some _; _ }; _ } ->
+      Ok (Work_node.OCamlGeneratedKey (Rule.ocaml_generated ~build:plan.build action))
   | Action.CompileSource { source = { source; kind = Action.LibraryInterface; _ }; _ } ->
       let* rule = source_rule_by_path t plan source in
       Ok (Work_node.OCamlInterfaceKey rule)
   | Action.CompileSource { source = { source; kind = Action.LibraryImplementation; _ }; _ } ->
+      let* rule = source_rule_by_path t plan source in
+      Ok (Work_node.OCamlImplementationKey rule)
+  | Action.CompileInterface { source = { source; _ }; _ } ->
+      let* rule = source_rule_by_path t plan source in
+      Ok (Work_node.OCamlInterfaceKey rule)
+  | Action.CompileByteImplementation { source = { source; _ }; _ } ->
+      let* rule = source_rule_by_path t plan source in
+      Ok (Work_node.OCamlByteImplementationKey rule)
+  | Action.CompileNativeImplementation { source = { source; _ }; _ } ->
       let* rule = source_rule_by_path t plan source in
       Ok (Work_node.OCamlImplementationKey rule)
   | Action.CompileC { source; _ } ->
@@ -270,7 +324,7 @@ let find_archive_action = fun (plan: Module_plan.t) ->
         ^ " has no OCaml archive action";
       })
 
-let find_ocaml_action = fun t (plan: Module_plan.t) (source: Rule.ocaml_source) expected_kind ->
+let find_ocaml_action = fun t (plan: Module_plan.t) (source: Rule.ocaml_source) expected_role ->
   let source_path = ocaml_source_path source in
   let* source_rule = source_rule_by_path t plan source_path in
   let same_source = Path.equal (ocaml_source_path source_rule) source_path in
@@ -280,8 +334,8 @@ let find_ocaml_action = fun t (plan: Module_plan.t) (source: Rule.ocaml_source) 
     let* index = rule_index t plan in
     match
       ConcurrentHashMap.get
-        index.ocaml_actions_by_path_and_kind
-        ~key:(source.source.path, expected_kind)
+        index.ocaml_actions_by_path_and_role
+        ~key:(source.source.path, expected_role)
     with
     | Some action -> Ok action
     | None ->
@@ -326,12 +380,17 @@ let plan_ocaml_generated = fun _t (source: Rule.ocaml_generated) ->
 
 let execute_ocaml_interface = fun t registry (source: Rule.ocaml_source) ->
   let* plan = ensure_module_plan t registry source.Rule.build in
-  let* action = find_ocaml_action t plan source Action.LibraryInterface in
+  let* action = find_ocaml_action t plan source Interface in
+  execute_action_rule t plan action
+
+let execute_ocaml_byte_implementation = fun t registry (source: Rule.ocaml_source) ->
+  let* plan = ensure_module_plan t registry source.Rule.build in
+  let* action = find_ocaml_action t plan source ByteImplementation in
   execute_action_rule t plan action
 
 let execute_ocaml_implementation = fun t registry (source: Rule.ocaml_source) ->
   let* plan = ensure_module_plan t registry source.Rule.build in
-  let* action = find_ocaml_action t plan source Action.LibraryImplementation in
+  let* action = find_ocaml_action t plan source NativeImplementation in
   execute_action_rule t plan action
 
 let execute_ocaml_generated = fun t registry (source: Rule.ocaml_generated) ->
@@ -469,6 +528,7 @@ let finalize = fun t (plan: Module_plan.t) ->
                   }
                 in
                 ignore (ConcurrentHashMap.insert t.package_results ~key:plan.build ~value:result);
+                Package_sandbox.cleanup_success t.package_sandbox plan.build;
                 Ok (Work_result.Complete [])
 
 let finalize_cached_artifact = fun t (cached: Package_planning.artifact_hit) ->

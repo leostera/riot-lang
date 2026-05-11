@@ -283,6 +283,7 @@ let kind_name = fun __tmp1 ->
   | ActionPlan _ -> "ActionPlan"
   | ModuleDependencies _ -> "ModuleDependencies"
   | OCamlInterface _ -> "OCamlInterface"
+  | OCamlByteImplementation _ -> "OCamlByteImplementation"
   | OCamlImplementation _ -> "OCamlImplementation"
   | OCamlGenerated _ -> "OCamlGenerated"
   | CObject _ -> "CObject"
@@ -389,14 +390,17 @@ let cached_action_cache_promotion_count = fun results ->
       && not (Time.Duration.is_zero result.Action_execution.timing.cache_promotion))
   |> List.length
 
-let expect_cached_kernel_actions_defer_cache_promotion = fun executor ->
+let expect_cached_kernel_actions_restore_outputs_to_package_sandbox = fun executor ->
   let results = kernel_action_results executor in
+  let cached_actions = action_result_status_count results `Cached in
   let promoted_cached_actions = cached_action_cache_promotion_count results in
-  if Int.equal promoted_cached_actions 0 then
+  if Int.equal promoted_cached_actions cached_actions then
     Ok ()
   else
-    Error ("expected cached action hits to defer output promotion, but "
+    Error ("expected cached action hits to restore declared outputs into the package sandbox, but "
     ^ Int.to_string promoted_cached_actions
+    ^ " of "
+    ^ Int.to_string cached_actions
     ^ " cached actions recorded cache promotion work")
 
 let kernel_action_result_counts = fun executor _summary ->
@@ -430,6 +434,42 @@ let kernel_action_result_counts = fun executor _summary ->
     (
       "kernel CompileSource failed",
       action_kind_status_count results ~kind:"CompileSource" ~status:`Failed
+    );
+    (
+      "kernel CompileInterface cached",
+      action_kind_status_count results ~kind:"CompileInterface" ~status:`Cached
+    );
+    (
+      "kernel CompileInterface executed",
+      action_kind_status_count results ~kind:"CompileInterface" ~status:`Executed
+    );
+    (
+      "kernel CompileInterface failed",
+      action_kind_status_count results ~kind:"CompileInterface" ~status:`Failed
+    );
+    (
+      "kernel CompileByteImplementation cached",
+      action_kind_status_count results ~kind:"CompileByteImplementation" ~status:`Cached
+    );
+    (
+      "kernel CompileByteImplementation executed",
+      action_kind_status_count results ~kind:"CompileByteImplementation" ~status:`Executed
+    );
+    (
+      "kernel CompileByteImplementation failed",
+      action_kind_status_count results ~kind:"CompileByteImplementation" ~status:`Failed
+    );
+    (
+      "kernel CompileNativeImplementation cached",
+      action_kind_status_count results ~kind:"CompileNativeImplementation" ~status:`Cached
+    );
+    (
+      "kernel CompileNativeImplementation executed",
+      action_kind_status_count results ~kind:"CompileNativeImplementation" ~status:`Executed
+    );
+    (
+      "kernel CompileNativeImplementation failed",
+      action_kind_status_count results ~kind:"CompileNativeImplementation" ~status:`Failed
     );
     (
       "kernel CompileSources cached",
@@ -579,6 +619,12 @@ let kernel_cold_graph_counts = fun summary ->
         match __tmp1 with
         | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
         | _ -> false));
+    ("OCamlByteImplementation nodes", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlByteImplementation source -> is_kernel_build source.Rule.build
+        | _ -> false));
     ("OCamlImplementation nodes", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
@@ -615,6 +661,7 @@ let kernel_cold_graph_counts = fun summary ->
       ~fn:(fun __tmp1 ->
         match __tmp1 with
         | Work_node.OCamlInterface source
+        | Work_node.OCamlByteImplementation source
         | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
         | OCamlGenerated source -> is_kernel_build source.Rule.build
         | CObject c_object -> is_kernel_build c_object.Rule.build
@@ -631,6 +678,7 @@ let kernel_cold_graph_counts = fun summary ->
       ~fn:(fun __tmp1 ->
         match __tmp1 with
         | Work_node.OCamlInterface source
+        | Work_node.OCamlByteImplementation source
         | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
         | OCamlGenerated source -> is_kernel_build source.Rule.build
         | _ -> false));
@@ -641,11 +689,23 @@ let kernel_cold_graph_counts = fun summary ->
         match __tmp1 with
         | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
         | _ -> false));
+    ("kernel byte CompileSource actions", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlByteImplementation source -> is_kernel_build source.Rule.build
+        | _ -> false));
     ("kernel implementation CompileSource actions", completed_kind_count
       summary
       ~fn:(fun __tmp1 ->
         match __tmp1 with
         | Work_node.OCamlImplementation source -> is_kernel_build source.Rule.build
+        | _ -> false));
+    ("kernel generated CompileSource actions", completed_kind_count
+      summary
+      ~fn:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlGenerated source -> is_kernel_build source.Rule.build
         | _ -> false));
     ("kernel final archive actions", completed_kind_count
       summary
@@ -656,8 +716,8 @@ let kernel_cold_graph_counts = fun summary ->
   ]
 
 let expected_kernel_cold_graph_counts = [
-  ("summary.results", 431);
-  ("summary.completed_count", 431);
+  ("summary.results", 465);
+  ("summary.completed_count", 465);
   ("summary.failed_count", 0);
   ("UserIntent nodes", 1);
   ("Goal nodes", 1);
@@ -670,23 +730,26 @@ let expected_kernel_cold_graph_counts = [
   ("ToolchainReady nodes", 1);
   ("OCamlLibrary nodes", 0);
   ("OCamlInterface nodes", 86);
+  ("OCamlByteImplementation nodes", 3);
   ("OCamlImplementation nodes", 89);
-  ("OCamlGenerated nodes", 31);
+  ("OCamlGenerated nodes", 62);
   ("CObject nodes", 13);
   ("OCamlArchive nodes", 1);
   ("ActionExecution nodes", 0);
-  ("kernel compiler actions", 220);
+  ("kernel compiler actions", 254);
   ("kernel CompileC actions", 13);
-  ("kernel CompileSource actions", 206);
+  ("kernel CompileSource actions", 240);
   ("kernel CompileSources actions", 0);
   ("kernel interface CompileSource actions", 86);
+  ("kernel byte CompileSource actions", 3);
   ("kernel implementation CompileSource actions", 89);
+  ("kernel generated CompileSource actions", 62);
   ("kernel final archive actions", 1);
 ]
 
 let expected_kernel_event_change_graph_counts = [
-  ("summary.results", 432);
-  ("summary.completed_count", 432);
+  ("summary.results", 466);
+  ("summary.completed_count", 466);
   ("summary.failed_count", 0);
   ("UserIntent nodes", 1);
   ("Goal nodes", 1);
@@ -699,17 +762,20 @@ let expected_kernel_event_change_graph_counts = [
   ("ToolchainReady nodes", 1);
   ("OCamlLibrary nodes", 0);
   ("OCamlInterface nodes", 86);
+  ("OCamlByteImplementation nodes", 3);
   ("OCamlImplementation nodes", 89);
-  ("OCamlGenerated nodes", 32);
+  ("OCamlGenerated nodes", 63);
   ("CObject nodes", 13);
   ("OCamlArchive nodes", 1);
   ("ActionExecution nodes", 0);
-  ("kernel compiler actions", 221);
+  ("kernel compiler actions", 255);
   ("kernel CompileC actions", 13);
-  ("kernel CompileSource actions", 207);
+  ("kernel CompileSource actions", 241);
   ("kernel CompileSources actions", 0);
   ("kernel interface CompileSource actions", 86);
+  ("kernel byte CompileSource actions", 3);
   ("kernel implementation CompileSource actions", 89);
+  ("kernel generated CompileSource actions", 63);
   ("kernel final archive actions", 1);
 ]
 
@@ -729,17 +795,26 @@ let expect_kernel_exact_isolated_graph_counts = fun summary ->
     (kernel_cold_graph_counts summary)
 
 let expected_kernel_cold_action_result_counts = [
-  ("kernel action results", 220);
+  ("kernel action results", 254);
   ("kernel action results cached", 0);
-  ("kernel action results executed", 220);
+  ("kernel action results executed", 254);
   ("kernel action results failed", 0);
   ("kernel action results missing from summary", 0);
   ("kernel CompileC cached", 0);
   ("kernel CompileC executed", 13);
   ("kernel CompileC failed", 0);
   ("kernel CompileSource cached", 0);
-  ("kernel CompileSource executed", 206);
+  ("kernel CompileSource executed", 0);
   ("kernel CompileSource failed", 0);
+  ("kernel CompileInterface cached", 0);
+  ("kernel CompileInterface executed", 86);
+  ("kernel CompileInterface failed", 0);
+  ("kernel CompileByteImplementation cached", 0);
+  ("kernel CompileByteImplementation executed", 34);
+  ("kernel CompileByteImplementation failed", 0);
+  ("kernel CompileNativeImplementation cached", 0);
+  ("kernel CompileNativeImplementation executed", 120);
+  ("kernel CompileNativeImplementation failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);
   ("kernel CompileSources failed", 0);
@@ -768,6 +843,7 @@ let expected_kernel_warm_graph_counts = [
   ("ToolchainReady nodes", 0);
   ("OCamlLibrary nodes", 0);
   ("OCamlInterface nodes", 0);
+  ("OCamlByteImplementation nodes", 0);
   ("OCamlImplementation nodes", 0);
   ("OCamlGenerated nodes", 0);
   ("CObject nodes", 0);
@@ -778,7 +854,9 @@ let expected_kernel_warm_graph_counts = [
   ("kernel CompileSource actions", 0);
   ("kernel CompileSources actions", 0);
   ("kernel interface CompileSource actions", 0);
+  ("kernel byte CompileSource actions", 0);
   ("kernel implementation CompileSource actions", 0);
+  ("kernel generated CompileSource actions", 0);
   ("kernel final archive actions", 0);
 ]
 
@@ -799,6 +877,15 @@ let expected_kernel_warm_action_result_counts = [
   ("kernel CompileSource cached", 0);
   ("kernel CompileSource executed", 0);
   ("kernel CompileSource failed", 0);
+  ("kernel CompileInterface cached", 0);
+  ("kernel CompileInterface executed", 0);
+  ("kernel CompileInterface failed", 0);
+  ("kernel CompileByteImplementation cached", 0);
+  ("kernel CompileByteImplementation executed", 0);
+  ("kernel CompileByteImplementation failed", 0);
+  ("kernel CompileNativeImplementation cached", 0);
+  ("kernel CompileNativeImplementation executed", 0);
+  ("kernel CompileNativeImplementation failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);
   ("kernel CompileSources failed", 0);
@@ -813,17 +900,26 @@ let expect_kernel_exact_warm_action_result_counts = fun executor summary ->
     (kernel_action_result_counts executor summary)
 
 let expected_kernel_event_change_action_result_counts = [
-  ("kernel action results", 220);
-  ("kernel action results cached", 218);
+  ("kernel action results", 254);
+  ("kernel action results cached", 252);
   ("kernel action results executed", 2);
   ("kernel action results failed", 0);
   ("kernel action results missing from summary", 0);
   ("kernel CompileC cached", 13);
   ("kernel CompileC executed", 0);
   ("kernel CompileC failed", 0);
-  ("kernel CompileSource cached", 205);
-  ("kernel CompileSource executed", 1);
+  ("kernel CompileSource cached", 0);
+  ("kernel CompileSource executed", 0);
   ("kernel CompileSource failed", 0);
+  ("kernel CompileInterface cached", 86);
+  ("kernel CompileInterface executed", 0);
+  ("kernel CompileInterface failed", 0);
+  ("kernel CompileByteImplementation cached", 34);
+  ("kernel CompileByteImplementation executed", 0);
+  ("kernel CompileByteImplementation failed", 0);
+  ("kernel CompileNativeImplementation cached", 119);
+  ("kernel CompileNativeImplementation executed", 1);
+  ("kernel CompileNativeImplementation failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);
   ("kernel CompileSources failed", 0);
@@ -891,6 +987,15 @@ let expect_kernel_graph_shape = fun result ->
       (fun __tmp1 ->
         match __tmp1 with
         | Work_node.OCamlInterface source -> is_kernel_build source.Rule.build
+        | _ -> false)
+  in
+  let* byte_implementation =
+    require_completed_node
+      summary
+      "OCamlByteImplementation"
+      (fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.OCamlByteImplementation source -> is_kernel_build source.Rule.build
         | _ -> false)
   in
   let* implementation =
@@ -1045,6 +1150,17 @@ let expect_kernel_graph_shape = fun result ->
   let* () =
     expect_dependency
       summary
+      ~from_label:"OCamlByteImplementation(kernel)"
+      ~from:byte_implementation
+      ~to_label:"ModuleDependencies(kernel)"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ModuleDependencies build -> is_kernel_build build
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
       ~from_label:"CObject(kernel)"
       ~from:c_object
       ~to_label:"ModuleDependencies(kernel)"
@@ -1081,6 +1197,18 @@ let expect_kernel_graph_shape = fun result ->
       summary
       ~from_label:"OCamlImplementation(kernel)"
       ~from:implementation
+      ~to_label:"ToolchainReady"
+      ~dependency:(fun __tmp1 ->
+        match __tmp1 with
+        | Work_node.ToolchainReady toolchain ->
+            Riot_model.Target.equal toolchain.target (current_target ())
+        | _ -> false)
+  in
+  let* () =
+    expect_dependency
+      summary
+      ~from_label:"OCamlByteImplementation(kernel)"
+      ~from:byte_implementation
       ~to_label:"ToolchainReady"
       ~dependency:(fun __tmp1 ->
         match __tmp1 with
@@ -1221,6 +1349,15 @@ let expect_kernel_work_graph = fun result ->
     let* () =
       expect_completed_kind
         summary
+        "OCamlByteImplementation"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | Work_node.OCamlByteImplementation source -> is_kernel_build source.Rule.build
+          | _ -> false)
+    in
+    let* () =
+      expect_completed_kind
+        summary
         "OCamlImplementation"
         (fun __tmp1 ->
           match __tmp1 with
@@ -1355,7 +1492,7 @@ let test_kernel_event_change_partially_invalidates_cached_build = fun _ctx ->
         let* () = expect_kernel_package_result second in
         let* () = expect_kernel_exact_event_change_graph_counts summary in
         let* () = expect_kernel_event_change_action_result_counts second_executor summary in
-        expect_cached_kernel_actions_defer_cache_promotion second_executor)
+        expect_cached_kernel_actions_restore_outputs_to_package_sandbox second_executor)
 
 let test_kernel_builds_multiple_profiles_and_targets = fun _ctx ->
   with_kernel_workspace_target
@@ -1388,7 +1525,7 @@ let test_kernel_builds_multiple_profiles_and_targets = fun _ctx ->
         Error ("kernel profile/target matrix build failed:\n" ^ summary_errors result.summary)
       else
         let* () = expect_kernel_build_matrix_results result ~profiles ~targets in
-        let expected_action_count = 220 * List.length profiles * List.length targets in
+        let expected_action_count = 254 * List.length profiles * List.length targets in
         let actual_action_count = List.length (kernel_action_results executor) in
         if Int.equal actual_action_count expected_action_count then
           Ok ()

@@ -7,6 +7,7 @@ type t = {
   module_providers: Module_provider_registry.t;
   toolchains: Toolchain_service.t;
   package_planning: Package_planning.t;
+  package_sandbox: Package_sandbox.t;
   source_analyzer: Source_analyzer.t;
   module_planning: Module_planning.t;
   action_executor: Action_executor.t;
@@ -30,6 +31,7 @@ let create = fun ~config () ->
       ~toolchains
       ()
   in
+  let package_sandbox = Package_sandbox.create ~workspace ~store () in
   let source_analyzer = Source_analyzer.create ~store () in
   let module_planning =
     Module_planning.create
@@ -37,6 +39,7 @@ let create = fun ~config () ->
       ~catalog
       ~store
       ~package_planning
+      ~package_sandbox
       ~module_providers
       ~source_analyzer
       ()
@@ -48,6 +51,7 @@ let create = fun ~config () ->
       ~catalog
       ~store
       ~package_planning
+      ~package_sandbox
       ~module_planning
       ~action_executor
       ()
@@ -58,6 +62,7 @@ let create = fun ~config () ->
     module_providers;
     toolchains;
     package_planning;
+    package_sandbox;
     source_analyzer;
     module_planning;
     action_executor;
@@ -66,6 +71,7 @@ let create = fun ~config () ->
 
 let begin_execution = fun t ->
   Package_catalog.begin_execution t.catalog;
+  Package_sandbox.begin_execution t.package_sandbox;
   Module_planning.begin_execution t.module_planning;
   Rule_service.begin_execution t.rule_service
 
@@ -97,6 +103,7 @@ let plan_dependencies = fun t registry node ->
   | OCamlArchive build ->
       Rule_service.plan_ocaml_archive t.rule_service build
   | OCamlInterface source
+  | OCamlByteImplementation source
   | OCamlImplementation source ->
       Rule_service.plan_ocaml_source t.rule_service source
   | OCamlGenerated source ->
@@ -135,6 +142,8 @@ let execute_node = fun t registry node ->
       Rule_service.execute_module_dependencies t.rule_service registry build
   | OCamlArchive build -> Rule_service.execute_ocaml_archive t.rule_service registry build
   | OCamlInterface source -> Rule_service.execute_ocaml_interface t.rule_service registry source
+  | OCamlByteImplementation source ->
+      Rule_service.execute_ocaml_byte_implementation t.rule_service registry source
   | OCamlImplementation source ->
       Rule_service.execute_ocaml_implementation t.rule_service registry source
   | OCamlGenerated source ->

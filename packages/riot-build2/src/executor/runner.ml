@@ -42,6 +42,7 @@ type dispatcher_event =
 type state = {
   pool: worker_task DynamicWorkerPool.t;
   ready: Node_queue.t;
+  queued: (Work_node.Node_id.t, unit) ConcurrentHashMap.t;
   idle_workers: worker_task DynamicWorkerPool.worker Queue.t;
   result_ref: task_result Ref.t;
   on_event: Event.t -> unit;
@@ -60,9 +61,33 @@ type registered_dependencies = {
   pending_dependencies: Work_node.t list;
 }
 
+let can_queue_node = fun node ->
+  match Work_node.status node with
+  | Work_node.Unplanned -> true
+  | Ready -> Work_node.dependencies_ready node
+  | Planning
+  | Parked
+  | Running
+  | Completed
+  | Failed -> false
+
+let mark_queued = fun state node ->
+  ConcurrentHashMap.compute
+    state.queued
+    ~key:(Work_node.id node)
+    ~fn:(fun current ->
+      match current with
+      | Some () -> ConcurrentHashMap.Abort false
+      | None -> ConcurrentHashMap.Insert ((), true))
+
+let mark_unqueued = fun state node ->
+  ignore (ConcurrentHashMap.remove state.queued ~key:(Work_node.id node))
+
 let queue_node = fun state node ->
-  Node_queue.push state.ready node;
-  state.on_event (Event.WorkQueued { node })
+  if can_queue_node node && mark_queued state node then (
+    Node_queue.push state.ready node;
+    state.on_event (Event.WorkQueued { node })
+  )
 
 let record_result = fun state node status error ->
   state.results <- { ExecutionSummary.node; status; error } :: state.results;
@@ -71,7 +96,7 @@ let record_result = fun state node status error ->
   | Failed -> state.failed_count <- Int.succ state.failed_count
   | Unplanned
   | Planning
-  | Waiting
+  | Parked
   | Ready
   | Running -> ()
 
@@ -91,6 +116,7 @@ let unsupported_key_error = fun key ->
     | Work_node.ActionPlanKey _ -> "action-plan"
     | Work_node.ModuleDependenciesKey _ -> "module-dependencies"
     | Work_node.OCamlInterfaceKey _ -> "ocaml-interface"
+    | Work_node.OCamlByteImplementationKey _ -> "ocaml-byte-implementation"
     | Work_node.OCamlImplementationKey _ -> "ocaml-implementation"
     | Work_node.OCamlGeneratedKey _ -> "ocaml-generated"
     | Work_node.CObjectKey _ -> "c-object"
@@ -152,7 +178,7 @@ let rec fail_node = fun state node error ->
   | Completed -> ()
   | Unplanned
   | Planning
-  | Waiting
+  | Parked
   | Ready
   | Running ->
       Work_node.mark_as_failed node;
@@ -168,7 +194,7 @@ and settle_dependents = fun state node ->
       | None -> ()
       | Some dependent -> (
           match Work_node.status dependent with
-          | Waiting -> (
+          | Parked -> (
               match Work_node.status node with
               | Failed ->
                   fail_node
@@ -186,7 +212,7 @@ and settle_dependents = fun state node ->
                   )
               | Unplanned
               | Planning
-              | Waiting
+              | Parked
               | Ready
               | Running -> ()
             )
@@ -211,7 +237,7 @@ let register_dependencies = fun state node dependencies ->
         match Work_node.status dependency with
         | Work_node.Unplanned
         | Planning
-        | Waiting
+        | Parked
         | Ready
         | Running ->
             pending_count := Int.succ !pending_count;
@@ -248,7 +274,7 @@ let complete_node = fun state node ->
   | Failed -> ()
   | Unplanned
   | Planning
-  | Waiting
+  | Parked
   | Ready
   | Running ->
       Work_node.mark_as_completed node;
@@ -280,7 +306,7 @@ let register_dependency_requests = fun state node dependency_requests ->
                   | Unplanned -> queue_node state dependency
                   | Ready when Work_node.dependencies_ready dependency -> queue_node state dependency
                   | Planning
-                  | Waiting
+                  | Parked
                   | Ready
                   | Running
                   | Completed
@@ -319,7 +345,7 @@ let prepare_node_for_dispatch = fun state worker node ->
   | Work_node.Unplanned -> dispatch_plan_node state worker node
   | Ready -> dispatch_ready_node state worker node
   | Planning
-  | Waiting -> NotDispatched
+  | Parked -> NotDispatched
   | Running
   | Completed
   | Failed -> NotDispatched
@@ -332,6 +358,7 @@ let dispatch_available = fun state ->
         match Node_queue.pop state.ready with
         | None -> Queue.push state.idle_workers ~value:worker
         | Some node -> (
+            mark_unqueued state node;
             match prepare_node_for_dispatch state worker node with
             | Dispatched -> loop ()
             | NotDispatched ->
@@ -356,7 +383,7 @@ let complete_plan_result = fun state (result: plan_result) ->
             queue_node state result.node
           )
           else
-            Work_node.mark_as_waiting result.node
+            Work_node.mark_as_parked result.node
     )
 
 let complete_execute_result = fun state (result: execute_result) ->
@@ -384,7 +411,7 @@ let complete_execute_result = fun state (result: execute_result) ->
             queue_node state result.node
           )
           else
-            Work_node.mark_as_waiting result.node
+            Work_node.mark_as_parked result.node
     )
   | Error error -> fail_node state result.node error
 
@@ -490,6 +517,7 @@ let run_with_handlers = fun
       let state = {
         pool;
         ready = Node_queue.create ();
+        queued = ConcurrentHashMap.with_capacity ~size:1024;
         idle_workers = Queue.create ();
         result_ref;
         on_event = config.on_event;

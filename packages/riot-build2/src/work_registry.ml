@@ -143,6 +143,14 @@ let intern_ocaml_interface = fun t source ->
     ~key:(ocaml_interface_key source)
     ~make:(fun () -> Work_node.OCamlInterface source)
 
+let ocaml_byte_implementation_key = fun source -> Work_node.OCamlByteImplementationKey source
+
+let intern_ocaml_byte_implementation = fun t source ->
+  intern
+    t
+    ~key:(ocaml_byte_implementation_key source)
+    ~make:(fun () -> Work_node.OCamlByteImplementation source)
+
 let ocaml_implementation_key = fun source -> Work_node.OCamlImplementationKey source
 
 let intern_ocaml_implementation = fun t source ->

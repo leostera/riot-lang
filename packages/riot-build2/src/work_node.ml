@@ -20,7 +20,7 @@ end
 type status =
   | Unplanned
   | Planning
-  | Waiting
+  | Parked
   | Ready
   | Running
   | Completed
@@ -55,6 +55,7 @@ type key =
   | ActionPlanKey of Goal.build_package
   | ModuleDependenciesKey of Goal.build_package
   | OCamlInterfaceKey of Rule.ocaml_source
+  | OCamlByteImplementationKey of Rule.ocaml_source
   | OCamlImplementationKey of Rule.ocaml_source
   | OCamlGeneratedKey of Rule.ocaml_generated
   | CObjectKey of Rule.c_object
@@ -73,6 +74,7 @@ type kind =
   | ActionPlan of Goal.build_package
   | ModuleDependencies of Goal.build_package
   | OCamlInterface of Rule.ocaml_source
+  | OCamlByteImplementation of Rule.ocaml_source
   | OCamlImplementation of Rule.ocaml_source
   | OCamlGenerated of Rule.ocaml_generated
   | CObject of Rule.c_object
@@ -102,6 +104,7 @@ let key_from_kind = fun __tmp1 ->
   | ActionPlan build -> ActionPlanKey build
   | ModuleDependencies source -> ModuleDependenciesKey source
   | OCamlInterface source -> OCamlInterfaceKey source
+  | OCamlByteImplementation source -> OCamlByteImplementationKey source
   | OCamlImplementation source -> OCamlImplementationKey source
   | OCamlGenerated source -> OCamlGeneratedKey source
   | CObject c_object -> CObjectKey c_object
@@ -120,6 +123,7 @@ let kind_from_key = fun __tmp1 ->
   | ActionPlanKey build -> Some (ActionPlan build)
   | ModuleDependenciesKey source -> Some (ModuleDependencies source)
   | OCamlInterfaceKey source -> Some (OCamlInterface source)
+  | OCamlByteImplementationKey source -> Some (OCamlByteImplementation source)
   | OCamlImplementationKey source -> Some (OCamlImplementation source)
   | OCamlGeneratedKey source -> Some (OCamlGenerated source)
   | CObjectKey c_object -> Some (CObject c_object)
@@ -166,6 +170,8 @@ let module_dependencies = fun ~id source -> create ~id (ModuleDependencies sourc
 
 let ocaml_interface = fun ~id source -> create ~id (OCamlInterface source)
 
+let ocaml_byte_implementation = fun ~id source -> create ~id (OCamlByteImplementation source)
+
 let ocaml_implementation = fun ~id source -> create ~id (OCamlImplementation source)
 
 let ocaml_generated = fun ~id source -> create ~id (OCamlGenerated source)
@@ -197,6 +203,7 @@ let execution_mode_of_kind = fun __tmp1 ->
   | ActionPlan _
   | ModuleDependencies _
   | OCamlInterface _
+  | OCamlByteImplementation _
   | OCamlImplementation _
   | OCamlGenerated _
   | CObject _
@@ -212,7 +219,7 @@ let status_to_string = fun __tmp1 ->
   match __tmp1 with
   | Unplanned -> "Unplanned"
   | Planning -> "Planning"
-  | Waiting -> "Waiting"
+  | Parked -> "Parked"
   | Ready -> "Ready"
   | Running -> "Running"
   | Completed -> "Completed"
@@ -229,18 +236,18 @@ let invalid_transition_message = fun node ~from ~to_ ->
 let valid_transition = fun ~from ~to_ ->
   match (from, to_) with
   | (Unplanned, Planning)
-  | (Unplanned, Waiting)
+  | (Unplanned, Parked)
   | (Unplanned, Ready)
   | (Unplanned, Failed)
-  | (Planning, Waiting)
+  | (Planning, Parked)
   | (Planning, Ready)
   | (Planning, Failed)
-  | (Waiting, Ready)
-  | (Waiting, Failed)
+  | (Parked, Ready)
+  | (Parked, Failed)
   | (Ready, Running)
   | (Ready, Completed)
   | (Ready, Failed)
-  | (Running, Waiting)
+  | (Running, Parked)
   | (Running, Ready)
   | (Running, Completed)
   | (Running, Failed) -> true
@@ -269,7 +276,7 @@ let dependencies_ready = fun node -> Int.equal (pending_dependency_count node) 0
 
 let mark_as_planning = fun node -> transition node ~to_:Planning
 
-let mark_as_waiting = fun node -> transition node ~to_:Waiting
+let mark_as_parked = fun node -> transition node ~to_:Parked
 
 let mark_as_ready = fun node -> transition node ~to_:Ready
 

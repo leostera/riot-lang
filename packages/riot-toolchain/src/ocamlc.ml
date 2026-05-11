@@ -593,7 +593,7 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
   in
   make_invocation ~cwd (String.concat " " ([ base_command t ] @ args))
 
-let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
+let compile_impl = fun t ~cwd ~includes ~flags ?cmi_file ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let has_impl_flag =
     List.any
@@ -604,15 +604,30 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
         | _ -> false)
   in
   let args =
-    (((([ "-bin-annot"; "-c" ] @ warning_baseline_flags source) @ flags_to_string flags)
-    @ List.fold_right
-      includes_with_dot
-      ~init:[]
-      ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc))
-    @ [ "-o"; Path.to_string output ]) @ if has_impl_flag then
-      []
-    else
-      [ Path.to_string source ]
+    let include_flags =
+      List.fold_right
+        includes_with_dot
+        ~init:[]
+        ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
+    in
+    let cmi_file_flags =
+      match cmi_file with
+      | Some path -> [ "-cmi-file"; Path.to_string path ]
+      | None -> []
+    in
+    let source_args =
+      if has_impl_flag then
+        []
+      else
+        [ Path.to_string source ]
+    in
+    [ "-bin-annot"; "-c" ]
+    @ warning_baseline_flags source
+    @ flags_to_string flags
+    @ include_flags
+    @ cmi_file_flags
+    @ [ "-o"; Path.to_string output ]
+    @ source_args
   in
   make_invocation ~cwd (String.concat " " ([ base_command t ] @ args))
 

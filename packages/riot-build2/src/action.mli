@@ -6,10 +6,8 @@ type compile_library_source_kind =
 
 type compile_library_source = {
   source: Path.t;
-  staged: Path.t;
   kind: compile_library_source_kind;
   content: string option;
-  opens: string list;
 }
 
 type t =
@@ -22,6 +20,28 @@ type t =
       source: compile_library_source;
       outputs: Path.t list;
       output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
+  | CompileInterface of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
+  | CompileByteImplementation of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      includes: Path.t list;
+      flags: Riot_toolchain.Ocamlc.compiler_flag list;
+    }
+  | CompileNativeImplementation of {
+      source: compile_library_source;
+      outputs: Path.t list;
+      output: Path.t;
+      cmi_file: Path.t option;
       includes: Path.t list;
       flags: Riot_toolchain.Ocamlc.compiler_flag list;
     }

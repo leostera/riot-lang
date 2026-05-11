@@ -23,7 +23,7 @@ type source_info = {
   is_alias: bool;
 }
 
-let cache_key_version = "riot-build2-action-planner:v8"
+let cache_key_version = "riot-build2-action-planner:v13"
 
 let stdlib_flags = fun (package: Riot_model.Package.t) ->
   let has_stdlib_dep =
@@ -114,6 +114,28 @@ let dedup_paths = fun paths ->
       else
         None)
 
+let check_path = fun path -> Path.(Package_sandbox.check_dir / path)
+
+let link_path = fun path -> Path.(Package_sandbox.link_dir / path)
+
+let interface_outputs = fun mod_ ->
+  [ check_path (Riot_model.Module.cmi mod_) ]
+
+let byte_implementation_outputs = fun mod_ ->
+  [ check_path (Riot_model.Module.cmi mod_) ]
+
+let byte_implementation_output = fun mod_ ->
+  check_path (
+    Riot_model.Module.cmi mod_
+    |> Path.replace_extension ~ext:"cmo"
+  )
+
+let native_implementation_outputs = fun mod_ ->
+  [
+    link_path (Riot_model.Module.cmx mod_);
+    link_path (Riot_model.Module.o mod_);
+  ]
+
 let open_modules = fun (modules: Module_node.t G.node list) ->
   List.filter_map
     modules
@@ -131,41 +153,30 @@ let source_for_module = fun (node: Module_node.t G.node) ->
       Some (
         {
           Action.source = path;
-          staged = Riot_model.Module_name.canonical_mli (Riot_model.Module.module_name mod_);
           kind = Action.LibraryInterface;
           content = None;
-          opens = open_modules value.open_modules;
         },
-        [ Riot_model.Module.cmti mod_; Riot_model.Module.cmi mod_ ],
+        interface_outputs mod_,
         false
       )
   | (ML mod_, Concrete path) ->
       Some (
         {
           Action.source = path;
-          staged = Riot_model.Module_name.canonical_ml (Riot_model.Module.module_name mod_);
           kind = Action.LibraryImplementation;
           content = None;
-          opens = open_modules value.open_modules;
         },
-        [
-          Riot_model.Module.cmt mod_;
-          Riot_model.Module.cmi mod_;
-          Riot_model.Module.cmx mod_;
-          Riot_model.Module.o mod_;
-        ],
+        native_implementation_outputs mod_,
         false
       )
   | (MLI mod_, Generated { path; contents }) ->
       Some (
         {
           Action.source = path;
-          staged = Riot_model.Module_name.canonical_mli (Riot_model.Module.module_name mod_);
           kind = Action.LibraryInterface;
           content = Some contents;
-          opens = open_modules value.open_modules;
         },
-        [ Riot_model.Module.cmti mod_; Riot_model.Module.cmi mod_ ],
+        interface_outputs mod_,
         false
       )
   | (ML mod_, Generated { path; contents }) ->
@@ -173,17 +184,10 @@ let source_for_module = fun (node: Module_node.t G.node) ->
       Some (
         {
           Action.source = path;
-          staged = Riot_model.Module_name.canonical_ml (Riot_model.Module.module_name mod_);
           kind = Action.LibraryImplementation;
           content = Some contents;
-          opens = open_modules value.open_modules;
         },
-        [
-          Riot_model.Module.cmt mod_;
-          Riot_model.Module.cmi mod_;
-          Riot_model.Module.cmx mod_;
-          Riot_model.Module.o mod_;
-        ],
+        native_implementation_outputs mod_,
         is_alias_file
       )
   | _ -> None
@@ -217,17 +221,6 @@ let implementation_has_interface = fun source_infos info ->
           | _ -> false)
   | _ -> false
 
-let source_info_with_owned_outputs = fun source_infos info ->
-  if implementation_has_interface source_infos info then
-    {
-      info with
-      outputs =
-        info.outputs
-        |> List.filter ~fn:(fun output -> not (Path.extension output = Some ".cmi"));
-    }
-  else
-    info
-
 let native_compile_actions = fun (input: input) sorted_modules ->
   let base_ccflags = input.profile.Riot_model.Profile.cc_flags in
   let ccflags =
@@ -250,6 +243,7 @@ let native_compile_actions = fun (input: input) sorted_modules ->
                 |> Path.add_extension ~ext:"o"
                 |> Path.basename
                 |> Path.v
+                |> link_path
               in
               Action.CompileC { source; outputs = [ output ]; ccflags })
       | _ -> [])
@@ -266,7 +260,7 @@ let needs_package = fun name (package: Riot_model.Package.t) ->
         dependency.name
         expected)
 
-let dependency_includes = fun input ->
+let stdlib_includes = fun input ->
   let transitive_deps = Riot_planner.Dependency.transitive_closure input.depset in
   let needs_unix =
     needs_package "unix" input.package
@@ -280,93 +274,213 @@ let dependency_includes = fun input ->
       transitive_deps
       ~fn:(fun dep -> needs_package "dynlink" dep.Riot_planner.Dependency.package)
   in
-  let stdlib_includes =
-    (
-      if needs_unix then
-        [ Path.v "+unix" ]
+  (
+    if needs_unix then
+      [ Path.v "+unix" ]
+    else
+      []
+  ) @ (
+    if needs_dynlink then
+      [ Path.v "+dynlink" ]
+    else
+      []
+  )
+
+let transitive_dependency_packages = fun input ->
+  let seen = HashSet.create () in
+  input.depset
+  @ Riot_planner.Dependency.transitive_closure input.depset
+  |> List.filter_map
+    ~fn:(fun dep ->
+      let package = dep.Riot_planner.Dependency.package in
+      let name = Riot_model.Package_name.to_string package.name in
+      if HashSet.insert seen ~value:name then
+        Some package.name
       else
-        []
-    ) @ (
-      if needs_dynlink then
-        [ Path.v "+dynlink" ]
-      else
-        []
-    )
-  in
-  let dep_cache_includes =
-    List.map transitive_deps ~fn:(fun dep -> dep.Riot_planner.Dependency.artifact_dir)
-  in
-  stdlib_includes @ dep_cache_includes
+        None)
+
+let dependency_check_includes = fun input ->
+  stdlib_includes input
+  @ List.map (transitive_dependency_packages input) ~fn:Package_sandbox.dep_check_dir
+
+let dependency_link_includes = fun input ->
+  stdlib_includes input
+  @ List.flat_map
+    (transitive_dependency_packages input)
+    ~fn:(fun package -> [ Package_sandbox.dep_check_dir package; Package_sandbox.dep_link_dir package ])
+
+let source_includes = fun input ->
+  dedup_paths (
+    [
+      Package_sandbox.check_dir;
+      Package_sandbox.link_dir;
+    ]
+    @ dependency_check_includes input
+  )
+
+let archive_includes = fun input ->
+  dedup_paths (
+    [
+      Package_sandbox.check_dir;
+      Package_sandbox.link_dir;
+    ]
+    @ dependency_link_includes input
+  )
 
 let library_outputs = fun package ->
   let name = Riot_model.Package.root_module_name package in
   [
     Riot_model.Module_name.(from_string name
-    |> cmxa);
+    |> cmxa
+    |> link_path);
     Riot_model.Module_name.(from_string name
-    |> a);
+    |> a
+    |> link_path);
   ]
 
-let flags_for_source = fun input source ->
+let flags_for_source = fun input info ->
   let base_flags =
     Riot_toolchain.Ocamlc.Raw "-opaque"
     :: stdlib_flags input.package
     @ profile_compile_flags input.profile
   in
-  let flags =
-    if source.is_alias then
-      Riot_toolchain.Ocamlc.NoAliasDeps :: base_flags
+  let generated_impl_flags =
+    match (info.source.Action.kind, info.source.content) with
+    | (Action.LibraryImplementation, Some _) ->
+        [ Riot_toolchain.Ocamlc.Impl info.source.source ]
+    | _ -> []
+  in
+  let alias_flags =
+    if info.is_alias then
+      [ Riot_toolchain.Ocamlc.NoAliasDeps ]
     else
-      base_flags
+      []
+  in
+  let implicit_open_flags =
+    let node_value: Module_node.t = G.value info.node in
+    open_modules node_value.open_modules
+    |> List.map ~fn:(fun mod_name -> Riot_toolchain.Ocamlc.Open mod_name)
+  in
+  let flags =
+    base_flags @ generated_impl_flags @ alias_flags @ implicit_open_flags
   in
   dedup_flags flags
+
+let bytecode_flags_for_source = fun input info ->
+  flags_for_source input info
+  |> List.filter
+    ~fn:(fun flag ->
+      match flag with
+      | Riot_toolchain.Ocamlc.Inline _
+      | Riot_toolchain.Ocamlc.Compact -> false
+      | Riot_toolchain.Ocamlc.Raw "-afl-instrument" -> false
+      | Riot_toolchain.Ocamlc.NoAliasDeps
+      | Riot_toolchain.Ocamlc.Open _
+      | Riot_toolchain.Ocamlc.NoStdlib
+      | Riot_toolchain.Ocamlc.NoPervasives
+      | Riot_toolchain.Ocamlc.NoAssert
+      | Riot_toolchain.Ocamlc.Unsafe
+      | Riot_toolchain.Ocamlc.Impl _
+      | Riot_toolchain.Ocamlc.Warning _
+      | Riot_toolchain.Ocamlc.WarnError _
+      | Riot_toolchain.Ocamlc.Raw _
+      | Riot_toolchain.Ocamlc.LinkAll -> true)
 
 let first_output_with_extension = fun outputs extension ->
   List.find
     outputs
     ~fn:(fun output -> Path.extension output = Some extension)
 
-let compile_source_output = fun info ->
-  match info.source.Action.kind with
-  | Action.LibraryInterface ->
-      first_output_with_extension info.outputs ".cmi"
-      |> Option.unwrap_or
-        ~default:(
-          match info.outputs with
-          | output :: _ -> output
-          | [] -> Path.v "source.cmi"
-        )
-  | Action.LibraryImplementation ->
-      first_output_with_extension info.outputs ".cmx"
-      |> Option.unwrap_or
-        ~default:(
-          match info.outputs with
-          | output :: _ -> output
-          | [] -> Path.v "source.cmx"
-        )
+let output_with_extension_or = fun outputs extension default ->
+  first_output_with_extension outputs extension
+  |> Option.unwrap_or
+    ~default:(
+      match outputs with
+      | output :: _ -> output
+      | [] -> default
+    )
 
-let source_action = fun input info ->
+let interface_output = fun info ->
+  output_with_extension_or info.outputs ".cmi" (Path.v "source.cmi")
+
+let byte_implementation_compiler_output = fun info ->
+  match module_of_source_info info with
+  | Some mod_ -> byte_implementation_output mod_
+  | None -> Path.v "source.cmo"
+
+let native_implementation_output = fun info ->
+  output_with_extension_or info.outputs ".cmx" (Path.v "source.cmx")
+
+let cmi_file_for_source = fun info ->
+  match module_of_source_info info with
+  | Some mod_ -> Some (check_path (Riot_model.Module.cmi mod_))
+  | None -> first_output_with_extension info.outputs ".cmi"
+
+let interface_action = fun input info ->
+  match input.package.Riot_model.Package.library with
+  | None -> None
+  | Some _ -> (
+      match info.source.kind with
+      | Action.LibraryInterface ->
+          Some (
+            Action.CompileInterface {
+              source = info.source;
+              outputs = info.outputs;
+              output = interface_output info;
+              includes = source_includes input;
+              flags = bytecode_flags_for_source input info;
+            }
+          )
+      | Action.LibraryImplementation -> None
+    )
+
+let byte_implementation_action = fun input source_infos info ->
   match input.package.Riot_model.Package.library with
   | None -> None
   | Some _ ->
-      Some (
-        Action.CompileSource {
-          source = info.source;
-          outputs = info.outputs;
-          output = compile_source_output info;
-          includes = dedup_paths (Path.v "." :: dependency_includes input);
-          flags = flags_for_source input info;
-        }
-      )
+      if implementation_has_interface source_infos info then
+        None
+      else
+        match (info.source.Action.kind, module_of_source_info info) with
+        | (Action.LibraryImplementation, Some mod_) ->
+            Some (
+              Action.CompileByteImplementation {
+                source = info.source;
+                outputs = byte_implementation_outputs mod_;
+                output = byte_implementation_compiler_output info;
+                includes = source_includes input;
+                flags = bytecode_flags_for_source input info;
+              }
+            )
+        | _ -> None
 
-let final_library_action = fun input source_infos c_actions ->
+let native_implementation_action = fun input info ->
+  match input.package.Riot_model.Package.library with
+  | None -> None
+  | Some _ -> (
+      match info.source.kind with
+      | Action.LibraryImplementation ->
+          Some (
+            Action.CompileNativeImplementation {
+              source = info.source;
+              outputs = info.outputs;
+              output = native_implementation_output info;
+              cmi_file = cmi_file_for_source info;
+              includes = source_includes input;
+              flags = flags_for_source input info;
+            }
+          )
+      | Action.LibraryInterface -> None
+    )
+
+let final_library_action = fun input native_actions c_actions ->
   match input.package.Riot_model.Package.library with
   | None -> None
   | Some _ ->
       let module_objects =
-        source_infos
+        native_actions
         |> List.reverse
-        |> List.flat_map ~fn:(fun info -> info.outputs)
+        |> List.flat_map ~fn:Action.outputs
         |> List.filter ~fn:(fun output -> Path.extension output = Some ".cmx")
         |> dedup_paths
       in
@@ -391,20 +505,12 @@ let final_library_action = fun input source_infos c_actions ->
                 | output :: _ -> output
                 | [] -> Path.v "library.cmxa"
               );
-            includes = dedup_paths (Path.v "." :: dependency_includes input);
+            includes = archive_includes input;
             flags = [];
           }
         )
 
 let make_execution = fun input ~dependencies action ->
-  let ref_ =
-    Action_execution.ref_from_action
-      ~package:input.package
-      ~profile:input.profile
-      ~target:input.target
-      ~toolchain:input.toolchain
-      action
-  in
   Action_execution.make
     ~package:input.package
     ~profile:input.profile
@@ -412,11 +518,43 @@ let make_execution = fun input ~dependencies action ->
     ~toolchain:input.toolchain
     ~action
     ~dependencies
-    ~sandbox_dir:(Action_execution.sandbox_dir_for_ref ~base_sandbox_dir:input.sandbox_dir ref_)
+    ~sandbox_dir:input.sandbox_dir
 
 let source_dependencies = fun input source_refs info ->
   Dep_analysis.compile_dependency_ids input.dep_analysis input.module_graph info.node
   |> List.filter_map ~fn:(fun dep_id -> HashMap.get source_refs ~key:dep_id)
+
+let ref_key = fun (ref_: Action_execution.ref_) ->
+  Riot_model.Package_name.to_string ref_.package
+  ^ ":"
+  ^ ref_.profile.Riot_model.Profile.name
+  ^ ":"
+  ^ Riot_model.Target.to_string ref_.target
+  ^ ":"
+  ^ Crypto.Digest.hex ref_.hash
+
+let dedup_refs = fun refs ->
+  let seen = HashSet.create () in
+  List.filter_map
+    refs
+    ~fn:(fun ref_ ->
+      if HashSet.insert seen ~value:(ref_key ref_) then
+        Some ref_
+      else
+        None)
+
+let action_ref = fun input action ->
+  Action_execution.ref_from_action
+    ~package:input.package
+    ~profile:input.profile
+    ~target:input.target
+    ~toolchain:input.toolchain
+    action
+
+let add_cmi_ref = fun cmi_refs input info action ->
+  let ref_ = action_ref input action in
+  ignore (HashMap.insert cmi_refs ~key:(G.id info.node) ~value:ref_);
+  ref_
 
 let plan = fun input ->
   match G.topo_sort input.module_graph with
@@ -430,44 +568,84 @@ let plan = fun input ->
       let source_infos =
         sorted_modules
         |> List.filter_map ~fn:source_info_for_module
-        |> fun source_infos ->
-            List.map source_infos ~fn:(source_info_with_owned_outputs source_infos)
       in
-      let source_actions =
+      let interface_actions =
         source_infos
         |> List.filter_map
           ~fn:(fun info ->
-            source_action input info
+            interface_action input info
             |> Option.map ~fn:(fun action -> (info, action)))
       in
-      let source_refs = HashMap.create () in
+      let byte_implementation_actions =
+        source_infos
+        |> List.filter_map
+          ~fn:(fun info ->
+            byte_implementation_action input source_infos info
+            |> Option.map ~fn:(fun action -> (info, action)))
+      in
+      let native_implementation_actions =
+        source_infos
+        |> List.filter_map
+          ~fn:(fun info ->
+            native_implementation_action input info
+            |> Option.map ~fn:(fun action -> (info, action)))
+      in
+      let cmi_refs = HashMap.create () in
       List.for_each
-        source_actions
+        interface_actions
         ~fn:(fun (info, action) ->
-          let ref_ =
-            Action_execution.ref_from_action
-              ~package:input.package
-              ~profile:input.profile
-              ~target:input.target
-              ~toolchain:input.toolchain
-              action
-          in
-          ignore (HashMap.insert source_refs ~key:(G.id info.node) ~value:ref_));
-      let source_executions =
-        source_actions
+          ignore (add_cmi_ref cmi_refs input info action));
+      List.for_each
+        byte_implementation_actions
+        ~fn:(fun (info, action) ->
+          ignore (add_cmi_ref cmi_refs input info action));
+      let interface_executions =
+        interface_actions
         |> List.map
           ~fn:(fun (info, action) ->
             make_execution
               input
-              ~dependencies:(source_dependencies input source_refs info)
+              ~dependencies:(source_dependencies input cmi_refs info)
               action)
       in
-      match final_library_action input source_infos c_actions with
+      let byte_implementation_executions =
+        byte_implementation_actions
+        |> List.map
+          ~fn:(fun (info, action) ->
+            make_execution
+              input
+              ~dependencies:(source_dependencies input cmi_refs info)
+              action)
+      in
+      let native_implementation_executions =
+        native_implementation_actions
+        |> List.map
+          ~fn:(fun (info, action) ->
+            let own_cmi_dependency =
+              HashMap.get cmi_refs ~key:(G.id info.node)
+              |> Option.to_list
+            in
+            make_execution
+              input
+              ~dependencies:(dedup_refs (source_dependencies input cmi_refs info @ own_cmi_dependency))
+              action)
+      in
+      let source_executions =
+        interface_executions
+        @ byte_implementation_executions
+        @ native_implementation_executions
+      in
+      let native_actions = List.map native_implementation_actions ~fn:(fun (_info, action) -> action) in
+      match final_library_action input native_actions c_actions with
       | None -> Ok (c_executions @ source_executions)
       | Some library_action ->
           let dependencies =
             (List.map c_executions ~fn:(fun action -> action.Action_execution.ref_))
-            @ (List.map source_executions ~fn:(fun action -> action.Action_execution.ref_))
+            @ (
+              List.map
+                native_implementation_executions
+                ~fn:(fun action -> action.Action_execution.ref_)
+            )
           in
           Ok (c_executions
           @ source_executions
