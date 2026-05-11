@@ -2,6 +2,12 @@
 
 All notable changes to `pubgrub` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for version-range and solver input handling.
+
 ## 0.0.29 - 2026-05-01
 
 ### Changed
