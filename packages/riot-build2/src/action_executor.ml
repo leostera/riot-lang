@@ -530,10 +530,23 @@ let artifact_paths_with_extensions = fun artifact extensions ->
   extensions
   |> List.flat_map ~fn:(artifact_paths_with_extension artifact)
 
+let flags_include_opaque = fun flags ->
+  List.any
+    flags
+    ~fn:(fun flag ->
+      match flag with
+      | Riot_toolchain.Ocamlc.Raw "-opaque" -> true
+      | _ -> false)
+
 let dependency_outputs_for_consumer = fun (consumer: Action_execution.t) artifact ->
   match consumer.action with
+  | Action.CompileSource { flags; _ } when flags_include_opaque flags ->
+      artifact_paths_with_extension artifact ".cmi"
+  | Action.CompileSources { flags; _ } when flags_include_opaque flags ->
+      artifact_paths_with_extension artifact ".cmi"
   | Action.CompileSource _
-  | Action.CompileSources _ -> artifact_paths_with_extensions artifact [ ".cmi"; ".cmx" ]
+  | Action.CompileSources _ ->
+      artifact_paths_with_extensions artifact [ ".cmi"; ".cmx" ]
   | Action.CompileLibrary { sources = []; outputs; _ }
     when List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa") -> []
   | Action.CompileC _

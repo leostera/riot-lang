@@ -136,7 +136,7 @@ let index_of_ref = fun (actions: Action_execution.t list) ref_ ->
 
 let payload_of_plan = fun (plan: Module_plan.t) ->
   ({
-    version = 4;
+    version = 7;
     package = Riot_model.Package_name.to_string plan.package.name;
     actions =
       List.map
@@ -169,7 +169,7 @@ let action_at = fun actions index ->
 
 let action_executions = fun ~(package:Riot_model.Package.t) ~profile ~target ~toolchain ~sandbox_dir (payload: payload) ->
   let expected = Riot_model.Package_name.to_string package.name in
-  if not (Int.equal payload.version 4) then
+  if not (Int.equal payload.version 7) then
     Error (decode_error "unsupported module plan cache payload version")
   else if not (String.equal payload.package expected) then
     Error (decode_error "module plan cache package does not match requested package")

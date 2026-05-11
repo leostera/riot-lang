@@ -166,6 +166,63 @@ let source_package_workspace = fun root ->
     ~packages:[ package ]
     ())
 
+let interface_dependency_workspace = fun root ->
+  let package_name = package "sourcepkg" in
+  let package_path = Path.(root / Path.v "sourcepkg") in
+  let src_dir = Path.(package_path / Path.v "src") in
+  let root_source = Path.v "src/sourcepkg.ml" in
+  let a_interface = Path.v "src/a.mli" in
+  let a_implementation = Path.v "src/a.ml" in
+  let b_implementation = Path.v "src/b.ml" in
+  let c_implementation = Path.v "src/c.ml" in
+  let write_source = fun path content ->
+    Fs.write content Path.(package_path / path)
+    |> Result.map_err ~fn:IO.error_message
+  in
+  let* () =
+    Fs.create_dir_all src_dir
+    |> Result.map_err ~fn:IO.error_message
+  in
+  let* () = write_source a_interface "val value : int\n" in
+  let* () = write_source a_implementation "let value = 1\n" in
+  let* () = write_source c_implementation "let value = 2\n" in
+  let* () =
+    write_source
+      b_implementation
+      "let from_a = A.value\nlet from_c = C.value\n"
+  in
+  let* () = write_source root_source "let value = B.from_a + B.from_c\n" in
+  let sources =
+    Riot_model.Package.{
+      src = [
+        root_source;
+        a_interface;
+        a_implementation;
+        b_implementation;
+        c_implementation;
+      ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+  in
+  let package =
+    Riot_model.Package.make
+      ~name:package_name
+      ~path:package_path
+      ~relative_path:(Path.v "sourcepkg")
+      ~library:{ path = root_source }
+      ~sources
+      ()
+    |> Riot_model.Package_manifest.from_package
+  in
+  Ok (Riot_model.Workspace.make
+    ~root
+    ~target_dir:Path.(root / Path.v "target")
+    ~packages:[ package ]
+    ())
+
 let source_analysis_task = fun ~source ~source_path ->
   Riot_planner.Module_graph.{
     task_node_id = G.Node_id.next ();
@@ -181,6 +238,51 @@ let require_module_plan = fun services build ->
   match Build_services.module_plan services build with
   | Some plan -> Ok plan
   | None -> Error "expected module plan to be stored"
+
+let ref_equal = fun (left: Action_execution.ref_) (right: Action_execution.ref_) ->
+  Riot_model.Package_name.equal left.package right.package
+  && String.equal left.profile.Riot_model.Profile.name right.profile.Riot_model.Profile.name
+  && Riot_model.Target.equal left.target right.target
+  && Crypto.Hash.equal left.hash right.hash
+
+let action_for_ref = fun (plan: Module_plan.t) ref_ ->
+  List.find
+    plan.action_executions
+    ~fn:(fun action -> ref_equal action.Action_execution.ref_ ref_)
+
+let dependencies_for_action = fun plan action ->
+  action.Action_execution.dependencies
+  |> List.filter_map ~fn:(action_for_ref plan)
+
+let compile_source_is = fun path kind action ->
+  match action.Action_execution.action with
+  | Action.CompileSource { source; _ } ->
+      Path.equal source.source path && source.kind = kind
+  | _ -> false
+
+let require_compile_source = fun (plan: Module_plan.t) path kind ->
+  match
+    List.find
+      plan.action_executions
+      ~fn:(compile_source_is path kind)
+  with
+  | Some action -> Ok action
+  | None -> Error ("expected compile source action for " ^ Path.to_string path)
+
+let compile_action_flags_include_opaque = fun action ->
+  match action.Action_execution.action with
+  | Action.CompileSource { flags; _ }
+  | Action.CompileSources { flags; _ } ->
+      List.any
+        flags
+        ~fn:(fun flag ->
+          match flag with
+          | Riot_toolchain.Ocamlc.Raw "-opaque" -> true
+          | _ -> false)
+  | _ -> false
+
+let action_depends_on_source = fun deps path kind ->
+  List.any deps ~fn:(compile_source_is path kind)
 
 let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in
@@ -385,6 +487,51 @@ let test_module_plan_cache_key_uses_source_summary_not_package_hash = fun _ctx -
           Error "expected body-only source edit to keep the module plan cache key stable"
       else
         Error "expected body-only source edit to change the raw package hash") with
+  | Ok result -> result
+  | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
+
+let test_opaque_implementation_dependencies_use_cmi_producers = fun _ctx ->
+  match Fs.with_tempdir
+    ~prefix:"riot_build2_opaque_deps"
+    (fun root ->
+      let* workspace = interface_dependency_workspace root in
+      let build = build_package "sourcepkg" in
+      let services =
+        Build_services.create
+          ~config:(Config.make ~workspace ~parallelism:1 ())
+          ()
+      in
+      let registry = Work_registry.create () in
+      let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
+      let* source_keys =
+        Build_services.plan_dependencies services registry node
+        |> Result.map_err ~fn:Error.message
+        |> Result.map ~fn:source_analysis_requests
+      in
+      let* () = execute_source_requests services registry source_keys in
+      let* () =
+        match Build_services.execute_node services registry node with
+        | Ok (Work_result.Complete []) -> Ok ()
+        | Ok _ -> Error "expected module plan to complete after source analysis"
+        | Error error -> Error (Error.message error)
+      in
+      let* plan = require_module_plan services build in
+      let b_path = Path.v "src/b.ml" in
+      let a_mli_path = Path.v "src/a.mli" in
+      let a_ml_path = Path.v "src/a.ml" in
+      let c_ml_path = Path.v "src/c.ml" in
+      let* b_action = require_compile_source plan b_path Action.LibraryImplementation in
+      let deps = dependencies_for_action plan b_action in
+      if not (compile_action_flags_include_opaque b_action) then
+        Error "expected library implementation compile to use -opaque"
+      else if not (action_depends_on_source deps a_mli_path Action.LibraryInterface) then
+        Error "expected opaque B.ml compile to depend on A.mli as the CMI producer"
+      else if action_depends_on_source deps a_ml_path Action.LibraryImplementation then
+        Error "expected opaque B.ml compile not to depend on A.ml implementation CMX"
+      else if not (action_depends_on_source deps c_ml_path Action.LibraryImplementation) then
+        Error "expected opaque B.ml compile to depend on C.ml when C has no interface"
+      else
+        Ok ()) with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -851,6 +998,9 @@ let tests =
     case
       "module plan cache key uses source summary not package hash"
       test_module_plan_cache_key_uses_source_summary_not_package_hash;
+    case
+      "opaque implementation dependencies use CMI producers"
+      test_opaque_implementation_dependencies_use_cmi_producers;
     case
       "source analyzer refreshes changed source"
       test_source_analyzer_refreshes_changed_source;

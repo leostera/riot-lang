@@ -814,15 +814,15 @@ let expect_kernel_exact_warm_action_result_counts = fun executor summary ->
 
 let expected_kernel_event_change_action_result_counts = [
   ("kernel action results", 220);
-  ("kernel action results cached", 175);
-  ("kernel action results executed", 45);
+  ("kernel action results cached", 218);
+  ("kernel action results executed", 2);
   ("kernel action results failed", 0);
   ("kernel action results missing from summary", 0);
   ("kernel CompileC cached", 13);
   ("kernel CompileC executed", 0);
   ("kernel CompileC failed", 0);
-  ("kernel CompileSource cached", 162);
-  ("kernel CompileSource executed", 44);
+  ("kernel CompileSource cached", 205);
+  ("kernel CompileSource executed", 1);
   ("kernel CompileSource failed", 0);
   ("kernel CompileSources cached", 0);
   ("kernel CompileSources executed", 0);

@@ -23,7 +23,7 @@ type source_info = {
   is_alias: bool;
 }
 
-let cache_key_version = "riot-build2-action-planner:v5"
+let cache_key_version = "riot-build2-action-planner:v8"
 
 let stdlib_flags = fun (package: Riot_model.Package.t) ->
   let has_stdlib_dep =
@@ -308,12 +308,10 @@ let library_outputs = fun package ->
   ]
 
 let flags_for_source = fun input source ->
-  let base_flags = stdlib_flags input.package @ profile_compile_flags input.profile in
   let base_flags =
-    match source.source.kind with
-    | Action.LibraryImplementation ->
-        Riot_toolchain.Ocamlc.Raw "-opaque" :: base_flags
-    | Action.LibraryInterface -> base_flags
+    Riot_toolchain.Ocamlc.Raw "-opaque"
+    :: stdlib_flags input.package
+    @ profile_compile_flags input.profile
   in
   let flags =
     if source.is_alias then

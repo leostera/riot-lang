@@ -103,23 +103,6 @@ let cmi_provider_dependency_id = fun module_graph dep_id ->
       | _ -> None
     )
 
-let cmx_provider_dependency_id = fun module_graph dep_id ->
-  match G.get_node module_graph dep_id with
-  | None -> None
-  | Some dep_node -> (
-      match (G.value dep_node).Module_node.kind with
-      | Module_node.ML _ -> Some dep_id
-      | MLI dep_mod ->
-          G.map module_graph ~fn:(fun (candidate_id, candidate_node) -> (candidate_id, candidate_node))
-          |> List.find
-            ~fn:(fun (_candidate_id, candidate_node) ->
-              match (G.value candidate_node).Module_node.kind with
-              | Module_node.ML candidate_mod when Riot_model.Module.eq candidate_mod dep_mod -> true
-              | _ -> false)
-          |> Option.map ~fn:(fun (candidate_id, _candidate_node) -> candidate_id)
-      | _ -> None
-    )
-
 let unique_node_ids = fun ids ->
   let seen = HashSet.create () in
   List.filter_map
@@ -154,10 +137,6 @@ let generated_source_dependency_ids = fun module_graph ids ->
       match G.get_node module_graph id with
       | Some node -> is_generated_source_node node
       | None -> false)
-
-let cmi_and_cmx_provider_dependency_ids = fun module_graph dep_id ->
-  Option.to_list (cmi_provider_dependency_id module_graph dep_id)
-  @ Option.to_list (cmx_provider_dependency_id module_graph dep_id)
 
 let namespace_equal = fun left right ->
   let rec loop left right =
@@ -240,18 +219,14 @@ let cmi_dependency_closure_ids = fun module_graph dep_ids ->
   |> List.fold_left ~init:[] ~fn:visit
   |> List.reverse
 
-let cmx_provider_dependency_ids = fun module_graph dep_ids ->
-  dep_ids
-  |> List.filter_map ~fn:(cmx_provider_dependency_id module_graph)
-
-let direct_cmi_dependency_ids = fun module_graph node ->
+let structural_cmi_dependency_ids = fun module_graph node ->
   G.deps node
   |> source_dependency_ids module_graph
-  |> List.filter_map ~fn:(cmi_provider_dependency_id module_graph)
+  |> cmi_dependency_closure_ids module_graph
 
 let compile_dependency_ids = fun t module_graph node ->
   let semantic_ids = resolved_dependency_ids t (G.id node) in
-  let direct_cmi_ids = direct_cmi_dependency_ids module_graph node in
+  let structural_cmi_ids = structural_cmi_dependency_ids module_graph node in
   let semantic_alias_cmi_ids =
     semantic_ids
     |> List.flat_map ~fn:(alias_cmi_dependency_ids module_graph)
@@ -259,27 +234,28 @@ let compile_dependency_ids = fun t module_graph node ->
   let semantic_cmi_closure_ids = cmi_dependency_closure_ids module_graph semantic_ids in
   match ((G.value node).Module_node.kind, (G.value node).file) with
   | ((Module_node.MLI _), Module_node.Concrete _) ->
-      semantic_cmi_closure_ids @ semantic_alias_cmi_ids @ direct_cmi_ids
+      semantic_cmi_closure_ids @ semantic_alias_cmi_ids @ structural_cmi_ids
       |> unique_node_ids
   | ((Module_node.ML _), Module_node.Concrete _) ->
       let same_interface_ids = same_module_interface_dependency_ids module_graph node in
       let same_interface_cmi_closure_ids =
         cmi_dependency_closure_ids module_graph same_interface_ids
       in
-      (
-        semantic_ids
-        |> List.flat_map ~fn:(cmi_and_cmx_provider_dependency_ids module_graph)
-      )
-      @ semantic_cmi_closure_ids
-      @ cmx_provider_dependency_ids module_graph semantic_cmi_closure_ids
+      semantic_cmi_closure_ids
       @ semantic_alias_cmi_ids
-      @ direct_cmi_ids
+      @ structural_cmi_ids
       @ same_interface_cmi_closure_ids
       @ same_interface_ids
       |> unique_node_ids
-  | ((Module_node.ML _ | Module_node.MLI _), Module_node.Generated _) ->
-      G.deps node
-      |> source_dependency_ids module_graph
+  | ((Module_node.MLI _), Module_node.Generated _) ->
+      structural_cmi_ids
+      |> unique_node_ids
+  | ((Module_node.ML _), Module_node.Generated _) ->
+      let same_interface_ids = same_module_interface_dependency_ids module_graph node in
+      let same_interface_cmi_closure_ids =
+        cmi_dependency_closure_ids module_graph same_interface_ids
+      in
+      structural_cmi_ids @ same_interface_cmi_closure_ids @ same_interface_ids
       |> unique_node_ids
   | _ ->
       G.deps node
