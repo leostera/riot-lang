@@ -21,7 +21,8 @@ open Std
    Put `-- no-transaction` at the start of a migration file when the database
    requires the migration body to run outside a transaction. MySQL configs use
    non-transactional migration bodies by default because MySQL DDL commonly
-   commits implicitly.
+   commits implicitly. SQLx passes each raw migration body to the active driver
+   so the driver can prepare backend-specific executable statements.
 *)
 module Version: sig
   type t
@@ -137,7 +138,9 @@ module Config: sig
 
      This selects [?] placeholders, creates the migration table with
      [ENGINE=InnoDB], uses [GET_LOCK]/[RELEASE_LOCK], and runs migration bodies
-     outside an explicit transaction by default.
+     outside an explicit transaction by default. The MySQL driver prepares
+     migration bodies into individual statements because MySQL text execution
+     does not accept a whole multi-statement file through this driver.
   *)
   val for_mysql: ?lock_name:string -> ?lock_timeout:Time.Duration.t -> unit -> t
 end

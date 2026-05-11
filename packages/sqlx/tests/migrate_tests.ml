@@ -52,6 +52,8 @@ let executed_contains = fun state fragment ->
   in
   loop 0
 
+let executed_at = fun state index -> Vector.get_unchecked state.executed ~at:index
+
 module FakeDriver: Driver.Intf with type config = fake_state = struct
   type config = fake_state
 
@@ -82,6 +84,19 @@ module FakeDriver: Driver.Intf with type config = fake_state = struct
   let ping = fun _ -> true
 
   let prepare = fun conn sql -> Ok { conn; sql }
+
+  let prepare_migration = fun sql ->
+    let separator = "\n-- fake-driver-statement\n" in
+    if String.contains sql separator then
+      let statements =
+        sql
+        |> String.split ~by:separator
+        |> List.map ~fn:String.trim
+        |> List.filter ~fn:(fun statement -> String.length statement > 0)
+      in
+      Ok statements
+    else
+      Ok [ sql ]
 
   let checksum_value = fun conn checksum ->
     if conn.checksum_as_bytes then
@@ -345,6 +360,48 @@ let test_migrator_uses_mysql_dialect_and_named_lock = fun _ctx ->
           Sqlx.shutdown pool;
           Ok ()
 
+let test_migrator_uses_driver_prepared_migration_body = fun _ctx ->
+  let state = fake_state () in
+  match require_pool state with
+  | Error _ as error -> error
+  | Ok pool ->
+      let version = M.Version.from_int64_unchecked 1L in
+      let migration =
+        M.Migration.make
+          ~version
+          ~description:"create schema"
+          ~migration_type:M.Simple
+          ~sql:("-- no-transaction\n"
+          ^ "CREATE TABLE categories (id INT);\n"
+          ^ "-- fake-driver-statement\n"
+          ^ "CREATE TABLE units (id INT);\n"
+          ^ "-- fake-driver-statement\n"
+          ^ "CREATE TABLE users (id INT);")
+          ()
+      in
+      let config =
+        M.Config.for_mysql ~lock_name:"migrate-test" ~lock_timeout:(Time.Duration.from_secs 1) ()
+      in
+      let source = M.Source.from_migrations (Vector.from_list [ migration ]) in
+      match M.run ~config pool source
+      |> require_migration with
+      | Error error ->
+          Sqlx.shutdown pool;
+          Error error
+      | Ok report ->
+          Test.assert_equal ~expected:1 ~actual:(Vector.length report.applied);
+          Test.assert_equal ~expected:10 ~actual:(Vector.length state.executed);
+          let first_body = executed_at state 5 in
+          let second_body = executed_at state 6 in
+          let third_body = executed_at state 7 in
+          Test.assert_true (String.contains first_body "CREATE TABLE categories");
+          Test.assert_true (String.contains second_body "CREATE TABLE units");
+          Test.assert_true (String.contains third_body "CREATE TABLE users");
+          Test.assert_false (String.contains first_body "CREATE TABLE units");
+          Test.assert_false (String.contains second_body "CREATE TABLE users");
+          Sqlx.shutdown pool;
+          Ok ()
+
 let test_migrator_rejects_dirty_database = fun _ctx ->
   let state = fake_state () in
   Vector.push state.applied ~value:{ version = 1L; checksum = "old"; success = false };
@@ -452,6 +509,9 @@ let tests =
     case
       "migrator uses mysql dialect and named lock"
       test_migrator_uses_mysql_dialect_and_named_lock;
+    case
+      "migrator uses driver-prepared migration body"
+      test_migrator_uses_driver_prepared_migration_body;
     case "migrator rejects dirty database" test_migrator_rejects_dirty_database;
     case "top-level migrate returns unit" test_top_level_migrate_returns_unit;
     case

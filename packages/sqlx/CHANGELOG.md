@@ -7,6 +7,7 @@ All notable changes to `sqlx` are documented here.
 ### Fixed
 
 - Accepted MySQL `TEXT` migration-table fields returned by drivers as byte values when validating applied checksums.
+- Passed migration bodies through the active driver's migration preparation hook so backend-specific statement handling stays in drivers.
 
 ## 0.0.33 - 2026-05-10
 

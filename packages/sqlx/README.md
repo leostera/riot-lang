@@ -95,6 +95,12 @@ let config = Sqlx.Migrate.Config.for_mysql ()
 let result = Sqlx.Migrate.run ~config pool source
 ```
 
+MySQL migration files may contain multiple semicolon-terminated statements. SQLx
+passes the raw migration body to the active driver; the MySQL driver prepares it
+as individual statements and ignores semicolons inside single-quoted strings,
+double-quoted strings, backtick identifiers, line comments, and block comments.
+MySQL client-only `DELIMITER` commands are not interpreted.
+
 If your application starts from a different working directory, pass an explicit
 source:
 

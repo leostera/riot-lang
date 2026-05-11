@@ -30,6 +30,8 @@ val query: t -> string -> Sqlx_driver.Value.t list -> (Cursor.t, error) result
 
 val execute: t -> string -> Sqlx_driver.Value.t list -> (int, error) result
 
+val prepare_migration: t -> string -> (string list, error) result
+
 val ping: t -> bool
 
 val close: t -> unit

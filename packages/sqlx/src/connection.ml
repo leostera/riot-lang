@@ -235,6 +235,11 @@ let wrap_driver_result = fun
   | Error error ->
       Error (DriverError { error; to_string = D.error_to_string; serializer = D.error_serializer })
 
+let prepare_migration = fun (Connection t) sql ->
+  let module D = (val t.driver) in
+  try wrap_driver_result (module D) (D.prepare_migration sql) with
+  | exn -> Error (RuntimeError (RaisedException (exception_to_string exn)))
+
 let begin_transaction = fun (Connection t) ->
   let module D = (val t.driver) in
   try wrap_driver_result (module D) (D.begin_transaction t.driver_conn) with

@@ -816,10 +816,20 @@ let record_migration_start = fun conn dialect table_name migration ->
   | Ok _ -> Ok ()
 
 let execute_migration_body = fun conn migration ->
-  match Connection.execute conn Migration.(migration.sql) [] with
+  let rec loop statements =
+    match statements with
+    | [] -> Ok ()
+    | statement :: rest -> (
+        match Connection.execute conn statement [] with
+        | Error error ->
+            Error (MigrationExecutionError { version = Migration.(migration.version); error })
+        | Ok _ -> loop rest
+      )
+  in
+  match Connection.prepare_migration conn Migration.(migration.sql) with
   | Error error ->
       Error (MigrationExecutionError { version = Migration.(migration.version); error })
-  | Ok _ -> Ok ()
+  | Ok statements -> loop statements
 
 let finalize_migration = fun conn dialect table_name migration elapsed ->
   let table_name = TableName.to_string table_name in
@@ -893,10 +903,9 @@ let apply_one = fun conn config migration ->
 
 let revert_migration_body = fun conn dialect table_name migration ->
   let table_name = TableName.to_string table_name in
-  match Connection.execute conn Migration.(migration.sql) [] with
-  | Error error ->
-      Error (MigrationExecutionError { version = Migration.(migration.version); error })
-  | Ok _ -> (
+  match execute_migration_body conn migration with
+  | Error _ as error -> error
+  | Ok () -> (
       match Connection.execute
         conn
         ("DELETE FROM " ^ table_name ^ " WHERE version = " ^ placeholder dialect 1)

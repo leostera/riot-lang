@@ -42,6 +42,8 @@ module MockDriver: Driver.Intf with type config = unit = struct
 
   let execute = fun _stmt _params -> Ok { rows = Queue.create (); rows_affected = 0 }
 
+  let prepare_migration = fun sql -> Ok [ sql ]
+
   let fetch_row = fun result -> Queue.pop result.rows
 
   let rows_affected = fun result -> result.rows_affected
@@ -108,6 +110,8 @@ module ClosingDriver: Driver.Intf with type config = unit = struct
     ) else
       Ok { rows = Queue.create (); rows_affected = 1 }
 
+  let prepare_migration = fun sql -> Ok [ sql ]
+
   let fetch_row = fun result -> Queue.pop result.rows
 
   let rows_affected = fun result -> result.rows_affected
@@ -152,6 +156,8 @@ module RaisingDriver: Driver.Intf with type config = unit = struct
   let prepare = fun conn _sql -> Ok { conn }
 
   let execute = fun _stmt _params -> raise (Failure "driver exploded")
+
+  let prepare_migration = fun sql -> Ok [ sql ]
 
   let fetch_row = fun result -> Queue.pop result.rows
 
