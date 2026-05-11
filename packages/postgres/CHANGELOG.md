@@ -8,6 +8,12 @@ All notable changes to `postgres` are documented here.
 
 - Implemented the SQLx driver migration preparation hook as a single-statement pass-through.
 
+## 0.0.34 - 2026-05-10
+
+### Changed
+
+- PostgreSQL adapter errors are now structured more consistently, and container-backed coverage was expanded.
+
 ## 0.0.33 - 2026-05-10
 
 ### Added
@@ -37,3 +43,25 @@ All notable changes to `postgres` are documented here.
 ### Fixed
 
 - Reused `SURI_JOBS_TEST_POSTGRES_URL` as a live test fallback when package-specific URLs are absent.
+
+## 0.0.30 - 2026-05-02
+
+### Changed
+
+- PostgreSQL protocol parsing is more defensive and better documented, with broader coverage for invalid or partial wire messages. Driver behavior is clearer around malformed server input while preserving typed error reporting.
+
+## 0.0.29 - 2026-05-01
+
+### Changed
+
+- PostgreSQL connection writes are now serialized through the driver, preventing concurrent operations from interleaving wire-protocol messages on the same connection.
+
+## 0.0.25 - 2026-04-27
+
+### Added
+
+- Added PostgreSQL password authentication support, including cleartext, MD5, and SCRAM-SHA-256 handshake handling.
+
+### Changed
+
+- Extended protocol parsing and writing for SASL authentication messages while preserving structured PostgreSQL error rendering.

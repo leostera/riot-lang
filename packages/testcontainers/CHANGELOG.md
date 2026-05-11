@@ -14,6 +14,12 @@ All notable changes to `testcontainers` are documented here.
 - Improved readiness timeout messages by preserving the last polling error.
 - Treated Docker 404 responses during container removal as successful cleanup.
 
+## 0.0.34 - 2026-05-10
+
+### Added
+
+- Added container lifecycle helpers used by database and integration tests.
+
 ## 0.0.1 - 2026-05-10
 
 ### Added

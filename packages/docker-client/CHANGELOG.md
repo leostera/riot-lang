@@ -12,6 +12,12 @@ All notable changes to `docker-client` are documented here.
 - Switched Docker create and inspect JSON handling to `serde-json` with string-keyed dictionary codecs.
 - Tightened inspect parsing for Docker port bindings and host port ranges.
 
+## 0.0.34 - 2026-05-10
+
+### Added
+
+- Added a Docker Engine client package for integration workflows that need to create, inspect, and manage containers programmatically.
+
 ## 0.0.1 - 2026-05-10
 
 ### Added

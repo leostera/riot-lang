@@ -14,3 +14,9 @@ All notable changes to `suri-mailer` are documented here.
 ### Changed
 
 - Reported invalid messages, filesystem failures, and adapter failures with structured error variants.
+
+## 0.0.34 - 2026-05-10
+
+### Added
+
+- Added a mail delivery package for Suri applications.

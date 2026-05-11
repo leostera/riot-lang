@@ -26,3 +26,9 @@ All notable changes to `suri-jobs` are documented here.
 
 - Loaded `.env.test` during tests so live database URLs are available locally.
 - Reported store, route, and database failures through structured error variants.
+
+## 0.0.34 - 2026-05-10
+
+### Added
+
+- Added supervised job queues and MySQL-backed queue support, with container-backed database coverage.
