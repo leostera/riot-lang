@@ -24,8 +24,11 @@ let sub = fun value ~offset ~len ->
   let value_length = length value in
   if offset < 0 || len < 0 || offset > value_length - len then
     System_error.panic "String.sub received an invalid slice";
-  let out = Caml_runtime.bytes_create len in
-  Caml_runtime.string_blit value offset out 0 len;
+  if len = 0 then
+    empty
+  else
+    let out = Caml_runtime.bytes_create len in
+    Caml_runtime.string_blit value offset out 0 len;
   Caml_runtime.bytes_unsafe_to_string out
 
 let init = fun ~len ~fn ->

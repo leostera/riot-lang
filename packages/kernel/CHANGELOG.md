@@ -2,6 +2,12 @@
 
 All notable changes to `kernel` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Fixed
+
+- `String.sub` now accepts empty slices at the end of a string, matching the usual slice boundary contract.
+
 ## 0.0.29 - 2026-05-01
 
 ### Changed
