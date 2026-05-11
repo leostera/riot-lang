@@ -145,6 +145,26 @@ let test_config_parses_uri_and_legacy_forms = fun _ctx ->
           Test.assert_equal ~expected:"s3cr3t" ~actual:legacy_config.password;
           Ok ()
 
+let test_config_parses_ssl_mode_query = fun _ctx ->
+  match Mysql.Config.from_string "mysql://alice:secret@localhost:3307/app?ssl-mode=disable" with
+  | Error error -> Error (Mysql.Config.parse_error_to_string error)
+  | Ok disabled_config -> (
+      Test.assert_equal ~expected:Mysql.Config.Disable ~actual:disabled_config.ssl_mode;
+      match Mysql.Config.from_string "mysql://alice:secret@localhost/app?sslMode=REQUIRED" with
+      | Error error -> Error (Mysql.Config.parse_error_to_string error)
+      | Ok required_config ->
+          Test.assert_equal ~expected:Mysql.Config.Require ~actual:required_config.ssl_mode;
+          Ok ()
+    )
+
+let test_config_rejects_invalid_ssl_mode_query = fun _ctx ->
+  match Mysql.Config.from_string "mysql://alice:secret@localhost/app?ssl-mode=verify-ca" with
+  | Ok _ -> Error "expected invalid ssl-mode to be rejected"
+  | Error (Mysql.Config.InvalidSslMode value) ->
+      Test.assert_equal ~expected:"verify-ca" ~actual:value;
+      Ok ()
+  | Error error -> Error (Mysql.Config.parse_error_to_string error)
+
 let test_config_rejects_invalid_uri_port = fun _ctx ->
   match Mysql.Config.from_string "mysql://alice:secret@db.example:not_a_port/app" with
   | Ok _ -> Error "expected invalid URI port to be rejected"
@@ -152,6 +172,29 @@ let test_config_rejects_invalid_uri_port = fun _ctx ->
       Test.assert_equal ~expected:"not_a_port" ~actual:value;
       Ok ()
   | Error error -> Error (Mysql.Config.parse_error_to_string error)
+
+let test_driver_prepares_multi_statement_migration_body = fun _ctx ->
+  let sql =
+    "-- no-transaction\n"
+    ^ "CREATE TABLE categories (id INT, label VARCHAR(255) DEFAULT 'semi;colon');\n"
+    ^ "-- keep ; inside the comment\n"
+    ^ "CREATE TABLE `units;archive` (id INT);\n"
+    ^ "# keep ; inside hash comment\n"
+    ^ "/* block ; comment */\n"
+    ^ "CREATE TABLE users (id INT, note VARCHAR(255) DEFAULT \"semi;colon\");"
+  in
+  match Mysql.Driver.prepare_migration sql with
+  | Error error -> Error (Mysql.Driver.error_to_string error)
+  | Ok [ first; second; third ] ->
+      Test.assert_true (String.contains first "DEFAULT 'semi;colon'");
+      Test.assert_true (String.starts_with ~prefix:"-- keep ; inside the comment" second);
+      Test.assert_true (String.contains second "CREATE TABLE `units;archive`");
+      Test.assert_true (String.starts_with ~prefix:"# keep ; inside hash comment" third);
+      Test.assert_true (String.contains third "DEFAULT \"semi;colon\"");
+      Test.assert_false (String.contains first "CREATE TABLE `units;archive`");
+      Test.assert_false (String.contains second "CREATE TABLE users");
+      Ok ()
+  | Ok statements -> Error ("expected 3 statements, got " ^ Int.to_string (List.length statements))
 
 let test_writer_handshake_response_uses_client_capabilities = fun _ctx ->
   let flags = Protocol.Capability.default_client ~database:true ~ssl:true () in
@@ -181,7 +224,12 @@ let tests =
     case "error packet exposes serde serializer" test_error_packet_exposes_serde_serializer;
     case "reader parses column definition" test_reader_parses_column_definition;
     case "config parses uri and legacy forms" test_config_parses_uri_and_legacy_forms;
+    case "config parses ssl-mode query" test_config_parses_ssl_mode_query;
+    case "config rejects invalid ssl-mode query" test_config_rejects_invalid_ssl_mode_query;
     case "config rejects invalid uri port" test_config_rejects_invalid_uri_port;
+    case
+      "driver prepares multi-statement migration body"
+      test_driver_prepares_multi_statement_migration_body;
     case
       "writer handshake response uses client capabilities"
       test_writer_handshake_response_uses_client_capabilities;

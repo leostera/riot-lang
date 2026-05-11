@@ -20,6 +20,18 @@ let config =
   }
 ```
 
+URI connection strings can set TLS preference with `ssl-mode`, `ssl_mode`, or
+`sslMode`:
+
+```ocaml
+let config =
+  Mysql.Config.from_string
+    "mysql://app:secret@127.0.0.1:3306/app?ssl-mode=disable"
+```
+
+Supported values are `disable`, `prefer`, and `require`. The default remains
+`prefer`, which attempts TLS when the server advertises it.
+
 Parameterized SQL uses `?` placeholders:
 
 ```ocaml
@@ -39,4 +51,6 @@ that need full authentication.
 For migrations, use `Sqlx.Migrate.Config.for_mysql ()`. It selects MySQL
 placeholders, creates the migration table with `ENGINE=InnoDB`, uses
 `GET_LOCK`/`RELEASE_LOCK`, and runs migration bodies outside an explicit
-transaction by default because MySQL DDL usually commits implicitly.
+transaction by default because MySQL DDL usually commits implicitly. The driver
+prepares multi-statement migration bodies as individual statements before SQLx
+executes them.

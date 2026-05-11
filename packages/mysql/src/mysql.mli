@@ -4,7 +4,9 @@ open Std
    MySQL/InnoDB driver support for [Sqlx].
 
    The driver speaks the MySQL 4.1+ protocol and targets InnoDB-backed
-   application schemas. Use [?] placeholders in parameterized SQL.
+   application schemas. Use [?] placeholders in parameterized SQL. Migration
+   bodies are prepared as semicolon-terminated statements for SQLx's migration
+   runner.
 *)
 module Error: sig
   type t
@@ -35,6 +37,7 @@ module Config: sig
     | InvalidAuthorityFormat
     | MissingUserCredentials
     | InvalidPortNumber of string
+    | InvalidSslMode of string
     | InvalidConnectionStringFormat
     | InvalidUri
 
@@ -42,6 +45,13 @@ module Config: sig
 
   val parse_error_to_string: parse_error -> string
 
+  (**
+     Parse [mysql://user:password@host:port/database] or legacy
+     [host:port:database:user:password] connection strings.
+
+     URI query parameters may include [ssl-mode], [ssl_mode], or [sslMode]
+     with one of [disable], [prefer], or [require].
+  *)
   val from_string: string -> (t, parse_error) result
 end
 

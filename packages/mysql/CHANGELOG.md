@@ -2,6 +2,13 @@
 
 All notable changes to `mysql` are documented here.
 
+## Unreleased
+
+### Added
+
+- Added URI query parsing for `ssl-mode`/`ssl_mode`/`sslMode` so env-provided MySQL URLs can disable, prefer, or require TLS.
+- Added driver-level preparation for multi-statement SQLx migration bodies.
+
 ## 0.0.33 - 2026-05-10
 
 ### Added

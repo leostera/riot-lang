@@ -30,6 +30,7 @@ module Config = struct
     | InvalidAuthorityFormat
     | MissingUserCredentials
     | InvalidPortNumber of string
+    | InvalidSslMode of string
     | InvalidConnectionStringFormat
     | InvalidUri
 
@@ -39,6 +40,7 @@ module Config = struct
     | InvalidAuthorityFormat -> "invalid authority format in URI"
     | MissingUserCredentials -> "missing user credentials in URI"
     | InvalidPortNumber value -> "invalid port number: " ^ value
+    | InvalidSslMode value -> "invalid ssl mode: " ^ value
     | InvalidConnectionStringFormat -> "invalid connection string format (use 'mysql://user:pass@host:port/db' or 'host:port:database:user:password')"
     | InvalidUri -> "failed to parse connection string"
 
@@ -119,7 +121,34 @@ module Config = struct
           else
             Result.map (parse_port port_text) ~fn:(fun port -> (host, port))
 
-  let make = fun ~host ~port ~database ~user ~password ->
+  let ssl_mode_from_string = fun value ->
+    match String.lowercase_ascii value with
+    | "disable"
+    | "disabled" -> Ok Disable
+    | "prefer"
+    | "preferred" -> Ok Prefer
+    | "require"
+    | "required" -> Ok Require
+    | _ -> Error (InvalidSslMode value)
+
+  let query_key_is_ssl_mode = fun key ->
+    match String.lowercase_ascii key with
+    | "ssl-mode"
+    | "ssl_mode"
+    | "sslmode" -> true
+    | _ -> false
+
+  let ssl_mode_from_query = fun uri ->
+    match Net.Uri.query uri with
+    | None -> Ok Prefer
+    | Some query -> (
+        match Net.Uri.Query.parse query
+        |> List.find ~fn:(fun (key, _) -> query_key_is_ssl_mode key) with
+        | None -> Ok Prefer
+        | Some (_, value) -> ssl_mode_from_string value
+      )
+
+  let make = fun ~ssl_mode ~host ~port ~database ~user ~password ->
     if String.length user = 0 then
       Error MissingUserCredentials
     else
@@ -129,7 +158,7 @@ module Config = struct
         database;
         user;
         password;
-        ssl_mode = Prefer;
+        ssl_mode;
         collation_id = 45;
         connect_timeout = Time.Duration.from_secs 10;
         keepalives_idle = None;
@@ -150,28 +179,38 @@ module Config = struct
           else
             None
         in
-        match Net.Uri.authority uri with
-        | Some auth_str -> (
-            match split_authority auth_str with
-            | Error _ as error -> error
-            | Ok (userinfo, hostinfo) -> (
-                match split_userinfo userinfo with
+        match ssl_mode_from_query uri with
+        | Error _ as error -> error
+        | Ok ssl_mode -> (
+            match Net.Uri.authority uri with
+            | Some auth_str -> (
+                match split_authority auth_str with
                 | Error _ as error -> error
-                | Ok (user, password) -> (
-                    match split_host_port hostinfo with
+                | Ok (userinfo, hostinfo) -> (
+                    match split_userinfo userinfo with
                     | Error _ as error -> error
-                    | Ok (host, port) ->
-                        make ~host:(Net.Uri.percent_decode host) ~port ~database ~user ~password
+                    | Ok (user, password) -> (
+                        match split_host_port hostinfo with
+                        | Error _ as error -> error
+                        | Ok (host, port) ->
+                            make
+                              ~host:(Net.Uri.percent_decode host)
+                              ~port
+                              ~database
+                              ~user
+                              ~password
+                              ~ssl_mode
+                      )
                   )
               )
+            | None -> Error MissingUserCredentials
           )
-        | None -> Error MissingUserCredentials
       )
     | Ok _ -> (
         match String.split_on_char ':' str with
         | [ host; port_str; database; user; password ] -> (
             match parse_port port_str with
-            | Ok port -> make ~host ~port ~database:(Some database) ~user ~password
+            | Ok port -> make ~host ~port ~database:(Some database) ~user ~password ~ssl_mode:Prefer
             | Error _ as error -> error
           )
         | _ -> Error InvalidConnectionStringFormat
@@ -898,6 +937,150 @@ module Driver = struct
     match execute_command conn ~binary:false (Protocol.Writer.com_query sql) with
     | Error _ as error -> error
     | Ok _ -> Ok ()
+
+  type migration_statement_state =
+    | Sql
+    | SingleQuoted
+    | DoubleQuoted
+    | BacktickQuoted
+    | LineComment
+    | BlockComment
+
+  let is_mysql_line_comment_space = fun char ->
+    match char with
+    | ' '
+    | '\t'
+    | '\n'
+    | '\r'
+    | '\012' -> true
+    | _ -> Char.to_int char <= 32
+
+  let split_migration_statements = fun sql ->
+    let len = String.length sql in
+    let buffer = StringBuilder.create ~size:len in
+    let char_at = fun index -> String.get_unchecked sql ~at:index in
+    let peek = fun index ->
+      if index >= 0 && index < len then
+        Some (char_at index)
+      else
+        None
+    in
+    let add_char = fun char -> StringBuilder.add_char buffer char in
+    let flush = fun statements ->
+      let statement =
+        StringBuilder.contents buffer
+        |> String.trim
+      in
+      StringBuilder.clear buffer;
+      if String.length statement = 0 then
+        statements
+      else
+        statement :: statements
+    in
+    let add_pair = fun left right ->
+      add_char left;
+      add_char right
+    in
+    let rec loop index state statements =
+      if index >= len then
+        List.rev (flush statements)
+      else
+        let char = char_at index in
+        match state with
+        | Sql ->
+            if Char.equal char ';' then
+              loop (index + 1) Sql (flush statements)
+            else if Char.equal char '\'' then (
+              add_char char;
+              loop (index + 1) SingleQuoted statements
+            ) else if Char.equal char '"' then (
+              add_char char;
+              loop (index + 1) DoubleQuoted statements
+            ) else if Char.equal char '`' then (
+              add_char char;
+              loop (index + 1) BacktickQuoted statements
+            ) else if Char.equal char '-' && match (peek (index + 1), peek (index + 2)) with
+            | (Some '-', None) -> true
+            | (Some '-', Some after) -> is_mysql_line_comment_space after
+            | _ -> false then (
+              add_pair '-' '-';
+              loop (index + 2) LineComment statements
+            ) else if Char.equal char '#' then (
+              add_char char;
+              loop (index + 1) LineComment statements
+            ) else if Char.equal char '/' && match peek (index + 1) with
+            | Some '*' -> true
+            | _ -> false then (
+              add_pair '/' '*';
+              loop (index + 2) BlockComment statements
+            ) else (
+              add_char char;
+              loop (index + 1) Sql statements
+            )
+        | SingleQuoted ->
+            add_char char;
+            if Char.equal char '\\' then (
+              match peek (index + 1) with
+              | None -> loop (index + 1) SingleQuoted statements
+              | Some next ->
+                  add_char next;
+                  loop (index + 2) SingleQuoted statements
+            ) else if Char.equal char '\'' && match peek (index + 1) with
+            | Some '\'' -> true
+            | _ -> false then (
+              add_char '\'';
+              loop (index + 2) SingleQuoted statements
+            ) else if Char.equal char '\'' then
+              loop (index + 1) Sql statements
+            else
+              loop (index + 1) SingleQuoted statements
+        | DoubleQuoted ->
+            add_char char;
+            if Char.equal char '\\' then (
+              match peek (index + 1) with
+              | None -> loop (index + 1) DoubleQuoted statements
+              | Some next ->
+                  add_char next;
+                  loop (index + 2) DoubleQuoted statements
+            ) else if Char.equal char '"' && match peek (index + 1) with
+            | Some '"' -> true
+            | _ -> false then (
+              add_char '"';
+              loop (index + 2) DoubleQuoted statements
+            ) else if Char.equal char '"' then
+              loop (index + 1) Sql statements
+            else
+              loop (index + 1) DoubleQuoted statements
+        | BacktickQuoted ->
+            add_char char;
+            if Char.equal char '`' && match peek (index + 1) with
+            | Some '`' -> true
+            | _ -> false then (
+              add_char '`';
+              loop (index + 2) BacktickQuoted statements
+            ) else if Char.equal char '`' then
+              loop (index + 1) Sql statements
+            else
+              loop (index + 1) BacktickQuoted statements
+        | LineComment ->
+            add_char char;
+            if Char.equal char '\n' || Char.equal char '\r' then
+              loop (index + 1) Sql statements
+            else
+              loop (index + 1) LineComment statements
+        | BlockComment ->
+            add_char char;
+            if Char.equal char '*' && match peek (index + 1) with
+            | Some '/' -> true
+            | _ -> false then (
+              add_char '/';
+              loop (index + 2) Sql statements
+            ) else
+              loop (index + 1) BlockComment statements
+    in
+    loop 0 Sql []
+
+  let prepare_migration = fun sql -> Ok (split_migration_statements sql)
 
   let connect = fun cfg ->
     match cfg.Config.keepalives_idle with
