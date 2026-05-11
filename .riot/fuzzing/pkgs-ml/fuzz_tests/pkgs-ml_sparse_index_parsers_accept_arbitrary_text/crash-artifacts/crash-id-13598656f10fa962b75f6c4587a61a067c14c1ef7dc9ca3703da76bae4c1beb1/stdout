@@ -1,0 +1,1 @@
+{"type":"FuzzCaseCompleted","name":"pkgs-ml sparse index parsers accept arbitrary text","status":"failed","message":"Failure(\"Invalid string path Ê.json\")"}

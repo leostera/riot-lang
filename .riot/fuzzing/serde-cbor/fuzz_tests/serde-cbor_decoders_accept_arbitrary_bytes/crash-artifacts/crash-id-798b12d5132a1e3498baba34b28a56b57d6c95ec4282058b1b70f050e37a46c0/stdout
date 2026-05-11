@@ -1,0 +1,1 @@
+{"type":"FuzzCaseCompleted","name":"serde-cbor decoders accept arbitrary bytes","status":"failed","message":"Failure(\"String.sub received an invalid slice\")"}

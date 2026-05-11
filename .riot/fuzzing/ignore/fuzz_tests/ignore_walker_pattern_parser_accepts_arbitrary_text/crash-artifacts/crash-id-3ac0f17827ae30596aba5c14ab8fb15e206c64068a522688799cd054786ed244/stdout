@@ -1,0 +1,1 @@
+{"type":"FuzzCaseCompleted","name":"ignore walker pattern parser accepts arbitrary text","status":"failed","message":"Invalid_argument(\"index out of bounds\")"}
