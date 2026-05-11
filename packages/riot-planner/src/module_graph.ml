@@ -1053,7 +1053,7 @@ let sorted_source_tasks = fun config graph ->
         (Path.to_string left.task_path)
         (Path.to_string right.task_path))
 
-let read_task_source = fun task ->
+let read_source = fun task ->
   match task.task_file with
   | Module_node.Concrete _ ->
       Fs.read task.task_display_path
@@ -1067,9 +1067,14 @@ let read_task_source = fun task ->
         })
   | Module_node.Generated { contents; _ } -> Ok contents
 
+let read_task_source = read_source
+
+let source_hash_of_text = fun task raw_text ->
+  source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text
+
 let source_hash_for_task = fun task ->
   let* raw_text = read_task_source task in
-  Ok (source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text)
+  Ok (source_hash_of_text task raw_text)
 
 let source_analysis_of_summary = fun task summary ->
   let* raw_text = read_task_source task in
@@ -1087,10 +1092,32 @@ let source_analysis_of_summary = fun task summary ->
       reason = "cached source summary does not match current source hash";
     })
 
-let analyze_source = fun task ->
-  let* raw_text = read_task_source task in
+let empty_parse_result_for_task = fun task ->
+  Syn.parse ~filename:task.task_display_path (source_slice "")
+
+let generated_source_analysis_of_summary = fun task summary ->
+  match task.task_file with
+  | Module_node.Concrete _ ->
+      Error (Planning_error.DependencyAnalysisFailed {
+        reason = "generated source summary requested for concrete source";
+      })
+  | Module_node.Generated _ ->
+      let* source_hash = source_hash_for_task task in
+      if Crypto.Hash.equal source_hash summary.Dep_analyzer.source_hash then
+        Ok {
+          analysis_task = task;
+          analysis_parse_result = empty_parse_result_for_task task;
+          analysis_source_hash = source_hash;
+          analysis_summary = Ok summary;
+        }
+      else
+        Error (Planning_error.DependencyAnalysisFailed {
+          reason = "generated source summary does not match current source hash";
+        })
+
+let analyze_source_text = fun task raw_text ->
   let parse_result = Syn.parse ~filename:task.task_display_path (source_slice raw_text) in
-  let source_hash = source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text in
+  let source_hash = source_hash_of_text task raw_text in
   let summary =
     Dep_analyzer.analyze
       ?module_path:task.task_module_path
@@ -1103,8 +1130,12 @@ let analyze_source = fun task ->
     analysis_task = task;
     analysis_parse_result = parse_result;
     analysis_source_hash = source_hash;
-    analysis_summary = summary;
-  }
+      analysis_summary = summary;
+    }
+
+let analyze_source = fun task ->
+  let* raw_text = read_task_source task in
+  analyze_source_text task raw_text
 
 let analyze_source_task = fun ~on_source_analyzed ~source_count ~completed_sources task ->
   let* analysis = analyze_source task in
@@ -1143,17 +1174,16 @@ let add_direct_dependency_package = fun t (package: Package.t) ->
   Cell.set t.dep_env (Dep_analyzer.Env.add_external_summaries env root_summaries)
 
 (**
-   Wire module dependencies using `Dep_analyzer`.
+   Resolve module dependencies using `Dep_analyzer`.
 
    This function parses source files in parallel, collects unresolved dependency
-   queries, resolves those queries against dependency and package-local
-   providers, and wires graph edges from the resolved module names.
+   queries, and resolves those queries against dependency and package-local
+   providers without mutating the module graph.
 *)
-let wire_dependencies = fun
+let resolve_dependencies = fun
   ?(analyze_sources:source_analyzer = analyze_source_tasks)
   ?(on_source_analyzed = fun (_:source_analysis_progress) -> ())
   t ->
-  let () = HashMap.clear t.analyzed_modules in
   let rec strip_last_namespace = fun __tmp1 ->
     match __tmp1 with
     | [] -> []
@@ -1198,6 +1228,22 @@ let wire_dependencies = fun
     else
       resolved_nodes
   in
+  let dependency_nodes_cache = HashMap.create () in
+  let dependency_nodes_by_qualified_name name =
+    match HashMap.get dependency_nodes_cache ~key:name with
+    | Some cached -> cached
+    | None ->
+        let nodes =
+          try
+            Module_registry.get_by_qualified_name t.registry name
+            |> preferred_dependency_nodes
+            |> Option.some
+          with
+          | Not_found -> None
+        in
+        let _ = HashMap.insert dependency_nodes_cache ~key:name ~value:nodes in
+        nodes
+  in
   let resolve_dependency_nodes_for_node (node: Module_node.t G.node) dep_mod_name =
     let simple_name = Module_name.to_string dep_mod_name in
     let namespace_parts =
@@ -1209,10 +1255,11 @@ let wire_dependencies = fun
       match __tmp1 with
       | [] -> raise Not_found
       | candidate_name :: rest -> (
-          try
-            let dep_node_ids = Module_registry.get_by_qualified_name t.registry candidate_name in
+          match dependency_nodes_by_qualified_name candidate_name with
+          | None -> try_candidates rest
+          | Some dep_nodes ->
             let preferred_ids =
-              preferred_dependency_nodes dep_node_ids
+              dep_nodes
               |> List.filter_map
                 ~fn:(fun (dep_node_id, dep_node) ->
                   if G.Node_id.eq dep_node_id (G.id node) then
@@ -1224,8 +1271,6 @@ let wire_dependencies = fun
               try_candidates rest
             else
               preferred_ids
-          with
-          | Not_found -> try_candidates rest
         )
     in
     try_candidates candidate_names
@@ -1338,9 +1383,10 @@ let wire_dependencies = fun
   match resolved with
   | Error _ as error -> error
   | Ok resolved ->
-      List.for_each
+      Ok (
         resolved
-        ~fn:(fun ((analysis, _summary), resolved_source) ->
+        |> List.filter_map
+          ~fn:(fun ((analysis, _summary), resolved_source) ->
           let requested_deps =
             match analysis.analysis_task.task_file with
             | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.modules resolved_source
@@ -1360,7 +1406,7 @@ let wire_dependencies = fun
                   modname)
           in
           match G.get_node t.graph analysis.analysis_task.task_node_id with
-          | None -> ()
+          | None -> None
           | Some node ->
               let (resolved_dep_ids, unresolved_deps) =
                 List.fold_left
@@ -1371,9 +1417,7 @@ let wire_dependencies = fun
                       let preferred_ids =
                         resolve_dependency_nodes_for_node node dep_mod_name
                         |> List.map
-                          ~fn:(fun (dep_node_id, dep_node) ->
-                            G.add_edge node ~depends_on:dep_node;
-                            dep_node_id)
+                          ~fn:(fun (dep_node_id, _dep_node) -> dep_node_id)
                       in
                       (List.reverse preferred_ids @ resolved_ids, unresolved)
                     with
@@ -1398,14 +1442,42 @@ let wire_dependencies = fun
                 unresolved_deps;
               }
               in
-              let _ =
-                HashMap.insert
-                  t.analyzed_modules
-                  ~key:analysis.analysis_task.task_node_id
-                  ~value:analyzed
-              in
-              ());
-      Ok ()
+              Some (analysis.analysis_task.task_node_id, analyzed))
+      )
+
+(**
+   Wire module dependencies using `Dep_analyzer`.
+
+   This function parses source files in parallel, collects unresolved dependency
+   queries, resolves those queries against dependency and package-local
+   providers, and wires graph edges from the resolved module names.
+*)
+let wire_dependencies = fun
+  ?(analyze_sources:source_analyzer = analyze_source_tasks)
+  ?(on_source_analyzed = fun (_:source_analysis_progress) -> ())
+  t ->
+  let () = HashMap.clear t.analyzed_modules in
+  let* analyzed_modules = resolve_dependencies ~analyze_sources ~on_source_analyzed t in
+  List.for_each
+    analyzed_modules
+    ~fn:(fun (node_id, analyzed) ->
+      match G.get_node t.graph node_id with
+      | None -> ()
+      | Some node ->
+          List.for_each
+            analyzed.resolved_dep_ids
+            ~fn:(fun dep_node_id ->
+              match G.get_node t.graph dep_node_id with
+              | None -> ()
+              | Some dep_node -> G.add_edge node ~depends_on:dep_node);
+          let _ =
+            HashMap.insert
+              t.analyzed_modules
+              ~key:node_id
+              ~value:analyzed
+          in
+          ());
+  Ok ()
 
 let add_library_node = fun t ~name ~includes ->
   let lib_node_value = Module_node.make_library ~name ~includes in

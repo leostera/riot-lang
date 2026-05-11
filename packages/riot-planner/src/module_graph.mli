@@ -65,7 +65,18 @@ val source_tasks: t -> source_analysis_task list
 
 val source_hash_for_task: source_analysis_task -> (Crypto.hash, Planning_error.t) result
 
+val read_source: source_analysis_task -> (string, Planning_error.t) result
+
+val source_hash_of_text: source_analysis_task -> string -> Crypto.hash
+
+val analyze_source_text: source_analysis_task -> string -> (source_analysis, Planning_error.t) result
+
 val source_analysis_of_summary:
+  source_analysis_task ->
+  Dep_analyzer.source_summary ->
+  (source_analysis, Planning_error.t) result
+
+val generated_source_analysis_of_summary:
   source_analysis_task ->
   Dep_analyzer.source_summary ->
   (source_analysis, Planning_error.t) result
@@ -73,6 +84,12 @@ val source_analysis_of_summary:
 val analyze_source: source_analysis_task -> (source_analysis, Planning_error.t) result
 
 val analyze_source_tasks: source_analyzer
+
+val resolve_dependencies:
+  ?analyze_sources:source_analyzer ->
+  ?on_source_analyzed:(source_analysis_progress -> unit) ->
+  t ->
+  ((G.Node_id.t * analyzed_module) list, Planning_error.t) result
 
 val wire_dependencies:
   ?analyze_sources:source_analyzer ->

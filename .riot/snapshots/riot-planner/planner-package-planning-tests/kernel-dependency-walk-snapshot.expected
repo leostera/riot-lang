@@ -57,6 +57,9 @@ ML(Kernel__Net__Tcp_stream__Aliases)
 ML(Kernel__Net__Udp_socket__Aliases)
   deps: []
 
+ML(Kernel__Net__Unix_stream__Aliases)
+  deps: []
+
 ML(Kernel__Process__Aliases)
   deps: []
 
@@ -1287,6 +1290,21 @@ MLI(Kernel__Net__Tcp_stream__Unix)
     - ML(Kernel__Net__Socket_addr)
     - ML(Kernel__System_error)
 
+ML(Kernel__Net__Unix_stream__Unix)
+  deps:
+    - ML(Kernel__Aliases)
+    - ML(Kernel__Net__Aliases)
+    - ML(Kernel__Net__Unix_stream__Aliases)
+    - ML(Kernel__Async)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__IO)
+    - ML(Kernel__Int)
+    - ML(Kernel__Option)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__Result)
+    - ML(Kernel__String)
+    - ML(Kernel__System_error)
+
 ML(Kernel__Fs__Events)
   deps:
     - ML(Kernel__Fs__Events__Aliases)
@@ -1346,6 +1364,17 @@ ML(Kernel__Net__Tcp_stream__Unix)
     - ML(Kernel__String)
     - ML(Kernel__System_error)
 
+MLI(Kernel__Net__Unix_stream)
+  deps:
+    - ML(Kernel__Net__Unix_stream__Aliases)
+    - ML(Kernel__Net__Aliases)
+    - ML(Kernel__Aliases)
+    - ML(Kernel__Net__Unix_stream__Unix)
+    - ML(Kernel__Async)
+    - ML(Kernel__IO)
+    - ML(Kernel__Result)
+    - ML(Kernel__System_error)
+
 MLI(Kernel__Fs__File)
   deps:
     - ML(Kernel__Fs__File__Aliases)
@@ -1366,6 +1395,14 @@ MLI(Kernel__Net__Tcp_stream)
     - ML(Kernel__Result)
     - ML(Kernel__Net__Socket_addr)
     - ML(Kernel__System_error)
+
+ML(Kernel__Net__Unix_stream)
+  deps:
+    - ML(Kernel__Net__Unix_stream__Aliases)
+    - ML(Kernel__Net__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Net__Unix_stream)
+    - ML(Kernel__Net__Unix_stream__Unix)
 
 ML(Kernel__Fs__File)
   deps:
@@ -1490,6 +1527,7 @@ MLI(Kernel__Net)
     - ML(Kernel__Net__Tcp_listener)
     - ML(Kernel__Net__Tcp_stream)
     - ML(Kernel__Net__Udp_socket)
+    - ML(Kernel__Net__Unix_stream)
 
 ML(Kernel__Process__Unix)
   deps:
@@ -1517,6 +1555,7 @@ ML(Kernel__Net)
     - ML(Kernel__Net__Tcp_listener)
     - ML(Kernel__Net__Tcp_stream)
     - ML(Kernel__Net__Udp_socket)
+    - ML(Kernel__Net__Unix_stream)
 
 MLI(Kernel__Process)
   deps:
@@ -1686,6 +1725,7 @@ Library(kernel)
     - ML(Kernel__Net__Tcp_listener__Aliases)
     - ML(Kernel__Net__Tcp_stream__Aliases)
     - ML(Kernel__Net__Udp_socket__Aliases)
+    - ML(Kernel__Net__Unix_stream__Aliases)
     - ML(Kernel__Process__Aliases)
     - ML(Kernel__Random__Aliases)
     - ML(Kernel__Random__Source__Aliases)
@@ -1844,13 +1884,16 @@ Library(kernel)
     - MLI(Kernel__Time)
     - MLI(Kernel__Fs__File__Unix)
     - MLI(Kernel__Net__Tcp_stream__Unix)
+    - ML(Kernel__Net__Unix_stream__Unix)
     - ML(Kernel__Fs__Events)
     - ML(Kernel__Net__Udp_socket)
     - ML(Kernel__Time)
     - ML(Kernel__Fs__File__Unix)
     - ML(Kernel__Net__Tcp_stream__Unix)
+    - MLI(Kernel__Net__Unix_stream)
     - MLI(Kernel__Fs__File)
     - MLI(Kernel__Net__Tcp_stream)
+    - ML(Kernel__Net__Unix_stream)
     - ML(Kernel__Fs__File)
     - ML(Kernel__Net__Tcp_stream)
     - MLI(Kernel__Fs__Read_dir)
@@ -1891,6 +1934,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__Net__Tcp_listener__Aliases.cmx
 - Kernel__Net__Tcp_stream__Aliases.cmx
 - Kernel__Net__Udp_socket__Aliases.cmx
+- Kernel__Net__Unix_stream__Aliases.cmx
 - Kernel__Process__Aliases.cmx
 - Kernel__Random__Aliases.cmx
 - Kernel__Random__Source__Aliases.cmx
@@ -1985,11 +2029,13 @@ CREATE LIBRARY OBJECTS
 - Kernel__Net__Udp_socket__Unix.cmx
 - Kernel__Time__Timer.cmx
 - Kernel__IO.cmx
+- Kernel__Net__Unix_stream__Unix.cmx
 - Kernel__Fs__Events.cmx
 - Kernel__Net__Udp_socket.cmx
 - Kernel__Time.cmx
 - Kernel__Fs__File__Unix.cmx
 - Kernel__Net__Tcp_stream__Unix.cmx
+- Kernel__Net__Unix_stream.cmx
 - Kernel__Fs__File.cmx
 - Kernel__Net__Tcp_stream.cmx
 - Kernel__Fs__Read_dir.cmx
