@@ -17,5 +17,6 @@ path = "tests/incremental_tests.ml"
 name = "markdown_bench"
 path = "bench/markdown_bench.ml"
 
+
 [dependencies]
 std = "*"

@@ -1,5 +1,5 @@
 [package]
 name = "nested_subdirs"
-version = "0.0.16"
+version = "0.0.33"
 
 [lib]

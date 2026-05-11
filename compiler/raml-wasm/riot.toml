@@ -1,6 +1,6 @@
 [package]
 name = "raml-wasm"
-version = "0.0.23"
+version = "0.0.33"
 
 [lib]
 path = "src/RamlWasm.ml"

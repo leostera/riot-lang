@@ -3,7 +3,7 @@ name = "suri-mailer"
 version = "0.0.34"
 description = "Action Mailer-style message and delivery adapters for Suri apps"
 license = "Apache-2.0"
-public = false
+public = true
 
 [lib]
 path = "src/suri_mailer.ml"

@@ -1,6 +1,6 @@
 [package]
 name = "asm"
-version = "0.0.1"
+version = "0.0.33"
 
 [lib]
 path = "src/asm.ml"

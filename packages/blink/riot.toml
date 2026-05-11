@@ -28,6 +28,7 @@ path = "examples/managed_sse.ml"
 name = "managed_websocket"
 path = "examples/managed_websocket.ml"
 
+
 [dependencies]
 std = { path = "../std", version = "*" }
 http = { path = "../http", version = "*" }

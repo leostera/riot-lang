@@ -3,7 +3,7 @@ name = "suri-jobs"
 version = "0.0.34"
 description = "Typed supervised background jobs for Suri apps"
 license = "Apache-2.0"
-public = false
+public = true
 
 [lib]
 path = "src/suri_jobs.ml"

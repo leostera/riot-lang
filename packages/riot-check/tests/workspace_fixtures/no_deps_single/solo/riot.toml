@@ -1,6 +1,6 @@
 [package]
 name = "solo"
-version = "0.0.16"
+version = "0.0.33"
 description = "riot-check no-deps single-package perf fixture"
 license = "Apache-2.0"
 public = false

@@ -32,6 +32,7 @@ propane = { path = "../propane", version = "*" }
 [build-dependencies]
 fixme = { path = "../fixme", version = "*" }
 
+
 [target.macos]
 cc_flags = ["-I/opt/homebrew/opt/openssl@3/include"]
 ld_flags = ["-L/opt/homebrew/opt/openssl@3/lib", "-lssl", "-lcrypto", "-lz"]
