@@ -2,6 +2,12 @@
 
 All notable changes to `suri` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for Suri middleware Accept, body parser, and method override parsing helpers.
+
 ## 0.0.34 - 2026-05-10
 
 ### Added
