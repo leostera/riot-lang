@@ -176,12 +176,27 @@ let collect_file_paths_parallel = fun walker ->
       | Ignore.Walker.Invalid_glob { path; line; message; _ } ->
           Path.to_string path ^ ":" ^ Int.to_string line ^ ": " ^ message)
 
+let test_walker_rejects_malformed_custom_pattern_without_crashing = fun _ctx ->
+  let pattern = "![\"ba[ k* p. " in
+  match Ignore.Walker.create
+    ~roots:[ Path.v "." ]
+    ~hidden:false
+    ~parents:false
+    ~ignore_patterns:[ pattern ]
+    ~overrides:[ pattern ]
+    () with
+  | Ok _
+  | Error _ -> Ok ()
+
 let contains_path = fun paths suffix ->
   List.any
     paths
     ~fn:(fun path -> String.ends_with ~suffix path)
 
 let tests = [
+  Test.case
+    "ignore walker rejects malformed custom pattern without crashing"
+    test_walker_rejects_malformed_custom_pattern_without_crashing;
   Test.case
     "ignore walker skips hidden directories by default"
     (fun _ctx ->
