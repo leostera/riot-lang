@@ -315,7 +315,14 @@ module Integer = struct
             |> Char.to_int
           in
           let value = byte land 0b0111_1111 in
-          if value != 0 && multiplier > Int.max_int / value then
+          if Int.equal value 0 then
+            if byte land 0b1000_0000 = 0 then
+              Ok (acc, pos + 1)
+            else if multiplier > Int.max_int / 128 then
+              Error (IntegerEncodingOverflow { accumulator = acc; multiplier; value })
+            else
+              read_continuation acc (multiplier * 128) (pos + 1)
+          else if multiplier > Int.max_int / value then
             Error (IntegerEncodingOverflow { accumulator = acc; multiplier; value })
           else
             let delta = value * multiplier in

@@ -172,6 +172,14 @@ let test_integer_decode_overflow_returns_typed_error = fun _ctx ->
   | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
   | Ok _ -> Result.Error "Overflowing HPACK integer decoded successfully"
 
+let test_integer_decode_zero_continuation_returns_typed_error = fun _ctx ->
+  let decoder = Hpack.create_decoder () in
+  let encoded = IO.Bytes.from_string "\x0f\x00\x52\x00\x52" in
+  match Hpack.decode decoder encoded with
+  | Error (Hpack.StringDataTruncated { length = 82; available = 2 }) -> Result.Ok ()
+  | Error err -> Result.Error ("Wrong decode error: " ^ Hpack.decode_error_to_string err)
+  | Ok _ -> Result.Error "Truncated HPACK literal decoded successfully"
+
 let test_indexed_missing_header_returns_typed_error = fun _ctx ->
   let encoder = Hpack.create_encoder () in
   let header = { Hpack.name = "x-missing"; value = "value" } in
@@ -397,6 +405,9 @@ let tests = [
   Test.case
     "integer_decode_overflow_returns_typed_error"
     test_integer_decode_overflow_returns_typed_error;
+  Test.case
+    "integer_decode_zero_continuation_returns_typed_error"
+    test_integer_decode_zero_continuation_returns_typed_error;
   Test.case
     "indexed_missing_header_returns_typed_error"
     test_indexed_missing_header_returns_typed_error;

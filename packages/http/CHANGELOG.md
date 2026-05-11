@@ -2,6 +2,17 @@
 
 All notable changes to `http` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for HTTP/1 chunk framing, HTTP/2 HPACK decoding, WebSocket frames, cookies, and server-sent events.
+
+### Fixed
+
+- Server-sent event parsing now handles arbitrary bytes without relying on UTF-8-aware string splitting.
+- HPACK integer decoding now handles zero continuation bytes without raising arithmetic exceptions.
+
 ## 0.0.26 - 2026-04-28
 
 ### Changed

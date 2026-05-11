@@ -36,6 +36,18 @@ let trim_trailing_cr = fun line ->
   else
     line
 
+let find_colon = fun line ->
+  let len = String.length line in
+  let rec loop = fun index ->
+    if index >= len then
+      None
+    else if String.get_unchecked line ~at:index = ':' then
+      Some index
+    else
+      loop (index + 1)
+  in
+  loop 0
+
 let split_field = fun line ->
   let line = trim_trailing_cr line in
   if String.length line = 0 then
@@ -43,18 +55,19 @@ let split_field = fun line ->
   else if String.get_unchecked line ~at:0 = ':' then
     None
   else
-    match String.index_of line ~char:':' with
+    match find_colon line with
     | None -> Some { name = line; value = "" }
     | Some colon_index ->
         let name = String.sub line ~offset:0 ~len:colon_index in
         let value_start =
-          if
-            colon_index + 1 < String.length line
-            && String.get_unchecked line ~at:(colon_index + 1) = ' '
-          then
-            colon_index + 2
+          let after_colon = colon_index + 1 in
+          if after_colon < String.length line then
+            if String.get_unchecked line ~at:after_colon = ' ' then
+              after_colon + 1
+            else
+              after_colon
           else
-            colon_index + 1
+            after_colon
         in
         let value = String.sub line ~offset:value_start ~len:(String.length line - value_start) in
         Some { name; value }
@@ -84,6 +97,19 @@ let apply_field = fun partial field ->
       | None -> partial
     )
   | _ -> partial
+
+let split_lines = fun input ->
+  let len = String.length input in
+  let rec loop start index acc =
+    if index >= len then
+      List.reverse (String.sub input ~offset:start ~len:(len - start) :: acc)
+    else if String.get_unchecked input ~at:index = '\n' then
+      let line = String.sub input ~offset:start ~len:(index - start) in
+      loop (index + 1) (index + 1) (line :: acc)
+    else
+      loop start (index + 1) acc
+  in
+  loop 0 0 []
 
 let parse_line_slice = fun line ->
   if Slice.length line = 0 then
@@ -145,7 +171,7 @@ let parse_line = fun line ->
   | Ok line -> parse_line_slice line
 
 let parse = fun input ->
-  let lines = String.split ~by:"\n" input in
+  let lines = split_lines input in
   let rec loop events partial = fun __tmp1 ->
     match __tmp1 with
     | [] -> (

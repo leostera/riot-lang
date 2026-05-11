@@ -1397,6 +1397,11 @@ let test_sse_parse_does_not_dispatch_event_without_data = fun _ctx ->
   | [] -> Result.Ok ()
   | _ -> Result.Error "SSE parser dispatched an event with no data lines"
 
+let test_sse_parse_invalid_utf8_bytes = fun _ctx ->
+  match Http1.Sse.parse "\x2b\xf4\x3a" with
+  | [] -> Result.Ok ()
+  | _ -> Result.Error "SSE parser dispatched invalid UTF-8 bytes as an event"
+
 let tests =
   Test.[
     case "common slice creation errors are typed" test_common_slice_creation_errors_are_typed;
@@ -1572,6 +1577,7 @@ let tests =
     case
       "sse parse does not dispatch event without data"
       test_sse_parse_does_not_dispatch_event_without_data;
+    case "sse parse invalid utf8 bytes" test_sse_parse_invalid_utf8_bytes;
   ]
 
 let main ~args:_ = Test.Cli.main ~name:"http:http1_parser" ~tests ~args:Env.args ()
