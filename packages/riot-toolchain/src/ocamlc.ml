@@ -593,7 +593,7 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
   in
   make_invocation ~cwd (String.concat " " ([ base_command t ] @ args))
 
-let compile_impl = fun t ~cwd ~includes ~flags ?cmi_file ~output source ->
+let compile_impl = fun t ~cwd ~includes ~flags ?(bin_annot = true) ?cmi_file ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let has_impl_flag =
     List.any
@@ -621,7 +621,10 @@ let compile_impl = fun t ~cwd ~includes ~flags ?cmi_file ~output source ->
       else
         [ Path.to_string source ]
     in
-    [ "-bin-annot"; "-c" ]
+    (if bin_annot then
+      [ "-bin-annot"; "-c" ]
+    else
+      [ "-c" ])
     @ warning_baseline_flags source
     @ flags_to_string flags
     @ include_flags

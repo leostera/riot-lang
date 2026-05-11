@@ -116,6 +116,7 @@ val compile_impl:
   cwd:Std.Path.t ->
   includes:Path.t list ->
   flags:compiler_flag list ->
+  ?bin_annot:bool ->
   ?cmi_file:Path.t ->
   output:Path.t ->
   Path.t ->

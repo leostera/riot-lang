@@ -133,6 +133,24 @@ let test_compile_impl_does_not_force_debug_symbols = fun _ctx ->
   else
     Ok ()
 
+let test_compile_impl_can_disable_bin_annot = fun _ctx ->
+  let ocamlc = Riot_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
+  let invocation =
+    Riot_toolchain.Ocamlc.compile_impl
+      ocamlc
+      ~cwd:(Path.v "/tmp/work")
+      ~includes:[ Path.v "src" ]
+      ~flags:[]
+      ~bin_annot:false
+      ~output:(Path.v "foo.cmx")
+      (Path.v "src/foo.ml")
+  in
+  let command = Riot_toolchain.Ocamlc.to_string invocation in
+  if String.contains command "-bin-annot" then
+    Error ("expected compile_impl to allow disabling -bin-annot, got: " ^ command)
+  else
+    Ok ()
+
 let test_compile_impl_renders_warn_error_and_raw_flags = fun _ctx ->
   let ocamlc = Riot_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
   let invocation =
@@ -400,6 +418,7 @@ let tests =
       "compile impl disables bad-module-name for dev sources"
       test_compile_impl_disables_bad_module_name_for_dev_sources;
     case "compile impl does not force debug symbols" test_compile_impl_does_not_force_debug_symbols;
+    case "compile impl can disable bin annot" test_compile_impl_can_disable_bin_annot;
     case
       "compile impl renders warn-error and raw flags"
       test_compile_impl_renders_warn_error_and_raw_flags;
