@@ -1,108 +1,66 @@
 open Std
 
-(* SQLite Database Driver
+(**
+   SQLite adapter for the shared SQLx driver interface.
 
-   This module provides a SQLite driver implementation for SQLx.
-   SQLite is a lightweight, file-based SQL database that's perfect
-   for development, testing, and embedded applications.
-
-   ## Features
-
-   - File-based storage (single file contains entire database)
-   - In-memory databases for testing
-   - Zero-configuration
-   - ACID transactions
-   - Rich SQL support including CTEs, window functions, etc.
-
-   ## Example Usage
-
-   ```ocaml
-   open Sqlx
-
-   (* Connect to a file database *)
-   let file_config = Sqlite.Config.default (Path.v "myapp.db") in
-   let pool = Sqlx.connect ~driver:(module Sqlite.Driver) file_config in
-
-   (* Use in-memory database for tests *)
-   let memory_config = Sqlite.Config.in_memory () in
-   let test_pool = Sqlx.connect ~driver:(module Sqlite.Driver) memory_config in
-
-   (* Execute queries *)
-   Sqlx.exec pool "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)" []
-   ```
-
-   ## Limitations
-
-   - No native network access (file-based only)
-   - Limited concurrent write access (uses file locking)
-   - No user management or access control
-   - Doesn't support full SQL standard isolation levels
+   The driver opens file-backed or in-memory SQLite databases, binds
+   `Sqlx_driver.Value.t` parameters to prepared statements, materializes result
+   rows as `Sqlx_driver.Row.t`, and exposes transaction operations through the
+   common `sqlx-driver` contract.
 *)
 
-(* Configuration for SQLite connections *)
+(** SQLite connection configuration. *)
 module Config: sig
-  (* SQLite connection configuration *)
+  type mode =
+    | ReadOnly
+    | ReadWrite
+    | Create
+  type synchronous =
+    | Off
+    | Normal
+    | Full
+    | Extra
   type t = {
     path: Path.t;
-    (* Path to the database file. Use ":memory:" for in-memory databases. *)
-    mode: [`ReadOnly | `ReadWrite | `Create];
-    (* Database access mode:
-       - `ReadOnly`: Open existing database for reading only
-       - `ReadWrite`: Open existing database for reading and writing
-       - `Create`: Create database if it doesn't exist (implies ReadWrite)
-    *)
+    (** Database file path. Use `Config.in_memory ()` for a private in-memory database. *)
+    mode: mode;
+    (** Database access mode. `Create` opens read/write and creates the file if needed. *)
     busy_timeout: Time.Duration.t option;
-    (* How long to wait when the database is locked before returning an error.
-       `None` means return immediately with SQLITE_BUSY.
-    *)
+    (** How long SQLite waits for locked tables before returning `SQLITE_BUSY`. *)
     cache_size: int option;
-    (* Size of the page cache in pages (default is -2000, meaning 2MB).
-       Negative values specify cache size in KB.
-    *)
-    synchronous: ([`Off | `Normal | `Full | `Extra]) option;
-    (* Synchronous mode controls how SQLite waits for data to reach persistent storage:
-       - `Off`: No syncs (fast but unsafe)
-       - `Normal`: Sync at critical moments (balanced)
-       - `Full`: Sync after every critical operation (safe but slower)
-       - `Extra`: Like Full but with extra syncs for durability
-    *)
+    (** Optional `PRAGMA cache_size` value, in SQLite pages. *)
+    synchronous: synchronous option;
+    (** Optional `PRAGMA synchronous` mode. *)
   }
 
-  (* `default path` creates a configuration for a file-based database at `path`.
-
-     Default settings:
-     - mode = `Create`
-     - busy_timeout = 5 seconds
-     - cache_size = default (-2000)
-     - synchronous = `Normal`
-  *)
+  (** File-backed defaults: create if missing, 5s busy timeout, normal sync. *)
   val default: Path.t -> t
 
-  (* `in_memory ()` creates a configuration for an in-memory database.
-
-     In-memory databases are:
-     - Very fast (no disk I/O)
-     - Temporary (destroyed when connection closes)
-     - Perfect for testing
-
-     Settings optimized for performance:
-     - synchronous = `Off`
-     - No busy timeout (single connection)
-  *)
-
-  (* `in_memory ()` creates a configuration for an in-memory database.
-
-     In-memory databases are:
-     - Very fast (no disk I/O)
-     - Temporary (destroyed when connection closes)
-     - Perfect for testing
-
-     Settings optimized for performance:
-     - synchronous = `Off`
-     - No busy timeout (single connection)
-  *)
+  (** Private in-memory database defaults for tests and short-lived tools. *)
   val in_memory: unit -> t
 end
 
-(* SQLite driver implementation for SQLx *)
+(** SQLite driver implementation for SQLx. *)
 module Driver: Sqlx_driver.Driver.Intf with type config = Config.t
+
+(** Public helpers for rendering and serializing SQLite driver errors. *)
+module Error: sig
+  type t = Driver.error
+
+  val to_string: t -> string
+
+  val serializer: t Serde.Ser.t
+end
+
+(** Test helpers for disposable SQLite databases. *)
+module Testing: sig
+  (**
+     [with_db config fn] opens a disposable SQLite database, runs [fn], closes
+     the connection, and removes any temporary file storage.
+
+     For `Config.in_memory ()`, the database is private to this callback. For
+     file-backed configs, the configured path is treated as a template and the
+     actual database file is created inside a temporary directory.
+  *)
+  val with_db: Config.t -> (Driver.connection -> ('a, string) result) -> ('a, string) result
+end
