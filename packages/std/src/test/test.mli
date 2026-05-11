@@ -3,6 +3,7 @@ open Global
 (** Shared test execution context. *)
 type ctx = Test_context.t = {
   suite_name: string;
+  context_store: Test_context.Store.t;
   test_name: string;
   test_index: int;
   source_file: Path.t option;
@@ -17,6 +18,13 @@ type ctx = Test_context.t = {
 (** Helpers for working with test contexts and fixtures. *)
 module Context: sig
   type t = ctx
+
+  module Store: module type of Test_context.Store
+
+  type 'a key = 'a Test_context.key
+
+  val key: unit -> 'a key
+
   type built_binary = Test_context.built_binary = {
     name: string;
     path: Path.t;
@@ -68,6 +76,8 @@ module Context: sig
   val emit_progress: t -> progress -> unit
 
   val no_progress_handler: Test_context.progress_handler
+
+  val get: t -> 'a key -> 'a option
 
   val find_binary: t -> string -> Path.t option
 
@@ -172,6 +182,7 @@ module Cli: sig
   type execution_mode = Cli.execution_mode =
     | Concurrent
     | Linear
+  type suite_context = Cli.suite_context
   type suite_hook = Cli.suite_hook
 
   val main:

@@ -3,6 +3,7 @@ open Propane
 
 let dummy_ctx: Test.ctx = {
   suite_name = "propane/property_runner_tests";
+  context_store = Test.Context.Store.create ();
   test_name = "dummy";
   test_index = 0;
   source_file = None;

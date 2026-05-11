@@ -120,6 +120,8 @@ let failure_tests = [
 
 let hook_log_env = "STD_TEST_HOOK_LOG"
 
+let hook_context_key: string Test.Context.key = Test.Context.key ()
+
 let hook_log_path = fun () ->
   Env.get Env.String ~var:hook_log_env
   |> Option.map ~fn:Path.v
@@ -139,7 +141,13 @@ let append_hook_log = fun line ->
           result
 
 let hooked_tests = [
-  Test.case "hooked_probe" (fun _ctx -> append_hook_log "test");
+  Test.case
+    "hooked_probe"
+    (fun ctx ->
+      match Test.Context.get ctx hook_context_key with
+      | Some "from-setup" -> append_hook_log "test"
+      | Some value -> Error ("unexpected setup context value: " ^ value)
+      | None -> Error "missing setup context value");
 ]
 
 let hooked_failure_tests = [
@@ -1119,8 +1127,10 @@ let hook_sample_main = fun ~args ->
   | exe :: _sample :: rest ->
       Test.Cli.main
         ~name:"sample_hooks"
-        ~setup:(fun () -> append_hook_log "setup")
-        ~teardown:(fun () -> append_hook_log "teardown")
+        ~setup:(fun ctx ->
+          let _ = Test.Context.Store.insert ctx hook_context_key "from-setup" in
+          append_hook_log "setup")
+        ~teardown:(fun _ctx -> append_hook_log "teardown")
         ~tests:hooked_tests
         ~args:(exe :: rest)
         ()
@@ -1131,10 +1141,10 @@ let hook_setup_fail_sample_main = fun ~args ->
   | exe :: _sample :: rest ->
       Test.Cli.main
         ~name:"sample_hooks_setup_fail"
-        ~setup:(fun () ->
+        ~setup:(fun _ctx ->
           let* () = append_hook_log "setup" in
           Error "setup failed")
-        ~teardown:(fun () -> append_hook_log "teardown")
+        ~teardown:(fun _ctx -> append_hook_log "teardown")
         ~tests:hooked_tests
         ~args:(exe :: rest)
         ()
@@ -1145,8 +1155,10 @@ let hook_test_fail_sample_main = fun ~args ->
   | exe :: _sample :: rest ->
       Test.Cli.main
         ~name:"sample_hooks_test_fail"
-        ~setup:(fun () -> append_hook_log "setup")
-        ~teardown:(fun () -> append_hook_log "teardown")
+        ~setup:(fun ctx ->
+          let _ = Test.Context.Store.insert ctx hook_context_key "from-setup" in
+          append_hook_log "setup")
+        ~teardown:(fun _ctx -> append_hook_log "teardown")
         ~tests:hooked_failure_tests
         ~args:(exe :: rest)
         ()
@@ -1157,8 +1169,10 @@ let hook_teardown_fail_sample_main = fun ~args ->
   | exe :: _sample :: rest ->
       Test.Cli.main
         ~name:"sample_hooks_teardown_fail"
-        ~setup:(fun () -> append_hook_log "setup")
-        ~teardown:(fun () ->
+        ~setup:(fun ctx ->
+          let _ = Test.Context.Store.insert ctx hook_context_key "from-setup" in
+          append_hook_log "setup")
+        ~teardown:(fun _ctx ->
           let* () = append_hook_log "teardown" in
           Error "teardown failed")
         ~tests:hooked_tests

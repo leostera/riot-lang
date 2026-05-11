@@ -52,8 +52,29 @@ type progress =
 
 type progress_handler = progress -> unit
 
+module Store = struct
+  type t = TypedKeyHashMap.t
+
+  type 'a key = 'a TypedKeyHashMap.key
+
+  let create = TypedKeyHashMap.create
+
+  let key = TypedKeyHashMap.key
+
+  let insert = fun store key value -> TypedKeyHashMap.insert store ~key ~value
+
+  let get = fun store key -> TypedKeyHashMap.get store ~key
+
+  let remove = fun store key -> TypedKeyHashMap.remove store ~key
+end
+
+type 'a key = 'a Store.key
+
+let key = Store.key
+
 type t = {
   suite_name: string;
+  context_store: Store.t;
   test_name: string;
   test_index: int;
   source_file: Path.t option;
@@ -72,6 +93,8 @@ let with_fixture = fun ctx fixture -> { ctx with fixture = Some fixture }
 let with_progress_handler = fun ctx progress_handler -> { ctx with progress_handler }
 
 let emit_progress = fun ctx progress -> ctx.progress_handler progress
+
+let get = fun ctx key -> Store.get ctx.context_store key
 
 let find_binary = fun ctx name ->
   List.find ctx.built_binaries ~fn:(fun (binary: built_binary) -> String.equal binary.name name)

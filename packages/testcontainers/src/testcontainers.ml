@@ -1,3 +1,5 @@
+open Std
+
 module ReadinessPolicy = Readiness_policy
 module Generic_image = Generic_image
 module Container = Container
@@ -30,3 +32,19 @@ let docker_available = fun () ->
 let start = Lifecycle.start
 
 let with_container = Lifecycle.with_container
+
+let current_container: Container.t Std.Test.Context.key = Std.Test.Context.key ()
+
+let setup = fun image context_store ->
+  match start image with
+  | Error error -> Error (error_to_string error)
+  | Ok container ->
+      let _ = Std.Test.Context.Store.insert context_store current_container container in
+      Ok ()
+
+let teardown = fun context_store ->
+  match Std.Test.Context.Store.remove context_store current_container with
+  | None -> Ok ()
+  | Some container ->
+      Container.remove container
+      |> Std.Result.map_err ~fn:error_to_string

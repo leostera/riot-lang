@@ -6,7 +6,9 @@ type execution_mode =
   | Concurrent
   | Linear
 
-type suite_hook = unit -> (unit, string) result
+type suite_context = Test_context.Store.t
+
+type suite_hook = suite_context -> (unit, string) result
 
 let test_type_fields = fun __tmp1 ->
   match __tmp1 with
@@ -532,11 +534,11 @@ let render_hook_exception = fun hook_name exn ->
   let bt = Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()) in
   hook_name ^ " hook raised: " ^ exn ^ "\n\n" ^ bt
 
-let run_suite_hook = fun hook_name hook ->
+let run_suite_hook = fun hook_name hook context_store ->
   match hook with
   | None -> Ok ()
   | Some hook -> (
-      match hook () with
+      match hook context_store with
       | Ok () -> Ok ()
       | Error message -> Error message
       | exception exn -> Error (render_hook_exception hook_name exn)
@@ -570,6 +572,7 @@ let report_teardown_failure = fun ~(reporter:(module Reporter.Intf)) message ->
 let fuzz_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
   Test_context.{
     suite_name = suite_info.name;
+    context_store = Test_context.Store.create ();
     test_name = test.name;
     test_index = index;
     source_file = suite_info.source_file;
@@ -651,7 +654,7 @@ let run_tests_with_hooks = fun ?setup ?teardown ~(config:Runner.config) tests ->
   if List.is_empty selected_tests then
     Runner.run_tests ~config tests
   else
-    match run_suite_hook "setup" setup with
+    match run_suite_hook "setup" setup config.context_store with
     | Error message ->
         report_setup_failure ~reporter:config.reporter ~suite_info:config.suite_info message
     | Ok () ->
@@ -659,7 +662,7 @@ let run_tests_with_hooks = fun ?setup ?teardown ~(config:Runner.config) tests ->
         let run_teardown_once () =
           if not !teardown_ran then (
             teardown_ran := true;
-            match run_suite_hook "teardown" teardown with
+            match run_suite_hook "teardown" teardown config.context_store with
             | Ok () -> ()
             | Error message -> report_teardown_failure ~reporter:config.reporter message
           )
@@ -765,6 +768,7 @@ let main = fun ?(execution_mode = Concurrent) ?setup ?teardown ~name ~tests ~arg
                     target;
                     policy = { Runner.default_policy with flaky_max_retries };
                     suite_info;
+                    context_store = Test_context.Store.create ();
                     event_handler =
                       if String.equal format_str "json" then
                         json_event_handler
@@ -812,6 +816,7 @@ let main = fun ?(execution_mode = Concurrent) ?setup ?teardown ~name ~tests ~arg
               target = { query = None; size_filter = All_sizes; flaky_only = false };
               policy = default_policy;
               suite_info;
+              context_store = Test_context.Store.create ();
               event_handler = Runner.no_event_handler;
             }
           in

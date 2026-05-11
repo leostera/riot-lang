@@ -14,6 +14,7 @@ type test_result = Test_case.test_result
 
 type ctx = Test_context.t = {
   suite_name: string;
+  context_store: Test_context.Store.t;
   test_name: string;
   test_index: int;
   source_file: Path.t option;

@@ -136,6 +136,7 @@ type config = {
   target: target;
   policy: policy;
   suite_info: Reporter.suite_info;
+  context_store: Test_context.Store.t;
   event_handler: event_handler;
 }
 
@@ -160,13 +161,14 @@ type Message.t +=
       exn: exn;
     }
 
-let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
+let make_ctx = fun ~(suite_info:Reporter.suite_info) ~context_store ~index (test: Test_case.t) ->
   let current_dir =
     Env.current_dir ()
     |> Result.to_option
   in
   Test_context.{
     suite_name = suite_info.name;
+    context_store;
     test_name = test.name;
     test_index = index;
     source_file = suite_info.source_file;
@@ -356,10 +358,10 @@ let should_retry = fun policy (test: Test_case.t) attempts (result: Test_result.
   | Test_result.Failed _
   | Test_result.Timed_out _ -> true
 
-let run_single_test = fun ~suite_info ~policy ~on_event index (test: Test_case.t) ->
+let run_single_test = fun ~suite_info ~context_store ~policy ~on_event index (test: Test_case.t) ->
   let name = test.name in
   let test_type = test.test_type in
-  let ctx = make_ctx ~suite_info ~index test in
+  let ctx = make_ctx ~suite_info ~context_store ~index test in
   let test_info = test_descriptor_of_case index test in
   on_event (TestStarted test_info);
   let result =
@@ -450,7 +452,13 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
     let on_event event = send owner (Test_runner_worker_event { run_ref; event }) in
     try
       let _ =
-        run_single_test ~suite_info:config.suite_info ~policy:config.policy ~on_event index test
+        run_single_test
+          ~suite_info:config.suite_info
+          ~context_store:config.context_store
+          ~policy:config.policy
+          ~on_event
+          index
+          test
       in
       ()
     with
@@ -551,6 +559,7 @@ let run_tests = fun ~config tests ->
           let result =
             run_single_test
               ~suite_info:config.suite_info
+              ~context_store:config.context_store
               ~policy:config.policy
               ~on_event:config.event_handler
               index

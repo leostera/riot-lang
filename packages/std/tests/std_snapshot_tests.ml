@@ -8,6 +8,7 @@ let with_tempdir_result = fun prefix fn ->
 let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
   let ctx: Test.ctx = {
     suite_name = "std_snapshot_tests";
+    context_store = Test.Context.Store.create ();
     test_name;
     test_index = 1;
     source_file = None;

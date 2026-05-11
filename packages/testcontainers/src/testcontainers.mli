@@ -100,3 +100,9 @@ end
 val start: Generic_image.t -> (Container.t, error) result
 
 val with_container: Generic_image.t -> (Container.t -> ('a, error) result) -> ('a, error) result
+
+val current_container: Container.t Test.Context.key
+
+val setup: Generic_image.t -> Test.Cli.suite_hook
+
+val teardown: Test.Cli.suite_hook

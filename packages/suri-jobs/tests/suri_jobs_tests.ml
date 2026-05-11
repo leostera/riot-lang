@@ -116,13 +116,13 @@ type mysql_runtime =
   | MysqlUnavailable of string
   | MysqlReady of string * Mysql.Config.t
 
-let postgres_runtime_status = ref None
+let postgres_runtime_key: postgres_runtime Test.Context.key = Test.Context.key ()
 
-let postgres_container = ref None
+let postgres_container_key: Testcontainers.Container.t Test.Context.key = Test.Context.key ()
 
-let mysql_runtime_status = ref None
+let mysql_runtime_key: mysql_runtime Test.Context.key = Test.Context.key ()
 
-let mysql_container = ref None
+let mysql_container_key: Testcontainers.Container.t Test.Context.key = Test.Context.key ()
 
 let mysql_container_port = 3_306
 
@@ -264,7 +264,7 @@ let wait_for_mysql_available mysql_url mysql_config =
   in
   loop 120 ("suri-jobs mysql container at " ^ mysql_url ^ " did not become available")
 
-let start_postgres_runtime () =
+let start_postgres_runtime = fun context_store ->
   if not (Testcontainers.docker_available ()) then
     PostgresSkipped
   else
@@ -273,7 +273,7 @@ let start_postgres_runtime () =
         PostgresUnavailable ("failed to start postgres test container: "
         ^ Testcontainers.error_to_string error)
     | Ok container ->
-        postgres_container := Some container;
+        let _ = Test.Context.Store.insert context_store postgres_container_key container in
         (
           match postgres_config_from_container container with
           | Error error -> PostgresUnavailable error
@@ -283,7 +283,7 @@ let start_postgres_runtime () =
               | Error error -> PostgresUnavailable error
         )
 
-let start_mysql_runtime () =
+let start_mysql_runtime = fun context_store ->
   if not (Testcontainers.docker_available ()) then
     MysqlSkipped
   else
@@ -292,7 +292,7 @@ let start_mysql_runtime () =
         MysqlUnavailable ("failed to start mysql test container: "
         ^ Testcontainers.error_to_string error)
     | Ok container ->
-        mysql_container := Some container;
+        let _ = Test.Context.Store.insert context_store mysql_container_key container in
         (
           match mysql_config_from_container container with
           | Error error -> MysqlUnavailable error
@@ -302,40 +302,38 @@ let start_mysql_runtime () =
               | Error error -> MysqlUnavailable error
         )
 
-let postgres_runtime () =
-  match !postgres_runtime_status with
+let postgres_runtime = fun (ctx: Test.ctx) ->
+  match Test.Context.get ctx postgres_runtime_key with
   | Some status -> status
   | None ->
-      let status = start_postgres_runtime () in
-      postgres_runtime_status := Some status;
+      let status = start_postgres_runtime ctx.context_store in
+      let _ = Test.Context.Store.insert ctx.context_store postgres_runtime_key status in
       status
 
-let mysql_runtime () =
-  match !mysql_runtime_status with
+let mysql_runtime = fun (ctx: Test.ctx) ->
+  match Test.Context.get ctx mysql_runtime_key with
   | Some status -> status
   | None ->
-      let status = start_mysql_runtime () in
-      mysql_runtime_status := Some status;
+      let status = start_mysql_runtime ctx.context_store in
+      let _ = Test.Context.Store.insert ctx.context_store mysql_runtime_key status in
       status
 
-let teardown_postgres_container = fun () ->
-  match !postgres_container with
+let teardown_postgres_container = fun context_store ->
+  match Test.Context.Store.remove context_store postgres_container_key with
   | None -> Ok ()
   | Some container ->
-      postgres_container := None;
       Testcontainers.Container.remove container
       |> Result.map_err ~fn:Testcontainers.error_to_string
 
-let teardown_mysql_container = fun () ->
-  match !mysql_container with
+let teardown_mysql_container = fun context_store ->
+  match Test.Context.Store.remove context_store mysql_container_key with
   | None -> Ok ()
   | Some container ->
-      mysql_container := None;
       Testcontainers.Container.remove container
       |> Result.map_err ~fn:Testcontainers.error_to_string
 
-let teardown_containers = fun () ->
-  match (teardown_postgres_container (), teardown_mysql_container ()) with
+let teardown_containers = fun context_store ->
+  match (teardown_postgres_container context_store, teardown_mysql_container context_store) with
   | (Ok (), Ok ()) -> Ok ()
   | (Error left, Ok ())
   | (Ok (), Error left) -> Error left
@@ -391,7 +389,7 @@ let postgres_case name fn =
       ~size:Large
       name
       (fun ctx ->
-        match postgres_runtime () with
+        match postgres_runtime ctx with
         | PostgresSkipped -> Ok ()
         | PostgresUnavailable error -> Error error
         | PostgresReady (postgres_url, config) -> fn ctx postgres_url config)
@@ -404,7 +402,7 @@ let mysql_case name fn =
       ~size:Large
       name
       (fun ctx ->
-        match mysql_runtime () with
+        match mysql_runtime ctx with
         | MysqlSkipped -> Ok ()
         | MysqlUnavailable error -> Error error
         | MysqlReady (mysql_url, config) -> fn ctx mysql_url config)

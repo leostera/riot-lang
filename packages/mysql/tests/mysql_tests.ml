@@ -715,21 +715,18 @@ let container_config = fun container ->
         connect_timeout = Time.Duration.from_secs 30;
       }
 
-let with_mysql_container = fun fn ->
-  Testcontainers.with_container
-    (mysql_container_image ())
-    (fun container ->
+let with_mysql_container = fun ctx fn ->
+  match Test.Context.get ctx Testcontainers.current_container with
+  | None -> Error "mysql test container was not initialized by suite setup"
+  | Some container -> (
       match container_config container with
-      | Error message -> Error (Testcontainers.StartupTimeout message)
-      | Ok config -> (
-          match with_connection_config config fn with
-          | Ok value -> Ok value
-          | Error message -> Error (Testcontainers.StartupTimeout message)
-        ))
-  |> Result.map_err ~fn:Testcontainers.error_to_string
+      | Error message -> Error message
+      | Ok config -> with_connection_config config fn
+    )
 
-let test_mysql_container_roundtrips = fun _ctx ->
+let test_mysql_container_roundtrips = fun ctx ->
   with_mysql_container
+    ctx
     (fun connection ->
       let* () = assert_parameterized_query_roundtrips connection in
       let* () = assert_transaction_roundtrips connection in
@@ -773,6 +770,13 @@ let tests =
       test_mysql_container_roundtrips;
   ]
 
-let main ~args = Test.Cli.main ~name:"mysql_tests" ~tests ~args ()
+let main ~args =
+  let (setup, teardown) =
+    if docker_endpoint_available () then
+      (Some (Testcontainers.setup (mysql_container_image ())), Some Testcontainers.teardown)
+    else
+      (None, None)
+  in
+  Test.Cli.main ?setup ?teardown ~name:"mysql_tests" ~tests ~args ()
 
 let () = Std.Runtime.run ~main ~args:Std.Env.args ()

@@ -54,6 +54,26 @@ type progress =
       reason: snapshot_mismatch_reason;
     }
 type progress_handler = progress -> unit
+
+module Store: sig
+  type t = Collections.TypedKeyHashMap.t
+  type 'a key = 'a Collections.TypedKeyHashMap.key
+
+  val create: unit -> t
+
+  val key: unit -> 'a key
+
+  val insert: t -> 'a key -> 'a -> 'a option
+
+  val get: t -> 'a key -> 'a option
+
+  val remove: t -> 'a key -> 'a option
+end
+
+type 'a key = 'a Store.key
+
+val key: unit -> 'a key
+
 (**
    Stable per-test metadata supplied by the shared test runner.
 
@@ -64,6 +84,8 @@ type progress_handler = progress -> unit
 type t = {
   (** Human-readable suite name. *)
   suite_name: string;
+  (** Suite-scoped typed context shared by setup, tests, and teardown. *)
+  context_store: Store.t;
   (** Human-readable test name. *)
   test_name: string;
   (** Position of the test in the suite. *)
@@ -95,6 +117,9 @@ val emit_progress: t -> progress -> unit
 
 (** Default no-op progress handler. *)
 val no_progress_handler: progress_handler
+
+(** Read a suite-scoped typed context value. *)
+val get: t -> 'a key -> 'a option
 
 (** Find an available built binary by name. *)
 val find_binary: t -> string -> Path.t option

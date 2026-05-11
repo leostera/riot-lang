@@ -1128,21 +1128,18 @@ let container_config = fun container ->
         connect_timeout = Time.Duration.from_secs 30;
       }
 
-let with_postgres_container = fun fn ->
-  Testcontainers.with_container
-    (postgres_container_image ())
-    (fun container ->
+let with_postgres_container = fun ctx fn ->
+  match Test.Context.get ctx Testcontainers.current_container with
+  | None -> Error "postgres test container was not initialized by suite setup"
+  | Some container -> (
       match container_config container with
-      | Error message -> Error (Testcontainers.StartupTimeout message)
-      | Ok config -> (
-          match with_connection_config config fn with
-          | Ok value -> Ok value
-          | Error message -> Error (Testcontainers.StartupTimeout message)
-        ))
-  |> Result.map_err ~fn:Testcontainers.error_to_string
+      | Error message -> Error message
+      | Ok config -> with_connection_config config fn
+    )
 
 let test_postgres_container_properties = fun ctx ->
   with_postgres_container
+    ctx
     (fun connection ->
       let* () = assert_parameterized_query_roundtrips connection in
       let* () = assert_large_text_roundtrips connection in
@@ -1171,6 +1168,13 @@ let tests =
       test_postgres_container_properties;
   ]
 
-let main ~args = Test.Cli.main ~name:"postgres_tests" ~tests ~args ()
+let main ~args =
+  let (setup, teardown) =
+    if docker_endpoint_available () then
+      (Some (Testcontainers.setup (postgres_container_image ())), Some Testcontainers.teardown)
+    else
+      (None, None)
+  in
+  Test.Cli.main ?setup ?teardown ~name:"postgres_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()
