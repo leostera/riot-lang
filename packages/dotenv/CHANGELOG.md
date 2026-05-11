@@ -2,6 +2,12 @@
 
 All notable changes to `dotenv` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for dotenv parsing with arbitrary input text.
+
 ## 0.0.1 - 2026-05-01
 
 This release turns `dotenv` from the earlier single-file, minimal loader into a
