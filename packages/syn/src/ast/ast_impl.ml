@@ -5365,6 +5365,35 @@ module TypeDeclaration = struct
       | Some (Syntax_tree.Missing _)
       | None -> find_node_in node (index + 1) ~matches
 
+  let rec find_child_node_in = fun node index ~matches ->
+    if index >= Node.child_count node then
+      None
+    else
+      match Node.child_at node index with
+      | Some (Syntax_tree.Node id) ->
+          let child = wrap_node node.tree id in
+          if matches child then
+            Some child
+          else
+            find_child_node_in node (index + 1) ~matches
+      | Some (Syntax_tree.Token _)
+      | Some (Syntax_tree.Missing _)
+      | None -> find_child_node_in node (index + 1) ~matches
+
+  let is_polymorphic_variant_type_node = fun node ->
+    node_kind_is node Syntax_kind.VARIANT_TYPE
+    && (
+      match child_token_kind_at_node node 0 with
+      | Some Syntax_kind.LBRACKET -> true
+      | _ -> false
+    )
+
+  let is_type_manifest_node = fun node ->
+    if node_kind_is node Syntax_kind.VARIANT_TYPE then
+      is_polymorphic_variant_type_node node
+    else
+      node_matches node is_type_expr_kind
+
   let name = fun (decl: t) ->
     let node = member_or_decl decl in
     let rec loop index =
@@ -5449,7 +5478,7 @@ module TypeDeclaration = struct
 
   let parameter_count = fun decl -> count_fold fold_parameter decl
 
-  let manifest = fun decl -> find_node_in (member_or_decl decl) 0 ~matches:is_type_expr_kind
+  let manifest = fun decl -> find_child_node_in (member_or_decl decl) 0 ~matches:is_type_manifest_node
 
   module Member = struct
     type t = member
@@ -5676,7 +5705,7 @@ module TypeDeclaration = struct
 
     let parameter_count = fun member -> count_fold fold_parameter member
 
-    let manifest = fun member -> find_node_in member.node 0 ~matches:is_type_expr_kind
+    let manifest = fun member -> find_child_node_in member.node 0 ~matches:is_type_manifest_node
   end
 
   let for_each_member = fun decl ~fn ->

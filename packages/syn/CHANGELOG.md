@@ -2,6 +2,17 @@
 
 All notable changes to `syn` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for parser recovery on arbitrary implementation input.
+
+### Fixed
+
+- Type declaration manifest views now distinguish aliases from record and variant representations.
+- Dependency collection now sees external type paths inside first-class module type constraints.
+
 ## 0.0.27 - 2026-05-01
 
 ### Changed

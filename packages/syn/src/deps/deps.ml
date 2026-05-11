@@ -677,7 +677,8 @@ module Ast_deps = struct
         let deps = collect_direct_type_payload_paths env deps node in
         collect_child_nodes collect_node env deps node
     | Syntax_kind.OPAQUE_TYPE ->
-        Ok (collect_direct_module_accesses_between env deps node 0 (A.Node.child_count node))
+        let deps = collect_direct_module_accesses_between env deps node 0 (A.Node.child_count node) in
+        collect_child_nodes collect_node env deps node
     | Syntax_kind.STRUCTURE_ITEM ->
         let* (deps, _, _) = collect_structure_item env deps Env.empty node in
         Ok deps
