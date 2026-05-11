@@ -2,6 +2,16 @@
 
 All notable changes to `serde` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for the BSON, CBOR, binary, TOML, YAML, and URL-encoded serde codecs.
+
+### Fixed
+
+- `serde-bin` now rejects oversized container lengths before allocating decoder storage.
+
 ## 0.0.34 - 2026-05-10
 
 ### Added
