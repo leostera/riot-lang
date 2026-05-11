@@ -7,7 +7,7 @@ let package_name = fun name ->
   Riot_model.Package_name.from_string name
   |> Result.expect ~msg:("invalid package name: " ^ name)
 
-let test_phase_events_are_silent = fun _ctx ->
+let test_phase_events_use_display_text = fun _ctx ->
   let displayed_packages = HashSet.create () in
   let event =
     Riot_build.Event.phase
@@ -15,10 +15,10 @@ let test_phase_events_are_silent = fun _ctx ->
       Riot_build.Event.RuntimeStarted
   in
   let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
-  if String.equal rendered "" then
+  if String.equal rendered "Build phase: runtime_started" then
     Ok ()
   else
-    Error ("expected empty phase rendering, got: " ^ rendered)
+    Error ("expected phase display text, got: " ^ rendered)
 
 let test_building_target_mentions_target = fun _ctx ->
   let displayed_packages = HashSet.create () in
@@ -57,7 +57,7 @@ let test_pm_events_use_display_text = fun _ctx ->
 
 let tests =
   Test.[
-    case "event formatter: phase events are silent" test_phase_events_are_silent;
+    case "event formatter: phase events use display text" test_phase_events_use_display_text;
     case "event formatter: building target mentions target" test_building_target_mentions_target;
     case "event formatter: pm events use display text" test_pm_events_use_display_text;
   ]
