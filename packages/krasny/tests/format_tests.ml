@@ -164,17 +164,7 @@ let test_format_returns_the_original_source_for_a_simple_implementation = fun _c
     |> Krasny.format
     |> Result.expect ~msg:"simple implementations should format"
   in
-  let expected =
-    {ocaml|let keep value =
-  match value with
-  | Some body when (
-    match ExprView.view body with
-    | LocalOpen _ -> true
-    | _ -> false
-  ) -> true
-  | _ -> false
-|ocaml}
-  in
+  let expected = source in
   Test.assert_equal ~expected ~actual;
   Ok ()
 
