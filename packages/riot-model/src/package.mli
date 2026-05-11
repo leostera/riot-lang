@@ -219,6 +219,7 @@ val manifest_error_message: manifest_error -> string
 
 val realize_manifest_spec:
   ?source_ignore_patterns:string list ->
+  ?source_scan_concurrency:int ->
   intent:realization_intent ->
   manifest_spec ->
   t
@@ -251,6 +252,7 @@ val scan_sources:
   package_path:Path.t ->
   ?excluded_relpaths:Path.t list ->
   ?source_ignore_patterns:string list ->
+  ?source_scan_concurrency:int ->
   unit ->
   sources
 

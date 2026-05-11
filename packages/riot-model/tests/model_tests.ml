@@ -431,6 +431,64 @@ version = "0.1.0"
           Error ("expected exactly one autodiscovered runtime binary, got "
           ^ Int.to_string (List.length binaries)))
 
+let test_declared_test_binaries_keep_fuzz_tests_autodiscovery = fun _ctx ->
+  with_tempdir
+    "riot_model_declared_test_bins_fuzz"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all tests_dir) ~msg:"Failed to create tests directory";
+      Result.expect
+        (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml"))
+        ~msg:"Failed to write library source";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "explicit_tests.ml"))
+        ~msg:"Failed to write declared test source";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "other_tests.ml"))
+        ~msg:"Failed to write regular autodiscovered test source";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "fuzz_tests.ml"))
+        ~msg:"Failed to write fuzz test source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+
+[[bin]]
+name = "explicit_tests"
+path = "tests/explicit_tests.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg =
+        Riot_model.Package.from_toml
+          manifest
+          ~workspace_deps:[]
+          ~workspace_dev_deps:[]
+          ~workspace_build_deps:[]
+          ~path:tmpdir
+          ~relative_path:(Path.v "packages/demo")
+        |> Result.expect ~msg:"Expected package manifest to parse"
+      in
+      let binary_names =
+        pkg.binaries
+        |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
+        |> List.sort ~compare:String.compare
+      in
+      match binary_names with
+      | [ "explicit_tests"; "fuzz_tests" ] -> Ok ()
+      | _ ->
+          Error ("expected declared test binaries to keep only fuzz_tests autodiscovery, got: ["
+          ^ String.concat ", " binary_names
+          ^ "]"))
+
 let test_scan_sources_ignores_hidden_entries = fun _ctx ->
   with_tempdir
     "riot_model_hidden_sources"
@@ -1824,6 +1882,9 @@ let tests =
     case
       "package: src/main.ml autodiscovers runtime binary"
       test_src_main_autodiscovers_runtime_binary;
+    case
+      "package: declared test binaries keep fuzz_tests autodiscovery"
+      test_declared_test_binaries_keep_fuzz_tests_autodiscovery;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
     case
       "package: source scan ignores test support entries"

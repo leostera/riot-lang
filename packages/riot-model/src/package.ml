@@ -1806,6 +1806,7 @@ let scan_sources_for_intent
   ~(package_path:Path.t)
   ?(excluded_relpaths = [])
   ?(source_ignore_patterns = [])
+  ?source_scan_concurrency
   () =
   let started_at = Time.Instant.now () in
   let excluded_relpath_strings =
@@ -1842,57 +1843,69 @@ let scan_sources_for_intent
       let visited_directories = ref 0 in
       let visited_files = ref 0 in
       let walker =
-        match Ignore.Walker.create ~roots:scan_roots ~ignore_patterns:source_ignore_patterns () with
+        let create_walker =
+          match source_scan_concurrency with
+          | Some concurrency ->
+              Ignore.Walker.create
+                ~roots:scan_roots
+                ~concurrency
+                ~ignore_patterns:source_ignore_patterns
+                ()
+          | None ->
+              Ignore.Walker.create
+                ~roots:scan_roots
+                ~ignore_patterns:source_ignore_patterns
+                ()
+        in
+        match create_walker with
         | Ok walker -> walker
         | Error _ -> panic "package walker configuration should be valid"
       in
-      match Ignore.Walker.to_list walker with
-      | Ok entries ->
-          List.for_each
-            entries
-            ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
-              let () =
-                visited_entries := !visited_entries + 1
-              in
-              let path = Fs.Walker.FileItem.path entry in
-              if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
-                match Path.strip_prefix path ~prefix:package_path with
-                | Error _ -> ()
-                | Ok rel_path -> (
-                    let rel_path_string = Path.to_string rel_path in
-                    let rel_path_components = path_components rel_path in
-                    match Fs.Walker.FileItem.kind entry with
-                    | Directory ->
-                        let () =
-                          visited_directories := !visited_directories + 1
-                        in
+      let process_entry = fun (entry: Fs.Walker.FileItem.t) ->
+        let () =
+          visited_entries := !visited_entries + 1
+        in
+        let path = Fs.Walker.FileItem.path entry in
+        if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
+          match Path.strip_prefix path ~prefix:package_path with
+          | Error _ -> ()
+          | Ok rel_path -> (
+              let rel_path_string = Path.to_string rel_path in
+              let rel_path_components = path_components rel_path in
+              match Fs.Walker.FileItem.kind entry with
+              | Directory ->
+                  let () =
+                    visited_directories := !visited_directories + 1
+                  in
+                  ()
+              | File ->
+                  let () =
+                    visited_files := !visited_files + 1
+                  in
+                  if
+                    not
+                      (should_skip_source_entry rel_path
+                      || List.contains excluded_relpath_strings ~value:rel_path_string)
+                  then (
+                    match bucket_of_rel_path rel_path_components with
+                    | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
                         ()
-                    | File ->
-                        let () =
-                          visited_files := !visited_files + 1
-                        in
-                        if
-                          not
-                            (should_skip_source_entry rel_path
-                            || List.contains excluded_relpath_strings ~value:rel_path_string)
-                        then (
-                          match bucket_of_rel_path rel_path_components with
-                          | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
-                              ()
-                          | Some Src
-                          | Some Tests
-                          | Some Examples
-                          | Some Bench when not (is_ocaml_module_file rel_path) -> ()
-                          | Some Src -> src := rel_path :: !src
-                          | Some Tests -> tests := rel_path :: !tests
-                          | Some Native -> native := rel_path :: !native
-                          | Some Examples -> examples := rel_path :: !examples
-                          | Some Bench -> bench := rel_path :: !bench
-                          | None -> ()
-                        )
-                    | Symlink
-                    | Other -> ()
-                  ));
+                    | Some Src
+                    | Some Tests
+                    | Some Examples
+                    | Some Bench when not (is_ocaml_module_file rel_path) -> ()
+                    | Some Src -> src := rel_path :: !src
+                    | Some Tests -> tests := rel_path :: !tests
+                    | Some Native -> native := rel_path :: !native
+                    | Some Examples -> examples := rel_path :: !examples
+                    | Some Bench -> bench := rel_path :: !bench
+                    | None -> ()
+                  )
+              | Symlink
+              | Other -> ()
+            )
+      in
+      let finish = fun () ->
           let sources = {
             src = List.reverse !src;
             tests = List.reverse !tests;
@@ -1927,24 +1940,53 @@ let scan_sources_for_intent
               ^ Int.to_string (List.length sources.bench))
           in
           sources
-      | Error _ ->
-          let () =
-            trace_package
-              ("scan-sources-failed path="
-              ^ Path.to_string package_path
-              ^ " intent="
-              ^ string_of_realization_intent intent
-              ^ " total_us="
-              ^ Int.to_string (elapsed_us_since started_at))
-          in
-          empty_sources
+      in
+      let failed = fun () ->
+        let () =
+          trace_package
+            ("scan-sources-failed path="
+            ^ Path.to_string package_path
+            ^ " intent="
+            ^ string_of_realization_intent intent
+            ^ " total_us="
+            ^ Int.to_string (elapsed_us_since started_at))
+        in
+        empty_sources
+      in
+      begin
+        match source_scan_concurrency with
+        | Some concurrency when concurrency <= 1 -> (
+            match Ignore.Walker.walk
+              walker
+              ~f:(fun entry ->
+                process_entry entry;
+                Fs.Walker.Continue) with
+            | Ok () -> finish ()
+            | Error _ -> failed ()
+          )
+        | Some _
+        | None -> (
+            match Ignore.Walker.to_list walker with
+            | Ok entries ->
+                List.for_each entries ~fn:process_entry;
+                finish ()
+            | Error _ -> failed ()
+          )
+      end
 
 let scan_sources
   ~(package_path:Path.t)
   ?(excluded_relpaths = [])
   ?(source_ignore_patterns = [])
+  ?source_scan_concurrency
   () =
-  scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ~source_ignore_patterns ()
+  scan_sources_for_intent
+    ~intent:Dev
+    ~package_path
+    ~excluded_relpaths
+    ~source_ignore_patterns
+    ?source_scan_concurrency
+    ()
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun
@@ -1966,6 +2008,10 @@ let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = 
       else
         None)
     sources.tests
+
+let is_fuzz_test_binary = fun (bin: binary) ->
+  let filename = Path.basename bin.path in
+  String.equal filename "fuzz_tests.ml"
 
 (** Autodiscover a default runtime binary from src/main.ml when no explicit [[bin]] exists. *)
 let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary list = fun
@@ -2060,10 +2106,11 @@ let autodiscovered_binaries_for_intent = fun
       autodiscover_main_binary sources ~package_name
   in
   let test_binaries =
+    let discovered = autodiscover_test_binaries sources ~package_path in
     if has_declared_binary_in_bucket declared_binaries Tests then
-      []
+      List.filter discovered ~fn:is_fuzz_test_binary
     else
-      autodiscover_test_binaries sources ~package_path
+      discovered
   in
   let example_binaries =
     if has_declared_binary_in_bucket declared_binaries Examples then
@@ -2259,7 +2306,10 @@ let parse_manifest_spec:
   | _ -> Error ManifestMustBeTable
 
 let realize_manifest_spec = fun
-  ?(source_ignore_patterns = []) ~(intent:realization_intent) (manifest: manifest_spec) ->
+  ?(source_ignore_patterns = [])
+  ?source_scan_concurrency
+  ~(intent:realization_intent)
+  (manifest: manifest_spec) ->
   let excluded_relpaths =
     provider_excluded_relpaths ~package_path:manifest.path manifest.fix_providers
     @ executable_source_excluded_relpaths_for_intent
@@ -2274,6 +2324,7 @@ let realize_manifest_spec = fun
       ~package_path:manifest.path
       ~excluded_relpaths
       ~source_ignore_patterns
+      ?source_scan_concurrency
       ()
   in
   let declared_binaries = declared_binaries_for_intent ~intent manifest.declared_binaries in
