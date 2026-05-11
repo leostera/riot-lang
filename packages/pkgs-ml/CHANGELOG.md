@@ -2,6 +2,16 @@
 
 All notable changes to `pkgs-ml` are documented here.
 
+## 0.0.35 - 2026-05-11
+
+### Added
+
+- Added fuzz coverage for sparse-index config and package document parsing.
+
+### Fixed
+
+- Sparse-index package path construction now escapes unsafe package-name bytes before building cache paths.
+
 ## 0.0.32 - 2026-05-10
 
 ### Changed

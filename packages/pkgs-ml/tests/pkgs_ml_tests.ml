@@ -44,6 +44,20 @@ let test_sparse_index_layout = fun _ctx ->
   else
     Error ("unexpected sparse index cache path: " ^ actual)
 
+let test_sparse_index_layout_escapes_unsafe_package_name_bytes = fun _ctx ->
+  let invalid_utf8 =
+    Pkgs_ml.Sparse_index.package_relpath "\xca"
+    |> Path.to_string
+  in
+  let slash =
+    Pkgs_ml.Sparse_index.package_relpath "a/b"
+    |> Path.to_string
+  in
+  if String.equal invalid_utf8 "1/_ca.json" && String.equal slash "3/a/a_2fb.json" then
+    Ok ()
+  else
+    Error ("unexpected escaped sparse index paths: invalid_utf8=" ^ invalid_utf8 ^ " slash=" ^ slash)
+
 let test_sparse_index_document_parsing = fun _ctx ->
   let source =
     {|{
@@ -1364,6 +1378,9 @@ let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
     case "sparse index: resolves cache path from normalized package name" test_sparse_index_layout;
+    case
+      "sparse index: escapes unsafe package name bytes in cache paths"
+      test_sparse_index_layout_escapes_unsafe_package_name_bytes;
     case "sparse index: parses package documents" test_sparse_index_document_parsing;
     case "registry: in-memory registry returns config and packages" test_sparse_index_cached_reads;
     case

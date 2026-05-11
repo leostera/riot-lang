@@ -249,19 +249,50 @@ let package_document_of_string = fun source ->
 
 let normalized_name = fun package_name -> String.lowercase_ascii package_name
 
+let hex_digit = fun value ->
+  Char.from_int_unchecked
+    (
+      if value < 10 then
+        Char.to_int '0' + value
+      else
+        Char.to_int 'a' + value - 10
+    )
+
+let safe_path_segment = fun segment ->
+  let buffer = Std.IO.Buffer.create ~size:(String.length segment) in
+  String.iter
+    (fun char ->
+      let code = Char.to_int char in
+      if
+        (char >= 'a' && char <= 'z')
+        || (char >= '0' && char <= '9')
+        || char = '-'
+        || char = '_'
+        || char = '.'
+      then
+        Std.IO.Buffer.add_char buffer char
+      else (
+        Std.IO.Buffer.add_char buffer '_';
+        Std.IO.Buffer.add_char buffer (hex_digit ((code lsr 4) land 0x0f));
+        Std.IO.Buffer.add_char buffer (hex_digit (code land 0x0f))
+      ))
+    segment;
+  Path.v (Std.IO.Buffer.contents buffer)
+
 let package_prefix = fun package_name ->
   let name = normalized_name package_name in
   match String.length name with
   | 0 -> Path.v ""
   | 1 -> Path.v "1"
   | 2 -> Path.v "2"
-  | 3 -> Path.(Path.v "3" / Path.v (String.sub name ~offset:0 ~len:1))
+  | 3 -> Path.(Path.v "3" / safe_path_segment (String.sub name ~offset:0 ~len:1))
   | _ ->
-      Path.(Path.v (String.sub name ~offset:0 ~len:2) / Path.v (String.sub name ~offset:2 ~len:2))
+      Path.(safe_path_segment (String.sub name ~offset:0 ~len:2)
+      / safe_path_segment (String.sub name ~offset:2 ~len:2))
 
 let package_relpath = fun package_name ->
   let name = normalized_name package_name in
-  Path.(package_prefix name / Path.v (name ^ ".json"))
+  Path.(package_prefix name / safe_path_segment (name ^ ".json"))
 
 let ensure_dir_url = fun url ->
   if String.length url > 0 && String.get_unchecked url ~at:(String.length url - 1) = '/' then
