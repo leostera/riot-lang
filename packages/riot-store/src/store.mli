@@ -172,6 +172,7 @@ val save_package:
 (** Save package build outputs to the package artifact namespace. *)
 val save_action:
   ?ocamlc_warnings:string list ->
+  ?link_outputs:bool ->
   t ->
   package:string ->
   input_hash:Std.Crypto.hash ->
@@ -216,6 +217,7 @@ val promote_action_artifact_files:
 val save_package_from_action_artifacts:
   ?ocamlc_warnings:string list ->
   ?exports:export_entry list ->
+  ?select:(Artifact.t -> Manifest.file_entry -> bool) ->
   t ->
   package:string ->
   input_hash:Std.Crypto.hash ->

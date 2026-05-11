@@ -439,14 +439,10 @@ let copy_without_permissions = fun ~src ~dst ~copy_error ->
   |> Result.map_err ~fn:copy_error
 
 let replace_without_permissions = fun ~src ~dst ~copy_error ->
-  let copy () = copy_without_permissions ~src ~dst ~copy_error in
   match Fs.exists dst with
-  | Ok true -> (
-      match Fs.remove_file dst with
-      | Ok () -> copy ()
-      | Error _ -> copy ())
+  | Ok true -> Ok ()
   | Ok false
-  | Error _ -> copy ()
+  | Error _ -> copy_without_permissions ~src ~dst ~copy_error
 
 let copy_with_permissions = fun ~src ~dst ~copy_error ->
   let* metadata =
@@ -470,7 +466,7 @@ let artifact_temp_counter = Sync.Atomic.make 0
 
 let next_artifact_temp_nonce = fun () -> Sync.Atomic.fetch_and_add artifact_temp_counter 1
 
-let artifact_temp_dir = fun store hash ->
+let content_store_temp_dir = fun content_store hash ->
   let nanos =
     Time.SystemTime.duration_since_epoch ()
     |> Time.Duration.to_nanos
@@ -486,7 +482,10 @@ let artifact_temp_dir = fun store hash ->
   let temp_name =
     Std.Crypto.Digest.hex hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce
   in
-  Path.(ContentStore.root store.package_store / Path.v temp_name)
+  Path.(ContentStore.root content_store / Path.v temp_name)
+
+let artifact_temp_dir = fun store hash ->
+  content_store_temp_dir store.package_store hash
 
 let read_opened_file = fun file ->
   let content = Fs.File.read_to_end file in
@@ -556,24 +555,7 @@ let store_file_sources = fun
   input_hash
   file_sources ->
   let hash_dir = ContentStore.hash_dir_of content_store input_hash in
-  let temp_dir =
-    let nanos =
-      Time.SystemTime.duration_since_epoch ()
-      |> Time.Duration.to_nanos
-    in
-    let pid =
-      Process.id ()
-      |> Int32.to_string
-    in
-    let nonce =
-      next_artifact_temp_nonce ()
-      |> Int.to_string
-    in
-    let temp_name =
-      Std.Crypto.Digest.hex input_hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce
-    in
-    Path.(ContentStore.root content_store / Path.v temp_name)
-  in
+  let temp_dir = content_store_temp_dir content_store input_hash in
   let* () =
     Fs.create_dir_all temp_dir
     |> Result.map_err ~fn:(fun cause -> CreateTempDirFailed { path = temp_dir; cause })
@@ -687,6 +669,7 @@ let store_artifacts = fun
   ~package
   ?(ocamlc_warnings = [])
   ?(exports = [])
+  ?(link_outputs = false)
   input_hash
   sandbox_dir
   declared_outputs ->
@@ -696,7 +679,7 @@ let store_artifacts = fun
       ~fn:(fun output_file -> {
         source = Path.(sandbox_dir / Path.v output_file);
         path = output_file;
-        link = false;
+        link = link_outputs;
       })
   in
   store_file_sources
@@ -900,6 +883,7 @@ let save_to = fun
   artifact_cache
   ?(ocamlc_warnings = [])
   ?(exports = [])
+  ?(link_outputs = false)
   store
   ~package
   ~input_hash
@@ -930,6 +914,7 @@ let save_to = fun
       ~package
       ~ocamlc_warnings
       ~exports
+      ~link_outputs
       input_hash
       sandbox_dir
       outs_str
@@ -950,8 +935,128 @@ let save_package = fun
     ~sandbox_dir
     ~outs
 
+type prehashed_file_source = {
+  source: Path.t;
+  entry: Manifest.file_entry;
+  link: bool;
+}
+
+let store_prehashed_file_sources = fun
+  content_store
+  store
+  ~package
+  ?(ocamlc_warnings = [])
+  ?(exports = [])
+  input_hash
+  file_sources ->
+  let hash_dir = ContentStore.hash_dir_of content_store input_hash in
+  let temp_dir = content_store_temp_dir content_store input_hash in
+  let* () =
+    Fs.create_dir_all temp_dir
+    |> Result.map_err ~fn:(fun cause -> CreateTempDirFailed { path = temp_dir; cause })
+  in
+  let validate_exports_relative exports =
+    match List.find exports ~fn:(fun (entry: export_entry) -> Path.is_absolute entry.path) with
+    | Some entry -> Error (ExportPathMustBeRelative { path = entry.path })
+    | None -> Ok ()
+  in
+  let copy_file_source file_source ~dst =
+    if file_source.link then
+      match Fs.hard_link ~src:file_source.source ~dst with
+      | Ok () -> Ok ()
+      | Error _ ->
+          copy_with_permissions
+            ~src:file_source.source
+            ~dst
+            ~copy_error:(fun cause -> CopyArtifactFailed { src = file_source.source; dst; cause })
+    else
+      copy_with_permissions
+        ~src:file_source.source
+        ~dst
+        ~copy_error:(fun cause -> CopyArtifactFailed { src = file_source.source; dst; cause })
+  in
+  let copy_output file_source =
+    let src = file_source.source in
+    match Fs.exists src with
+    | Ok false -> Error (DeclaredOutputMissing { path = src })
+    | Error cause -> Error (CheckSourceExistsFailed { path = src; cause })
+    | Ok true ->
+        let dst = Path.(temp_dir / file_source.entry.path) in
+        let dst_parent = Path.dirname dst in
+        let* () =
+          Fs.create_dir_all dst_parent
+          |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause })
+        in
+        let* () = copy_file_source file_source ~dst in
+        Ok file_source.entry
+  in
+  let rec collect_outputs acc = fun __tmp1 ->
+    match __tmp1 with
+    | [] -> Ok (List.reverse acc)
+    | output_file :: rest -> (
+        match copy_output output_file with
+        | Error _ as err -> err
+        | Ok entry -> collect_outputs (entry :: acc) rest
+      )
+  in
+  let result =
+    let* () = validate_exports_relative exports in
+    let* stored_files = collect_outputs [] file_sources in
+    let manifest =
+      Manifest.create_from_entries
+        ~ocamlc_warnings
+        ~exports
+        ()
+        ~package
+        ~input_hash:(Std.Crypto.Digest.hex input_hash)
+        ~files:stored_files
+    in
+    let manifest_path = manifest_path temp_dir in
+    let* () =
+      Manifest.save manifest ~path:manifest_path
+      |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = manifest_path; cause })
+    in
+    let metadata_path = metadata_path temp_dir in
+    let metadata = metadata_of_manifest manifest in
+    let* () =
+      Manifest.save_metadata metadata ~path:metadata_path
+      |> Result.map_err ~fn:(fun cause -> SaveManifestFailed { path = metadata_path; cause })
+    in
+    let* () = prepare_artifact_destination store ~hash_dir ~temp_dir in
+    let* () =
+      ContentStore.commit_dir content_store ~hash:input_hash ~source_dir:temp_dir
+      |> Result.map_err
+        ~fn:(fun cause ->
+          CommitArtifactsFailed {
+            source_dir = temp_dir;
+            destination_dir = hash_dir;
+            cause = ContentStore.error_message cause;
+          })
+    in
+    let output_hash =
+      hash_of_hex manifest.Manifest.output_hash
+      |> Option.expect ~msg:"store manifest output_hash should be valid hex"
+    in
+    Ok Artifact.{
+      input_hash;
+      output_hash;
+      size_bytes = manifest.Manifest.size_bytes;
+      files = manifest.Manifest.files;
+      ocamlc_warnings;
+      exports;
+    }
+  in
+  let _ = cleanup_temp_dir temp_dir in
+  result
+
 let save_package_from_action_artifacts = fun
-  ?(ocamlc_warnings = []) ?(exports = []) store ~package ~input_hash ~artifacts ->
+  ?(ocamlc_warnings = [])
+  ?(exports = [])
+  ?(select = fun _artifact _entry -> true)
+  store
+  ~package
+  ~input_hash
+  ~artifacts ->
   let seen = HashSet.create () in
   let file_sources =
     artifacts
@@ -962,13 +1067,13 @@ let save_package_from_action_artifacts = fun
         |> List.filter_map
           ~fn:(fun (entry: Manifest.file_entry) ->
             let path = Path.to_string entry.path in
-            if HashSet.insert seen ~value:path then
-              Some { source = Path.(hash_dir / entry.path); path; link = true }
+            if select artifact entry && HashSet.insert seen ~value:path then
+              Some { source = Path.(hash_dir / entry.path); entry; link = true }
             else
               None))
   in
   let* artifact =
-    store_file_sources
+    store_prehashed_file_sources
       store.package_store
       store
       ~package
@@ -980,12 +1085,20 @@ let save_package_from_action_artifacts = fun
   remember_artifact store.package_cache artifact;
   Ok artifact
 
-let save_action = fun ?(ocamlc_warnings = []) store ~package ~input_hash ~sandbox_dir ~outs ->
+let save_action = fun
+  ?(ocamlc_warnings = [])
+  ?(link_outputs = false)
+  store
+  ~package
+  ~input_hash
+  ~sandbox_dir
+  ~outs ->
   save_to
     store.action_store
     store.action_cache
     ~ocamlc_warnings
     ~exports:[]
+    ~link_outputs
     store
     ~package
     ~input_hash

@@ -443,6 +443,29 @@ let load = fun ~path -> read_cache_file ~path deserializer
 
 let load_metadata = fun ~path -> read_cache_file ~path metadata_deserializer
 
+let hash_file = fun path ->
+  match Std.Fs.File.open_read path with
+  | Error _ -> None
+  | Ok file ->
+      let state = Std.Crypto.Sha512.create () in
+      let reader = Std.Fs.File.to_reader file in
+      let buffer = Std.IO.Buffer.create ~size:16_384 in
+      let rec loop () =
+        Std.IO.Buffer.clear buffer;
+        match Std.IO.Reader.read reader ~into:buffer with
+        | Ok 0 -> true
+        | Ok _ ->
+            Std.Crypto.Sha512.write_iovec state (Std.IO.Buffer.to_iovec buffer);
+            loop ()
+        | Error _ -> false
+      in
+      let success = loop () in
+      let _ = Std.Fs.File.close file in
+      if success then
+        Some (Std.Crypto.Digest.hex (Std.Crypto.Sha512.finish state))
+      else
+        None
+
 (** Create a manifest for stored files *)
 let compute_output_hash = fun ~package ~files ~exports ->
   let hasher = Std.Crypto.Sha256.create () in
@@ -479,9 +502,24 @@ let compute_output_hash = fun ~package ~files ~exports ->
       write entry.action_hash);
   Std.Crypto.Sha256.finish hasher
 
+let create_from_entries = fun ?(ocamlc_warnings = []) ?(exports = []) () ~package ~input_hash ~files ->
+  let timestamp = Time.SystemTime.now () in
+  let output_hash = compute_output_hash ~package ~files ~exports in
+  let size_bytes = file_entries_size_bytes files in
+  ({
+    version = V2;
+    package;
+    input_hash;
+    output_hash = Std.Crypto.Digest.hex output_hash;
+    timestamp;
+    size_bytes;
+    files;
+    ocamlc_warnings;
+    exports;
+  }: manifest)
+
 (** Create a manifest for stored files *)
 let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~input_hash ~files ->
-  let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.filter_map
       files
@@ -495,22 +533,8 @@ let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~
             | None -> path
         in
         (* Calculate hash of the file *)
-        match Std.Fs.read_to_string readable_path with
-        | Ok file ->
-            let hash = Std.Crypto.Digest.hex (Std.Crypto.Sha512.hash_string file) in
-            Some { path; hash; size }
-        | Error _ -> None)
+        match hash_file readable_path with
+        | Some hash -> Some { path; hash; size }
+        | None -> None)
   in
-  let output_hash = compute_output_hash ~package ~files:file_entries ~exports in
-  let size_bytes = file_entries_size_bytes file_entries in
-  ({
-    version = V2;
-    package;
-    input_hash;
-    output_hash = Std.Crypto.Digest.hex output_hash;
-    timestamp;
-    size_bytes;
-    files = file_entries;
-    ocamlc_warnings;
-    exports;
-  }: manifest)
+  create_from_entries ~ocamlc_warnings ~exports () ~package ~input_hash ~files:file_entries

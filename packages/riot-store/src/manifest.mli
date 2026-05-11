@@ -42,6 +42,15 @@ val create:
   files:(Path.t * int) list ->
   t
 
+val create_from_entries:
+  ?ocamlc_warnings:string list ->
+  ?exports:export_entry list ->
+  unit ->
+  package:string ->
+  input_hash:string ->
+  files:file_entry list ->
+  t
+
 (** Save manifest to a JSON file. *)
 val save: t -> path:Path.t -> (unit, string) result
 
