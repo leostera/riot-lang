@@ -1,6 +1,6 @@
 [package]
 name = "suri-mailer"
-version = "0.0.36"
+version = "0.0.37"
 description = "Action Mailer-style message and delivery adapters for Suri apps"
 license = "Apache-2.0"
 public = true

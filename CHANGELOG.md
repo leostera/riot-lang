@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.37 - 2026-05-12
+
+### riot
+- `riot build --watch` and `riot test --watch` now rerun automatically when files change in the selected workspace package dependency cone. Generated build output, `.riot`, `.git`, `riot.lock`, and pending snapshot candidates are ignored so watch loops do not retrigger on their own artifacts.
+- macOS filesystem watching now keeps FSEvents callback state in stable native memory and retains watched paths correctly, preventing watch-mode startup crashes after the initial build.
+
 ## 0.0.36 - 2026-05-11
 
 ### riot

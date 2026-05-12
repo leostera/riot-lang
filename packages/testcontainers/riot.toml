@@ -1,6 +1,6 @@
 [package]
 name = "testcontainers"
-version = "0.0.36"
+version = "0.0.37"
 description = "Test-oriented Docker container lifecycle helpers"
 license = "Apache-2.0"
 public = true

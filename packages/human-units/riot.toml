@@ -1,6 +1,6 @@
 [package]
 name = "human-units"
-version = "0.0.36"
+version = "0.0.37"
 description = "Human-readable byte and duration formatting"
 license = "Apache-2.0"
 public = true
