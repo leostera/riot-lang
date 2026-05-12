@@ -243,6 +243,7 @@ _riot() {
                     '--list[List runnable binaries in the current workspace]' \
                     '--json[Emit machine-readable JSON output for --list]' \
                     '--release[Use the release build profile]' \
+                    '(-w --watch)'{-w,--watch}'[Watch selected binary dependencies and restart on changes]' \
                     '--update[Refresh a cached remote source before running]'
 
                 case $state in

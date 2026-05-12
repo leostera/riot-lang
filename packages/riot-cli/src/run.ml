@@ -34,6 +34,10 @@ let command =
       flag "release"
       |> long "release"
       |> help "Use the release build profile";
+      flag "watch"
+      |> short 'w'
+      |> long "watch"
+      |> help "Watch the selected binary dependency cone and restart on changes";
       flag "update"
       |> long "update"
       |> help "Refresh a cached remote source before running";
@@ -264,6 +268,125 @@ let write_workspace_error = fun ~mode message ->
   | Ui.Line
   | Ui.TUI -> out ("error: " ^ message)
 
+type run_watch_signal =
+  | Run_watch_changed of Path.t list
+  | Run_watch_child_exited of (unit, Run_runtime.run_error) result
+
+let run_watch_poll_interval = Time.Duration.from_millis 50
+
+let unique_paths = fun paths ->
+  paths
+  |> List.sort ~compare:Path.compare
+  |> List.unique ~compare:Path.compare
+
+let run_watch_file_events_selector = fun msg ->
+  match msg with
+  | Fs.FileWatcher.FileEvents events -> Select events
+  | _ -> Skip
+
+let run_watch_changed_paths = fun session events ->
+  unique_paths
+    (Watch.changed_paths session events @ Watch.drain_changed_paths session)
+
+let rec wait_run_watch_change = fun session ->
+  let events = receive ~selector:run_watch_file_events_selector () in
+  match run_watch_changed_paths session events with
+  | [] -> wait_run_watch_change session
+  | paths -> paths
+
+let wait_run_watch_signal = fun session running ->
+  let rec loop () =
+    try
+      let events =
+        receive ~selector:run_watch_file_events_selector ~timeout:run_watch_poll_interval ()
+      in
+      match run_watch_changed_paths session events with
+      | [] -> loop ()
+      | paths -> Run_watch_changed paths
+    with
+    | Receive_timeout -> (
+        match Run_runtime.try_wait_running_binary running with
+        | Error err -> Run_watch_child_exited (Error err)
+        | Ok None -> loop ()
+        | Ok (Some result) -> Run_watch_child_exited result
+      )
+  in
+  loop ()
+
+let run_watch_mode = fun output_mode build_ui_mode ->
+  match output_mode with
+  | Ui.Json -> Ui.Line
+  | Ui.Line
+  | Ui.TUI -> build_ui_mode
+
+let resolve_local_watch_target = fun ~workspace target ->
+  match target with
+  | Remote_source _ -> Error (`Cli "riot run --watch only supports local workspace binaries")
+  | Local { package_name; binary_name } ->
+      Run_runtime.resolve_binary ~workspace ~package_name ~binary_name
+      |> Result.map ~fn:(fun package_name -> (package_name, binary_name))
+      |> Result.map_err ~fn:(fun err -> `Run err)
+
+let start_watched_binary = fun
+  ~workspace ~on_event ~output_mode ~profile ~args package_name binary_name ->
+  match Run_runtime.build_binary
+    ~on_event
+    {
+      workspace;
+      package_name = Some package_name;
+      binary_name;
+      profile;
+      args;
+    } with
+  | Error err ->
+      write_run_error ~mode:output_mode err;
+      Error err
+  | Ok built -> (
+      match Run_runtime.start_built_binary ~on_event built with
+      | Error err ->
+          write_run_error ~mode:output_mode err;
+          Error err
+      | Ok running -> Ok running
+    )
+
+let run_watch_local = fun
+  ~workspace ~on_event ~output_mode ~build_ui_mode ~profile ~args package_name binary_name ->
+  let mode = run_watch_mode output_mode build_ui_mode in
+  let* session = Watch.start ~command:"run" ~workspace ~package_filters:[ package_name ] ~mode in
+  let rec loop running =
+    match running with
+    | None ->
+        let paths = wait_run_watch_change session in
+        Watch.write_change session paths;
+        loop (start ())
+    | Some running -> (
+        match wait_run_watch_signal session running with
+        | Run_watch_child_exited result ->
+            Result.iter_err result ~fn:(write_run_error ~mode:output_mode);
+            loop None
+        | Run_watch_changed paths ->
+            Watch.write_change session paths;
+            (
+              match Run_runtime.terminate_running_binary running with
+              | Ok () -> ()
+              | Error err -> write_run_error ~mode:output_mode err
+            );
+            loop (start ())
+      )
+  and start () =
+    match start_watched_binary
+      ~workspace
+      ~on_event
+      ~output_mode
+      ~profile
+      ~args
+      package_name
+      binary_name with
+    | Ok running -> Some running
+    | Error _ -> None
+  in
+  loop (start ())
+
 let binary_source_label = fun
   ~(workspace:Riot_model.Workspace.t) (binary: Run_runtime.runnable_binary) ->
   match Path.strip_prefix binary.source_path ~prefix:workspace.root with
@@ -315,6 +438,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let _verbose = ArgParser.get_count matches "verbose" in
   let list_mode = ArgParser.get_flag matches "list" in
   let json_mode = ArgParser.get_flag matches "json" in
+  let watch = ArgParser.get_flag matches "watch" in
   let* pkg_filter =
     match ArgParser.get_one matches "package" with
     | None -> Ok None
@@ -345,7 +469,11 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
         write_workspace_error ~mode:output_mode message;
         Error (Failure message)
   in
-  if json_mode && not list_mode then
+  if watch && list_mode then
+    let message = "riot run --watch does not accept --list" in
+    write_workspace_error ~mode:output_mode message;
+    Error (Failure message)
+  else if json_mode && not list_mode then
     let message =
       "riot run --json is only supported with --list; use `riot run -- --json` to forward JSON to the child binary"
     in
@@ -400,34 +528,54 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     | Error _ as err -> err
     | Ok target ->
         let result =
-          match target with
-          | Remote_source { source_spec; binary_name } ->
-              Run_runtime.run_source
-                ~on_event
-                {
-                  source_spec;
-                  binary_name;
-                  profile;
-                  update;
-                  args = extra;
-                }
-              |> Result.map_err ~fn:(fun err -> `Run err)
-          | Local { package_name; binary_name } -> (
-              match workspace with
-              | Some workspace ->
-                  Run_runtime.run
-                    ~on_event
-                    {
-                      workspace;
-                      package_name;
-                      binary_name;
-                      profile;
-                      args = extra;
-                    }
-                  |> Result.map_err ~fn:(fun err -> `Run err)
-              | None ->
-                  Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
-            )
+          if watch then
+            match workspace with
+            | None ->
+                Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+            | Some workspace -> (
+                match resolve_local_watch_target ~workspace target with
+                | Error _ as err -> err
+                | Ok (package_name, binary_name) ->
+                    run_watch_local
+                      ~workspace
+                      ~on_event
+                      ~output_mode
+                      ~build_ui_mode
+                      ~profile
+                      ~args:extra
+                      package_name
+                      binary_name
+                    |> Result.map_err ~fn:(fun err -> `Cli (Exception.to_string err))
+              )
+          else
+            match target with
+            | Remote_source { source_spec; binary_name } ->
+                Run_runtime.run_source
+                  ~on_event
+                  {
+                    source_spec;
+                    binary_name;
+                    profile;
+                    update;
+                    args = extra;
+                  }
+                |> Result.map_err ~fn:(fun err -> `Run err)
+            | Local { package_name; binary_name } -> (
+                match workspace with
+                | Some workspace ->
+                    Run_runtime.run
+                      ~on_event
+                      {
+                        workspace;
+                        package_name;
+                        binary_name;
+                        profile;
+                        args = extra;
+                      }
+                    |> Result.map_err ~fn:(fun err -> `Run err)
+                | None ->
+                    Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+              )
         in
         match result with
         | Ok () -> Ok ()

@@ -30,6 +30,11 @@ type built_binary = {
   args: string list;
 }
 
+type running_binary = {
+  built: built_binary;
+  process: Process.t;
+}
+
 type run_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of {
@@ -260,8 +265,16 @@ let build_source_binary = fun ?(on_event = no_event) (request: source_run_reques
       args = request.args;
     }
 
-let run = fun ?(on_event = no_event) (request: run_request) ->
-  let* built = build_binary ~on_event request in
+let status_code = fun __tmp1 ->
+  match __tmp1 with
+  | Process.Running -> 0
+  | Process.Exited code -> code
+  | Process.Signaled n -> 128 + n
+  | Process.Stopped n -> 128 + n
+
+let wait_poll_interval = Time.Duration.from_millis 10
+
+let start_built_binary = fun ?(on_event = no_event) built ->
   on_event
     (make_command_event
       (Riot_model.Event.CommandBinaryRunning {
@@ -269,23 +282,96 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
         binary = built.binary_name;
         args = built.args;
       }));
-  let cmd = Command.make (Path.to_string built.path) ~args:built.args in
-  match Command.status cmd with
-  | Ok 0 -> Ok ()
-  | Ok code -> Error (ProcessExited code)
-  | Error (Command.SystemError msg) -> Error (SystemError msg)
+  match Process.spawn
+    ~program:(Path.to_string built.path)
+    ~args:(Array.from_list built.args)
+    ~stdio:Process.default_stdio
+    () with
+  | Error err -> Error (SystemError (Process.error_to_string err))
+  | Ok process -> Ok { built; process }
+
+let close_process = fun process ->
+  match Process.close process with
+  | Ok () -> Ok ()
+  | Error err -> Error (SystemError (Process.error_to_string err))
+
+let result_of_status = fun status ->
+  match status_code status with
+  | 0 -> Ok ()
+  | code -> Error (ProcessExited code)
+
+let try_wait_running_binary = fun running ->
+  match Process.try_wait running.process with
+  | Error err -> Error (SystemError (Process.error_to_string err))
+  | Ok None -> Ok None
+  | Ok (Some status) ->
+      let* () = close_process running.process in
+      Ok (Some (result_of_status status))
+
+let wait_status = fun process ->
+  let rec loop () =
+    match Process.try_wait process with
+    | Error err -> Error (SystemError (Process.error_to_string err))
+    | Ok None ->
+        sleep wait_poll_interval;
+        loop ()
+    | Ok (Some status) ->
+        let* () = close_process process in
+        Ok status
+  in
+  loop ()
+
+let wait_running_binary = fun running ->
+  let rec loop () =
+    match try_wait_running_binary running with
+    | Error _ as err -> err
+    | Ok (Some result) -> result
+    | Ok None ->
+        sleep wait_poll_interval;
+        loop ()
+  in
+  loop ()
+
+let terminate_grace = Time.Duration.from_millis 500
+
+let wait_status_until = fun process deadline ->
+  let rec loop () =
+    match Process.try_wait process with
+    | Error err -> Error (SystemError (Process.error_to_string err))
+    | Ok (Some status) -> Ok (Some status)
+    | Ok None ->
+        if Time.Duration.compare (Time.Instant.elapsed deadline) terminate_grace != Order.LT then
+          Ok None
+        else (
+          sleep wait_poll_interval;
+          loop ()
+        )
+  in
+  loop ()
+
+let terminate_running_binary = fun running ->
+  match Process.try_wait running.process with
+  | Error err -> Error (SystemError (Process.error_to_string err))
+  | Ok (Some _) -> close_process running.process
+  | Ok None ->
+      let _ = Process.kill running.process ~signal:15 in
+      let deadline = Time.Instant.now () in
+      (
+        match wait_status_until running.process deadline with
+        | Error _ as err -> err
+        | Ok (Some _) -> close_process running.process
+        | Ok None ->
+            let _ = Process.kill running.process ~signal:9 in
+            let* _status = wait_status running.process in
+            Ok ()
+      )
+
+let run = fun ?(on_event = no_event) (request: run_request) ->
+  let* built = build_binary ~on_event request in
+  let* running = start_built_binary ~on_event built in
+  wait_running_binary running
 
 let run_source = fun ?(on_event = no_event) (request: source_run_request) ->
   let* built = build_source_binary ~on_event request in
-  on_event
-    (make_command_event
-      (Riot_model.Event.CommandBinaryRunning {
-        package = built.package_name;
-        binary = built.binary_name;
-        args = built.args;
-      }));
-  let cmd = Command.make (Path.to_string built.path) ~args:built.args in
-  match Command.status cmd with
-  | Ok 0 -> Ok ()
-  | Ok code -> Error (ProcessExited code)
-  | Error (Command.SystemError msg) -> Error (SystemError msg)
+  let* running = start_built_binary ~on_event built in
+  wait_running_binary running

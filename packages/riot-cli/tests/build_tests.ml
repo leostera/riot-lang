@@ -1085,6 +1085,20 @@ let test_run_accepts_release_flag = fun _ctx ->
       else
         Error "expected run --release flag to be parsed"
 
+let test_run_accepts_watch_flags = fun _ctx ->
+  let assert_watch args =
+    match parse_run args with
+    | Error err -> Error ("expected run args to parse with watch: " ^ err)
+    | Ok matches ->
+        if ArgParser.get_flag matches "watch" then
+          Ok ()
+        else
+          Error "expected run watch flag to be parsed"
+  in
+  match assert_watch [ "run"; "--watch"; "riot" ] with
+  | Error _ as err -> err
+  | Ok () -> assert_watch [ "run"; "-w"; "-p"; "riot-cli"; "riot" ]
+
 let test_run_accepts_update_flag = fun _ctx ->
   match parse_run [ "run"; "--update"; "leostera/hello-world" ] with
   | Error err -> Error ("expected run args to parse with --update: " ^ err)
@@ -1714,6 +1728,7 @@ let tests =
     case "run: parse --list flag" test_run_accepts_list_flag;
     case "run: parse --list --json flags" test_run_accepts_list_json_flag;
     case "run: parse --release flag" test_run_accepts_release_flag;
+    case "run: parse watch flags" test_run_accepts_watch_flags;
     case "run: parse --update flag" test_run_accepts_update_flag;
     case "run: parse rejects removed --trace flag" test_run_rejects_removed_trace_flag;
     case "trace: parse missing name" test_trace_accepts_missing_name;

@@ -116,7 +116,21 @@ let write_human_status = fun mode status message ->
 let paths_json = fun ~workspace paths ->
   Data.Json.Array (List.map paths ~fn:(fun path -> Data.Json.String (display_path ~workspace path)))
 
-let write_started = fun ~command ~workspace ~mode roots ->
+type session = {
+  command: string;
+  workspace: Riot_model.Workspace.t;
+  mode: Ui.mode;
+  roots: Path.t list;
+}
+
+let write_started = fun session ->
+  let {
+    command;
+    workspace;
+    mode;
+    roots;
+  } = session
+  in
   let root_count = List.length roots in
   write_json
     mode
@@ -162,6 +176,13 @@ let write_change = fun ~command ~workspace ~mode paths ->
     mode
     Ui.Common.Terminal.Running
     (change_message ~command ~workspace paths)
+
+let write_change = fun session paths ->
+  write_change
+    ~command:session.command
+    ~workspace:session.workspace
+    ~mode:session.mode
+    paths
 
 let write_run_finished = fun ~command ~mode result ->
   match result with
@@ -211,9 +232,17 @@ let wait_events = fun () ->
   let events = receive ~selector:event_selector () in
   drain_events events
 
-let run = fun ~command ~workspace ~package_filters ~mode ~run_once () ->
-  let initial_result = run_once () in
-  write_run_finished ~command ~mode initial_result;
+let changed_paths = fun session events -> changed_paths ~workspace:session.workspace events
+
+let rec wait_change = fun session ->
+  let paths = changed_paths session (wait_events ()) in
+  match paths with
+  | [] -> wait_change session
+  | paths -> paths
+
+let drain_changed_paths = fun session -> changed_paths session (drain_events [])
+
+let start = fun ~command ~workspace ~package_filters ~mode ->
   let roots = watch_roots ~workspace ~package_filters in
   match roots with
   | [] -> write_no_roots ~command ~mode
@@ -224,17 +253,28 @@ let run = fun ~command ~workspace ~package_filters ~mode ~run_once () ->
         ~fn:(fun root ->
           let _watcher = Fs.FileWatcher.start_link ~latency:debounce ~ignore_prefixes ~root () in
           ());
-      write_started ~command ~workspace ~mode roots;
-      let rec loop () =
-        let events = wait_events () in
-        match changed_paths ~workspace events with
-        | [] -> loop ()
-        | paths -> run_after_change paths
+      let session = {
+        command;
+        workspace;
+        mode;
+        roots;
+      }
+      in
+      write_started session;
+      Ok session
+
+let run = fun ~command ~workspace ~package_filters ~mode ~run_once () ->
+  let initial_result = run_once () in
+  write_run_finished ~command ~mode initial_result;
+  match start ~command ~workspace ~package_filters ~mode with
+  | Error _ as err -> err
+  | Ok session ->
+      let rec loop () = run_after_change (wait_change session)
       and run_after_change paths =
-        write_change ~command ~workspace ~mode paths;
+        write_change session paths;
         let result = run_once () in
         write_run_finished ~command ~mode result;
-        match changed_paths ~workspace (drain_events []) with
+        match drain_changed_paths session with
         | [] -> loop ()
         | paths -> run_after_change paths
       in
