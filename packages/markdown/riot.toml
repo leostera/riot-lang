@@ -1,6 +1,6 @@
 [package]
 name = "markdown"
-version = "0.0.37"
+version = "0.0.38"
 
 [lib]
 path = "src/Markdown.ml"

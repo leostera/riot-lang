@@ -1,6 +1,6 @@
 [package]
 name = "dotenv"
-version = "0.0.37"
+version = "0.0.38"
 license = "Apache-2.0"
 description = "Load .env files in your application"
 public = true

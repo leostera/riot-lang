@@ -1,6 +1,6 @@
 [package]
 name = "riot-repl"
-version = "0.0.37"
+version = "0.0.38"
 description = "REPL support for Riot tooling"
 license = "Apache-2.0"
 public = false

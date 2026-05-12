@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.38 - 2026-05-13
+
+### riot
+- `riot run --watch` now watches the selected binary's workspace dependency cone and restarts the child process when relevant sources change. The `-w/--watch` flag works consistently with `-p/--package`, binary names, and forwarded child arguments.
+- Commands that forward child arguments now use `--` as the only parsing boundary. Riot flags can appear before or after positionals before the separator, unknown Riot flags before the separator are rejected, and every argument after `--` is passed through unchanged.
+
 ## 0.0.37 - 2026-05-12
 
 ### riot
