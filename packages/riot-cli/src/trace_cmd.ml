@@ -135,11 +135,7 @@ let profile_of_matches = fun matches ->
   else
     "debug"
 
-let trailing_args = fun matches ->
-  let args = ArgParser.trailing_args matches in
-  match args with
-  | "--" :: rest -> rest
-  | _ -> args
+let trailing_args = fun matches -> ArgParser.trailing_args matches
 
 type target =
   | Local of {

@@ -184,27 +184,21 @@ let rec get_matches_internal = fun cmd args ->
     | "--version" :: _ when Option.is_some cmd.version ->
         println (Option.unwrap cmd.version);
         System.exit 0
+    | "--" :: rest when cmd.allow_trailing ->
+        matches.trailing_args <- rest;
+        validate_required ()
+    | "--" :: _ -> Error (UnknownArgument "--")
     | arg_str :: rest when String.starts_with ~prefix:"--" arg_str -> (
         let name = String.sub arg_str ~offset:2 ~len:(String.length arg_str - 2) in
         match find_arg_by_long cmd name with
         | Some arg -> parse_long_arg arg name rest
-        | None ->
-            if cmd.allow_trailing then (
-              matches.trailing_args <- args_list;
-              Ok matches
-            ) else
-              Error (UnknownArgument arg_str)
+        | None -> Error (UnknownArgument arg_str)
       )
     | arg_str :: rest when String.starts_with ~prefix:"-" arg_str && String.length arg_str > 1 -> (
         let c = String.get_unchecked arg_str ~at:1 in
         match find_arg_by_short cmd c with
         | Some arg -> parse_short_arg arg c rest
-        | None ->
-            if cmd.allow_trailing then (
-              matches.trailing_args <- args_list;
-              Ok matches
-            ) else
-              Error (UnknownArgument arg_str)
+        | None -> Error (UnknownArgument arg_str)
       )
     | subcmd :: rest -> (
         match List.find cmd.subcommands ~fn:(fun sub -> sub.name = subcmd) with

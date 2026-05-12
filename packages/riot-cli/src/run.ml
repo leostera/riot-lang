@@ -56,25 +56,7 @@ let profile_of_matches = fun matches ->
   else
     "debug"
 
-let trailing_args = fun matches ->
-  let args = ArgParser.trailing_args matches in
-  match args with
-  | "--" :: rest -> rest
-  | _ -> args
-
-let deprecated_trace_flag_message = fun flag ->
-  "riot run no longer accepts "
-  ^ flag
-  ^ "; use `riot trace` for profiler traces or `riot run -- "
-  ^ flag
-  ^ "` to pass it to the child binary"
-
-let rejected_removed_trace_flag = fun matches ->
-  match ArgParser.trailing_args matches with
-  | "--" :: _ -> None
-  | flag :: _ when String.equal flag "--trace" || String.equal flag "--profiler" ->
-      Some (deprecated_trace_flag_message flag)
-  | _ -> None
+let trailing_args = fun matches -> ArgParser.trailing_args matches
 
 let build_scope_for_binary = Run_runtime.build_scope_for_binary
 
@@ -461,13 +443,6 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     | Ui.Json -> Ui.Json
     | Ui.Line
     | Ui.TUI -> Ui.default_human_mode ()
-  in
-  let* () =
-    match rejected_removed_trace_flag matches with
-    | None -> Ok ()
-    | Some message ->
-        write_workspace_error ~mode:output_mode message;
-        Error (Failure message)
   in
   if watch && list_mode then
     let message = "riot run --watch does not accept --list" in

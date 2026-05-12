@@ -166,6 +166,14 @@ val allow_no_subcommand: command -> command
 
 val allow_trailing_args: command -> command
 
+(**
+   Parse [args] left-to-right.
+
+   Options and flags remain parseable before and after positional arguments. For
+   commands marked with [allow_trailing_args], a literal [--] stops parser
+   interpretation and stores every following argument as trailing payload.
+   Unknown options before [--] are still errors.
+*)
 val get_matches: command -> string list -> (matches, error) result
 
 val get_one: matches -> string -> string option
@@ -188,6 +196,7 @@ val subcommand_name: matches -> string option
 
 val subcommand_matches: matches -> string -> matches option
 
+(** Arguments captured after an explicit [--], excluding the [--] separator. *)
 val trailing_args: matches -> string list
 
 val print_help: command -> unit

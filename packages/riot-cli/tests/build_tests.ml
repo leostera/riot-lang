@@ -971,6 +971,18 @@ let test_test_accepts_watch_flags = fun _ctx ->
   | Error _ as err -> err
   | Ok () -> assert_watch [ "test"; "-w"; "-p"; "riot-build"; ]
 
+let test_test_forwards_args_after_separator = fun _ctx ->
+  match parse_test [ "test"; "-w"; "-p"; "std"; "--"; "--seed"; "123"; ] with
+  | Error err -> Error ("expected test args after -- to parse: " ^ err)
+  | Ok matches ->
+      if not (ArgParser.get_flag matches "watch") then
+        Error "expected test watch flag to be parsed"
+      else (
+        Test.assert_equal ~expected:[ "std" ] ~actual:(ArgParser.get_many matches "package");
+        Test.assert_equal ~expected:[ "--seed"; "123" ] ~actual:(ArgParser.trailing_args matches);
+        Ok ()
+      )
+
 let test_bench_accepts_json_flag = fun _ctx ->
   match parse_bench [ "bench"; "--json"; "-p"; "std"; ] with
   | Error err -> Error ("expected bench args to parse: " ^ err)
@@ -1012,44 +1024,14 @@ let test_bench_accepts_warmup_flag = fun _ctx ->
       Test.assert_equal ~expected:(Some 25) ~actual:(ArgParser.get_int matches "warmup");
       Ok ()
 
-let test_bench_invocation_args_keep_top_level_flags_after_forwarded_args = fun _ctx ->
-  let invocation =
-    Riot_cli.Bench_cmd.bench_invocation_args
-      [
-        "bench";
-        "-p";
-        "serde-json";
-        "-f";
-        "manual decode from parsed tree";
-        "--compare";
-        "3";
-        "--iterations";
-        "500";
-        "--warmup";
-        "25";
-        "--release";
-        "--json";
-      ]
-  in
-  Test.assert_equal
-    ~expected:[
-      "bench";
-      "-p";
-      "serde-json";
-      "-f";
-      "manual decode from parsed tree";
-      "--compare";
-      "3";
-      "--iterations";
-      "500";
-      "--warmup";
-      "25";
-      "--release";
-      "--json";
-    ]
-    ~actual:invocation.parsed;
-  Test.assert_equal ~expected:[] ~actual:invocation.trailing;
-  Ok ()
+let test_bench_forwards_args_after_separator = fun _ctx ->
+  match parse_bench [ "bench"; "-p"; "std"; "--iterations"; "500"; "--"; "--case"; "parse"; ] with
+  | Error err -> Error ("expected bench args after -- to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:[ "std" ] ~actual:(ArgParser.get_many matches "package");
+      Test.assert_equal ~expected:(Some 500) ~actual:(ArgParser.get_int matches "iterations");
+      Test.assert_equal ~expected:[ "--case"; "parse" ] ~actual:(ArgParser.trailing_args matches);
+      Ok ()
 
 let test_run_accepts_missing_name = fun _ctx ->
   match parse_run [ "run" ] with
@@ -1097,7 +1079,50 @@ let test_run_accepts_watch_flags = fun _ctx ->
   in
   match assert_watch [ "run"; "--watch"; "riot" ] with
   | Error _ as err -> err
-  | Ok () -> assert_watch [ "run"; "-w"; "-p"; "riot-cli"; "riot" ]
+  | Ok () -> (
+      match parse_run [ "run"; "-w"; "-p"; "riot-cli"; "riot" ] with
+      | Error err -> Error ("expected run args to parse with watch and package: " ^ err)
+      | Ok matches ->
+          if not (ArgParser.get_flag matches "watch") then
+            Error "expected run watch flag to be parsed"
+          else (
+            Test.assert_equal
+              ~expected:(Some "riot-cli")
+              ~actual:(ArgParser.get_one matches "package");
+            Test.assert_equal ~expected:(Some "riot") ~actual:(ArgParser.get_one matches "name");
+            Ok ()
+          )
+    )
+
+let test_run_accepts_watch_after_name_and_forwards_args = fun _ctx ->
+  match parse_run [ "run"; "riot"; "-w"; "--"; "build"; "-p"; "std"; ] with
+  | Error err -> Error ("expected run args to parse with watch after name: " ^ err)
+  | Ok matches ->
+      if not (ArgParser.get_flag matches "watch") then
+        Error "expected run watch flag after name to be parsed"
+      else (
+        Test.assert_equal ~expected:(Some "riot") ~actual:(ArgParser.get_one matches "name");
+        Test.assert_equal
+          ~expected:[ "build"; "-p"; "std" ]
+          ~actual:(ArgParser.trailing_args matches);
+        Ok ()
+      )
+
+let test_run_rejects_unknown_flag_before_separator = fun _ctx ->
+  match parse_run [ "run"; "riot"; "-z"; "--"; "build" ] with
+  | Error message when String.contains message "Unknown argument: -z" -> Ok ()
+  | Error message -> Error ("expected unknown -z error, got: " ^ message)
+  | Ok _ -> Error "expected unknown -z before -- to fail"
+
+let test_run_forwards_flags_after_separator = fun _ctx ->
+  match parse_run [ "run"; "riot"; "--"; "--trace"; "out.trace"; "--"; "child"; ] with
+  | Error err -> Error ("expected run args after -- to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:(Some "riot") ~actual:(ArgParser.get_one matches "name");
+      Test.assert_equal
+        ~expected:[ "--trace"; "out.trace"; "--"; "child" ]
+        ~actual:(ArgParser.trailing_args matches);
+      Ok ()
 
 let test_run_accepts_update_flag = fun _ctx ->
   match parse_run [ "run"; "--update"; "leostera/hello-world" ] with
@@ -1107,22 +1132,6 @@ let test_run_accepts_update_flag = fun _ctx ->
         Ok ()
       else
         Error "expected run --update flag to be parsed"
-
-let test_run_rejects_removed_trace_flag = fun _ctx ->
-  match Riot_cli.Run.run_with_workspace_info
-    ~workspace:None
-    ~workspace_error:None
-    (
-      parse_run [ "run"; "--trace"; "out.trace"; "syn" ]
-      |> Result.expect ~msg:"expected legacy trace args to parse as forwarded args"
-    ) with
-  | Ok () -> Error "expected riot run --trace to fail with migration guidance"
-  | Error (Failure message) ->
-      if String.contains message "riot run no longer accepts --trace" then
-        Ok ()
-      else
-        Error ("unexpected riot run --trace error: " ^ message)
-  | Error err -> Error ("unexpected error kind: " ^ Exception.to_string err)
 
 let test_trace_accepts_missing_name = fun _ctx ->
   match parse_trace [ "trace" ] with
@@ -1152,6 +1161,15 @@ let test_trace_accepts_profiler_option = fun _ctx ->
   | Error err -> Error ("expected trace args to parse with --profiler: " ^ err)
   | Ok matches ->
       Test.assert_equal ~expected:(Some "xctrace") ~actual:(ArgParser.get_one matches "profiler");
+      Ok ()
+
+let test_trace_forwards_args_after_separator = fun _ctx ->
+  match parse_trace [ "trace"; "riot"; "--profiler"; "auto"; "--"; "--child"; "1"; ] with
+  | Error err -> Error ("expected trace args after -- to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:(Some "riot") ~actual:(ArgParser.get_one matches "name");
+      Test.assert_equal ~expected:(Some "auto") ~actual:(ArgParser.get_one matches "profiler");
+      Test.assert_equal ~expected:[ "--child"; "1" ] ~actual:(ArgParser.trailing_args matches);
       Ok ()
 
 let test_trace_accepts_output_policy_options = fun _ctx ->
@@ -1716,25 +1734,29 @@ let tests =
     case "test: parse --release flag" test_test_accepts_release_flag;
     case "test: parse --list flag" test_test_accepts_list_flag;
     case "test: parse watch flags" test_test_accepts_watch_flags;
+    case "test: forward args after separator" test_test_forwards_args_after_separator;
     case "bench: parse --json flag" test_bench_accepts_json_flag;
     case "bench: parse --release flag" test_bench_accepts_release_flag;
     case "bench: parse --list flag" test_bench_accepts_list_flag;
     case "bench: parse --iterations flag" test_bench_accepts_iterations_flag;
     case "bench: parse --warmup flag" test_bench_accepts_warmup_flag;
-    case
-      "bench: keep top-level flags after forwarded args"
-      test_bench_invocation_args_keep_top_level_flags_after_forwarded_args;
+    case "bench: forward args after separator" test_bench_forwards_args_after_separator;
     case "run: parse missing name" test_run_accepts_missing_name;
     case "run: parse --list flag" test_run_accepts_list_flag;
     case "run: parse --list --json flags" test_run_accepts_list_json_flag;
     case "run: parse --release flag" test_run_accepts_release_flag;
     case "run: parse watch flags" test_run_accepts_watch_flags;
+    case
+      "run: parse watch after name and forward args"
+      test_run_accepts_watch_after_name_and_forwards_args;
+    case "run: reject unknown flag before separator" test_run_rejects_unknown_flag_before_separator;
+    case "run: forward flags after separator" test_run_forwards_flags_after_separator;
     case "run: parse --update flag" test_run_accepts_update_flag;
-    case "run: parse rejects removed --trace flag" test_run_rejects_removed_trace_flag;
     case "trace: parse missing name" test_trace_accepts_missing_name;
     case "trace: parse --output option" test_trace_accepts_output_option;
     case "trace: parse path target" test_trace_accepts_path_target;
     case "trace: parse --profiler option" test_trace_accepts_profiler_option;
+    case "trace: forward args after separator" test_trace_forwards_args_after_separator;
     case "trace: parse output policy options" test_trace_accepts_output_policy_options;
     case "trace: parse sampling options" test_trace_accepts_sampling_options;
     case "trace: parse summary --json" test_trace_accepts_summary_json;

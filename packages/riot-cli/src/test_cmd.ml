@@ -52,11 +52,7 @@ let command =
       |> help "Watch selected workspace packages and rerun tests when files change";
     ]
 
-let trailing_args = fun matches ->
-  let args = ArgParser.trailing_args matches in
-  match args with
-  | "--" :: rest -> rest
-  | _ -> args
+let trailing_args = fun matches -> ArgParser.trailing_args matches
 
 let profile_of_matches = fun matches ->
   if ArgParser.get_flag matches "release" then

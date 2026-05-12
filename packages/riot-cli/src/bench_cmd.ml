@@ -50,78 +50,7 @@ let command =
       |> count;
     ]
 
-type invocation_args = {
-  parsed: string list;
-  trailing: string list;
-}
-
-let is_known_flag_without_value = fun __tmp1 ->
-  match __tmp1 with
-  | "--list"
-  | "--record"
-  | "--release"
-  | "--json"
-  | "-v"
-  | "--verbose"
-  | "-h"
-  | "--help" -> true
-  | _ -> false
-
-let is_known_flag_with_value = fun __tmp1 ->
-  match __tmp1 with
-  | "-p"
-  | "--package"
-  | "-f"
-  | "--filter"
-  | "--compare"
-  | "--iterations"
-  | "--warmup" -> true
-  | _ -> false
-
-let looks_like_flag = fun value -> String.starts_with ~prefix:"-" value
-
-let bench_invocation_args = fun argv ->
-  let rec loop parsed trailing = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> { parsed = List.reverse parsed; trailing = List.reverse trailing }
-    | "--" :: rest ->
-        { parsed = List.reverse parsed; trailing = List.append (List.reverse trailing) rest }
-    | arg :: rest when is_known_flag_without_value arg -> loop (arg :: parsed) trailing rest
-    | arg :: value :: rest when is_known_flag_with_value arg ->
-        loop (value :: arg :: parsed) trailing rest
-    | arg :: value :: rest when looks_like_flag arg && not (looks_like_flag value) ->
-        loop parsed (value :: arg :: trailing) rest
-    | arg :: rest -> loop parsed (arg :: trailing) rest
-  in
-  match argv with
-  | [] -> { parsed = []; trailing = [] }
-  | command_name :: rest ->
-      let result = loop [ command_name ] [] rest in
-      { parsed = result.parsed; trailing = result.trailing }
-
-let extract_bench_argv = fun argv ->
-  let rec loop = fun __tmp1 ->
-    match __tmp1 with
-    | [] -> None
-    | "bench" :: _ as bench_argv -> Some bench_argv
-    | _ :: rest -> loop rest
-  in
-  loop argv
-
-let reparsed_matches = fun matches ->
-  match extract_bench_argv Env.args with
-  | None -> Ok (matches, trailing_args matches)
-  | Some bench_argv ->
-      let invocation = bench_invocation_args bench_argv in
-      ArgParser.get_matches command invocation.parsed
-      |> Result.map ~fn:(fun matches -> (matches, invocation.trailing))
-      |> Result.map_err ~fn:(fun err -> Failure (ArgParser.error_message err))
-
-let trailing_args = fun matches ->
-  let args = ArgParser.trailing_args matches in
-  match args with
-  | "--" :: rest -> rest
-  | _ -> args
+let trailing_args = fun matches -> ArgParser.trailing_args matches
 
 let profile_of_matches = fun matches ->
   if ArgParser.get_flag matches "release" then
@@ -1226,7 +1155,7 @@ let bench_history_compare = fun
           Some history)
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
-  let* (matches, trailing) = reparsed_matches matches in
+  let trailing = trailing_args matches in
   let extra_args = trailing @ bench_override_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
