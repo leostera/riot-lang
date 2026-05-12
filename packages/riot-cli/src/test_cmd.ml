@@ -46,6 +46,10 @@ let command =
       |> long "verbose"
       |> help "Enable verbose output for tests"
       |> count;
+      flag "watch"
+      |> short 'w'
+      |> long "watch"
+      |> help "Watch selected workspace packages and rerun tests when files change";
     ]
 
 let trailing_args = fun matches ->
@@ -765,15 +769,16 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let filter = ArgParser.get_one matches "filter" in
   let package_filters = parse_package_names (ArgParser.get_many matches "package") in
   let list_mode = ArgParser.get_flag matches "list" in
+  let watch = ArgParser.get_flag matches "watch" in
   let profile = profile_of_matches matches in
-  let command_started_at = Time.Instant.now () in
-  if output_mode = Ui.Json then
-    Ui.reset_json_clock ~started_at:command_started_at;
   if small_only && large_only then
     Error (Failure "Cannot combine --small and --large")
   else
     match Riot_model.Workspace_operational_config.load ~workspace_root:workspace.root with
     | Error err ->
+        let command_started_at = Time.Instant.now () in
+        if output_mode = Ui.Json then
+          Ui.reset_json_clock ~started_at:command_started_at;
         let message = Riot_model.Workspace_operational_config.message err in
         (
           match output_mode with
@@ -791,7 +796,6 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure message)
     | Ok operational_config ->
-        let suite_labels = suite_source_labels ~workspace in
         let size_filter =
           if small_only then
             Test_selection.Small
@@ -812,123 +816,139 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
             request
             trailing
         in
-        if list_mode then
-          let ui = Ui.make ~mode:build_ui_mode ~profile () in
-          let listed_suite_count = ref 0 in
-          let listed_test_count = ref 0 in
-          let failed_suite_count = ref 0 in
-          let on_suite (suite: Test_runtime.listed_test_suite) =
-            if not (List.is_empty suite.tests) then (
-              listed_suite_count := !listed_suite_count + 1;
-              listed_test_count := !listed_test_count + List.length suite.tests;
-              write_test_suite_listed_json ~command_started_at ~workspace suite;
-              List.for_each
-                suite.tests
-                ~fn:(write_test_case_listed_json ~command_started_at suite.suite)
-            )
-          in
-          let on_suite_error (suite: Test_runtime.suite_binary) err =
-            failed_suite_count := !failed_suite_count + 1;
-            write_test_suite_list_failed_json ~command_started_at suite err
-          in
-          let on_event (event: Test_runtime.test_event) =
-            match event with
-            | Test_runtime.Build build_event -> Ui.send ui build_event
-            | _ -> ()
-          in
-          match Test_runtime.list_tests
-            ~on_event
-            ?on_suite:(
-              if output_mode = Ui.Json then
-                Some on_suite
-              else
-                None
-            )
-            ?on_suite_error:(
-              if output_mode = Ui.Json then
-                Some on_suite_error
-              else
-                None
-            )
-            {
-              workspace;
-              package_filters = request.package_filters;
-              suite_filter = request.suite_filter;
-              profile;
-              extra_args;
-            } with
-          | Ok suites ->
-              let suites =
-                List.filter
-                  suites
-                  ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
-                    not
-                      (List.is_empty suite.tests))
-              in
-              (
-                match output_mode with
-                | Ui.Json ->
-                    write_test_list_completed_json
-                      ~command_started_at
-                      ~suite_count:!listed_suite_count
-                      ~test_count:!listed_test_count
-                      ~failed_suite_count:!failed_suite_count
-                | Ui.Line
-                | Ui.TUI ->
-                    if List.is_empty suites then
-                      print_empty_list_hint
-                        request.package_filter
-                        request.suite_filter
-                        request.query
-                    else
-                      write_test_list ~workspace ~suite_labels suites
-              );
-              Ok ()
-          | Error err ->
-              (
-                match output_mode with
-                | Ui.Json -> write_test_error_json ~command_started_at err
-                | Ui.Line
-                | Ui.TUI -> write_test_error err
-              );
-              Error (Failure (Test_runtime.test_error_message err))
-        else
-          let ui = Ui.make ~mode:build_ui_mode ~profile () in
-          let timing = empty_timing_summary () in
-          let state = empty_human_render_state () in
-          let on_event (event: Test_runtime.test_event) =
-            match event with
-            | Test_runtime.Build build_event -> Ui.send ui build_event
-            | _ -> (
-                match output_mode with
-                | Ui.Json -> write_test_event_json ~command_started_at event
-                | Ui.Line
-                | Ui.TUI ->
-                    write_test_event
-                      ~suite_labels
-                      ~timing
-                      ~small_only
-                      ~large_only
-                      ~state
-                      ~verbose
-                      event
+        let run_once = fun () ->
+          let command_started_at = Time.Instant.now () in
+          if output_mode = Ui.Json then
+            Ui.reset_json_clock ~started_at:command_started_at;
+          let suite_labels = suite_source_labels ~workspace in
+          if list_mode then
+            let ui = Ui.make ~mode:build_ui_mode ~profile () in
+            let listed_suite_count = ref 0 in
+            let listed_test_count = ref 0 in
+            let failed_suite_count = ref 0 in
+            let on_suite (suite: Test_runtime.listed_test_suite) =
+              if not (List.is_empty suite.tests) then (
+                listed_suite_count := !listed_suite_count + 1;
+                listed_test_count := !listed_test_count + List.length suite.tests;
+                write_test_suite_listed_json ~command_started_at ~workspace suite;
+                List.for_each
+                  suite.tests
+                  ~fn:(write_test_case_listed_json ~command_started_at suite.suite)
               )
-          in
-          match Test_runtime.test
-            ~on_event
-            {
-              workspace;
-              package_filters = request.package_filters;
-              suite_filter = request.suite_filter;
-              profile;
-              extra_args;
-            } with
-          | Ok () -> Ok ()
-          | Error err ->
-              (
-                match output_mode with
-                | Ui.Json -> write_test_error_json ~command_started_at err
-                | Ui.Line
-                | Ui.TUI -> write_test_error err
-              );
-              Error (Failure (Test_runtime.test_error_message err))
+            in
+            let on_suite_error (suite: Test_runtime.suite_binary) err =
+              failed_suite_count := !failed_suite_count + 1;
+              write_test_suite_list_failed_json ~command_started_at suite err
+            in
+            let on_event (event: Test_runtime.test_event) =
+              match event with
+              | Test_runtime.Build build_event -> Ui.send ui build_event
+              | _ -> ()
+            in
+            match Test_runtime.list_tests
+              ~on_event
+              ?on_suite:(
+                if output_mode = Ui.Json then
+                  Some on_suite
+                else
+                  None
+              )
+              ?on_suite_error:(
+                if output_mode = Ui.Json then
+                  Some on_suite_error
+                else
+                  None
+              )
+              {
+                workspace;
+                package_filters = request.package_filters;
+                suite_filter = request.suite_filter;
+                profile;
+                extra_args;
+              } with
+            | Ok suites ->
+                let suites =
+                  List.filter
+                    suites
+                    ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
+                      not
+                        (List.is_empty suite.tests))
+                in
+                (
+                  match output_mode with
+                  | Ui.Json ->
+                      write_test_list_completed_json
+                        ~command_started_at
+                        ~suite_count:!listed_suite_count
+                        ~test_count:!listed_test_count
+                        ~failed_suite_count:!failed_suite_count
+                  | Ui.Line
+                  | Ui.TUI ->
+                      if List.is_empty suites then
+                        print_empty_list_hint
+                          request.package_filter
+                          request.suite_filter
+                          request.query
+                      else
+                        write_test_list ~workspace ~suite_labels suites
+                );
+                Ok ()
+            | Error err ->
+                (
+                  match output_mode with
+                  | Ui.Json -> write_test_error_json ~command_started_at err
+                  | Ui.Line
+                  | Ui.TUI -> write_test_error err
+                );
+                Error (Failure (Test_runtime.test_error_message err))
+          else
+            let ui = Ui.make ~mode:build_ui_mode ~profile () in
+            let timing = empty_timing_summary () in
+            let state = empty_human_render_state () in
+            let on_event (event: Test_runtime.test_event) =
+              match event with
+              | Test_runtime.Build build_event -> Ui.send ui build_event
+              | _ -> (
+                  match output_mode with
+                  | Ui.Json -> write_test_event_json ~command_started_at event
+                  | Ui.Line
+                  | Ui.TUI ->
+                      write_test_event
+                        ~suite_labels
+                        ~timing
+                        ~small_only
+                        ~large_only
+                        ~state
+                        ~verbose
+                        event
+                )
+            in
+            match Test_runtime.test
+              ~on_event
+              {
+                workspace;
+                package_filters = request.package_filters;
+                suite_filter = request.suite_filter;
+                profile;
+                extra_args;
+              } with
+            | Ok () -> Ok ()
+            | Error err ->
+                (
+                  match output_mode with
+                  | Ui.Json -> write_test_error_json ~command_started_at err
+                  | Ui.Line
+                  | Ui.TUI -> write_test_error err
+                );
+                Error (Failure (Test_runtime.test_error_message err))
+        in
+        if watch then
+          Watch.run
+            ~command:"test"
+            ~workspace
+            ~package_filters:request.package_filters
+            ~mode:output_mode
+            ~run_once
+            ()
+        else
+          run_once ()

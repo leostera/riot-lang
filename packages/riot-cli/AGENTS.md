@@ -37,3 +37,4 @@
 31. `riot --version` and `riot version` should prefer installed release metadata, include release id and build sha, and keep dev-build fallback explicit.
 32. `riot upgrade` should stay workspace-free and use published Riot release metadata and archives.
 33. `riot fuzz` should stay a thin CLI over `riot-fuzz`: parse flags, render events, and leave fuzz case discovery, selector handling, campaign scheduling, and corpus/crash state under `.riot/fuzzing` to `riot-fuzz`/`riot-test`.
+34. `riot build --watch` and `riot test --watch` should watch selected workspace package roots plus their transitive workspace dependency roots, not the entire repository. Keep generated output roots, `.riot`, `.git`, `riot.lock`, and snapshot candidates such as `*.expected.new` from retriggering the loop.

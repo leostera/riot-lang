@@ -89,11 +89,18 @@ let build_args =
     |> help "Emit machine-readable JSONL events";
   ]
 
+let watch_arg =
+  let open ArgParser.Arg in
+  flag "watch"
+  |> short 'w'
+  |> long "watch"
+  |> help "Watch selected workspace packages and rebuild when files change"
+
 let command =
   let open ArgParser in
   command "build"
   |> about "Build packages"
-  |> args build_args
+  |> args (build_args @ [ watch_arg ])
 
 let target_request_of_matches = fun matches ->
   if ArgParser.get_flag matches "all-targets" then
@@ -104,6 +111,8 @@ let target_request_of_matches = fun matches ->
     | None -> Riot_model.Target.Host
 
 let mode_of_matches = fun matches -> Ui.mode_of_json_flag (ArgParser.get_flag matches "json")
+
+let watch_of_matches = fun matches -> ArgParser.get_flag matches "watch"
 
 let dev_artifacts_of_matches = fun matches ->
   if ArgParser.get_flag matches "all" then
@@ -399,4 +408,14 @@ let build_command = fun
 let run = fun ~workspace matches ->
   match request_of_matches ~workspace matches with
   | Error _ as err -> err
-  | Ok request -> run_request request
+  | Ok request ->
+      if watch_of_matches matches then
+        Watch.run
+          ~command:"build"
+          ~workspace
+          ~package_filters:request.packages
+          ~mode:request.mode
+          ~run_once:(fun () -> run_request request)
+          ()
+      else
+        run_request request

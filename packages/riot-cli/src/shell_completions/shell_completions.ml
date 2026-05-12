@@ -297,6 +297,7 @@ _riot() {
             _arguments \
                 '(-x --target)'{-x,--target}'[Build for target architecture]:target:' \
                 '--all-targets[Build for all configured targets]' \
+                '(-w --watch)'{-w,--watch}'[Watch selected workspace packages and rebuild on changes]' \
                 '--json[Emit machine-readable JSONL events]' \
                 '*:package:->packages'
 
@@ -314,6 +315,7 @@ _riot() {
                 '(-f --filter)'{-f,--filter}'[Filter test suites and cases by substring]:filter:' \
                 '--list[List test suites and cases without running them]' \
                 '--release[Use the release build profile]' \
+                '(-w --watch)'{-w,--watch}'[Watch selected workspace packages and rerun tests on changes]' \
                 '--json[Emit machine-readable JSONL events]' \
                 '--small[Run only tests marked small]' \
                 '--large[Run only tests marked large]' \

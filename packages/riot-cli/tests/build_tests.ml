@@ -21,6 +21,20 @@ let builtin_dependency = fun name ->
       };
   }
 
+let workspace_dependency = fun name ->
+  Riot_model.Package.{
+    name = package_name name;
+    source =
+      {
+        workspace = true;
+        builtin = false;
+        path = None;
+        source_locator = None;
+        ref_ = None;
+        version = None;
+      };
+  }
+
 let version = fun value ->
   Std.Version.parse value
   |> Result.expect ~msg:("invalid version: " ^ value)
@@ -39,7 +53,14 @@ let empty_sources =
   }
 
 let make_package = fun
-  ?(workspace_member = true) ?version ?(sources = empty_sources) ?(binaries = []) name ->
+  ?(workspace_member = true)
+  ?version
+  ?(sources = empty_sources)
+  ?(binaries = [])
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  name ->
   let relative_path =
     if workspace_member then
       Path.v name
@@ -61,6 +82,9 @@ let make_package = fun
             is_public = Some true;
           }
     )
+    ~dependencies
+    ~dev_dependencies
+    ~build_dependencies
     ~binaries
     ~sources
     ()
@@ -259,6 +283,87 @@ let test_build_accepts_multiple_packages = fun _ctx ->
       let actual = ArgParser.get_many matches "package" in
       Test.assert_equal ~expected:[ "syn"; "krasny"; "riot-cli" ] ~actual;
       Ok ()
+
+let test_build_accepts_watch_flags = fun _ctx ->
+  let assert_watch args =
+    match parse_build args with
+    | Error err -> Error ("expected build args to parse: " ^ err)
+    | Ok matches ->
+        if ArgParser.get_flag matches "watch" then
+          Ok ()
+        else
+          Error "expected build watch flag to be parsed"
+  in
+  match assert_watch [ "build"; "--watch"; "-p"; "syn"; ] with
+  | Error _ as err -> err
+  | Ok () -> assert_watch [ "build"; "-w"; "-p"; "syn"; ]
+
+let test_watch_roots_follow_selected_package_dependency_cone = fun _ctx ->
+  let demo =
+    make_package
+      ~dependencies:[ workspace_dependency "util" ]
+      ~dev_dependencies:[ workspace_dependency "dev-helper" ]
+      ~build_dependencies:[ workspace_dependency "codegen" ]
+      "demo"
+  in
+  let util = make_package ~dependencies:[ workspace_dependency "core" ] "util" in
+  let core = make_package "core" in
+  let dev_helper = make_package "dev-helper" in
+  let codegen = make_package "codegen" in
+  let external_pkg = make_package ~workspace_member:false "serde-json" in
+  let workspace =
+    Riot_model.Workspace.make_realized
+      ~root:(Path.v "/workspace")
+      ~packages:[ demo; util; core; dev_helper; codegen; external_pkg ]
+      ()
+  in
+  let all_roots =
+    Riot_cli.Watch.watch_roots ~workspace ~package_filters:[]
+    |> List.map ~fn:Path.to_string
+  in
+  Test.assert_equal
+    ~expected:[
+      "/workspace/codegen";
+      "/workspace/core";
+      "/workspace/demo";
+      "/workspace/dev-helper";
+      "/workspace/util";
+    ]
+    ~actual:all_roots;
+  let selected_roots =
+    Riot_cli.Watch.watch_roots ~workspace ~package_filters:[ package_name "demo" ]
+    |> List.map ~fn:Path.to_string
+  in
+  Test.assert_equal
+    ~expected:[
+      "/workspace/codegen";
+      "/workspace/core";
+      "/workspace/demo";
+      "/workspace/dev-helper";
+      "/workspace/util";
+    ]
+    ~actual:selected_roots;
+  Ok ()
+
+let test_watch_ignores_generated_paths = fun _ctx ->
+  let demo = make_package "demo" in
+  let workspace =
+    Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ demo ] ()
+  in
+  let ignored_paths = [
+    Path.v "/workspace/_build/debug/demo";
+    Path.v "/workspace/.riot/snapshots/demo.expected.new";
+    Path.v "/workspace/demo/tests/demo.expected.new";
+    Path.v "/workspace/riot.lock";
+  ]
+  in
+  let ignored = List.all ignored_paths ~fn:(Riot_cli.Watch.should_ignore_path ~workspace) in
+  if not ignored then
+    Error "expected generated watch paths to be ignored"
+  else if Riot_cli.Watch.should_ignore_path ~workspace (Path.v "/workspace/demo/src/lib.ml") then
+    Error "expected source paths to remain watchable"
+  else
+    Ok ()
 
 let test_display_package_name_keeps_workspace_package_bare = fun _ctx ->
   let package = make_package "demo" in
@@ -851,6 +956,20 @@ let test_test_accepts_list_flag = fun _ctx ->
         Ok ()
       else
         Error "expected test --list flag to be parsed"
+
+let test_test_accepts_watch_flags = fun _ctx ->
+  let assert_watch args =
+    match parse_test args with
+    | Error err -> Error ("expected test args to parse: " ^ err)
+    | Ok matches ->
+        if ArgParser.get_flag matches "watch" then
+          Ok ()
+        else
+          Error "expected test watch flag to be parsed"
+  in
+  match assert_watch [ "test"; "--watch"; "-p"; "riot-build"; ] with
+  | Error _ as err -> err
+  | Ok () -> assert_watch [ "test"; "-w"; "-p"; "riot-build"; ]
 
 let test_bench_accepts_json_flag = fun _ctx ->
   match parse_bench [ "bench"; "--json"; "-p"; "std"; ] with
@@ -1542,6 +1661,11 @@ let tests =
       "build: final failure lines render planning errors"
       test_build_failure_detail_lines_render_planning_errors;
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
+    case "build: parse watch flags" test_build_accepts_watch_flags;
+    case
+      "watch: roots follow selected package dependency cone"
+      test_watch_roots_follow_selected_package_dependency_cone;
+    case "watch: ignore generated paths" test_watch_ignores_generated_paths;
     case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
     case "build: reject positional package args" test_build_rejects_positional_package_args;
     case "build: parse --json flag" test_build_accepts_json_flag;
@@ -1577,6 +1701,7 @@ let tests =
     case "test: parse --json flag" test_test_accepts_json_flag;
     case "test: parse --release flag" test_test_accepts_release_flag;
     case "test: parse --list flag" test_test_accepts_list_flag;
+    case "test: parse watch flags" test_test_accepts_watch_flags;
     case "bench: parse --json flag" test_bench_accepts_json_flag;
     case "bench: parse --release flag" test_bench_accepts_release_flag;
     case "bench: parse --list flag" test_bench_accepts_list_flag;
