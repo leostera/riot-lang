@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "module name starting with uppercase letter",
+      "fix": "capitalize sqlite as Sqlite",
+      "found": {
+        "kind": "identifier",
+        "text": "sqlite"
+      },
+      "hint": "Module names must start with an uppercase letter.\n\nIn OCaml:\n  ```ocaml\n  module Sqlite = struct end\n  let x = (module Sqlite)\n  ```\n\nLowercase identifiers are value names, not module names.\n",
+      "id": "E0052",
+      "name": "invalid-module-name"
+    },
+    "span": {
+      "end": 22,
+      "start": 16
+    }
+  }
+]

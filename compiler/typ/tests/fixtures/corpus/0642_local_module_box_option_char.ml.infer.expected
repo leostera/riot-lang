@@ -1,0 +1,2 @@
+type 'a option = Some of 'a | None
+val answer : char option

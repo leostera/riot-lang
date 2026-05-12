@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0014",
+      "name": "unclosed-delimiter",
+      "expected": ")",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "fix": "add ) to close the parenthesis",
+      "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively."
+    },
+    "span": {
+      "start": 26,
+      "end": 26
+    }
+  }
+]

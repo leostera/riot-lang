@@ -1,0 +1,403 @@
+{
+  "tokens": [
+    {
+      "kind": "keyword",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "text": "let",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 4,
+        "end": 8
+      },
+      "text": "make",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 3,
+            "end": 4
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "~",
+      "span": {
+        "start": 9,
+        "end": 10
+      },
+      "text": "~",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 8,
+            "end": 9
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 10,
+        "end": 11
+      },
+      "text": "x",
+      "leading_trivia": []
+    },
+    {
+      "kind": "~",
+      "span": {
+        "start": 12,
+        "end": 13
+      },
+      "text": "~",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 11,
+            "end": 12
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 13,
+        "end": 14
+      },
+      "text": "y",
+      "leading_trivia": []
+    },
+    {
+      "kind": "=",
+      "span": {
+        "start": 15,
+        "end": 16
+      },
+      "text": "=",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 14,
+            "end": 15
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "{",
+      "span": {
+        "start": 17,
+        "end": 18
+      },
+      "text": "{",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 16,
+            "end": 17
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 19,
+        "end": 20
+      },
+      "text": "x",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 18,
+            "end": 19
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": ";",
+      "span": {
+        "start": 20,
+        "end": 21
+      },
+      "text": ";",
+      "leading_trivia": []
+    },
+    {
+      "kind": "identifier",
+      "span": {
+        "start": 22,
+        "end": 23
+      },
+      "text": "y",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 21,
+            "end": 22
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "}",
+      "span": {
+        "start": 24,
+        "end": 25
+      },
+      "text": "}",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 23,
+            "end": 24
+          },
+          "text": " ",
+          "kind": "whitespace"
+        }
+      ]
+    },
+    {
+      "kind": "end of file",
+      "span": {
+        "start": 26,
+        "end": 26
+      },
+      "text": "",
+      "leading_trivia": [
+        {
+          "span": {
+            "start": 25,
+            "end": 26
+          },
+          "text": "\n",
+          "kind": "whitespace"
+        }
+      ]
+    }
+  ],
+  "tree": {
+    "type": "node",
+    "kind": "SOURCE_FILE",
+    "width": 25,
+    "children": [
+      {
+        "type": "node",
+        "kind": "LET_BINDING",
+        "width": 25,
+        "children": [
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "let",
+            "width": 3,
+            "full_width": 3,
+            "leading_trivia": []
+          },
+          {
+            "type": "node",
+            "kind": "IDENT_PATTERN",
+            "width": 5,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "make",
+                "width": 4,
+                "full_width": 5,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "node",
+            "kind": "LABELED_PARAM",
+            "width": 3,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "~",
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "width": 1,
+                "full_width": 1,
+                "leading_trivia": []
+              }
+            ]
+          },
+          {
+            "type": "node",
+            "kind": "LABELED_PARAM",
+            "width": 3,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "~",
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "y",
+                "width": 1,
+                "full_width": 1,
+                "leading_trivia": []
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "width": 1,
+            "full_width": 2,
+            "leading_trivia": [
+              {
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "node",
+            "kind": "RECORD_EXPR",
+            "width": 9,
+            "children": [
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "{",
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
+              },
+              {
+                "type": "node",
+                "kind": "RECORD_FIELD",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "width": 1,
+                    "full_width": 2,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": ";",
+                "width": 1,
+                "full_width": 1,
+                "leading_trivia": []
+              },
+              {
+                "type": "node",
+                "kind": "RECORD_FIELD",
+                "width": 2,
+                "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "y",
+                    "width": 1,
+                    "full_width": 2,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": " ",
+                        "width": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "token",
+                "kind": "IDENT_EXPR",
+                "text": "}",
+                "width": 1,
+                "full_width": 2,
+                "leading_trivia": [
+                  {
+                    "kind": "WHITESPACE",
+                    "text": " ",
+                    "width": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": []
+}

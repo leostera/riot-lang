@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0013",
+      "name": "missing-type-decl-equals",
+      "expected": "=",
+      "found": {
+        "kind": "identifier",
+        "text": "int"
+      },
+      "fix": "add = between the type name and type definition",
+      "hint": "Type declarations require an = between the type name and its definition."
+    },
+    "span": {
+      "start": 8,
+      "end": 8
+    }
+  }
+]

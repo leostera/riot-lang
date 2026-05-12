@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0045",
+      "name": "missing-external-colon",
+      "expected": ":",
+      "found": {
+        "kind": "identifier",
+        "text": "float"
+      },
+      "fix": "add : between the external name and its type",
+      "hint": "External declarations need a : between the external name and its type.\n\nIn OCaml:\n  ```ocaml\n  external sqrt : float -> float = \"caml_sqrt_float\"\n  ```\n"
+    },
+    "span": {
+      "start": 13,
+      "end": 13
+    }
+  }
+]

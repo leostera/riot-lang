@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0046",
+      "name": "missing-exception-name",
+      "expected": "exception constructor name",
+      "found": {
+        "kind": "keyword",
+        "text": "of"
+      },
+      "fix": "add an exception constructor name after exception",
+      "hint": "Exception declarations need a constructor name after the exception keyword.\n\nIn OCaml:\n  ```ocaml\n  exception Error\n  exception Parse_error of string\n  ```\n"
+    },
+    "span": {
+      "start": 9,
+      "end": 9
+    }
+  }
+]

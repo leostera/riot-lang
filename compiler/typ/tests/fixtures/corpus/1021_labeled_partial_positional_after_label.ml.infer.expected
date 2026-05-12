@@ -1,0 +1,3 @@
+val choose : left:'a -> right:'a -> bool -> 'a
+val pick_left : right:int -> bool -> int
+val answer : right:int -> int

@@ -18,6 +18,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0043` - Unified Build Session and Work Scheduler
 - `RFD0045` - Target-Specific Module Reachability
 - `RFD0048` - Riot Trace
+- `RFD0049` - Becoming a Language
 
 ## Rejected
 

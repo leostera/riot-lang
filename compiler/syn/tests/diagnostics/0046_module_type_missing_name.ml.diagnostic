@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0048",
+      "name": "missing-module-type-name",
+      "expected": "module type name",
+      "found": {
+        "kind": "=",
+        "text": "="
+      },
+      "fix": "add a module type name after module type",
+      "hint": "Module type declarations need a name after `module type`.\n\nIn OCaml:\n  ```ocaml\n  module type S = sig\n    val x : int\n  end\n  ```\n"
+    },
+    "span": {
+      "start": 11,
+      "end": 11
+    }
+  }
+]

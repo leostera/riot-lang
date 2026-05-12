@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "=",
+      "fix": "add = between the pattern and expression",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Every let binding needs an = between the pattern and the expression.",
+      "id": "E0003",
+      "name": "missing-let-binding-equals"
+    },
+    "span": {
+      "end": 6,
+      "start": 6
+    }
+  }
+]

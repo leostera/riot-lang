@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "module type expression",
+      "fix": "add a module type expression after =",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "A module type declaration needs a module type expression after the =.\n\nExamples:\n  ```ocaml\n  module type S = sig end\n  module type S = module type of M\n  ```\n",
+      "id": "E0049",
+      "name": "missing-module-type-expr"
+    },
+    "span": {
+      "end": 15,
+      "start": 15
+    }
+  }
+]

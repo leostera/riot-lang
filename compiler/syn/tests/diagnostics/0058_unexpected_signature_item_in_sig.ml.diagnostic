@@ -1,0 +1,18 @@
+[
+  {
+    "kind": {
+      "id": "E0006",
+      "name": "unexpected-signature-item",
+      "expected": "signature item (e.g., val, type, module)",
+      "found": {
+        "kind": "integer",
+        "text": "123"
+      },
+      "hint": "Signature items are declarations in .mli files like val, type, or module."
+    },
+    "span": {
+      "start": 22,
+      "end": 25
+    }
+  }
+]

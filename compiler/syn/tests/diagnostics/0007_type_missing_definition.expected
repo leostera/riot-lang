@@ -1,0 +1,18 @@
+[
+  {
+    "kind": {
+      "expected": "type definition",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a type like int, string, 'a, or a type constructor.\n\nIf this appears after `type foo =` and you meant `foo` to be abstract, write `type foo` without the `=`.",
+      "id": "E0010",
+      "name": "invalid-type-expression"
+    },
+    "span": {
+      "end": 10,
+      "start": 10
+    }
+  }
+]

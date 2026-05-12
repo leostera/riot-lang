@@ -1,0 +1,84 @@
+[
+  {
+    "kind": {
+      "expected": "expression",
+      "found": {
+        "kind": "end",
+        "text": "end"
+      },
+      "hint": "Expected a value, function call, or operator expression.",
+      "id": "E0008",
+      "name": "invalid-expression"
+    },
+    "span": {
+      "end": 210,
+      "start": 207
+    }
+  },
+  {
+    "kind": {
+      "expected": "matching opening delimiter before end",
+      "fix": "remove the extra end",
+      "found": {
+        "kind": "end",
+        "text": "end"
+      },
+      "hint": "This closing delimiter does not match any still-open delimiter in the current parse context.\n\nThis often means a list, tuple, record, array, or block was closed twice:\n  ```ocaml\n  let xs = [1; 2]]\n  let pair = (x, y))\n  let record = { x = 1 }}\n  ```\n\nFix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.\n",
+      "id": "E0043",
+      "name": "unexpected-closing-delimiter"
+    },
+    "span": {
+      "end": 210,
+      "start": 207
+    }
+  },
+  {
+    "kind": {
+      "expected": "expression",
+      "found": {
+        "kind": "keyword",
+        "text": "in"
+      },
+      "hint": "Expected a value, function call, or operator expression.",
+      "id": "E0008",
+      "name": "invalid-expression"
+    },
+    "span": {
+      "end": 213,
+      "start": 211
+    }
+  },
+  {
+    "kind": {
+      "expected": "end",
+      "fix": "add end to close the struct block",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively.",
+      "id": "E0014",
+      "name": "unclosed-delimiter"
+    },
+    "span": {
+      "end": 235,
+      "start": 235
+    }
+  },
+  {
+    "kind": {
+      "expected": "expression",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a value, function call, or operator expression.",
+      "id": "E0008",
+      "name": "invalid-expression"
+    },
+    "span": {
+      "end": 235,
+      "start": 235
+    }
+  }
+]

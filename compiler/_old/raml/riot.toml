@@ -1,0 +1,15 @@
+[package]
+name = "raml"
+version = "0.0.33"
+
+[lib]
+path = "src/raml.ml"
+
+[dependencies]
+raml-core = { path = "../raml-core", version = "*" }
+raml-js = { path = "../raml-js", version = "*" }
+raml-native = { path = "../raml-native", version = "*" }
+raml-wasm = { path = "../raml-wasm", version = "*" }
+std = "*"
+syn = { path = "../syn", version = "*" }
+typ = { path = "../typ", version = "*" }

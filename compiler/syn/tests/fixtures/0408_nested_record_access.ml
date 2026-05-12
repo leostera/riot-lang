@@ -1,0 +1,1 @@
+let x = obj.field1.field2.field3.field4

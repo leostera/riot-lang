@@ -1,0 +1,13 @@
+open Std
+open Std.Collections
+module Error = Error
+module Diagnostic = Diagnostic
+
+type t = {
+  items: Diagnostic.t vec;
+}
+
+let create () = { items = Vector.create () }
+
+let add t diagnostic =
+  Vector.push t.items ~value:diagnostic

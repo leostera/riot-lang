@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0051",
+      "name": "missing-with-keyword",
+      "expected": "with keyword",
+      "found": {
+        "kind": "keyword",
+        "text": "type"
+      },
+      "fix": "add with before the module type constraints",
+      "hint": "Module type constraints use the `with` keyword before the constraint list.\n\nIn OCaml:\n  ```ocaml\n  type t = (module S with type item = int)\n  module type T = S with type item = int\n  ```\n\nIf you see `type` immediately after a module type path, insert `with` before it.\n"
+    },
+    "span": {
+      "start": 19,
+      "end": 19
+    }
+  }
+]

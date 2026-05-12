@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "id": "E0015",
+      "name": "missing-type-name",
+      "expected": "type name",
+      "found": {
+        "kind": "=",
+        "text": "="
+      },
+      "fix": "add a type name after the type keyword",
+      "hint": "Type declarations require a name after the type keyword."
+    },
+    "span": {
+      "start": 29,
+      "end": 29
+    }
+  }
+]

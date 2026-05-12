@@ -1,0 +1,4 @@
+type 'a option = Some of 'a | None
+module Source : sig type t = char option val value : t end
+module Alias = Source
+val answer : Alias.t

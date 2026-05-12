@@ -1,0 +1,35 @@
+[
+  {
+    "kind": {
+      "expected": "type name",
+      "fix": "add a type name after the type keyword",
+      "found": {
+        "kind": "=",
+        "text": "="
+      },
+      "hint": "Type declarations require a name after the type keyword.",
+      "id": "E0015",
+      "name": "missing-type-name"
+    },
+    "span": {
+      "end": 6,
+      "start": 5
+    }
+  },
+  {
+    "kind": {
+      "expected": "type definition",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Expected a type like int, string, 'a, or a type constructor.\n\nIf this appears after `type foo =` and you meant `foo` to be abstract, write `type foo` without the `=`.",
+      "id": "E0010",
+      "name": "invalid-type-expression"
+    },
+    "span": {
+      "end": 30,
+      "start": 30
+    }
+  }
+]

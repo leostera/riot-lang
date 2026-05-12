@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "module name or module path",
+      "fix": "add a module name or module path",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "This construct expects a module name or module path.\n\nExamples:\n  ```ocaml\n  open List\n  open Stdlib.List\n  ```\n",
+      "id": "E0047",
+      "name": "missing-module-path"
+    },
+    "span": {
+      "end": 4,
+      "start": 4
+    }
+  }
+]

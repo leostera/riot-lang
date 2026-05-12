@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "colon after field name 'x'",
+      "fix": "add a colon after field name 'x'",
+      "found": {
+        "kind": "identifier",
+        "text": "int"
+      },
+      "hint": "Record field declarations require a colon followed by a type.\n\nIn OCaml, record fields are declared as:\n  ```ocaml\n  type person = { name : string; age : int }\n  ```\n\nEach field name must be followed by a colon and then the field's type.\n",
+      "id": "E0039",
+      "name": "record-field-missing-colon"
+    },
+    "span": {
+      "end": 12,
+      "start": 12
+    }
+  }
+]

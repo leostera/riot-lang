@@ -1,0 +1,36 @@
+[
+  {
+    "kind": {
+      "expected": "single semicolon between list elements",
+      "fix": "remove one semicolon - list elements are separated by single semicolons",
+      "found": {
+        "kind": ";",
+        "text": ";"
+      },
+      "hint": "List elements must be separated by a single semicolon.\n\nIn OCaml lists, elements are separated by semicolons (;), not commas:\n  ```ocaml\n  (* Correct syntax *)\n  let x = [1; 2; 3]\n  let y = [\"a\"; \"b\"; \"c\"]\n  \n  (* Common mistakes *)\n  let z = [1;; 2]      (* error: double semicolon *)\n  let w = [;;]         (* error: empty element with double semicolon *)\n  let v = [;]          (* error: semicolon without elements *)\n  ```\n\nFix: use a single semicolon (;) between list elements.\nNote: Double semicolons (;;) are used as top-level statement terminators in the REPL, not in lists.\n",
+      "id": "E0026",
+      "name": "list-double-semicolon"
+    },
+    "span": {
+      "end": 23,
+      "start": 22
+    }
+  },
+  {
+    "kind": {
+      "expected": "single semicolon between list elements",
+      "fix": "remove one semicolon - list elements are separated by single semicolons",
+      "found": {
+        "kind": ";",
+        "text": ";"
+      },
+      "hint": "List elements must be separated by a single semicolon.\n\nIn OCaml lists, elements are separated by semicolons (;), not commas:\n  ```ocaml\n  (* Correct syntax *)\n  let x = [1; 2; 3]\n  let y = [\"a\"; \"b\"; \"c\"]\n  \n  (* Common mistakes *)\n  let z = [1;; 2]      (* error: double semicolon *)\n  let w = [;;]         (* error: empty element with double semicolon *)\n  let v = [;]          (* error: semicolon without elements *)\n  ```\n\nFix: use a single semicolon (;) between list elements.\nNote: Double semicolons (;;) are used as top-level statement terminators in the REPL, not in lists.\n",
+      "id": "E0026",
+      "name": "list-double-semicolon"
+    },
+    "span": {
+      "end": 54,
+      "start": 53
+    }
+  }
+]

@@ -1,0 +1,3 @@
+type 'a option = Some of 'a | None
+val touch : 'a option array -> 'a option * 'a option
+val answer : int option * int option

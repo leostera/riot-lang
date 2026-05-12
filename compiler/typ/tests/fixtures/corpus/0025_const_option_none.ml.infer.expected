@@ -1,0 +1,4 @@
+type 'a option = Some of 'a | None
+val value : 'a option
+val const : 'a -> 'b -> 'a
+val answer : 'a option
