@@ -45,7 +45,7 @@ type t = {
 }
 
 let sha256 = fun bytes ->
-  Crypto.(hash_string bytes
+  Crypto.(Sha256.hash_string bytes
   |> Digest.hex)
 
 let char_between = fun char lower upper ->

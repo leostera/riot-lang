@@ -59,6 +59,15 @@ let test_record_once_writes_and_replays = fun _ctx ->
       in
       Test.assert_false (String.contains recording "secret-token");
       Test.assert_true (String.contains recording "<REDACTED>");
+      Test.assert_true
+        (String.contains
+          recording
+          "0759db9d230415cf0b808dbf9b8255cfabb9df033304644878257ea1f3627d7d");
+      Test.assert_true
+        (String.contains
+          recording
+          "ae0172a8421ec53d1b0a1feca8a91bdda266cd070d96c8c4bd02cdceef61272f");
+      Test.assert_false (String.contains recording "7fd532031b4ea3fae1b72e86b22fc28b43999c4b");
       let replay_recorder =
         Recorder.make
           ~library_dir
