@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.39 - 2026-05-13
+
+### riot
+- Watch mode now waits for a fresh source change after a failed build, test run, or watched binary restart instead of immediately replaying queued filesystem noise. This prevents typo-driven compile loops, especially on macOS where FSEvents can emit many metadata and directory events for one save.
+
 ## 0.0.38 - 2026-05-13
 
 ### riot
