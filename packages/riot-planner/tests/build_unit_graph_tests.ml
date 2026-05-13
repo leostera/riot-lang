@@ -25,11 +25,24 @@ let dependency = fun name ->
 
 let binary = fun ~name ~path -> Package.{ name; path = Path.v path }
 
+let package_command = fun ~package ~name ~path ->
+  let package_name = package_name package in
+  Package_command.{
+    name;
+    description = "";
+    package_name;
+    package_path = Path.v ("packages/" ^ Package_name.to_string package_name);
+    command_module = String.capitalize_ascii name;
+    command_source = Path.v path;
+    command_binary = Path.v "_build/debug/out/command";
+  }
+
 let make_package = fun
   ?(dependencies = [])
   ?(dev_dependencies = [])
   ?(build_dependencies = [])
   ?(binaries = [])
+  ?(commands = [])
   ?(library = true)
   ?(workspace_member = true)
   name ->
@@ -53,6 +66,7 @@ let make_package = fun
     ~dev_dependencies:(List.map dev_dependencies ~fn:dependency)
     ~build_dependencies:(List.map build_dependencies ~fn:dependency)
     ~binaries
+    ~commands
     ?library
     ()
 
@@ -363,6 +377,27 @@ let runtime_binary_without_library_depends_on_runtime_dependencies = fun _ctx ->
   assert_keys_equal
     ~expected:[ library_key "std" ]
     ~actual:(dependencies graph (runtime_binary_key "app" "app"));
+  Ok ()
+
+let command_only_package_builds_command_with_runtime_dependencies = fun _ctx ->
+  let workspace =
+    make_workspace
+      [
+        make_package "std";
+        make_package
+          ~library:false
+          ~dependencies:[ "std" ]
+          ~commands:[ package_command ~package:"tools" ~name:"say" ~path:"src/say_cmd.ml" ]
+          "tools";
+      ]
+  in
+  let graph = graph workspace (request ~roots:[ package_name "tools" ] ()) in
+  assert_keys_equal
+    ~expected:[ library_key "std"; runtime_binary_key "tools" "say" ]
+    ~actual:(Build_unit_graph.keys graph);
+  assert_keys_equal
+    ~expected:[ library_key "std" ]
+    ~actual:(dependencies graph (runtime_binary_key "tools" "say"));
   Ok ()
 
 let runtime_libraries_do_not_include_build_dependencies = fun _ctx ->
@@ -773,6 +808,9 @@ let tests =
     case
       "build unit runtime binary without library depends on runtime dependencies"
       runtime_binary_without_library_depends_on_runtime_dependencies;
+    case
+      "build unit command-only package builds command with runtime dependencies"
+      command_only_package_builds_command_with_runtime_dependencies;
     case
       "build unit runtime libraries do not include build dependencies"
       runtime_libraries_do_not_include_build_dependencies;

@@ -78,6 +78,11 @@ For profiling Riot commands on macOS with `xctrace`, read:
 
 - [Riot profiling workflow](references/profiling.md)
 
+## Package Commands
+For declaring and invoking package-provided workspace commands, read:
+
+- [Riot package commands](references/package-commands.md)
+
 ## Common Riot commands
 - `riot new --lib ./packages/<name>` : create a new library package in a workspace.
 - `riot new --bin ./packages/<name>` : create a new binary package in a workspace.

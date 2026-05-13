@@ -336,7 +336,9 @@ let request_intent = fun __tmp1 ->
   | Dev _ -> Package.Dev
 
 let artifacts_for_package = fun request_kind (package: Package.t) ->
-  let artifacts = Vector.with_capacity ~size:(1 + List.length package.binaries) in
+  let artifacts =
+    Vector.with_capacity ~size:(1 + List.length package.binaries + List.length package.commands)
+  in
   (
     match package.library with
     | Some _ -> Vector.push artifacts ~value:Build_unit.Library
@@ -359,6 +361,17 @@ let artifacts_for_package = fun request_kind (package: Package.t) ->
         )
       | Library
       | SyntheticTool _ -> ());
+  (
+    match package.library with
+    | Some _ -> ()
+    | None ->
+        List.for_each
+          package.commands
+          ~fn:(fun command ->
+            Vector.push
+              artifacts
+              ~value:(Build_unit.RuntimeBinary { name = command.name }))
+  );
   Array.to_list (Vector.to_array artifacts)
 
 let discover_root_artifacts = fun
@@ -481,7 +494,19 @@ let realize_unit_group = fun (group: unit_ref_group) ->
               | Some _ as package -> package
               | None -> Some (runtime_package ())
             )
-          | RuntimeBinary { name }
+          | RuntimeBinary { name } -> (
+              match Package.for_binary_with_projection_cache projection_cache ~binary_name:name with
+              | Some _ as package -> package
+              | None ->
+                  if
+                    List.any
+                      realized_package.commands
+                      ~fn:(fun (command: Package_command.t) -> String.equal command.name name)
+                  then
+                    Some (runtime_package ())
+                  else
+                    None
+            )
           | TestBinary { name }
           | ExampleBinary { name }
           | BenchBinary { name } ->

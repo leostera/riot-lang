@@ -178,6 +178,16 @@ let workspace_load_error_message = fun load_errors ->
     "\n"
     (List.map load_errors ~fn:Riot_model.Workspace_manager.load_error_to_string)
 
+let command_binary_path = fun
+  ~(workspace:Riot_model.Workspace.t) (cmd: Riot_model.Package_command.t) ->
+  let profile = Riot_model.Profile.debug in
+  Path.(Riot_model.Riot_dirs.out_dir_in_workspace
+    ~workspace
+    ~profile:profile.name
+    ~target:Riot_model.Target.current
+  / v (Riot_model.Package_name.to_string cmd.package_name)
+  / v cmd.name)
+
 (** Try to execute a package command if it exists *)
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =
@@ -209,7 +219,6 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                     ^ Riot_model.Package_name.to_string cmd.package_name
                     ^ ":"
                     ^ cmd.name);
-                  Log.info ("Command binary path: " ^ Path.to_string cmd.command_binary);
                   (* Build the package first to ensure command is up to date *)
                   Log.info
                     ("Building package: " ^ Riot_model.Package_name.to_string cmd.package_name);
@@ -225,10 +234,10 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                             Log.error ("Failed to build package: " ^ Exception.to_string err);
                             Some (Error err)
                         | Ok () ->
+                            let command_binary = command_binary_path ~workspace cmd in
+                            Log.info ("Command binary path: " ^ Path.to_string command_binary);
                             (* Execute the command binary *)
-                            match Command_executor.execute
-                              ~command_binary:cmd.command_binary
-                              ~args:remaining_args with
+                            match Command_executor.execute ~command_binary ~args:remaining_args with
                             | Ok () -> Some (Ok ())
                             | Error err ->
                                 Log.error ("Command execution failed: " ^ Exception.to_string err);
