@@ -1,6 +1,6 @@
 [package]
 name = "jollyroger"
-version = "0.0.39"
+version = "0.0.40"
 description = "Terminal design-system primitives for Riot CLI output"
 license = "Apache-2.0"
 public = false

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.40 - 2026-05-13
+
+### riot
+- Package-provided commands are runnable again from workspaces after their provider package is built. Riot now resolves the generated command binary from the build output, and package commands remain visible through command completions.
+
+### blink
+- Recorded request and response body metadata now uses real SHA-256 digests. Recordings created by `Blink.Testing.Recorder` should be regenerated if consumers compare the `sha256` fields from older recordings.
+
 ## 0.0.39 - 2026-05-13
 
 ### riot

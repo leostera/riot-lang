@@ -1,6 +1,6 @@
 [package]
 name = "riot-planner"
-version = "0.0.39"
+version = "0.0.40"
 description = "Dependency graph construction and build planning"
 license = "Apache-2.0"
 public = false

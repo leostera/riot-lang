@@ -1,6 +1,6 @@
 [package]
 name = "propane"
-version = "0.0.39"
+version = "0.0.40"
 description = "Property-based testing support"
 license = "Apache-2.0"
 public = true

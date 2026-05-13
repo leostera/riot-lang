@@ -1,6 +1,6 @@
 [package]
 name = "mysql"
-version = "0.0.39"
+version = "0.0.40"
 description = "MySQL adapter for sqlx"
 license = "Apache-2.0"
 public = true
