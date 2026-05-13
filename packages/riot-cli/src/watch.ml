@@ -73,6 +73,14 @@ let event_requires_rescan = fun (event: Fs.Event.t) ->
   || event.system.user_dropped
   || event.system.kernel_dropped
 
+let is_self_generated_event = fun (event: Fs.Event.t) ->
+  event.system.own_event && not (event_requires_rescan event)
+
+let is_metadata_chatter = fun (event: Fs.Event.t) ->
+  match event.kind with
+  | Fs.Event.Metadata -> not (event_requires_rescan event)
+  | _ -> false
+
 let is_directory_chatter = fun (event: Fs.Event.t) ->
   match (event.file_type, event.kind) with
   | (Fs.Event.Directory, Fs.Event.Modified)
@@ -81,6 +89,8 @@ let is_directory_chatter = fun (event: Fs.Event.t) ->
 
 let should_ignore_event = fun ~workspace (event: Fs.Event.t) ->
   should_ignore_path ~workspace event.path
+  || is_self_generated_event event
+  || is_metadata_chatter event
   || (is_directory_chatter event && not (event_requires_rescan event))
 
 let changed_paths = fun ~workspace events ->
@@ -242,6 +252,8 @@ let rec wait_change = fun session ->
 
 let drain_changed_paths = fun session -> changed_paths session (drain_events [])
 
+let discard_pending_changes = fun session -> ignore (drain_changed_paths session)
+
 let start = fun ~command ~workspace ~package_filters ~mode ->
   let roots = watch_roots ~workspace ~package_filters in
   match roots with
@@ -274,8 +286,14 @@ let run = fun ~command ~workspace ~package_filters ~mode ~run_once () ->
         write_change session paths;
         let result = run_once () in
         write_run_finished ~command ~mode result;
-        match drain_changed_paths session with
-        | [] -> loop ()
-        | paths -> run_after_change paths
+        match result with
+        | Error _ ->
+            discard_pending_changes session;
+            loop ()
+        | Ok () -> (
+            match drain_changed_paths session with
+            | [] -> loop ()
+            | paths -> run_after_change paths
+          )
       in
       loop ()

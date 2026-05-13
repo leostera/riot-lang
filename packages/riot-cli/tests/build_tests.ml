@@ -365,6 +365,63 @@ let test_watch_ignores_generated_paths = fun _ctx ->
   else
     Ok ()
 
+let watch_event = fun
+  ?(kind = Fs.Event.Modified)
+  ?(file_type = Fs.Event.File)
+  ?(own_event = false)
+  ?(must_scan_subdirs = false)
+  path ->
+  Fs.Event.{
+    path;
+    kind;
+    event_id = 0L;
+    file_type;
+    metadata =
+      {
+        inode_meta = false;
+        finder_info = false;
+        owner = false;
+        xattr = false;
+      };
+    system =
+      {
+        own_event;
+        mount = false;
+        unmount = false;
+        root_changed = false;
+        must_scan_subdirs;
+        user_dropped = false;
+        kernel_dropped = false;
+      };
+  }
+
+let test_watch_ignores_fsevents_chatter = fun _ctx ->
+  let demo = make_package "demo" in
+  let workspace =
+    Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ demo ] ()
+  in
+  let should_ignore = Riot_cli.Watch.should_ignore_event ~workspace in
+  if
+    not (should_ignore (watch_event ~kind:Fs.Event.Metadata (Path.v "/workspace/demo/src/lib.ml")))
+  then
+    Error "expected metadata-only file events to be ignored"
+  else if
+    not (should_ignore (watch_event ~file_type:Fs.Event.Directory (Path.v "/workspace/demo/src")))
+  then
+    Error "expected directory modified chatter to be ignored"
+  else if
+    not (should_ignore (watch_event ~own_event:true (Path.v "/workspace/demo/src/lib.ml")))
+  then
+    Error "expected self-generated events to be ignored"
+  else if
+    should_ignore (watch_event ~must_scan_subdirs:true (Path.v "/workspace/demo/src/lib.ml"))
+  then
+    Error "expected rescan-required events to stay watchable"
+  else if should_ignore (watch_event (Path.v "/workspace/demo/src/lib.ml")) then
+    Error "expected source modifications to stay watchable"
+  else
+    Ok ()
+
 let test_display_package_name_keeps_workspace_package_bare = fun _ctx ->
   let package = make_package "demo" in
   Test.assert_equal ~expected:"demo" ~actual:(Riot_cli.Ui.display_package_name package);
@@ -1698,6 +1755,7 @@ let tests =
       "watch: roots follow selected package dependency cone"
       test_watch_roots_follow_selected_package_dependency_cone;
     case "watch: ignore generated paths" test_watch_ignores_generated_paths;
+    case "watch: ignore fsevents chatter" test_watch_ignores_fsevents_chatter;
     case "build: usage shows repeated package flag" test_build_usage_shows_repeated_package_flag;
     case "build: reject positional package args" test_build_rejects_positional_package_args;
     case "build: parse --json flag" test_build_accepts_json_flag;

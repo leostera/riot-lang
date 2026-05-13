@@ -340,11 +340,12 @@ let run_watch_local = fun
     | None ->
         let paths = wait_run_watch_change session in
         Watch.write_change session paths;
-        loop (start ())
+        loop (start_after_change ())
     | Some running -> (
         match wait_run_watch_signal session running with
         | Run_watch_child_exited result ->
             Result.iter_err result ~fn:(write_run_error ~mode:output_mode);
+            Result.iter_err result ~fn:(fun _ -> Watch.discard_pending_changes session);
             loop None
         | Run_watch_changed paths ->
             Watch.write_change session paths;
@@ -366,6 +367,12 @@ let run_watch_local = fun
       binary_name with
     | Ok running -> Some running
     | Error _ -> None
+  and start_after_change () =
+    match start () with
+    | Some running -> Some running
+    | None ->
+        Watch.discard_pending_changes session;
+        None
   in
   loop (start ())
 

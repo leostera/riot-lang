@@ -15,6 +15,8 @@ val watch_roots:
 
 val should_ignore_path: workspace:Riot_model.Workspace.t -> Path.t -> bool
 
+val should_ignore_event: workspace:Riot_model.Workspace.t -> Fs.Event.t -> bool
+
 val start:
   command:string ->
   workspace:Riot_model.Workspace.t ->
@@ -27,6 +29,8 @@ val changed_paths: session -> Fs.Event.t list -> Path.t list
 val wait_change: session -> Path.t list
 
 val drain_changed_paths: session -> Path.t list
+
+val discard_pending_changes: session -> unit
 
 val write_change: session -> Path.t list -> unit
 
