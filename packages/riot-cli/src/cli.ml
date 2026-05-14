@@ -133,6 +133,16 @@ let require_clean_workspace = fun workspace_scan_opt ->
       Error (Failure "Workspace load failed")
   | Loaded (workspace, _) -> Ok workspace
 
+let require_workspace_root = fun workspace_scan_opt ->
+  match workspace_scan_opt with
+  | NoWorkspace ->
+      eprintln "❌ Not in a riot workspace";
+      Error (Failure "Not in a riot workspace")
+  | ScanFailed err ->
+      eprintln ("\027[1;31mError\027[0m: " ^ Info_cmd.workspace_scan_error_message err);
+      Error (Failure "Workspace scan failed")
+  | Loaded (workspace, _) -> Ok workspace
+
 let fail_not_in_workspace = fun () ->
   eprintln "❌ Not in a riot workspace";
   Error (Failure "Not in a riot workspace")
@@ -166,6 +176,14 @@ let ensure_workspace = fun ?overrides (workspace: Riot_model.Workspace_manifest.
     ~registry
     ~workspace
     ()
+  |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
+
+let ensure_locked_dependencies = fun ?overrides (workspace: Riot_model.Workspace_manifest.t) ->
+  let* registry =
+    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+    |> Result.map_err ~fn:(fun err -> Failure (Pkgs_ml.Registry_cache.create_error_message err))
+  in
+  Riot_deps.ensure_locked_dependencies ?overrides ~registry ~workspace ()
   |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
 
 let workspace_overrides_of_build_matches = fun matches ->
@@ -375,12 +393,23 @@ let run = fun ~args ->
           match ArgParser.get_subcommand matches with
           | Some ("build", build_matches) ->
               let overrides = workspace_overrides_of_build_matches build_matches in
-              let* workspace = require_clean_workspace (get_workspace_scan ()) in
+              let deps_only = Build.deps_of_matches build_matches in
+              let* workspace =
+                if deps_only then
+                  require_workspace_root (get_workspace_scan ())
+                else
+                  require_clean_workspace (get_workspace_scan ())
+              in
               let () = trace_cli "ensure-toolchain-start" in
               let* () = ensure_toolchain workspace in
               let () = trace_cli "ensure-toolchain-done" in
               let () = trace_cli "build-prepare-start" in
-              let* workspace = ensure_workspace ?overrides workspace in
+              let* workspace =
+                if deps_only then
+                  ensure_locked_dependencies ?overrides workspace
+                else
+                  ensure_workspace ?overrides workspace
+              in
               let () = trace_cli "build-prepare-done" in
               let () = trace_cli "build-run-start" in
               Build.run ~workspace build_matches

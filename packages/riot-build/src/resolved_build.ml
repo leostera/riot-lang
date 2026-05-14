@@ -3,6 +3,7 @@ open Std
 type scope = Request.scope =
   | Runtime
   | Dev
+  | Dependencies
 
 type dev_artifacts = Request.dev_artifacts = { tests: bool; examples: bool; benches: bool }
 
@@ -12,6 +13,7 @@ type t = {
   scope: scope;
   dev_artifacts: dev_artifacts;
   synthetic_tools: Riot_planner.Build_unit_graph.synthetic_tool list;
+  include_external_packages: bool;
 }
 
 type error =
@@ -25,13 +27,15 @@ type error =
       available_packages: Riot_model.Package_name.t list;
     }
 
-let make = fun ~package_names ~targets ~scope ~dev_artifacts ~synthetic_tools ->
+let make = fun
+  ~package_names ~targets ~scope ~dev_artifacts ~synthetic_tools ~include_external_packages ->
   {
     package_names;
     targets;
     scope;
     dev_artifacts;
     synthetic_tools;
+    include_external_packages;
   }
 
 let package_names = fun t -> t.package_names
@@ -44,14 +48,18 @@ let dev_artifacts = fun t -> t.dev_artifacts
 
 let synthetic_tools = fun t -> t.synthetic_tools
 
-let available_package_names = fun workspace ->
+let include_external_packages = fun t -> t.include_external_packages
+
+let available_package_names = fun ~include_external_packages workspace ->
   workspace.Riot_model.Workspace.packages
-  |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
+  |> List.filter
+    ~fn:(fun package ->
+      include_external_packages || Riot_model.Package_manifest.is_workspace_member package)
   |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
   |> List.sort ~compare:Riot_model.Package_name.compare
 
-let resolve_package_names = fun workspace requested ->
-  let available = available_package_names workspace in
+let resolve_package_names = fun ~include_external_packages workspace requested ->
+  let available = available_package_names ~include_external_packages workspace in
   match requested with
   | [] -> Ok available
   | [ package_name ] ->
@@ -94,8 +102,12 @@ let resolve_target_names = fun context request ->
 
 let resolve = fun context request ->
   let open Std.Result.Syntax in
+  let include_external_packages = Request.Internal.include_external_packages request in
   let* package_names =
-    resolve_package_names context.Build_context.workspace (Request.Internal.packages request)
+    resolve_package_names
+      ~include_external_packages
+      context.Build_context.workspace
+      (Request.Internal.packages request)
   in
   let* targets = resolve_target_names context request in
   Ok (make
@@ -103,4 +115,5 @@ let resolve = fun context request ->
     ~targets
     ~scope:(Request.Internal.scope request)
     ~dev_artifacts:(Request.Internal.dev_artifacts request)
-    ~synthetic_tools:(Request.Internal.synthetic_tools request))
+    ~synthetic_tools:(Request.Internal.synthetic_tools request)
+    ~include_external_packages)

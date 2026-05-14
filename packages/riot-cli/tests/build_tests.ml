@@ -774,6 +774,37 @@ let test_build_accepts_all_flag = fun _ctx ->
       else
         Error "expected --all flag to be parsed"
 
+let test_build_accepts_deps_flag = fun _ctx ->
+  match parse_build [ "build"; "--deps" ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "deps" then
+        Ok ()
+      else
+        Error "expected --deps flag to be parsed"
+
+let test_build_deps_request_uses_dependency_scope = fun _ctx ->
+  let app = make_package "app" in
+  let std = make_package ~workspace_member:false ~version:(version "0.2.0") "std" in
+  let workspace =
+    Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ app; std ] ()
+  in
+  match parse_build [ "build"; "--deps" ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches -> (
+      match Riot_cli.Build.request_of_matches ~workspace matches with
+      | Error err -> Error ("expected --deps request to parse: " ^ Exception.to_string err)
+      | Ok request ->
+          if
+            request.scope = Riot_build.Request.Dependencies
+            && request.include_external_packages
+            && List.is_empty request.packages
+          then
+            Ok ()
+          else
+            Error "expected --deps to use dependency-only scope with external packages enabled"
+    )
+
 let test_build_rejects_invalid_jobs_flag = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_cli_build_invalid_jobs"
@@ -1764,6 +1795,8 @@ let tests =
     case "build: parse --examples flag" test_build_accepts_examples_flag;
     case "build: parse --benches flag" test_build_accepts_benches_flag;
     case "build: parse --all flag" test_build_accepts_all_flag;
+    case "build: parse --deps flag" test_build_accepts_deps_flag;
+    case "build: --deps request uses dependency scope" test_build_deps_request_uses_dependency_scope;
     case "build: parse --jobs flag" test_build_accepts_jobs_flag;
     case "build: parse --target-dir flag" test_build_accepts_target_dir_flag;
     case "build: reject invalid --jobs flag" test_build_rejects_invalid_jobs_flag;

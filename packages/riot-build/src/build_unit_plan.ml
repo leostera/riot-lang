@@ -33,6 +33,7 @@ let kind_of_resolved = fun resolved ->
   match Resolved_build.scope resolved with
   | Runtime -> Riot_planner.Build_unit_graph.Runtime
   | Dev -> Riot_planner.Build_unit_graph.Dev (Resolved_build.dev_artifacts resolved)
+  | Dependencies -> Riot_planner.Build_unit_graph.Dependencies
 
 let request_of_resolved = fun ?(synthetic_tools = []) context resolved ->
   Riot_planner.Build_unit_graph.{

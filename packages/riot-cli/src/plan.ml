@@ -31,6 +31,7 @@ let scope_to_string = fun __tmp1 ->
   match __tmp1 with
   | Riot_build.Request.Runtime -> "runtime"
   | Dev -> "dev"
+  | Dependencies -> "dependencies"
 
 let unit_key_json = fun (key: Build_unit.key) ->
   Data.Json.Object [
@@ -144,6 +145,7 @@ let run_request = fun (request: Build.request) ->
       ~dev_artifacts:request.dev_artifacts
       ~profile:request.profile
       ~requested_parallelism:request.requested_parallelism
+      ~include_external_packages:request.include_external_packages
       ()
   in
   let result =

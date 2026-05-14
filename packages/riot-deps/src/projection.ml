@@ -309,3 +309,28 @@ let resolve_packages = fun
     []
     []
     root_ids
+
+let is_third_party_lock_package = fun (pkg: Riot_model.Lockfile.package) ->
+  match pkg.provenance with
+  | Riot_model.Lockfile.Registry _
+  | Riot_model.Lockfile.Source _ -> true
+  | Workspace
+  | Path _ -> false
+
+let resolve_third_party_packages = fun
+  ?(emit = no_emit) ?(materialize_emit = no_emit) ~registry ~workspace_root ~lockfile () ->
+  let root_ids =
+    lockfile.Riot_model.Lockfile.packages
+    |> List.filter ~fn:is_third_party_lock_package
+    |> List.map ~fn:(fun (pkg: Riot_model.Lockfile.package) -> pkg.id)
+  in
+  resolve_package_graph
+    ~emit
+    ~materialize_emit
+    ~registry
+    ~workspace_root
+    ~packages:[]
+    ~lockfile
+    []
+    []
+    root_ids

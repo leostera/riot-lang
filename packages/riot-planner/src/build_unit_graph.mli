@@ -4,6 +4,7 @@ open Riot_model
 type request_kind =
   | Runtime
   | Dev of Package.dev_artifacts
+  | Dependencies
 type synthetic_tool = {
   package: Package_name.t;
   name: string;

@@ -3,6 +3,7 @@ open Std
 type scope =
   | Runtime
   | Dev
+  | Dependencies
 type dev_artifacts = Riot_model.Package.dev_artifacts = {
   tests: bool;
   examples: bool;
@@ -19,6 +20,7 @@ val make:
   ?synthetic_tools:Riot_planner.Build_unit_graph.synthetic_tool list ->
   ?dev_artifacts:dev_artifacts ->
   ?requested_parallelism:int option ->
+  ?include_external_packages:bool ->
   unit ->
   t
 
@@ -38,4 +40,6 @@ module Internal: sig
   val synthetic_tools: t -> Riot_planner.Build_unit_graph.synthetic_tool list
 
   val requested_parallelism: t -> int option
+
+  val include_external_packages: t -> bool
 end

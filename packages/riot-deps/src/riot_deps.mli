@@ -203,6 +203,14 @@ val ensure_workspace:
   unit ->
   (Riot_model.Workspace.t, Error.t) result
 
+val ensure_locked_dependencies:
+  ?emit:event_sink ->
+  ?overrides:Riot_model.Workspace.overrides ->
+  registry:Pkgs_ml.Registry.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
+  unit ->
+  (Riot_model.Workspace.t, Error.t) result
+
 val add:
   ?on_event:event_sink ->
   workspace_manager:Riot_model.Workspace_manager.t ->

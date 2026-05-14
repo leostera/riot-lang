@@ -5,6 +5,7 @@ open Std.Result.Syntax
 type build_scope = Riot_build.Request.scope =
   | Runtime
   | Dev
+  | Dependencies
 
 type dev_artifacts = Riot_build.Request.dev_artifacts = {
   tests: bool;
@@ -22,6 +23,7 @@ type request = {
   requested_parallelism: int option;
   mode: Ui.mode;
   show_finished_summary: bool;
+  include_external_packages: bool;
 }
 
 let build_request_label = fun (request: request) ->
@@ -74,6 +76,10 @@ let build_args =
     flag "all"
     |> long "all"
     |> help "Also compile tests, examples, and benchmark binaries";
+    flag "deps"
+    |> long "deps"
+    |> help
+      "Fetch and build third-party dependencies from riot.lock without building workspace members";
     flag "release"
     |> long "release"
     |> help "Use the release build profile";
@@ -113,6 +119,8 @@ let target_request_of_matches = fun matches ->
 let mode_of_matches = fun matches -> Ui.mode_of_json_flag (ArgParser.get_flag matches "json")
 
 let watch_of_matches = fun matches -> ArgParser.get_flag matches "watch"
+
+let deps_of_matches = fun matches -> ArgParser.get_flag matches "deps"
 
 let dev_artifacts_of_matches = fun matches ->
   if ArgParser.get_flag matches "all" then
@@ -169,6 +177,7 @@ let make_request = fun
   ?(mode = Ui.default_human_mode ())
   ?(show_finished_summary = true)
   ?(requested_parallelism = None)
+  ?(include_external_packages = false)
   ~packages
   ~targets
   () ->
@@ -182,6 +191,7 @@ let make_request = fun
     requested_parallelism;
     mode;
     show_finished_summary;
+    include_external_packages;
   }
 
 let request_of_matches = fun ~workspace matches ->
@@ -191,22 +201,32 @@ let request_of_matches = fun ~workspace matches ->
       match requested_parallelism_of_matches matches with
       | Error _ as err -> err
       | Ok requested_parallelism ->
+          let deps_only = deps_of_matches matches in
           let dev_artifacts = dev_artifacts_of_matches matches in
-          Ok (make_request
-            ~workspace
-            ~scope:(scope_of_dev_artifacts dev_artifacts)
-            ~dev_artifacts
-            ~profile:(profile_of_matches matches)
-            ~mode:(mode_of_matches matches)
-            ~requested_parallelism
-            ~packages
-            ~targets:(target_request_of_matches matches)
-            ())
+          Ok (
+            make_request
+              ~workspace
+              ~scope:(
+                if deps_only then
+                  Dependencies
+                else
+                  scope_of_dev_artifacts dev_artifacts
+              )
+              ~dev_artifacts
+              ~profile:(profile_of_matches matches)
+              ~mode:(mode_of_matches matches)
+              ~requested_parallelism
+              ~include_external_packages:deps_only
+              ~packages
+              ~targets:(target_request_of_matches matches)
+              ()
+          )
     )
 
 let should_build_fix_provider_runner = fun (request: request) ->
   match request.scope with
   | Runtime -> false
+  | Dependencies -> false
   | Dev ->
       request.dev_artifacts.tests && request.dev_artifacts.examples && request.dev_artifacts.benches
 
@@ -272,6 +292,7 @@ let run_request = fun (request: request) ->
         ~profile
         ~synthetic_tools
         ~requested_parallelism:request.requested_parallelism
+        ~include_external_packages:request.include_external_packages
         ())
     |> Result.map ~fn:(fun _output -> ())
   in
@@ -410,12 +431,16 @@ let run = fun ~workspace matches ->
   | Error _ as err -> err
   | Ok request ->
       if watch_of_matches matches then
-        Watch.run
-          ~command:"build"
-          ~workspace
-          ~package_filters:request.packages
-          ~mode:request.mode
-          ~run_once:(fun () -> run_request request)
-          ()
+        match request.scope with
+        | Dependencies -> Error (Failure "--watch is not supported with --deps")
+        | Runtime
+        | Dev ->
+            Watch.run
+              ~command:"build"
+              ~workspace
+              ~package_filters:request.packages
+              ~mode:request.mode
+              ~run_once:(fun () -> run_request request)
+              ()
       else
         run_request request

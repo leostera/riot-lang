@@ -3,6 +3,7 @@ open Std
 type scope =
   | Runtime
   | Dev
+  | Dependencies
 
 type dev_artifacts = Riot_model.Package.dev_artifacts = {
   tests: bool;
@@ -19,6 +20,7 @@ type t = {
   profile: Riot_model.Profile.t;
   synthetic_tools: Riot_planner.Build_unit_graph.synthetic_tool list;
   requested_parallelism: int option;
+  include_external_packages: bool;
 }
 
 let make = fun
@@ -30,6 +32,7 @@ let make = fun
   ?(synthetic_tools = [])
   ?(dev_artifacts = {tests = true; examples = true; benches = true})
   ?(requested_parallelism = None)
+  ?(include_external_packages = false)
   () ->
   {
     workspace;
@@ -40,6 +43,7 @@ let make = fun
     profile;
     synthetic_tools;
     requested_parallelism;
+    include_external_packages;
   }
 
 module Internal = struct
@@ -58,4 +62,6 @@ module Internal = struct
   let synthetic_tools = fun t -> t.synthetic_tools
 
   let requested_parallelism = fun t -> t.requested_parallelism
+
+  let include_external_packages = fun t -> t.include_external_packages
 end

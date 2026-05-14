@@ -27,6 +27,8 @@ let ensure_lock = fun ?emit ~workspace_manager ~mode ~registry ~workspace () ->
 
 let ensure_workspace = Workspace_resolution.ensure_workspace
 
+let ensure_locked_dependencies = Workspace_resolution.ensure_locked_dependencies
+
 type dependency_scope = Package_management.dependency_scope =
   | Runtime
   | Build

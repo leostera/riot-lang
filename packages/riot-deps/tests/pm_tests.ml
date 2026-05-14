@@ -3680,6 +3680,124 @@ version = "0.2.0"
                 Error "expected ensure_workspace to return a build-ready workspace with registry packages"
           | None -> Error "expected ensure_workspace to project std into the workspace")
 
+let test_ensure_locked_dependencies_ignores_missing_workspace_members = fun _ctx ->
+  with_tempdir
+    "riot_deps_locked_deps_missing_members"
+    (fun workspace_root ->
+      write_file
+        Path.(workspace_root / Path.v "riot.toml")
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      let lockfile =
+        Riot_model.Lockfile.{
+          format_version = 1;
+          dependency_hash = "stale-on-purpose";
+          packages =
+            [
+              {
+                id =
+                  {
+                    registry = None;
+                    name = package_name "app";
+                    version = None;
+                    sha256 = None;
+                  };
+                root = Some (Path.v "packages/app");
+                provenance = Workspace;
+                dependencies =
+                  [
+                    {
+                      name = package_name "std";
+                      package =
+                        {
+                          registry = Some "pkgs.ml";
+                          name = package_name "std";
+                          version = Some "0.2.0";
+                          sha256 = None;
+                        };
+                    };
+                  ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              };
+              {
+                id =
+                  {
+                    registry = Some "pkgs.ml";
+                    name = package_name "std";
+                    version = Some "0.2.0";
+                    sha256 = None;
+                  };
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              };
+            ];
+        }
+      in
+      Riot_deps.Lockfile_store.write ~workspace_root lockfile
+      |> Result.expect ~msg:"expected lockfile write to succeed";
+      let registry_cache =
+        Pkgs_ml.Registry_cache.create
+          ~riot_home:Path.(workspace_root / Path.v ".riot")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to initialize"
+      in
+      let registry =
+        Pkgs_ml.Registry.in_memory
+          ~cache:registry_cache
+          ~packages:[
+            make_registry_document
+              ~name:"std"
+              ~latest:"0.2.0"
+              ~releases:[ make_release ~version:"0.2.0" () ]
+              ();
+          ]
+          ~releases:[
+            {
+              Pkgs_ml.Registry.package_name = "std";
+              version = "0.2.0";
+              manifest_toml = "[package]\nname = \"std\"\nversion = \"0.2.0\"\n";
+              files = [];
+            };
+          ]
+          ()
+      in
+      let workspace_manager = workspace_manager () in
+      match Workspace_manager.scan workspace_manager workspace_root with
+      | Error err ->
+          Error ("expected partial workspace scan to succeed: "
+          ^ Workspace_manager.scan_error_message err)
+      | Ok (workspace, load_errors) ->
+          if List.is_empty load_errors then
+            Error "expected missing member manifest to be reported as a load error"
+          else
+            match Riot_deps.ensure_locked_dependencies ~registry ~workspace () with
+            | Error err ->
+                Error ("expected locked dependency projection to ignore missing members: "
+                ^ pm_error_message err)
+            | Ok deps_workspace -> (
+                match deps_workspace.packages with
+                | [ std_pkg ] when has_name "std" std_pkg.name ->
+                    let expected_root =
+                      Pkgs_ml.Registry_cache.package_src_dir
+                        registry_cache
+                        ~package_name:"std"
+                        ~version:"0.2.0"
+                    in
+                    if Path.equal std_pkg.path expected_root then
+                      Ok ()
+                    else
+                      Error "expected locked dependency package to use the registry cache root"
+                | _ ->
+                    Error "expected locked dependency workspace to contain only third-party packages"
+              ))
+
 let test_ensure_lock_repairs_broken_registry_dependency_scopes = fun _ctx ->
   with_tempdir
     "riot_deps_repair_registry_scopes"
@@ -4858,6 +4976,9 @@ let tests =
     case
       "ensure workspace: projects materialized registry packages"
       test_ensure_workspace_projects_materialized_registry_packages;
+    case
+      "ensure locked dependencies: ignores missing workspace members"
+      test_ensure_locked_dependencies_ignores_missing_workspace_members;
     case
       "ensure workspace: preserves declared external binaries"
       test_ensure_workspace_preserves_declared_external_binaries;

@@ -13,3 +13,12 @@ val resolve_packages:
   lockfile:Riot_model.Lockfile.t ->
   unit ->
   (Riot_model.Package.resolved list, Error.t) result
+
+val resolve_third_party_packages:
+  ?emit:event_sink ->
+  ?materialize_emit:event_sink ->
+  registry:Pkgs_ml.Registry.t ->
+  workspace_root:Path.t ->
+  lockfile:Riot_model.Lockfile.t ->
+  unit ->
+  (Riot_model.Package.resolved list, Error.t) result

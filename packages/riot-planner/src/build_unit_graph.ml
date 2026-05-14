@@ -8,6 +8,7 @@ module G = Graph.SimpleGraph
 type request_kind =
   | Runtime
   | Dev of Package.dev_artifacts
+  | Dependencies
 
 type synthetic_tool = {
   package: Package_name.t;
@@ -334,6 +335,7 @@ let request_intent = fun __tmp1 ->
   match __tmp1 with
   | Runtime -> Package.Runtime
   | Dev _ -> Package.Dev
+  | Dependencies -> Package.Runtime
 
 let artifacts_for_package = fun request_kind (package: Package.t) ->
   let artifacts =
@@ -344,33 +346,42 @@ let artifacts_for_package = fun request_kind (package: Package.t) ->
     | Some _ -> Vector.push artifacts ~value:Build_unit.Library
     | None -> ()
   );
-  List.for_each
-    package.binaries
-    ~fn:(fun binary ->
-      let artifact = binary_artifact_kind binary in
-      match artifact with
-      | Build_unit.RuntimeBinary _ -> Vector.push artifacts ~value:artifact
-      | TestBinary _
-      | ExampleBinary _
-      | BenchBinary _ -> (
-          match request_kind with
-          | Runtime -> ()
-          | Dev dev_artifacts ->
-              if dev_artifact_enabled dev_artifacts artifact then
-                Vector.push artifacts ~value:artifact
-        )
-      | Library
-      | SyntheticTool _ -> ());
-  (
-    match package.library with
-    | Some _ -> ()
-    | None ->
-        List.for_each
-          package.commands
-          ~fn:(fun command ->
-            Vector.push
-              artifacts
-              ~value:(Build_unit.RuntimeBinary { name = command.name }))
+  let include_executables =
+    match request_kind with
+    | Dependencies -> false
+    | Runtime
+    | Dev _ -> true
+  in
+  if include_executables then (
+    List.for_each
+      package.binaries
+      ~fn:(fun binary ->
+        let artifact = binary_artifact_kind binary in
+        match artifact with
+        | Build_unit.RuntimeBinary _ -> Vector.push artifacts ~value:artifact
+        | TestBinary _
+        | ExampleBinary _
+        | BenchBinary _ -> (
+            match request_kind with
+            | Runtime -> ()
+            | Dependencies -> ()
+            | Dev dev_artifacts ->
+                if dev_artifact_enabled dev_artifacts artifact then
+                  Vector.push artifacts ~value:artifact
+          )
+        | Library
+        | SyntheticTool _ -> ());
+    (
+      match package.library with
+      | Some _ -> ()
+      | None ->
+          List.for_each
+            package.commands
+            ~fn:(fun command ->
+              Vector.push
+                artifacts
+                ~value:(Build_unit.RuntimeBinary { name = command.name }))
+    )
   );
   Array.to_list (Vector.to_array artifacts)
 

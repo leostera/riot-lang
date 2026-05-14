@@ -349,3 +349,45 @@ let ensure_workspace = fun
     ~source_ignore_patterns:workspace.source_ignore_patterns
     ?target_dir:workspace.target_dir
     ())
+
+let ensure_locked_dependencies = fun
+  ?(emit = no_emit) ?overrides ~registry ~(workspace:Riot_model.Workspace_manifest.t) () ->
+  let workspace_root = workspace.root in
+  let lock_path = Riot_model.Riot_dirs.package_lock_path ~workspace_root in
+  match Lockfile_store.read ~workspace_root with
+  | Error err ->
+      Error (Error.LockfileReadFailed {
+        path = lock_path;
+        error = Lockfile_store.error_message err;
+      })
+  | Ok None ->
+      Error (Error.LockfileReadFailed {
+        path = lock_path;
+        error = "lockfile does not exist; run `riot update` before `riot build --deps`";
+      })
+  | Ok (Some lockfile) ->
+      let* resolved_packages =
+        Projection.resolve_third_party_packages
+          ~emit
+          ~materialize_emit:emit
+          ~registry
+          ~workspace_root
+          ~lockfile
+          ()
+      in
+      Ok (Riot_model.Workspace.make
+        ?name:workspace.name
+        ?overrides
+        ~root:workspace.root
+        ~packages:(List.map
+          resolved_packages
+          ~fn:(fun (pkg: Riot_model.Package.resolved) ->
+            Riot_model.Package_manifest.from_package
+              pkg.package))
+        ~dependencies:workspace.dependencies
+        ~dev_dependencies:workspace.dev_dependencies
+        ~build_dependencies:workspace.build_dependencies
+        ~profile_overrides:workspace.profile_overrides
+        ~source_ignore_patterns:workspace.source_ignore_patterns
+        ?target_dir:workspace.target_dir
+        ())

@@ -9,6 +9,7 @@ open Std
 type build_scope = Riot_build.Request.scope =
   | Runtime
   | Dev
+  | Dependencies
 type dev_artifacts = Riot_build.Request.dev_artifacts = {
   tests: bool;
   examples: bool;
@@ -24,6 +25,7 @@ type request = {
   requested_parallelism: int option;
   mode: Ui.mode;
   show_finished_summary: bool;
+  include_external_packages: bool;
 }
 
 (** Shared [riot build]-compatible argument surface. *)
@@ -43,6 +45,8 @@ val request_of_matches:
   workspace:Riot_model.Workspace.t ->
   Std.ArgParser.matches ->
   (request, exn) result
+
+val deps_of_matches: Std.ArgParser.matches -> bool
 
 (** Execute a build command programmatically. *)
 val build_command:
