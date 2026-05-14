@@ -1,6 +1,6 @@
 [package]
 name = "suri"
-version = "0.0.40"
+version = "0.0.41"
 description = "Web framework and routing for Riot"
 license = "Apache-2.0"
 public = true

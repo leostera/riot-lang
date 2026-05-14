@@ -1,6 +1,6 @@
 [package]
 name = "riot-test"
-version = "0.0.40"
+version = "0.0.41"
 description = "Shared Riot test discovery and suite harness runtime"
 license = "Apache-2.0"
 public = false

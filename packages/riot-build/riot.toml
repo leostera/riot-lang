@@ -1,6 +1,6 @@
 [package]
 name = "riot-build"
-version = "0.0.40"
+version = "0.0.41"
 description = "In-process build session runtime"
 license = "Apache-2.0"
 public = false

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.41 - 2026-05-14
+
+### riot
+- `riot build --deps` now warms dependency cache layers from `riot.lock` without requiring workspace member manifests. It fetches and builds third-party registry/source libraries, skips workspace/path packages, and is intended for Dockerfile stages that copy only `riot.toml` and `riot.lock` before the full application source.
+
 ## 0.0.40 - 2026-05-13
 
 ### riot
