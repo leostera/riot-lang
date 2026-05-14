@@ -189,36 +189,35 @@ let test_router_passes_unmatched_paths_to_next_middleware = fun _ctx ->
       Test.assert_equal ~expected:"fallback" ~actual:response.body;
       Ok ()
 
-let forward_app =
-  [
-    Router.middleware
-      [
-        Router.scope
-          "/__suri"
-          [
-            Router.forward
-              "/mailer"
-              [
-                Router.get "" (router_handler "mailer-index");
-                Router.scope
-                  "/messages"
-                  [
-                    Router.get
-                      "/:id"
-                      (fun conn _req ->
-                        let id =
-                          List.find (Conn.params conn) ~fn:(fun (key, _value) -> key = "id")
-                          |> Option.map ~fn:(fun (_key, value) -> value)
-                          |> Option.unwrap_or ~default:"missing"
-                        in
-                        router_handler ("message-" ^ id) conn _req);
-                  ];
-              ];
-          ];
-        Router.get "/__suri/mailer/unknown" (router_handler "outer-unknown");
-        Router.get "/__suri/maileroo" (router_handler "maileroo");
-      ];
-  ]
+let forward_app = [
+  Router.middleware
+    [
+      Router.scope
+        "/__suri"
+        [
+          Router.forward
+            "/mailer"
+            [
+              Router.get "" (router_handler "mailer-index");
+              Router.scope
+                "/messages"
+                [
+                  Router.get
+                    "/:id"
+                    (fun conn _req ->
+                      let id =
+                        List.find (Conn.params conn) ~fn:(fun (key, _value) -> key = "id")
+                        |> Option.map ~fn:(fun (_key, value) -> value)
+                        |> Option.unwrap_or ~default:"missing"
+                      in
+                      router_handler ("message-" ^ id) conn _req);
+                ];
+            ];
+        ];
+      Router.get "/__suri/mailer/unknown" (router_handler "outer-unknown");
+      Router.get "/__suri/maileroo" (router_handler "maileroo");
+    ];
+]
 
 let test_router_forward_matches_descendant_paths = fun _ctx ->
   match Testing.App.get forward_app "/__suri/mailer/messages/42" with
@@ -269,12 +268,8 @@ let tests =
     case
       "router passes unmatched paths to next middleware"
       test_router_passes_unmatched_paths_to_next_middleware;
-    case
-      "router forward matches descendant paths"
-      test_router_forward_matches_descendant_paths;
-    case
-      "router forward is path-boundary aware"
-      test_router_forward_is_path_boundary_aware;
+    case "router forward matches descendant paths" test_router_forward_matches_descendant_paths;
+    case "router forward is path-boundary aware" test_router_forward_is_path_boundary_aware;
     case
       "router forward handles unknown descendants"
       test_router_forward_handles_unknown_descendants;

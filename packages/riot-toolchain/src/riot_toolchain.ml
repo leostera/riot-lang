@@ -116,8 +116,7 @@ let check_binaries_exist = fun toolchain ->
   ) with
   | (Ok true, Ok true, Ok true, Ok true) -> Ok ()
   | (Ok false, _, _, _) -> Error ("ocamlc not found at " ^ Path.to_string ocamlc_path)
-  | (_, Ok false, _, _) ->
-      Error ("ocamlc.opt not found at " ^ Path.to_string ocamlc_bytecode_path)
+  | (_, Ok false, _, _) -> Error ("ocamlc.opt not found at " ^ Path.to_string ocamlc_bytecode_path)
   | (_, _, Ok false, _) -> Error ("ocamlopt not found at " ^ Path.to_string toolchain.ocamlopt)
   | (_, _, _, Ok false) -> Error ("ocamldep not found at " ^ Path.to_string ocamldep_path)
   | (Error err, _, _, _)

@@ -149,10 +149,8 @@
    ```
 *)
 type handler = Conn.t -> Web_server.Request.t -> Conn.t
-
 (** A single route definition with pattern, method, and handler. *)
 type route
-
 (** A router is a list of routes, matched in order. *)
 type t = route list
 
@@ -264,7 +262,7 @@ val scope: string -> route list -> route
      ]
    ```
 *)
-val forward : string -> route list -> route
+val forward: string -> route list -> route
 
 (**
    Create a WebSocket route that upgrades HTTP connections to WebSocket.

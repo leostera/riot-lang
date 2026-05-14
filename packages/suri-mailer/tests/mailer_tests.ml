@@ -36,7 +36,9 @@ let expect_status = fun status response ->
       Error (Testing.Expect.error_to_string error ^ "; body: " ^ Response.(response.body))
 
 let app_with_mailer = fun supervisor ->
-  Suri.Middleware.[ router Suri.Middleware.Router.[ forward "/__mailbox" (Mailer.routes supervisor); ] ]
+  Suri.Middleware.[
+    router Suri.Middleware.Router.[ forward "/__mailbox" (Mailer.routes supervisor); ];
+  ]
 
 let test_render_multipart = fun _ctx ->
   let message =

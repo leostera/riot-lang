@@ -94,12 +94,7 @@ module Tcp: Intf = struct
     | Ok sock ->
         let reader = tcp_reader ?read_timeout sock in
         let writer = Net.TcpStream.to_writer sock in
-        Ok (Connection.make
-          ~reader
-          ~writer
-          ~on_close:(fun () -> Net.TcpStream.close sock)
-          ~uri
-          ())
+        Ok (Connection.make ~reader ~writer ~on_close:(fun () -> Net.TcpStream.close sock) ~uri ())
 end
 
 module Tls: Intf = struct

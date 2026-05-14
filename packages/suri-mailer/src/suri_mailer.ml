@@ -15,16 +15,8 @@ module Message = struct
   }
 
   let make = fun
-    ?from
-    ?(cc = [])
-    ?(bcc = [])
-    ?(reply_to = [])
-    ?(headers = [])
-    ?text
-    ?html
-    ~to_
-    ~subject
-    () -> {
+    ?from ?(cc = []) ?(bcc = []) ?(reply_to = []) ?(headers = []) ?text ?html ~to_ ~subject () ->
+    {
       from;
       to_;
       cc;
@@ -36,15 +28,21 @@ module Message = struct
       html_body = html;
     }
 
-  let recipients = fun message -> message.to_ @ message.cc @ message.bcc
+  let recipients = fun message -> (message.to_ @ message.cc) @ message.bcc
 
   let pad2 = fun value ->
     let raw = Int.to_string value in
-    if String.length raw >= 2 then raw else "0" ^ raw
+    if String.length raw >= 2 then
+      raw
+    else
+      "0" ^ raw
 
   let pad4 = fun value ->
     let raw = Int.to_string value in
-    if String.length raw >= 4 then raw else String.make ~len:(4 - String.length raw) ~char:'0' ^ raw
+    if String.length raw >= 4 then
+      raw
+    else
+      String.make ~len:(4 - String.length raw) ~char:'0' ^ raw
 
   let weekday = fun value ->
     match value with
@@ -135,12 +133,11 @@ module Message = struct
     in
     "suri-mailer-" ^ Int.to_string seed ^ "-alternative"
 
-  let content_headers = fun content_type ->
-    [
-      "MIME-Version: 1.0";
-      "Content-Type: " ^ content_type ^ "; charset=utf-8";
-      "Content-Transfer-Encoding: 8bit";
-    ]
+  let content_headers = fun content_type -> [
+    "MIME-Version: 1.0";
+    "Content-Type: " ^ content_type ^ "; charset=utf-8";
+    "Content-Transfer-Encoding: 8bit";
+  ]
 
   let render_body = fun message ->
     match (message.text_body, message.html_body) with
@@ -164,10 +161,8 @@ module Message = struct
             html;
             "--" ^ boundary ^ "--";
           ]
-    | (Some text, None) ->
-        String.concat "\r\n" (content_headers "text/plain" @ [ ""; text; ])
-    | (None, Some html) ->
-        String.concat "\r\n" (content_headers "text/html" @ [ ""; html; ])
+    | (Some text, None) -> String.concat "\r\n" (content_headers "text/plain" @ [ ""; text; ])
+    | (None, Some html) -> String.concat "\r\n" (content_headers "text/html" @ [ ""; html; ])
     | (None, None) -> ""
 
   let render = fun message ->
@@ -176,15 +171,14 @@ module Message = struct
       | Some from -> header "From" from
       | None -> None
     in
-    let base_headers =
-      [
-        Some ("Date: " ^ date_header ());
-        header "Subject" message.subject;
-        from_header;
-        header_list "To" message.to_;
-        header_list "Cc" message.cc;
-        header_list "Reply-To" message.reply_to;
-      ]
+    let base_headers = [
+      Some ("Date: " ^ date_header ());
+      header "Subject" message.subject;
+      from_header;
+      header_list "To" message.to_;
+      header_list "Cc" message.cc;
+      header_list "Reply-To" message.reply_to;
+    ]
     in
     let custom_headers =
       List.filter_map message.headers ~fn:(fun (name, value) -> header name value)
@@ -234,10 +228,7 @@ module Delivery = struct
         ^ ": "
         ^ reason
     | FilesystemError (WriteMessageFailed { path; reason }) ->
-        "email filesystem error: failed to write message "
-        ^ Path.to_string path
-        ^ ": "
-        ^ reason
+        "email filesystem error: failed to write message " ^ Path.to_string path ^ ": " ^ reason
     | AdapterError MailboxNotStarted -> "email adapter error: mailer mailbox is not started"
     | AdapterError MailboxTimeout -> "email adapter error: mailer mailbox did not respond"
 
@@ -281,7 +272,10 @@ module Delivery = struct
       value;
     let raw = IO.Buffer.contents buffer in
     let trimmed = String.trim raw in
-    if String.is_empty trimmed then "email" else trimmed
+    if String.is_empty trimmed then
+      "email"
+    else
+      trimmed
 
   let outbox_filename = fun message ->
     let timestamp =
@@ -313,10 +307,7 @@ module Delivery = struct
     match Fs.write rendered path with
     | Ok () -> Ok path
     | Error error ->
-        Error (FilesystemError (WriteMessageFailed {
-          path;
-          reason = IO.error_message error;
-        }))
+        Error (FilesystemError (WriteMessageFailed { path; reason = IO.error_message error }))
 
   let outbox = fun ~dir () ->
     adapter
@@ -342,9 +333,7 @@ module Mailbox = struct
   type error =
     | NotStarted
     | Timeout
-    | StartError of {
-        reason: string;
-      }
+    | StartError of { reason: string }
 
   type t = {
     pid_ref: Pid.t option Sync.Cell.t;
@@ -408,9 +397,7 @@ module Mailbox = struct
         ref_: int;
         reply_to: Pid.t;
       }
-    | MailboxClearResult of {
-        ref_: int;
-      }
+    | MailboxClearResult of { ref_: int }
 
   let error_to_string = fun error ->
     match error with
@@ -431,7 +418,10 @@ module Mailbox = struct
       | (_, []) -> List.rev acc
       | (_, value :: rest) -> go (value :: acc) (remaining - 1) rest
     in
-    if limit <= 0 then [] else go [] limit values
+    if limit <= 0 then
+      []
+    else
+      go [] limit values
 
   let clamp_deliveries = fun max_messages deliveries ->
     match max_messages with
@@ -484,10 +474,10 @@ module Mailbox = struct
         send reply_to (MailboxClearResult { ref_ });
         loop { state with deliveries = [] }
 
-  let init = fun ?max_messages () ->
-    loop { next_id = 1; max_messages; deliveries = [] }
+  let init = fun ?max_messages () -> loop { next_id = 1; max_messages; deliveries = [] }
 
-  let start_under = fun supervisor ?max_messages ?(request_timeout = Time.Duration.from_secs 2) () ->
+  let start_under = fun
+    supervisor ?max_messages ?(request_timeout = Time.Duration.from_secs 2) () ->
     let pid_ref = ref None in
     let start = fun () ->
       let pid = spawn_link (fun () -> init ?max_messages ()) in
@@ -499,8 +489,7 @@ module Mailbox = struct
       ~start
       ~restart:Permanent
       ~shutdown:(Timeout (Time.Duration.from_secs 5))
-      ()
-    with
+      () with
     | Ok pid ->
         pid_ref := Some pid;
         Ok { pid_ref; request_timeout }
@@ -516,8 +505,7 @@ module Mailbox = struct
         send pid (MailboxDeliver { ref_; reply_to = self (); message });
         let selector = fun message ->
           match message with
-          | MailboxDeliverResult { ref_ = candidate; result } when candidate = ref_ ->
-              Select result
+          | MailboxDeliverResult { ref_ = candidate; result } when candidate = ref_ -> Select result
           | _ -> Skip
         in
         try receive ~selector ~timeout:mailbox.request_timeout () with
@@ -571,7 +559,9 @@ module Mailbox = struct
 end
 
 module TestDelivery = struct
-  type t = { mutable messages: Message.t list }
+  type t = {
+    mutable messages: Message.t list;
+  }
 
   let create_store = fun () -> { messages = [] }
 
@@ -622,7 +612,10 @@ module Routes = struct
       path
 
   let mounted_path = fun conn ~suffix ->
-    let path = Suri.Conn.path conn |> trim_trailing_slash in
+    let path =
+      Suri.Conn.path conn
+      |> trim_trailing_slash
+    in
     if not (String.is_empty suffix) && String.ends_with ~suffix path then
       String.sub path ~offset:0 ~len:(String.length path - String.length suffix)
       |> trim_trailing_slash
@@ -637,7 +630,8 @@ module Routes = struct
   let json_string_list = fun values -> Json.array (List.map values ~fn:Json.string)
 
   let header_json = fun (name, value) ->
-    Json.obj [ ("name", Json.string name); ("value", Json.string value); ]
+    Json.obj
+      [ ("name", Json.string name); ("value", Json.string value); ]
 
   let message_json = fun ?(include_bodies = false) ?(include_rendered = false) delivered ->
     let message = Mailbox.(delivered.message) in
@@ -685,10 +679,16 @@ module Routes = struct
       conn
 
   let invalid_id = fun conn ->
-    Suri.Conn.render_text Net.Http.Status.BadRequest "invalid message id" conn
+    Suri.Conn.render_text
+      Net.Http.Status.BadRequest
+      "invalid message id"
+      conn
 
   let not_found = fun conn ->
-    Suri.Conn.render_text Net.Http.Status.NotFound "email message not found" conn
+    Suri.Conn.render_text
+      Net.Http.Status.NotFound
+      "email message not found"
+      conn
 
   let int_param = fun conn name ->
     match List.find (Suri.Conn.params conn) ~fn:(fun (key, _value) -> key = name) with
@@ -814,7 +814,8 @@ module Routes = struct
   let clear_json = fun mailbox conn _req ->
     match Mailbox.clear mailbox with
     | Error error -> mailbox_error conn error
-    | Ok () -> Suri.Conn.render_json Net.Http.Status.Ok (Json.obj [ ("cleared", Json.bool true); ]) conn
+    | Ok () ->
+        Suri.Conn.render_json Net.Http.Status.Ok (Json.obj [ ("cleared", Json.bool true); ]) conn
 
   let clear_and_redirect = fun mailbox conn _req ->
     match Mailbox.clear mailbox with
@@ -862,18 +863,7 @@ module Mailer = struct
 
   let make = fun ?default_from ~delivery () -> { default_from; delivery }
 
-  let mail = fun
-    mailer
-    ?from
-    ?cc
-    ?bcc
-    ?reply_to
-    ?headers
-    ?text
-    ?html
-    ~to_
-    ~subject
-    () ->
+  let mail = fun mailer ?from ?cc ?bcc ?reply_to ?headers ?text ?html ~to_ ~subject () ->
     let from =
       match from with
       | Some value -> Some value

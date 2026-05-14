@@ -2,11 +2,7 @@ open Std
 
 type t
 
-val create:
-  workspace:Riot_model.Workspace.t ->
-  store:Riot_store.Store.t ->
-  unit ->
-  t
+val create: workspace:Riot_model.Workspace.t -> store:Riot_store.Store.t -> unit -> t
 
 val begin_execution: t -> unit
 

@@ -21,10 +21,11 @@ type execute_result = {
 
 type task_result = {
   task: worker_task;
-  outcome: [
-    | `Planned of (Work_request.t list, Error.t) result
-    | `Executed of (Work_result.t, Error.t) result
-  ];
+  outcome:
+    [
+      | `Planned of (Work_request.t list, Error.t) result
+      | `Executed of (Work_result.t, Error.t) result
+    ];
 }
 
 type worker_result = {
@@ -81,7 +82,8 @@ let mark_queued = fun state node ->
       | None -> ConcurrentHashMap.Insert ((), true))
 
 let mark_unqueued = fun state node ->
-  ignore (ConcurrentHashMap.remove state.queued ~key:(Work_node.id node))
+  ignore
+    (ConcurrentHashMap.remove state.queued ~key:(Work_node.id node))
 
 let queue_node = fun state node ->
   if can_queue_node node && mark_queued state node then (
@@ -304,7 +306,8 @@ let register_dependency_requests = fun state node dependency_requests ->
                 ~fn:(fun dependency ->
                   match Work_node.status dependency with
                   | Unplanned -> queue_node state dependency
-                  | Ready when Work_node.dependencies_ready dependency -> queue_node state dependency
+                  | Ready when Work_node.dependencies_ready dependency ->
+                      queue_node state dependency
                   | Planning
                   | Parked
                   | Ready
@@ -381,8 +384,7 @@ let complete_plan_result = fun state (result: plan_result) ->
           if Work_node.dependencies_ready result.node then (
             Work_node.mark_as_ready result.node;
             queue_node state result.node
-          )
-          else
+          ) else
             Work_node.mark_as_parked result.node
     )
 
@@ -409,8 +411,7 @@ let complete_execute_result = fun state (result: execute_result) ->
           if Work_node.dependencies_ready result.node then (
             Work_node.mark_as_ready result.node;
             queue_node state result.node
-          )
-          else
+          ) else
             Work_node.mark_as_parked result.node
     )
   | Error error -> fail_node state result.node error
@@ -418,17 +419,29 @@ let complete_execute_result = fun state (result: execute_result) ->
 let complete_result = fun state result ->
   match result.outcome with
   | `Planned outcome ->
-      complete_plan_result state { node = (
-        match result.task with
-        | PlanNode node
-        | ExecuteNode node -> node
-      ); outcome }
+      complete_plan_result
+        state
+        {
+          node =
+            (
+              match result.task with
+              | PlanNode node
+              | ExecuteNode node -> node
+            );
+          outcome;
+        }
   | `Executed outcome ->
-      complete_execute_result state { node = (
-        match result.task with
-        | PlanNode node
-        | ExecuteNode node -> node
-      ); outcome }
+      complete_execute_result
+        state
+        {
+          node =
+            (
+              match result.task with
+              | PlanNode node
+              | ExecuteNode node -> node
+            );
+          outcome;
+        }
 
 let rec loop = fun state ->
   dispatch_available state;
@@ -471,19 +484,23 @@ let worker_fn registry result_ref plan_dependencies execute ~owner ~task =
           match plan_dependencies registry node with
           | Ok planned -> Ok planned
           | Error error -> Error error
-          | exception exn ->
-              Error (Error.WorkerFailed { message = Exception.to_string exn })
+          | exception exn -> Error (Error.WorkerFailed { message = Exception.to_string exn })
         in
-        { task; outcome = `Planned outcome }
+        {
+          task;
+          outcome = `Planned outcome;
+        }
     | ExecuteNode node ->
         let outcome =
           match execute registry node with
           | Ok execution -> Ok execution
           | Error error -> Error error
-          | exception exn ->
-              Error (Error.WorkerFailed { message = Exception.to_string exn })
+          | exception exn -> Error (Error.WorkerFailed { message = Exception.to_string exn })
         in
-        { task; outcome = `Executed outcome }
+        {
+          task;
+          outcome = `Executed outcome;
+        }
   in
   send owner (WorkNodeResult { result; result_ref })
 
@@ -517,7 +534,7 @@ let run_with_handlers = fun
       let state = {
         pool;
         ready = Node_queue.create ();
-        queued = ConcurrentHashMap.with_capacity ~size:1024;
+        queued = ConcurrentHashMap.with_capacity ~size:1_024;
         idle_workers = Queue.create ();
         result_ref;
         on_event = config.on_event;

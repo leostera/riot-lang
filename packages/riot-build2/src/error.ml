@@ -7,7 +7,9 @@ type t =
       package: Riot_model.Package_name.t;
       available: Riot_model.Package_name.t list;
     }
-  | UnsupportedGoal of { goal: Goal.t }
+  | UnsupportedGoal of {
+      goal: Goal.t;
+    }
   | ExternalDependencyUnsupported of {
       package: Riot_model.Package_name.t;
       dependency: Riot_model.Package_name.t;

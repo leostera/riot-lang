@@ -43,6 +43,6 @@ type t =
       error: Client.error;
     }
 
-val to_json : t -> Data.Json.t
+val to_json: t -> Data.Json.t
 
-val to_string : t -> string
+val to_string: t -> string

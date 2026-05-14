@@ -231,11 +231,7 @@ let make_transport = fun session request ->
       Error (BlinkError.ProtocolError (BlinkError.ApplicationTransportError (error_to_string error)))
 
 let managed_client = fun session ->
-  let config =
-    H.Config.make
-      ~transport:(make_transport session)
-      ()
-  in
+  let config = H.Config.make ~transport:(make_transport session) () in
   H.make ~config ()
 
 let shutdown_session = fun session ->

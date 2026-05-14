@@ -1064,13 +1064,15 @@ let read_source = fun task ->
             ^ Module_node.file_to_string task.task_file
             ^ " for dependency analysis: "
             ^ IO.error_message err;
-        })
+          })
   | Module_node.Generated { contents; _ } -> Ok contents
 
 let read_task_source = read_source
 
 let source_hash_of_text = fun task raw_text ->
-  source_hash ~implicit_opens:task.task_implicit_opens ~source:raw_text
+  source_hash
+    ~implicit_opens:task.task_implicit_opens
+    ~source:raw_text
 
 let source_hash_for_task = fun task ->
   let* raw_text = read_task_source task in
@@ -1093,7 +1095,9 @@ let source_analysis_of_summary = fun task summary ->
     })
 
 let empty_parse_result_for_task = fun task ->
-  Syn.parse ~filename:task.task_display_path (source_slice "")
+  Syn.parse
+    ~filename:task.task_display_path
+    (source_slice "")
 
 let generated_source_analysis_of_summary = fun task summary ->
   match task.task_file with
@@ -1130,8 +1134,8 @@ let analyze_source_text = fun task raw_text ->
     analysis_task = task;
     analysis_parse_result = parse_result;
     analysis_source_hash = source_hash;
-      analysis_summary = summary;
-    }
+    analysis_summary = summary;
+  }
 
 let analyze_source = fun task ->
   let* raw_text = read_task_source task in
@@ -1258,19 +1262,19 @@ let resolve_dependencies = fun
           match dependency_nodes_by_qualified_name candidate_name with
           | None -> try_candidates rest
           | Some dep_nodes ->
-            let preferred_ids =
-              dep_nodes
-              |> List.filter_map
-                ~fn:(fun (dep_node_id, dep_node) ->
-                  if G.Node_id.eq dep_node_id (G.id node) then
-                    None
-                  else
-                    Some (dep_node_id, dep_node))
-            in
-            if List.is_empty preferred_ids then
-              try_candidates rest
-            else
-              preferred_ids
+              let preferred_ids =
+                dep_nodes
+                |> List.filter_map
+                  ~fn:(fun (dep_node_id, dep_node) ->
+                    if G.Node_id.eq dep_node_id (G.id node) then
+                      None
+                    else
+                      Some (dep_node_id, dep_node))
+              in
+              if List.is_empty preferred_ids then
+                try_candidates rest
+              else
+                preferred_ids
         )
     in
     try_candidates candidate_names
@@ -1387,62 +1391,63 @@ let resolve_dependencies = fun
         resolved
         |> List.filter_map
           ~fn:(fun ((analysis, _summary), resolved_source) ->
-          let requested_deps =
-            match analysis.analysis_task.task_file with
-            | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.modules resolved_source
-            | Module_node.Generated _ -> []
-          in
-          let unresolved_deps =
-            match analysis.analysis_task.task_file with
-            | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.unresolved resolved_source
-            | Module_node.Generated _ -> []
-          in
-          let resolved_deps =
-            requested_deps
-            |> List.map
-              ~fn:(fun modname ->
-                Module_name.from_string
-                  ~namespace:(file_namespace analysis.analysis_task.task_path)
-                  modname)
-          in
-          match G.get_node t.graph analysis.analysis_task.task_node_id with
-          | None -> None
-          | Some node ->
-              let (resolved_dep_ids, unresolved_deps) =
-                List.fold_left
-                  (List.zip requested_deps resolved_deps)
-                  ~init:([], unresolved_deps)
-                  ~fn:(fun (resolved_ids, unresolved) (requested_module, dep_mod_name) ->
-                    try
-                      let preferred_ids =
-                        resolve_dependency_nodes_for_node node dep_mod_name
-                        |> List.map
-                          ~fn:(fun (dep_node_id, _dep_node) -> dep_node_id)
-                      in
-                      (List.reverse preferred_ids @ resolved_ids, unresolved)
-                    with
-                    | Not_found -> (resolved_ids, requested_module :: unresolved))
-                |> fun (resolved_ids, unresolved) -> (
-                  List.reverse resolved_ids,
-                  List.unique (List.sort unresolved ~compare:String.compare) ~compare:String.compare
-                )
-              in
-              let deps = Ok (Dep_analyzer.Resolution.make
-                ~modules:requested_deps
-                ~unresolved:unresolved_deps)
-              in
-              let analyzed = {
-                display_path = analysis.analysis_task.task_display_path;
-                source_hash = analysis.analysis_source_hash;
-                implicit_opens = analysis.analysis_task.task_implicit_opens;
-                parse_result = analysis.analysis_parse_result;
-                deps;
-                resolved_deps;
-                resolved_dep_ids;
-                unresolved_deps;
-              }
-              in
-              Some (analysis.analysis_task.task_node_id, analyzed))
+            let requested_deps =
+              match analysis.analysis_task.task_file with
+              | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.modules resolved_source
+              | Module_node.Generated _ -> []
+            in
+            let unresolved_deps =
+              match analysis.analysis_task.task_file with
+              | Module_node.Concrete _ -> Dep_analyzer.ResolvedSource.unresolved resolved_source
+              | Module_node.Generated _ -> []
+            in
+            let resolved_deps =
+              requested_deps
+              |> List.map
+                ~fn:(fun modname ->
+                  Module_name.from_string
+                    ~namespace:(file_namespace analysis.analysis_task.task_path)
+                    modname)
+            in
+            match G.get_node t.graph analysis.analysis_task.task_node_id with
+            | None -> None
+            | Some node ->
+                let (resolved_dep_ids, unresolved_deps) =
+                  List.fold_left
+                    (List.zip requested_deps resolved_deps)
+                    ~init:([], unresolved_deps)
+                    ~fn:(fun (resolved_ids, unresolved) (requested_module, dep_mod_name) ->
+                      try
+                        let preferred_ids =
+                          resolve_dependency_nodes_for_node node dep_mod_name
+                          |> List.map ~fn:(fun (dep_node_id, _dep_node) -> dep_node_id)
+                        in
+                        (List.reverse preferred_ids @ resolved_ids, unresolved)
+                      with
+                      | Not_found -> (resolved_ids, requested_module :: unresolved))
+                  |> fun (resolved_ids, unresolved) -> (
+                    List.reverse resolved_ids,
+                    List.unique
+                      (List.sort unresolved ~compare:String.compare)
+                      ~compare:String.compare
+                  )
+                in
+                let deps = Ok (Dep_analyzer.Resolution.make
+                  ~modules:requested_deps
+                  ~unresolved:unresolved_deps)
+                in
+                let analyzed = {
+                  display_path = analysis.analysis_task.task_display_path;
+                  source_hash = analysis.analysis_source_hash;
+                  implicit_opens = analysis.analysis_task.task_implicit_opens;
+                  parse_result = analysis.analysis_parse_result;
+                  deps;
+                  resolved_deps;
+                  resolved_dep_ids;
+                  unresolved_deps;
+                }
+                in
+                Some (analysis.analysis_task.task_node_id, analyzed))
       )
 
 (**
@@ -1470,12 +1475,7 @@ let wire_dependencies = fun
               match G.get_node t.graph dep_node_id with
               | None -> ()
               | Some dep_node -> G.add_edge node ~depends_on:dep_node);
-          let _ =
-            HashMap.insert
-              t.analyzed_modules
-              ~key:node_id
-              ~value:analyzed
-          in
+          let _ = HashMap.insert t.analyzed_modules ~key:node_id ~value:analyzed in
           ());
   Ok ()
 

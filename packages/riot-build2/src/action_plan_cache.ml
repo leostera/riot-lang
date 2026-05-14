@@ -35,11 +35,12 @@ let de_list = fun decode -> De.map (De.list decode) vector_to_list
 let ser_list = fun encode -> Ser.contramap Vector.from_list (Ser.list encode)
 
 let fields =
-  De.fields [
-    De.field "version" Version;
-    De.field "package" Package;
-    De.field "action_hashes" Action_hashes;
-  ]
+  De.fields
+    [
+      De.field "version" Version;
+      De.field "package" Package;
+      De.field "action_hashes" Action_hashes;
+    ]
 
 let deserialize =
   De.record_mut
@@ -53,21 +54,22 @@ let deserialize =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.version, builder.package, builder.action_hashes) with
-      | (Some version, Some package, Some action_hashes) -> ({
-          version;
-          package;
-          action_hashes;
-        }: payload)
+      | (Some version, Some package, Some action_hashes) ->
+          ({ version; package; action_hashes }: payload)
       | _ -> De.missing_field ())
 
 let serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "version" Ser.int (fun (value: payload) -> value.version);
-        Ser.field "package" Ser.string (fun (value: payload) -> value.package);
-        Ser.field "action_hashes" (ser_list Ser.string) (fun (value: payload) -> value.action_hashes);
-      ]
+      Ser.fields
+        [
+          Ser.field "version" Ser.int (fun (value: payload) -> value.version);
+          Ser.field "package" Ser.string (fun (value: payload) -> value.package);
+          Ser.field
+            "action_hashes"
+            (ser_list Ser.string)
+            (fun (value: payload) -> value.action_hashes);
+        ]
     )
 
 let create_cache = fun ~store ->
@@ -81,8 +83,7 @@ let payload_of_plan = fun (plan: Module_plan.t) ->
   ({
     version = 1;
     package = Riot_model.Package_name.to_string plan.package.name;
-    action_hashes =
-      List.map
-        plan.action_executions
-        ~fn:(fun action -> Crypto.Digest.hex action.Action_execution.ref_.hash);
+    action_hashes = List.map
+      plan.action_executions
+      ~fn:(fun action -> Crypto.Digest.hex action.Action_execution.ref_.hash);
   }: payload)

@@ -6,7 +6,7 @@ module type Intf = sig
   val name: string
 
   (** Connect using the given stream address and target URI. *)
-  val connect :
+  val connect:
     ?read_timeout:Time.Duration.t ->
     Net.Addr.stream_addr ->
     Net.Uri.t ->
@@ -20,4 +20,4 @@ module Tcp: Intf
 module Tls: Intf
 
 (** Connect to the URI using the appropriate transport. *)
-val connect : ?read_timeout:Time.Duration.t -> Net.Uri.t -> (Connection.t, Error.t) result
+val connect: ?read_timeout:Time.Duration.t -> Net.Uri.t -> (Connection.t, Error.t) result

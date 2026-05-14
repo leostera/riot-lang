@@ -4,6 +4,6 @@ type t =
   | RecordAll
   | NewEpisodes
 
-val to_string : t -> string
+val to_string: t -> string
 
-val from_string : string -> t option
+val from_string: string -> t option

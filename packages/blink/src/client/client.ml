@@ -211,15 +211,10 @@ let send_on_connection = fun conn uri (request: Request.t) ->
       let net_request = Net.Http.Request.create (method_to_net request.method_) uri in
       let net_request = apply_headers net_request request.headers in
       match Connection.request conn net_request ?body:request.body () with
-      | Error error ->
-          { result = Error (Error.RequestFailed error); reusable = false }
+      | Error error -> { result = Error (Error.RequestFailed error); reusable = false }
       | Ok () -> (
           match Connection.await conn with
-          | Error error ->
-              {
-                result = Error (Error.ResponseFailed error);
-                reusable = false;
-              }
+          | Error error -> { result = Error (Error.ResponseFailed error); reusable = false }
           | Ok (response, body) ->
               { result = Ok (response_from_net response body); reusable = true }
         ))
@@ -324,38 +319,37 @@ let execute = fun client (request: Request.t) ->
               ()
           in
           succeed client response telemetry
-        ) else
-          (
-            let class_ =
-              match Response.status_class response.status with
-              | Response.RateLimited -> Response.RateLimitedResponse
-              | _ -> Response.ServerRejected
-            in
-            let message = "HTTP status " ^ Int.to_string response.status in
-            let attempt_record =
-              Telemetry.attempt
-                ~attempt:1
-                ~started_at:attempt_started_at
-                ~completed_at
-                ~lifecycle:Telemetry.Failed
-                ~status:response.status
-                ~error_class:class_
-                ~error_message:message
-                ()
-            in
-            let telemetry =
-              make_telemetry
-                client
-                request
-                ~started_at
-                ~attempts:[ attempt_record ]
-                ~final_status:response.status
-                ~final_error_class:class_
-                ~budget
-                ()
-            in
-            fail client class_ message telemetry
-          )
+        ) else (
+          let class_ =
+            match Response.status_class response.status with
+            | Response.RateLimited -> Response.RateLimitedResponse
+            | _ -> Response.ServerRejected
+          in
+          let message = "HTTP status " ^ Int.to_string response.status in
+          let attempt_record =
+            Telemetry.attempt
+              ~attempt:1
+              ~started_at:attempt_started_at
+              ~completed_at
+              ~lifecycle:Telemetry.Failed
+              ~status:response.status
+              ~error_class:class_
+              ~error_message:message
+              ()
+          in
+          let telemetry =
+            make_telemetry
+              client
+              request
+              ~started_at
+              ~attempts:[ attempt_record ]
+              ~final_status:response.status
+              ~final_error_class:class_
+              ~budget
+              ()
+          in
+          fail client class_ message telemetry
+        )
     | Error transport_error ->
         let completed_at = client.config.now () in
         let class_ = Response.error_class_from_transport_error transport_error in
@@ -395,10 +389,7 @@ let with_budget = fun client operation ->
 
 let connect = fun client uri ->
   let key = Net.Uri.to_string uri in
-  with_budget
-    client
-    (fun () ->
-      take_connection client key uri)
+  with_budget client (fun () -> take_connection client key uri)
   |> Result.map
     ~fn:(fun conn ->
       {
@@ -435,11 +426,7 @@ let request = fun client connection net_request ?body () ->
     (fun conn ->
       Connection.request conn net_request ?body ())
 
-let stream = fun client connection ->
-  with_connection
-    client
-    connection
-    Connection.stream
+let stream = fun client connection -> with_connection client connection Connection.stream
 
 let messages = fun ?on_message client connection ->
   with_connection
@@ -546,10 +533,7 @@ module WebSocket = struct
     | Pong of string
     | Close of int option * string
 
-  let connect = fun client uri ->
-    with_budget
-      client
-      (fun () -> Websocket.connect uri)
+  let connect = fun client uri -> with_budget client (fun () -> Websocket.connect uri)
 
   let send_text = fun client conn text ->
     with_budget
@@ -579,10 +563,7 @@ module WebSocket = struct
       (fun () ->
         Websocket.send_close conn ?code ?reason ())
 
-  let receive = fun client conn ->
-    with_budget
-      client
-      (fun () -> Websocket.receive conn)
+  let receive = fun client conn -> with_budget client (fun () -> Websocket.receive conn)
 
   let close = fun _client conn -> Websocket.close conn
 end

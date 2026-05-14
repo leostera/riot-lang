@@ -621,16 +621,22 @@ let compile_impl = fun t ~cwd ~includes ~flags ?(bin_annot = true) ?cmi_file ~ou
       else
         [ Path.to_string source ]
     in
-    (if bin_annot then
-      [ "-bin-annot"; "-c" ]
-    else
-      [ "-c" ])
-    @ warning_baseline_flags source
-    @ flags_to_string flags
-    @ include_flags
-    @ cmi_file_flags
-    @ [ "-o"; Path.to_string output ]
-    @ source_args
+    (
+      (
+        (
+          (
+            (
+              (
+                if bin_annot then
+                  [ "-bin-annot"; "-c" ]
+                else
+                  [ "-c" ]
+              ) @ warning_baseline_flags source
+            ) @ flags_to_string flags
+          ) @ include_flags
+        ) @ cmi_file_flags
+      ) @ [ "-o"; Path.to_string output ]
+    ) @ source_args
   in
   make_invocation ~cwd (String.concat " " ([ base_command t ] @ args))
 

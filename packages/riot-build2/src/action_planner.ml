@@ -118,23 +118,21 @@ let check_path = fun path -> Path.(Package_sandbox.check_dir / path)
 
 let link_path = fun path -> Path.(Package_sandbox.link_dir / path)
 
-let interface_outputs = fun mod_ ->
-  [ check_path (Riot_model.Module.cmi mod_) ]
+let interface_outputs = fun mod_ -> [ check_path (Riot_model.Module.cmi mod_) ]
 
-let byte_implementation_outputs = fun mod_ ->
-  [ check_path (Riot_model.Module.cmi mod_) ]
+let byte_implementation_outputs = fun mod_ -> [ check_path (Riot_model.Module.cmi mod_) ]
 
 let byte_implementation_output = fun mod_ ->
-  check_path (
-    Riot_model.Module.cmi mod_
-    |> Path.replace_extension ~ext:"cmo"
-  )
+  check_path
+    (
+      Riot_model.Module.cmi mod_
+      |> Path.replace_extension ~ext:"cmo"
+    )
 
-let native_implementation_outputs = fun mod_ ->
-  [
-    link_path (Riot_model.Module.cmx mod_);
-    link_path (Riot_model.Module.o mod_);
-  ]
+let native_implementation_outputs = fun mod_ -> [
+  link_path (Riot_model.Module.cmx mod_);
+  link_path (Riot_model.Module.o mod_);
+]
 
 let open_modules = fun (modules: Module_node.t G.node list) ->
   List.filter_map
@@ -151,42 +149,26 @@ let source_for_module = fun (node: Module_node.t G.node) ->
   match (value.kind, value.file) with
   | (Module_node.MLI mod_, Concrete path) ->
       Some (
-        {
-          Action.source = path;
-          kind = Action.LibraryInterface;
-          content = None;
-        },
+        { Action.source = path; kind = Action.LibraryInterface; content = None },
         interface_outputs mod_,
         false
       )
   | (ML mod_, Concrete path) ->
       Some (
-        {
-          Action.source = path;
-          kind = Action.LibraryImplementation;
-          content = None;
-        },
+        { Action.source = path; kind = Action.LibraryImplementation; content = None },
         native_implementation_outputs mod_,
         false
       )
   | (MLI mod_, Generated { path; contents }) ->
       Some (
-        {
-          Action.source = path;
-          kind = Action.LibraryInterface;
-          content = Some contents;
-        },
+        { Action.source = path; kind = Action.LibraryInterface; content = Some contents },
         interface_outputs mod_,
         false
       )
   | (ML mod_, Generated { path; contents }) ->
       let is_alias_file = String.ends_with ~suffix:"Aliases.ml-gen" (Path.to_string path) in
       Some (
-        {
-          Action.source = path;
-          kind = Action.LibraryImplementation;
-          content = Some contents;
-        },
+        { Action.source = path; kind = Action.LibraryImplementation; content = Some contents },
         native_implementation_outputs mod_,
         is_alias_file
       )
@@ -216,8 +198,7 @@ let implementation_has_interface = fun source_infos info ->
         source_infos
         ~fn:(fun candidate ->
           match (candidate.source.Action.kind, module_of_source_info candidate) with
-          | (Action.LibraryInterface, Some candidate_mod) ->
-              Riot_model.Module.eq candidate_mod mod_
+          | (Action.LibraryInterface, Some candidate_mod) -> Riot_model.Module.eq candidate_mod mod_
           | _ -> false)
   | _ -> false
 
@@ -288,8 +269,7 @@ let stdlib_includes = fun input ->
 
 let transitive_dependency_packages = fun input ->
   let seen = HashSet.create () in
-  input.depset
-  @ Riot_planner.Dependency.transitive_closure input.depset
+  input.depset @ Riot_planner.Dependency.transitive_closure input.depset
   |> List.filter_map
     ~fn:(fun dep ->
       let package = dep.Riot_planner.Dependency.package in
@@ -307,25 +287,18 @@ let dependency_link_includes = fun input ->
   stdlib_includes input
   @ List.flat_map
     (transitive_dependency_packages input)
-    ~fn:(fun package -> [ Package_sandbox.dep_check_dir package; Package_sandbox.dep_link_dir package ])
+    ~fn:(fun package -> [
+      Package_sandbox.dep_check_dir package;
+      Package_sandbox.dep_link_dir package;
+    ])
 
 let source_includes = fun input ->
-  dedup_paths (
-    [
-      Package_sandbox.check_dir;
-      Package_sandbox.link_dir;
-    ]
-    @ dependency_check_includes input
-  )
+  dedup_paths
+    ([ Package_sandbox.check_dir; Package_sandbox.link_dir; ] @ dependency_check_includes input)
 
 let archive_includes = fun input ->
-  dedup_paths (
-    [
-      Package_sandbox.check_dir;
-      Package_sandbox.link_dir;
-    ]
-    @ dependency_link_includes input
-  )
+  dedup_paths
+    ([ Package_sandbox.check_dir; Package_sandbox.link_dir; ] @ dependency_link_includes input)
 
 let library_outputs = fun package ->
   let name = Riot_model.Package.root_module_name package in
@@ -340,14 +313,12 @@ let library_outputs = fun package ->
 
 let flags_for_source = fun input info ->
   let base_flags =
-    Riot_toolchain.Ocamlc.Raw "-opaque"
-    :: stdlib_flags input.package
+    (Riot_toolchain.Ocamlc.Raw "-opaque" :: stdlib_flags input.package)
     @ profile_compile_flags input.profile
   in
   let generated_impl_flags =
     match (info.source.Action.kind, info.source.content) with
-    | (Action.LibraryImplementation, Some _) ->
-        [ Riot_toolchain.Ocamlc.Impl info.source.source ]
+    | (Action.LibraryImplementation, Some _) -> [ Riot_toolchain.Ocamlc.Impl info.source.source ]
     | _ -> []
   in
   let alias_flags =
@@ -361,9 +332,7 @@ let flags_for_source = fun input info ->
     open_modules node_value.open_modules
     |> List.map ~fn:(fun mod_name -> Riot_toolchain.Ocamlc.Open mod_name)
   in
-  let flags =
-    base_flags @ generated_impl_flags @ alias_flags @ implicit_open_flags
-  in
+  let flags = ((base_flags @ generated_impl_flags) @ alias_flags) @ implicit_open_flags in
   dedup_flags flags
 
 let bytecode_flags_for_source = fun input info ->
@@ -401,7 +370,10 @@ let output_with_extension_or = fun outputs extension default ->
     )
 
 let interface_output = fun info ->
-  output_with_extension_or info.outputs ".cmi" (Path.v "source.cmi")
+  output_with_extension_or
+    info.outputs
+    ".cmi"
+    (Path.v "source.cmi")
 
 let byte_implementation_compiler_output = fun info ->
   match module_of_source_info info with
@@ -409,7 +381,10 @@ let byte_implementation_compiler_output = fun info ->
   | None -> Path.v "source.cmo"
 
 let native_implementation_output = fun info ->
-  output_with_extension_or info.outputs ".cmx" (Path.v "source.cmx")
+  output_with_extension_or
+    info.outputs
+    ".cmx"
+    (Path.v "source.cmx")
 
 let cmi_file_for_source = fun info ->
   match module_of_source_info info with
@@ -593,12 +568,10 @@ let plan = fun input ->
       let cmi_refs = HashMap.create () in
       List.for_each
         interface_actions
-        ~fn:(fun (info, action) ->
-          ignore (add_cmi_ref cmi_refs input info action));
+        ~fn:(fun (info, action) -> ignore (add_cmi_ref cmi_refs input info action));
       List.for_each
         byte_implementation_actions
-        ~fn:(fun (info, action) ->
-          ignore (add_cmi_ref cmi_refs input info action));
+        ~fn:(fun (info, action) -> ignore (add_cmi_ref cmi_refs input info action));
       let interface_executions =
         interface_actions
         |> List.map
@@ -627,25 +600,24 @@ let plan = fun input ->
             in
             make_execution
               input
-              ~dependencies:(dedup_refs (source_dependencies input cmi_refs info @ own_cmi_dependency))
+              ~dependencies:(dedup_refs
+                (source_dependencies input cmi_refs info @ own_cmi_dependency))
               action)
       in
       let source_executions =
-        interface_executions
-        @ byte_implementation_executions
-        @ native_implementation_executions
+        (interface_executions @ byte_implementation_executions) @ native_implementation_executions
       in
-      let native_actions = List.map native_implementation_actions ~fn:(fun (_info, action) -> action) in
+      let native_actions =
+        List.map native_implementation_actions ~fn:(fun (_info, action) -> action)
+      in
       match final_library_action input native_actions c_actions with
       | None -> Ok (c_executions @ source_executions)
       | Some library_action ->
           let dependencies =
             (List.map c_executions ~fn:(fun action -> action.Action_execution.ref_))
-            @ (
-              List.map
-                native_implementation_executions
-                ~fn:(fun action -> action.Action_execution.ref_)
-            )
+            @ (List.map
+              native_implementation_executions
+              ~fn:(fun action -> action.Action_execution.ref_))
           in
           Ok (c_executions
           @ source_executions

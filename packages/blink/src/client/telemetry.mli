@@ -29,9 +29,9 @@ type t = {
   budget_remaining: int option;
 }
 
-val lifecycle_to_string : lifecycle -> string
+val lifecycle_to_string: lifecycle -> string
 
-val attempt :
+val attempt:
   attempt:int ->
   started_at:Time.Instant.t ->
   completed_at:Time.Instant.t ->
@@ -42,7 +42,7 @@ val attempt :
   unit ->
   attempt
 
-val make :
+val make:
   request:Request.t ->
   started_at:Time.Instant.t ->
   completed_at:Time.Instant.t ->

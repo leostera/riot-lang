@@ -70,9 +70,12 @@ let json_positive_field = fun name json ->
   | None -> false
 
 let clean_plan_removes_cache = fun json ->
-  if json_type_is "CacheGcPlanComputed" json || json_event_is "riot.cache.gc.plan.computed" json then
+  if
+    json_type_is "CacheGcPlanComputed" json || json_event_is "riot.cache.gc.plan.computed" json
+  then
     let payload = json_payload json in
-    json_positive_field "deleted_entries" payload || json_positive_field "deleted_generations" payload
+    json_positive_field "deleted_entries" payload
+    || json_positive_field "deleted_generations" payload
   else
     false
 

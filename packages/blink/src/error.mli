@@ -11,12 +11,10 @@ type protocol_error =
   | InvalidChunkDataLineEnding
   | TransportRaised of string
   | ApplicationTransportError of string
-
 type handshake_error =
   | ConnectionClosedDuringHandshake
   | SwitchingProtocolsExpected
   | InvalidAcceptHeader
-
 type t =
   | NetError of Net.error
   | TlsError of Net.TlsStream.error

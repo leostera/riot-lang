@@ -92,8 +92,8 @@ let export_outputs = fun __tmp1 ->
         ~fn:(fun output ->
           match Path.extension output with
           | Some ".cmxa"
-      | Some ".a" -> true
-      | _ -> false)
+          | Some ".a" -> true
+          | _ -> false)
   | CompileC _
   | CompileSource _
   | CompileInterface _
@@ -159,8 +159,7 @@ let hash_file = fun ~(package:Riot_model.Package.t) path ->
 
 let write_path = fun hasher path -> Crypto.Sha256.write hasher (Path.to_string path)
 
-let write_paths = fun hasher paths ->
-  List.for_each paths ~fn:(write_path hasher)
+let write_paths = fun hasher paths -> List.for_each paths ~fn:(write_path hasher)
 
 let write_optional_path = fun hasher path ->
   match path with
@@ -169,8 +168,7 @@ let write_optional_path = fun hasher path ->
       write_path hasher path
   | None -> Crypto.Sha256.write_bool hasher false
 
-let write_strings = fun hasher values ->
-  List.for_each values ~fn:(Crypto.Sha256.write hasher)
+let write_strings = fun hasher values -> List.for_each values ~fn:(Crypto.Sha256.write hasher)
 
 let write_flags = fun hasher flags ->
   flags
@@ -337,33 +335,33 @@ let path_deserialize = De.map De.string Path.v
 
 let path_serialize = Ser.contramap Path.to_string Ser.string
 
-let flags_deserialize =
-  De.map (de_list De.string) Riot_toolchain.Ocamlc.flags_of_string
+let flags_deserialize = De.map (de_list De.string) Riot_toolchain.Ocamlc.flags_of_string
 
-let flags_serialize =
-  Ser.contramap Riot_toolchain.Ocamlc.flags_to_string (ser_list Ser.string)
+let flags_serialize = Ser.contramap Riot_toolchain.Ocamlc.flags_to_string (ser_list Ser.string)
 
 let source_kind_deserialize =
-  De.variant [
-    De.Variant.unit "LibraryInterface" LibraryInterface;
-    De.Variant.unit "LibraryImplementation" LibraryImplementation;
-  ]
+  De.variant
+    [
+      De.Variant.unit "LibraryInterface" LibraryInterface;
+      De.Variant.unit "LibraryImplementation" LibraryImplementation;
+    ]
 
 let source_kind_serialize =
-  Ser.variant [
-    Ser.Variant.unit
-      "LibraryInterface"
-      (fun __tmp1 ->
-        match __tmp1 with
-        | LibraryInterface -> true
-        | LibraryImplementation -> false);
-    Ser.Variant.unit
-      "LibraryImplementation"
-      (fun __tmp1 ->
-        match __tmp1 with
-        | LibraryImplementation -> true
-        | LibraryInterface -> false);
-  ]
+  Ser.variant
+    [
+      Ser.Variant.unit
+        "LibraryInterface"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | LibraryInterface -> true
+          | LibraryImplementation -> false);
+      Ser.Variant.unit
+        "LibraryImplementation"
+        (fun __tmp1 ->
+          match __tmp1 with
+          | LibraryImplementation -> true
+          | LibraryInterface -> false);
+    ]
 
 type source_field =
   | Source_path
@@ -377,20 +375,17 @@ type source_builder = {
 }
 
 let source_fields =
-  De.fields [
-    De.field "source" Source_path;
-    De.field "kind" Source_kind;
-    De.field "content" Source_content;
-  ]
+  De.fields
+    [
+      De.field "source" Source_path;
+      De.field "kind" Source_kind;
+      De.field "content" Source_content;
+    ]
 
 let source_deserialize =
   De.record_mut
     ~fields:source_fields
-    ~create:(fun () -> {
-      source = None;
-      kind = None;
-      content = Some None;
-    })
+    ~create:(fun () -> { source = None; kind = None; content = Some None })
     ~step:(fun reader builder field ->
       match field with
       | Some Source_path -> builder.source <- Some (De.read reader path_deserialize)
@@ -399,18 +394,21 @@ let source_deserialize =
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.source, builder.kind, builder.content) with
-      | (Some source, Some kind, Some content) ->
-          ({ source; kind; content }: compile_library_source)
+      | (Some source, Some kind, Some content) -> ({ source; kind; content }: compile_library_source)
       | _ -> De.missing_field ())
 
 let source_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" path_serialize (fun (value: compile_library_source) -> value.source);
-        Ser.field "kind" source_kind_serialize (fun (value: compile_library_source) -> value.kind);
-        Ser.field "content" (Ser.option Ser.string) (fun (value: compile_library_source) -> value.content);
-      ]
+      Ser.fields
+        [
+          Ser.field "source" path_serialize (fun (value: compile_library_source) -> value.source);
+          Ser.field "kind" source_kind_serialize (fun (value: compile_library_source) -> value.kind);
+          Ser.field
+            "content"
+            (Ser.option Ser.string)
+            (fun (value: compile_library_source) -> value.content);
+        ]
     )
 
 type compile_c_payload = {
@@ -474,11 +472,12 @@ type compile_c_builder = {
 }
 
 let compile_c_fields =
-  De.fields [
-    De.field "source" Compile_c_source;
-    De.field "outputs" Compile_c_outputs;
-    De.field "ccflags" Compile_c_ccflags;
-  ]
+  De.fields
+    [
+      De.field "source" Compile_c_source;
+      De.field "outputs" Compile_c_outputs;
+      De.field "ccflags" Compile_c_ccflags;
+    ]
 
 let compile_c_deserialize =
   De.record_mut
@@ -491,26 +490,32 @@ let compile_c_deserialize =
     ~step:(fun reader builder field ->
       match field with
       | Some Compile_c_source -> builder.compile_c_source <- Some (De.read reader path_deserialize)
-      | Some Compile_c_outputs -> builder.compile_c_outputs <- Some (De.read reader (de_list path_deserialize))
-      | Some Compile_c_ccflags -> builder.compile_c_ccflags <- Some (De.read reader (de_list De.string))
+      | Some Compile_c_outputs ->
+          builder.compile_c_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Compile_c_ccflags ->
+          builder.compile_c_ccflags <- Some (De.read reader (de_list De.string))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.compile_c_source, builder.compile_c_outputs, builder.compile_c_ccflags) with
-      | (Some c_source, Some c_outputs, Some c_ccflags) -> ({
-          c_source;
-          c_outputs;
-          c_ccflags;
-        }: compile_c_payload)
+      | (Some c_source, Some c_outputs, Some c_ccflags) ->
+          ({ c_source; c_outputs; c_ccflags }: compile_c_payload)
       | _ -> De.missing_field ())
 
 let compile_c_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" path_serialize (fun (value: compile_c_payload) -> value.c_source);
-        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_c_payload) -> value.c_outputs);
-        Ser.field "ccflags" (ser_list Ser.string) (fun (value: compile_c_payload) -> value.c_ccflags);
-      ]
+      Ser.fields
+        [
+          Ser.field "source" path_serialize (fun (value: compile_c_payload) -> value.c_source);
+          Ser.field
+            "outputs"
+            (ser_list path_serialize)
+            (fun (value: compile_c_payload) -> value.c_outputs);
+          Ser.field
+            "ccflags"
+            (ser_list Ser.string)
+            (fun (value: compile_c_payload) -> value.c_ccflags);
+        ]
     )
 
 type compile_source_field =
@@ -529,30 +534,34 @@ type compile_source_builder = {
 }
 
 let compile_source_fields =
-  De.fields [
-    De.field "source" Source_source;
-    De.field "outputs" Source_outputs;
-    De.field "output" Source_output;
-    De.field "includes" Source_includes;
-    De.field "flags" Source_flags;
-  ]
+  De.fields
+    [
+      De.field "source" Source_source;
+      De.field "outputs" Source_outputs;
+      De.field "output" Source_output;
+      De.field "includes" Source_includes;
+      De.field "flags" Source_flags;
+    ]
 
 let compile_source_deserialize =
   De.record_mut
     ~fields:compile_source_fields
-    ~create:(fun () -> {
-      source_source = None;
-      source_outputs = Some [];
-      source_output = None;
-      source_includes = Some [];
-      source_flags = Some [];
-    })
+    ~create:(fun () ->
+      {
+        source_source = None;
+        source_outputs = Some [];
+        source_output = None;
+        source_includes = Some [];
+        source_flags = Some [];
+      })
     ~step:(fun reader builder field ->
       match field with
       | Some Source_source -> builder.source_source <- Some (De.read reader source_deserialize)
-      | Some Source_outputs -> builder.source_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Source_outputs ->
+          builder.source_outputs <- Some (De.read reader (de_list path_deserialize))
       | Some Source_output -> builder.source_output <- Some (De.read reader path_deserialize)
-      | Some Source_includes -> builder.source_includes <- Some (De.read reader (de_list path_deserialize))
+      | Some Source_includes ->
+          builder.source_includes <- Some (De.read reader (de_list path_deserialize))
       | Some Source_flags -> builder.source_flags <- Some (De.read reader flags_deserialize)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
@@ -563,7 +572,13 @@ let compile_source_deserialize =
         builder.source_includes,
         builder.source_flags
       ) with
-      | (Some source_source, Some source_outputs, Some source_output, Some source_includes, Some source_flags) ->
+      | (
+          Some source_source,
+          Some source_outputs,
+          Some source_output,
+          Some source_includes,
+          Some source_flags
+        ) ->
           ({
             source_source;
             source_outputs;
@@ -576,13 +591,29 @@ let compile_source_deserialize =
 let compile_source_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" source_serialize (fun (value: compile_source_payload) -> value.source_source);
-        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_source_payload) -> value.source_outputs);
-        Ser.field "output" path_serialize (fun (value: compile_source_payload) -> value.source_output);
-        Ser.field "includes" (ser_list path_serialize) (fun (value: compile_source_payload) -> value.source_includes);
-        Ser.field "flags" flags_serialize (fun (value: compile_source_payload) -> value.source_flags);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "source"
+            source_serialize
+            (fun (value: compile_source_payload) -> value.source_source);
+          Ser.field
+            "outputs"
+            (ser_list path_serialize)
+            (fun (value: compile_source_payload) -> value.source_outputs);
+          Ser.field
+            "output"
+            path_serialize
+            (fun (value: compile_source_payload) -> value.source_output);
+          Ser.field
+            "includes"
+            (ser_list path_serialize)
+            (fun (value: compile_source_payload) -> value.source_includes);
+          Ser.field
+            "flags"
+            flags_serialize
+            (fun (value: compile_source_payload) -> value.source_flags);
+        ]
     )
 
 type compile_native_source_field =
@@ -603,33 +634,38 @@ type compile_native_source_builder = {
 }
 
 let compile_native_source_fields =
-  De.fields [
-    De.field "source" Native_source;
-    De.field "outputs" Native_outputs;
-    De.field "output" Native_output;
-    De.field "cmi_file" Native_cmi_file;
-    De.field "includes" Native_includes;
-    De.field "flags" Native_flags;
-  ]
+  De.fields
+    [
+      De.field "source" Native_source;
+      De.field "outputs" Native_outputs;
+      De.field "output" Native_output;
+      De.field "cmi_file" Native_cmi_file;
+      De.field "includes" Native_includes;
+      De.field "flags" Native_flags;
+    ]
 
 let compile_native_source_deserialize =
   De.record_mut
     ~fields:compile_native_source_fields
-    ~create:(fun () -> {
-      native_source = None;
-      native_outputs = Some [];
-      native_output = None;
-      native_cmi_file = Some None;
-      native_includes = Some [];
-      native_flags = Some [];
-    })
+    ~create:(fun () ->
+      {
+        native_source = None;
+        native_outputs = Some [];
+        native_output = None;
+        native_cmi_file = Some None;
+        native_includes = Some [];
+        native_flags = Some [];
+      })
     ~step:(fun reader builder field ->
       match field with
       | Some Native_source -> builder.native_source <- Some (De.read reader source_deserialize)
-      | Some Native_outputs -> builder.native_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Native_outputs ->
+          builder.native_outputs <- Some (De.read reader (de_list path_deserialize))
       | Some Native_output -> builder.native_output <- Some (De.read reader path_deserialize)
-      | Some Native_cmi_file -> builder.native_cmi_file <- Some (De.read reader (De.option path_deserialize))
-      | Some Native_includes -> builder.native_includes <- Some (De.read reader (de_list path_deserialize))
+      | Some Native_cmi_file ->
+          builder.native_cmi_file <- Some (De.read reader (De.option path_deserialize))
+      | Some Native_includes ->
+          builder.native_includes <- Some (De.read reader (de_list path_deserialize))
       | Some Native_flags -> builder.native_flags <- Some (De.read reader flags_deserialize)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
@@ -641,7 +677,14 @@ let compile_native_source_deserialize =
         builder.native_includes,
         builder.native_flags
       ) with
-      | (Some native_source, Some native_outputs, Some native_output, Some native_cmi_file, Some native_includes, Some native_flags) ->
+      | (
+          Some native_source,
+          Some native_outputs,
+          Some native_output,
+          Some native_cmi_file,
+          Some native_includes,
+          Some native_flags
+        ) ->
           ({
             native_source;
             native_outputs;
@@ -655,14 +698,33 @@ let compile_native_source_deserialize =
 let compile_native_source_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" source_serialize (fun (value: compile_native_source_payload) -> value.native_source);
-        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_native_source_payload) -> value.native_outputs);
-        Ser.field "output" path_serialize (fun (value: compile_native_source_payload) -> value.native_output);
-        Ser.field "cmi_file" (Ser.option path_serialize) (fun (value: compile_native_source_payload) -> value.native_cmi_file);
-        Ser.field "includes" (ser_list path_serialize) (fun (value: compile_native_source_payload) -> value.native_includes);
-        Ser.field "flags" flags_serialize (fun (value: compile_native_source_payload) -> value.native_flags);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "source"
+            source_serialize
+            (fun (value: compile_native_source_payload) -> value.native_source);
+          Ser.field
+            "outputs"
+            (ser_list path_serialize)
+            (fun (value: compile_native_source_payload) -> value.native_outputs);
+          Ser.field
+            "output"
+            path_serialize
+            (fun (value: compile_native_source_payload) -> value.native_output);
+          Ser.field
+            "cmi_file"
+            (Ser.option path_serialize)
+            (fun (value: compile_native_source_payload) -> value.native_cmi_file);
+          Ser.field
+            "includes"
+            (ser_list path_serialize)
+            (fun (value: compile_native_source_payload) -> value.native_includes);
+          Ser.field
+            "flags"
+            flags_serialize
+            (fun (value: compile_native_source_payload) -> value.native_flags);
+        ]
     )
 
 type compile_sources_field =
@@ -679,27 +741,32 @@ type compile_sources_builder = {
 }
 
 let compile_sources_fields =
-  De.fields [
-    De.field "sources" Sources_sources;
-    De.field "outputs" Sources_outputs;
-    De.field "includes" Sources_includes;
-    De.field "flags" Sources_flags;
-  ]
+  De.fields
+    [
+      De.field "sources" Sources_sources;
+      De.field "outputs" Sources_outputs;
+      De.field "includes" Sources_includes;
+      De.field "flags" Sources_flags;
+    ]
 
 let compile_sources_deserialize =
   De.record_mut
     ~fields:compile_sources_fields
-    ~create:(fun () -> {
-      sources_sources = Some [];
-      sources_outputs = Some [];
-      sources_includes = Some [];
-      sources_flags = Some [];
-    })
+    ~create:(fun () ->
+      {
+        sources_sources = Some [];
+        sources_outputs = Some [];
+        sources_includes = Some [];
+        sources_flags = Some [];
+      })
     ~step:(fun reader builder field ->
       match field with
-      | Some Sources_sources -> builder.sources_sources <- Some (De.read reader (de_list source_deserialize))
-      | Some Sources_outputs -> builder.sources_outputs <- Some (De.read reader (de_list path_deserialize))
-      | Some Sources_includes -> builder.sources_includes <- Some (De.read reader (de_list path_deserialize))
+      | Some Sources_sources ->
+          builder.sources_sources <- Some (De.read reader (de_list source_deserialize))
+      | Some Sources_outputs ->
+          builder.sources_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Sources_includes ->
+          builder.sources_includes <- Some (De.read reader (de_list path_deserialize))
       | Some Sources_flags -> builder.sources_flags <- Some (De.read reader flags_deserialize)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
@@ -721,12 +788,25 @@ let compile_sources_deserialize =
 let compile_sources_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "sources" (ser_list source_serialize) (fun (value: compile_sources_payload) -> value.sources_sources);
-        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_sources_payload) -> value.sources_outputs);
-        Ser.field "includes" (ser_list path_serialize) (fun (value: compile_sources_payload) -> value.sources_includes);
-        Ser.field "flags" flags_serialize (fun (value: compile_sources_payload) -> value.sources_flags);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "sources"
+            (ser_list source_serialize)
+            (fun (value: compile_sources_payload) -> value.sources_sources);
+          Ser.field
+            "outputs"
+            (ser_list path_serialize)
+            (fun (value: compile_sources_payload) -> value.sources_outputs);
+          Ser.field
+            "includes"
+            (ser_list path_serialize)
+            (fun (value: compile_sources_payload) -> value.sources_includes);
+          Ser.field
+            "flags"
+            flags_serialize
+            (fun (value: compile_sources_payload) -> value.sources_flags);
+        ]
     )
 
 type compile_library_field =
@@ -747,33 +827,39 @@ type compile_library_builder = {
 }
 
 let compile_library_fields =
-  De.fields [
-    De.field "sources" Library_sources;
-    De.field "objects" Library_objects;
-    De.field "outputs" Library_outputs;
-    De.field "output" Library_output;
-    De.field "includes" Library_includes;
-    De.field "flags" Library_flags;
-  ]
+  De.fields
+    [
+      De.field "sources" Library_sources;
+      De.field "objects" Library_objects;
+      De.field "outputs" Library_outputs;
+      De.field "output" Library_output;
+      De.field "includes" Library_includes;
+      De.field "flags" Library_flags;
+    ]
 
 let compile_library_deserialize =
   De.record_mut
     ~fields:compile_library_fields
-    ~create:(fun () -> {
-      library_sources = Some [];
-      library_objects = Some [];
-      library_outputs = Some [];
-      library_output = None;
-      library_includes = Some [];
-      library_flags = Some [];
-    })
+    ~create:(fun () ->
+      {
+        library_sources = Some [];
+        library_objects = Some [];
+        library_outputs = Some [];
+        library_output = None;
+        library_includes = Some [];
+        library_flags = Some [];
+      })
     ~step:(fun reader builder field ->
       match field with
-      | Some Library_sources -> builder.library_sources <- Some (De.read reader (de_list source_deserialize))
-      | Some Library_objects -> builder.library_objects <- Some (De.read reader (de_list path_deserialize))
-      | Some Library_outputs -> builder.library_outputs <- Some (De.read reader (de_list path_deserialize))
+      | Some Library_sources ->
+          builder.library_sources <- Some (De.read reader (de_list source_deserialize))
+      | Some Library_objects ->
+          builder.library_objects <- Some (De.read reader (de_list path_deserialize))
+      | Some Library_outputs ->
+          builder.library_outputs <- Some (De.read reader (de_list path_deserialize))
       | Some Library_output -> builder.library_output <- Some (De.read reader path_deserialize)
-      | Some Library_includes -> builder.library_includes <- Some (De.read reader (de_list path_deserialize))
+      | Some Library_includes ->
+          builder.library_includes <- Some (De.read reader (de_list path_deserialize))
       | Some Library_flags -> builder.library_flags <- Some (De.read reader flags_deserialize)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
@@ -785,7 +871,14 @@ let compile_library_deserialize =
         builder.library_includes,
         builder.library_flags
       ) with
-      | (Some library_sources, Some library_objects, Some library_outputs, Some library_output, Some library_includes, Some library_flags) ->
+      | (
+          Some library_sources,
+          Some library_objects,
+          Some library_outputs,
+          Some library_output,
+          Some library_includes,
+          Some library_flags
+        ) ->
           ({
             library_sources;
             library_objects;
@@ -799,14 +892,33 @@ let compile_library_deserialize =
 let compile_library_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "sources" (ser_list source_serialize) (fun (value: compile_library_payload) -> value.library_sources);
-        Ser.field "objects" (ser_list path_serialize) (fun (value: compile_library_payload) -> value.library_objects);
-        Ser.field "outputs" (ser_list path_serialize) (fun (value: compile_library_payload) -> value.library_outputs);
-        Ser.field "output" path_serialize (fun (value: compile_library_payload) -> value.library_output);
-        Ser.field "includes" (ser_list path_serialize) (fun (value: compile_library_payload) -> value.library_includes);
-        Ser.field "flags" flags_serialize (fun (value: compile_library_payload) -> value.library_flags);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "sources"
+            (ser_list source_serialize)
+            (fun (value: compile_library_payload) -> value.library_sources);
+          Ser.field
+            "objects"
+            (ser_list path_serialize)
+            (fun (value: compile_library_payload) -> value.library_objects);
+          Ser.field
+            "outputs"
+            (ser_list path_serialize)
+            (fun (value: compile_library_payload) -> value.library_outputs);
+          Ser.field
+            "output"
+            path_serialize
+            (fun (value: compile_library_payload) -> value.library_output);
+          Ser.field
+            "includes"
+            (ser_list path_serialize)
+            (fun (value: compile_library_payload) -> value.library_includes);
+          Ser.field
+            "flags"
+            flags_serialize
+            (fun (value: compile_library_payload) -> value.library_flags);
+        ]
     )
 
 type copy_file_field =
@@ -819,10 +931,7 @@ type copy_file_builder = {
 }
 
 let copy_file_fields =
-  De.fields [
-    De.field "source" Copy_source;
-    De.field "destination" Copy_destination;
-  ]
+  De.fields [ De.field "source" Copy_source; De.field "destination" Copy_destination; ]
 
 let copy_file_deserialize =
   De.record_mut
@@ -842,10 +951,14 @@ let copy_file_deserialize =
 let copy_file_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "source" path_serialize (fun (value: copy_file_payload) -> value.copy_source);
-        Ser.field "destination" path_serialize (fun (value: copy_file_payload) -> value.copy_destination);
-      ]
+      Ser.fields
+        [
+          Ser.field "source" path_serialize (fun (value: copy_file_payload) -> value.copy_source);
+          Ser.field
+            "destination"
+            path_serialize
+            (fun (value: copy_file_payload) -> value.copy_destination);
+        ]
     )
 
 type write_file_field =
@@ -858,10 +971,7 @@ type write_file_builder = {
 }
 
 let write_file_fields =
-  De.fields [
-    De.field "destination" Write_destination;
-    De.field "content" Write_content;
-  ]
+  De.fields [ De.field "destination" Write_destination; De.field "content" Write_content; ]
 
 let write_file_deserialize =
   De.record_mut
@@ -869,7 +979,8 @@ let write_file_deserialize =
     ~create:(fun () -> { write_destination = None; write_content = None })
     ~step:(fun reader builder field ->
       match field with
-      | Some Write_destination -> builder.write_destination <- Some (De.read reader path_deserialize)
+      | Some Write_destination ->
+          builder.write_destination <- Some (De.read reader path_deserialize)
       | Some Write_content -> builder.write_content <- Some (De.read reader De.string)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
@@ -881,262 +992,254 @@ let write_file_deserialize =
 let write_file_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "destination" path_serialize (fun (value: write_file_payload) -> value.write_destination);
-        Ser.field "content" Ser.string (fun (value: write_file_payload) -> value.write_content);
-      ]
+      Ser.fields
+        [
+          Ser.field
+            "destination"
+            path_serialize
+            (fun (value: write_file_payload) -> value.write_destination);
+          Ser.field "content" Ser.string (fun (value: write_file_payload) -> value.write_content);
+        ]
     )
 
 let deserialize =
-  De.variant [
-    De.Variant.newtype
-      "CompileC"
-      compile_c_deserialize
-      (fun payload ->
-        CompileC {
-          source = payload.c_source;
-          outputs = payload.c_outputs;
-          ccflags = payload.c_ccflags;
-        });
-    De.Variant.newtype
-      "CompileLibrary"
-      compile_library_deserialize
-      (fun payload ->
-        CompileLibrary {
-          sources = payload.library_sources;
-          objects = payload.library_objects;
-          outputs = payload.library_outputs;
-          output = payload.library_output;
-          includes = payload.library_includes;
-          flags = payload.library_flags;
-        });
-    De.Variant.newtype
-      "CompileSource"
-      compile_source_deserialize
-      (fun payload ->
-        CompileSource {
-          source = payload.source_source;
-          outputs = payload.source_outputs;
-          output = payload.source_output;
-          includes = payload.source_includes;
-          flags = payload.source_flags;
-        });
-    De.Variant.newtype
-      "CompileInterface"
-      compile_source_deserialize
-      (fun payload ->
-        CompileInterface {
-          source = payload.source_source;
-          outputs = payload.source_outputs;
-          output = payload.source_output;
-          includes = payload.source_includes;
-          flags = payload.source_flags;
-        });
-    De.Variant.newtype
-      "CompileByteImplementation"
-      compile_source_deserialize
-      (fun payload ->
-        CompileByteImplementation {
-          source = payload.source_source;
-          outputs = payload.source_outputs;
-          output = payload.source_output;
-          includes = payload.source_includes;
-          flags = payload.source_flags;
-        });
-    De.Variant.newtype
-      "CompileNativeImplementation"
-      compile_native_source_deserialize
-      (fun payload ->
-        CompileNativeImplementation {
-          source = payload.native_source;
-          outputs = payload.native_outputs;
-          output = payload.native_output;
-          cmi_file = payload.native_cmi_file;
-          includes = payload.native_includes;
-          flags = payload.native_flags;
-        });
-    De.Variant.newtype
-      "CompileSources"
-      compile_sources_deserialize
-      (fun payload ->
-        CompileSources {
-          sources = payload.sources_sources;
-          outputs = payload.sources_outputs;
-          includes = payload.sources_includes;
-          flags = payload.sources_flags;
-        });
-    De.Variant.newtype
-      "CopyFile"
-      copy_file_deserialize
-      (fun payload ->
-        CopyFile {
-          source = payload.copy_source;
-          destination = payload.copy_destination;
-        });
-    De.Variant.newtype
-      "WriteFile"
-      write_file_deserialize
-      (fun payload ->
-        WriteFile {
-          destination = payload.write_destination;
-          content = payload.write_content;
-        });
-  ]
+  De.variant
+    [
+      De.Variant.newtype
+        "CompileC"
+        compile_c_deserialize
+        (fun payload ->
+          CompileC {
+            source = payload.c_source;
+            outputs = payload.c_outputs;
+            ccflags = payload.c_ccflags;
+          });
+      De.Variant.newtype
+        "CompileLibrary"
+        compile_library_deserialize
+        (fun payload ->
+          CompileLibrary {
+            sources = payload.library_sources;
+            objects = payload.library_objects;
+            outputs = payload.library_outputs;
+            output = payload.library_output;
+            includes = payload.library_includes;
+            flags = payload.library_flags;
+          });
+      De.Variant.newtype
+        "CompileSource"
+        compile_source_deserialize
+        (fun payload ->
+          CompileSource {
+            source = payload.source_source;
+            outputs = payload.source_outputs;
+            output = payload.source_output;
+            includes = payload.source_includes;
+            flags = payload.source_flags;
+          });
+      De.Variant.newtype
+        "CompileInterface"
+        compile_source_deserialize
+        (fun payload ->
+          CompileInterface {
+            source = payload.source_source;
+            outputs = payload.source_outputs;
+            output = payload.source_output;
+            includes = payload.source_includes;
+            flags = payload.source_flags;
+          });
+      De.Variant.newtype
+        "CompileByteImplementation"
+        compile_source_deserialize
+        (fun payload ->
+          CompileByteImplementation {
+            source = payload.source_source;
+            outputs = payload.source_outputs;
+            output = payload.source_output;
+            includes = payload.source_includes;
+            flags = payload.source_flags;
+          });
+      De.Variant.newtype
+        "CompileNativeImplementation"
+        compile_native_source_deserialize
+        (fun payload ->
+          CompileNativeImplementation {
+            source = payload.native_source;
+            outputs = payload.native_outputs;
+            output = payload.native_output;
+            cmi_file = payload.native_cmi_file;
+            includes = payload.native_includes;
+            flags = payload.native_flags;
+          });
+      De.Variant.newtype
+        "CompileSources"
+        compile_sources_deserialize
+        (fun payload ->
+          CompileSources {
+            sources = payload.sources_sources;
+            outputs = payload.sources_outputs;
+            includes = payload.sources_includes;
+            flags = payload.sources_flags;
+          });
+      De.Variant.newtype
+        "CopyFile"
+        copy_file_deserialize
+        (fun payload ->
+          CopyFile { source = payload.copy_source; destination = payload.copy_destination });
+      De.Variant.newtype
+        "WriteFile"
+        write_file_deserialize
+        (fun payload ->
+          WriteFile { destination = payload.write_destination; content = payload.write_content });
+    ]
 
 let serialize =
-  Ser.variant [
-    Ser.Variant.newtype
-      "CompileC"
-      compile_c_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileC { source; outputs; ccflags } ->
-            Some {
-              c_source = source;
-              c_outputs = outputs;
-              c_ccflags = ccflags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CompileSource"
-      compile_source_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileSource {
-            source;
-            outputs;
-            output;
-            includes;
-            flags;
-          } ->
-            Some {
-              source_source = source;
-              source_outputs = outputs;
-              source_output = output;
-              source_includes = includes;
-              source_flags = flags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CompileInterface"
-      compile_source_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileInterface {
-            source;
-            outputs;
-            output;
-            includes;
-            flags;
-          } ->
-            Some {
-              source_source = source;
-              source_outputs = outputs;
-              source_output = output;
-              source_includes = includes;
-              source_flags = flags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CompileByteImplementation"
-      compile_source_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileByteImplementation {
-            source;
-            outputs;
-            output;
-            includes;
-            flags;
-          } ->
-            Some {
-              source_source = source;
-              source_outputs = outputs;
-              source_output = output;
-              source_includes = includes;
-              source_flags = flags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CompileNativeImplementation"
-      compile_native_source_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileNativeImplementation {
-            source;
-            outputs;
-            output;
-            cmi_file;
-            includes;
-            flags;
-          } ->
-            Some {
-              native_source = source;
-              native_outputs = outputs;
-              native_output = output;
-              native_cmi_file = cmi_file;
-              native_includes = includes;
-              native_flags = flags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CompileSources"
-      compile_sources_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileSources {
-            sources;
-            outputs;
-            includes;
-            flags;
-          } ->
-            Some {
-              sources_sources = sources;
-              sources_outputs = outputs;
-              sources_includes = includes;
-              sources_flags = flags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CompileLibrary"
-      compile_library_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CompileLibrary {
-            sources;
-            objects;
-            outputs;
-            output;
-            includes;
-            flags;
-          } ->
-            Some {
-              library_sources = sources;
-              library_objects = objects;
-              library_outputs = outputs;
-              library_output = output;
-              library_includes = includes;
-              library_flags = flags;
-            }
-        | _ -> None);
-    Ser.Variant.newtype
-      "CopyFile"
-      copy_file_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | CopyFile { source; destination } -> Some {
-            copy_source = source;
-            copy_destination = destination;
-          }
-        | _ -> None);
-    Ser.Variant.newtype
-      "WriteFile"
-      write_file_serialize
-      (fun __tmp1 ->
-        match __tmp1 with
-        | WriteFile { destination; content } -> Some {
-            write_destination = destination;
-            write_content = content;
-          }
-        | _ -> None);
-  ]
+  Ser.variant
+    [
+      Ser.Variant.newtype
+        "CompileC"
+        compile_c_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileC { source; outputs; ccflags } ->
+              Some { c_source = source; c_outputs = outputs; c_ccflags = ccflags }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CompileSource"
+        compile_source_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileSource {
+              source;
+              outputs;
+              output;
+              includes;
+              flags;
+            } ->
+              Some {
+                source_source = source;
+                source_outputs = outputs;
+                source_output = output;
+                source_includes = includes;
+                source_flags = flags;
+              }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CompileInterface"
+        compile_source_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileInterface {
+              source;
+              outputs;
+              output;
+              includes;
+              flags;
+            } ->
+              Some {
+                source_source = source;
+                source_outputs = outputs;
+                source_output = output;
+                source_includes = includes;
+                source_flags = flags;
+              }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CompileByteImplementation"
+        compile_source_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileByteImplementation {
+              source;
+              outputs;
+              output;
+              includes;
+              flags;
+            } ->
+              Some {
+                source_source = source;
+                source_outputs = outputs;
+                source_output = output;
+                source_includes = includes;
+                source_flags = flags;
+              }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CompileNativeImplementation"
+        compile_native_source_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileNativeImplementation {
+              source;
+              outputs;
+              output;
+              cmi_file;
+              includes;
+              flags;
+            } ->
+              Some {
+                native_source = source;
+                native_outputs = outputs;
+                native_output = output;
+                native_cmi_file = cmi_file;
+                native_includes = includes;
+                native_flags = flags;
+              }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CompileSources"
+        compile_sources_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileSources {
+              sources;
+              outputs;
+              includes;
+              flags;
+            } ->
+              Some {
+                sources_sources = sources;
+                sources_outputs = outputs;
+                sources_includes = includes;
+                sources_flags = flags;
+              }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CompileLibrary"
+        compile_library_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CompileLibrary {
+              sources;
+              objects;
+              outputs;
+              output;
+              includes;
+              flags;
+            } ->
+              Some {
+                library_sources = sources;
+                library_objects = objects;
+                library_outputs = outputs;
+                library_output = output;
+                library_includes = includes;
+                library_flags = flags;
+              }
+          | _ -> None);
+      Ser.Variant.newtype
+        "CopyFile"
+        copy_file_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | CopyFile { source; destination } ->
+              Some { copy_source = source; copy_destination = destination }
+          | _ -> None);
+      Ser.Variant.newtype
+        "WriteFile"
+        write_file_serialize
+        (fun __tmp1 ->
+          match __tmp1 with
+          | WriteFile { destination; content } ->
+              Some { write_destination = destination; write_content = content }
+          | _ -> None);
+    ]

@@ -128,7 +128,11 @@ let queue_json_roundtrips_payload =
     (fun payload ->
       let encoded = prop_ok (M.Queue.encode_args queue payload) in
       let decoded =
-        prop_ok (M.Queue.decode_args queue ~job_id:(M.JobId.from_string_unchecked "property-json-roundtrip") encoded)
+        prop_ok
+          (M.Queue.decode_args
+            queue
+            ~job_id:(M.JobId.from_string_unchecked "property-json-roundtrip")
+            encoded)
       in
       decoded = payload)
 

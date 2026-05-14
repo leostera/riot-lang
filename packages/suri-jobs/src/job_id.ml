@@ -35,9 +35,9 @@ let validate value =
         if not (valid_char char) then
           invalid := Some char)
       value;
-    match !invalid with
-    | Some char -> Error (Invalid_character char)
-    | None -> Ok value
+  match !invalid with
+  | Some char -> Error (Invalid_character char)
+  | None -> Ok value
 
 let from_string value =
   match validate value with

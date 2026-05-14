@@ -49,7 +49,7 @@ type error =
     }
 type t
 
-val make :
+val make:
   ?mode:mode ->
   ?redact_headers:string list ->
   ?upstream_transport:Client.Config.transport ->
@@ -57,12 +57,12 @@ val make :
   unit ->
   t
 
-val library_dir : t -> Path.t
+val library_dir: t -> Path.t
 
-val mode : t -> mode
+val mode: t -> mode
 
-val use_recording : t -> name:string -> fn:(Client.t -> 'value) -> ('value, error) result
+val use_recording: t -> name:string -> fn:(Client.t -> 'value) -> ('value, error) result
 
-val error_to_json : error -> Data.Json.t
+val error_to_json: error -> Data.Json.t
 
-val error_to_string : error -> string
+val error_to_string: error -> string

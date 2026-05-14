@@ -70,8 +70,7 @@ let action_node_kind = fun (plan: Module_plan.t) (action: Action_execution.t) ->
   | Work_node.ActionExecutionKey _ -> Work_node.ActionExecution action
   | _ -> Work_node.ActionExecution action
 
-let action_node_request = fun plan action ->
-  Work_request.materialize (action_node_kind plan action)
+let action_node_request = fun plan action -> Work_request.materialize (action_node_kind plan action)
 
 let compute_export_entries = fun t (plan: Module_plan.t) ->
   plan.action_executions
@@ -258,9 +257,10 @@ let execute_artifact = fun t _registry (build: Goal.build_package) ->
     match Package_planning.cached_artifact t.package_planning build with
     | Error error -> Error error
     | Ok (Some cached) -> finalize_cached_artifact t cached
-    | Ok None -> Ok (Work_result.RequeueWithDependencies [
-        Work_request.existing (package_finalize_key build);
-      ])
+    | Ok None ->
+        Ok (Work_result.RequeueWithDependencies [
+          Work_request.existing (package_finalize_key build);
+        ])
 
 let execute_finalize = fun t _registry (build: Goal.build_package) ->
   if has_results t build then

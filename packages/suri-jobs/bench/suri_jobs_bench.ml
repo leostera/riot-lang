@@ -109,7 +109,12 @@ let bench_memory_fetch_complete = fun () ->
   ignore (expect_ok (M.Memory.enqueue_many db request_batch));
   let rec loop completed =
     let jobs =
-      expect_ok (M.Memory.fetch db queue ~limit:50 ~locked_by:(M.WorkerId.from_string_unchecked "suri-jobs-bench-worker"))
+      expect_ok
+        (M.Memory.fetch
+          db
+          queue
+          ~limit:50
+          ~locked_by:(M.WorkerId.from_string_unchecked "suri-jobs-bench-worker"))
     in
     match jobs with
     | [] -> completed
@@ -125,9 +130,15 @@ let memory_path: Bench.bench_config = { iterations = 25; warmup = 5 }
 
 let benchmarks =
   Bench.[
-    with_config ~config:hot_path "suri-jobs queue payload json roundtrip" bench_payload_json_roundtrip;
+    with_config
+      ~config:hot_path
+      "suri-jobs queue payload json roundtrip"
+      bench_payload_json_roundtrip;
     with_config ~config:memory_path "suri-jobs memory enqueue_many 1000" bench_memory_enqueue_many;
-    with_config ~config:memory_path "suri-jobs memory fetch+complete 1000" bench_memory_fetch_complete;
+    with_config
+      ~config:memory_path
+      "suri-jobs memory fetch+complete 1000"
+      bench_memory_fetch_complete;
   ]
 
 let main ~args = Bench.Cli.main ~name:"suri-jobs benchmarks" ~benchmarks ~args

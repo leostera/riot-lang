@@ -29,11 +29,7 @@ let c_object_output = fun source ->
   |> Path.basename
   |> Path.v
 
-let c_object = fun ~build ~source -> {
-  build;
-  source;
-  output = c_object_output source;
-}
+let c_object = fun ~build ~source -> { build; source; output = c_object_output source }
 
 let ocaml_generated = fun ~build action -> { build; action }
 

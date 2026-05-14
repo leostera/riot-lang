@@ -1,11 +1,6 @@
 open Std
 
-type counts = {
-  total: int;
-  cached: int;
-  executed: int;
-  failed: int;
-}
+type counts = { total: int; cached: int; executed: int; failed: int }
 
 type phase_totals = {
   dependency_hashing: Time.Duration.t;
@@ -55,18 +50,19 @@ let empty_phases = {
 
 let add_duration = Time.Duration.add
 
-let add_timing = fun (phases: phase_totals) (timing: Action_execution.timing) -> {
-  dependency_hashing = add_duration phases.dependency_hashing timing.dependency_hashing;
-  input_hashing = add_duration phases.input_hashing timing.input_hashing;
-  store_lookup = add_duration phases.store_lookup timing.store_lookup;
-  cache_promotion = add_duration phases.cache_promotion timing.cache_promotion;
-  sandbox_prepare = add_duration phases.sandbox_prepare timing.sandbox_prepare;
-  source_staging = add_duration phases.source_staging timing.source_staging;
-  command_execution = add_duration phases.command_execution timing.command_execution;
-  output_verification = add_duration phases.output_verification timing.output_verification;
-  store_save = add_duration phases.store_save timing.store_save;
-  total = add_duration phases.total timing.total;
-}
+let add_timing = fun (phases: phase_totals) (timing: Action_execution.timing) ->
+  {
+    dependency_hashing = add_duration phases.dependency_hashing timing.dependency_hashing;
+    input_hashing = add_duration phases.input_hashing timing.input_hashing;
+    store_lookup = add_duration phases.store_lookup timing.store_lookup;
+    cache_promotion = add_duration phases.cache_promotion timing.cache_promotion;
+    sandbox_prepare = add_duration phases.sandbox_prepare timing.sandbox_prepare;
+    source_staging = add_duration phases.source_staging timing.source_staging;
+    command_execution = add_duration phases.command_execution timing.command_execution;
+    output_verification = add_duration phases.output_verification timing.output_verification;
+    store_save = add_duration phases.store_save timing.store_save;
+    total = add_duration phases.total timing.total;
+  }
 
 let status_label = fun __tmp1 ->
   match __tmp1 with
@@ -76,9 +72,12 @@ let status_label = fun __tmp1 ->
 
 let add_count = fun (counts: counts) status ->
   match status with
-  | Action_execution.Cached _ -> { counts with total = counts.total + 1; cached = counts.cached + 1 }
-  | Action_execution.Executed _ -> { counts with total = counts.total + 1; executed = counts.executed + 1 }
-  | Action_execution.Failed _ -> { counts with total = counts.total + 1; failed = counts.failed + 1 }
+  | Action_execution.Cached _ ->
+      { counts with total = counts.total + 1; cached = counts.cached + 1 }
+  | Action_execution.Executed _ ->
+      { counts with total = counts.total + 1; executed = counts.executed + 1 }
+  | Action_execution.Failed _ ->
+      { counts with total = counts.total + 1; failed = counts.failed + 1 }
 
 let add_result_to_group = fun result (group: group) -> {
   group with
@@ -91,11 +90,7 @@ let add_group = fun label result groups ->
     match __tmp1 with
     | [] ->
         let group =
-          add_result_to_group result ({
-            label;
-            counts = empty_counts;
-            phases = empty_phases;
-          }: group)
+          add_result_to_group result ({ label; counts = empty_counts; phases = empty_phases }: group)
         in
         List.reverse (group :: acc)
     | group :: rest when String.equal group.label label ->
@@ -105,7 +100,9 @@ let add_group = fun label result groups ->
   loop [] groups
 
 let sort_groups = fun groups ->
-  List.sort groups ~compare:(fun left right -> String.compare left.label right.label)
+  List.sort
+    groups
+    ~compare:(fun left right -> String.compare left.label right.label)
 
 let for_package = fun package results ->
   List.filter
@@ -122,12 +119,13 @@ let of_results = fun results ->
         by_status = [];
         by_action_kind = [];
       }
-      ~fn:(fun summary result -> {
-        counts = add_count summary.counts result.Action_execution.status;
-        phases = add_timing summary.phases result.timing;
-        by_status = add_group (status_label result.status) result summary.by_status;
-        by_action_kind = add_group result.action_kind result summary.by_action_kind;
-      })
+      ~fn:(fun summary result ->
+        {
+          counts = add_count summary.counts result.Action_execution.status;
+          phases = add_timing summary.phases result.timing;
+          by_status = add_group (status_label result.status) result summary.by_status;
+          by_action_kind = add_group result.action_kind result summary.by_action_kind;
+        })
   in
   {
     summary with
@@ -136,44 +134,49 @@ let of_results = fun results ->
   }
 
 let duration_json = fun duration ->
-  Data.Json.obj [
-    ("nanos", Data.Json.int (Int64.to_int (Time.Duration.to_nanos duration)));
-    ("millis", Data.Json.float (Int64.to_float (Time.Duration.to_nanos duration) /. 1_000_000.0));
-  ]
+  Data.Json.obj
+    [
+      ("nanos", Data.Json.int (Int64.to_int (Time.Duration.to_nanos duration)));
+      ("millis", Data.Json.float (Int64.to_float (Time.Duration.to_nanos duration) /. 1_000_000.0));
+    ]
 
 let counts_json = fun (counts: counts) ->
-  Data.Json.obj [
-    ("total", Data.Json.int counts.total);
-    ("cached", Data.Json.int counts.cached);
-    ("executed", Data.Json.int counts.executed);
-    ("failed", Data.Json.int counts.failed);
-  ]
+  Data.Json.obj
+    [
+      ("total", Data.Json.int counts.total);
+      ("cached", Data.Json.int counts.cached);
+      ("executed", Data.Json.int counts.executed);
+      ("failed", Data.Json.int counts.failed);
+    ]
 
 let phases_json = fun phases ->
-  Data.Json.obj [
-    ("dependency_hashing", duration_json phases.dependency_hashing);
-    ("input_hashing", duration_json phases.input_hashing);
-    ("store_lookup", duration_json phases.store_lookup);
-    ("cache_promotion", duration_json phases.cache_promotion);
-    ("sandbox_prepare", duration_json phases.sandbox_prepare);
-    ("source_staging", duration_json phases.source_staging);
-    ("command_execution", duration_json phases.command_execution);
-    ("output_verification", duration_json phases.output_verification);
-    ("store_save", duration_json phases.store_save);
-    ("total", duration_json phases.total);
-  ]
+  Data.Json.obj
+    [
+      ("dependency_hashing", duration_json phases.dependency_hashing);
+      ("input_hashing", duration_json phases.input_hashing);
+      ("store_lookup", duration_json phases.store_lookup);
+      ("cache_promotion", duration_json phases.cache_promotion);
+      ("sandbox_prepare", duration_json phases.sandbox_prepare);
+      ("source_staging", duration_json phases.source_staging);
+      ("command_execution", duration_json phases.command_execution);
+      ("output_verification", duration_json phases.output_verification);
+      ("store_save", duration_json phases.store_save);
+      ("total", duration_json phases.total);
+    ]
 
 let group_json = fun group ->
-  Data.Json.obj [
-    ("label", Data.Json.string group.label);
-    ("counts", counts_json group.counts);
-    ("phases", phases_json group.phases);
-  ]
+  Data.Json.obj
+    [
+      ("label", Data.Json.string group.label);
+      ("counts", counts_json group.counts);
+      ("phases", phases_json group.phases);
+    ]
 
 let to_json = fun summary ->
-  Data.Json.obj [
-    ("counts", counts_json summary.counts);
-    ("phases", phases_json summary.phases);
-    ("by_status", Data.Json.array (List.map summary.by_status ~fn:group_json));
-    ("by_action_kind", Data.Json.array (List.map summary.by_action_kind ~fn:group_json));
-  ]
+  Data.Json.obj
+    [
+      ("counts", counts_json summary.counts);
+      ("phases", phases_json summary.phases);
+      ("by_status", Data.Json.array (List.map summary.by_status ~fn:group_json));
+      ("by_action_kind", Data.Json.array (List.map summary.by_action_kind ~fn:group_json));
+    ]

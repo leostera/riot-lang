@@ -32,8 +32,11 @@ let run_intent = fun ~config intent ->
     match Work_node.kind node with
     | Work_node.UserIntent intent ->
         Intent_planner.expand catalog intent
-        |> Result.map ~fn:(fun goals ->
-          List.map goals ~fn:(fun goal -> Work_request.existing (Work_node.GoalKey goal)))
+        |> Result.map
+          ~fn:(fun goals ->
+            List.map
+              goals
+              ~fn:(fun goal -> Work_request.existing (Work_node.GoalKey goal)))
     | Work_node.Goal _ -> Ok []
     | ToolchainReady _
     | SourceAnalysis _

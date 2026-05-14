@@ -55,79 +55,79 @@ let request = fun (Conn conn) req ?body () ->
   if conn.closed then
     Error Error.Closed
   else
-  let method_ = Net.Http.Request.method_ req in
-  let version = Net.Http.Request.version req in
-  let headers = Net.Http.Request.headers req in
-  let resource = Net.Uri.path_and_query conn.uri in
-  let request_line =
-    (Net.Http.Method.to_string method_)
-    ^ " "
-    ^ resource
-    ^ " "
-    ^ (Net.Http.Version.to_string version)
-    ^ "\r\n"
-  in
-  let headers =
-    (
-      headers
-      |> fun h ->
-        Net.Http.Header.add
-          h
-          "host"
-          (
-            Net.Uri.host conn.uri
-            |> Option.unwrap_or ~default:"localhost"
-          )
-    )
-    |> fun h -> Net.Http.Header.add h "user-agent" "Riot-Blink/0.2.0"
-  in
-  let headers =
-    match body with
-    | Some b ->
-        Net.Http.Header.add
-          headers
-          "content-length"
-          (
-            String.length b
-            |> Int.to_string
-          )
-    | None -> headers
-  in
-  let headers_str =
-    Net.Http.Header.to_list headers
-    |> List.map ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n")
-    |> String.concat ""
-  in
-  let request = request_line ^ headers_str ^ "\r\n" in
-  let full_request =
-    match body with
-    | Some b -> request ^ b
-    | None -> request
-  in
-  let request_buffer = IO.Buffer.from_string full_request in
-  match IO.write_all conn.writer ~from:request_buffer with
-  | Ok () ->
-      conn.state <- WaitingForHeaders;
-      conn.response <- None;
-      Buffer.clear conn.buffer;
-      Ok ()
-  | Error e -> Error (Error.from_io_error e)
+    let method_ = Net.Http.Request.method_ req in
+    let version = Net.Http.Request.version req in
+    let headers = Net.Http.Request.headers req in
+    let resource = Net.Uri.path_and_query conn.uri in
+    let request_line =
+      (Net.Http.Method.to_string method_)
+      ^ " "
+      ^ resource
+      ^ " "
+      ^ (Net.Http.Version.to_string version)
+      ^ "\r\n"
+    in
+    let headers =
+      (
+        headers
+        |> fun h ->
+          Net.Http.Header.add
+            h
+            "host"
+            (
+              Net.Uri.host conn.uri
+              |> Option.unwrap_or ~default:"localhost"
+            )
+      )
+      |> fun h -> Net.Http.Header.add h "user-agent" "Riot-Blink/0.2.0"
+    in
+    let headers =
+      match body with
+      | Some b ->
+          Net.Http.Header.add
+            headers
+            "content-length"
+            (
+              String.length b
+              |> Int.to_string
+            )
+      | None -> headers
+    in
+    let headers_str =
+      Net.Http.Header.to_list headers
+      |> List.map ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n")
+      |> String.concat ""
+    in
+    let request = request_line ^ headers_str ^ "\r\n" in
+    let full_request =
+      match body with
+      | Some b -> request ^ b
+      | None -> request
+    in
+    let request_buffer = IO.Buffer.from_string full_request in
+    match IO.write_all conn.writer ~from:request_buffer with
+    | Ok () ->
+        conn.state <- WaitingForHeaders;
+        conn.response <- None;
+        Buffer.clear conn.buffer;
+        Ok ()
+    | Error e -> Error (Error.from_io_error e)
 
 let read_more = fun (Conn conn) ->
   if conn.closed then
     Error Error.Closed
   else
-  let chunk = IO.Buffer.create ~size:4_096 in
-  match IO.read conn.reader ~into:chunk with
-  | Ok 0 -> Error Error.Eof
-  | Ok _ ->
-      let readable = IO.Buffer.readable chunk in
-      let _ =
-        Buffer.append_slice conn.buffer readable
-        |> Result.expect ~msg:"failed to append response chunk"
-      in
-      Ok ()
-  | Error e -> Error (Error.from_io_error e)
+    let chunk = IO.Buffer.create ~size:4_096 in
+    match IO.read conn.reader ~into:chunk with
+    | Ok 0 -> Error Error.Eof
+    | Ok _ ->
+        let readable = IO.Buffer.readable chunk in
+        let _ =
+          Buffer.append_slice conn.buffer readable
+          |> Result.expect ~msg:"failed to append response chunk"
+        in
+        Ok ()
+    | Error e -> Error (Error.from_io_error e)
 
 let status_has_no_body = fun status ->
   let code = Net.Http.Status.to_int status in
@@ -144,8 +144,7 @@ let find_crlf data =
     if index + 1 >= len then
       None
     else if
-      String.get_unchecked data ~at:index = '\r'
-      && String.get_unchecked data ~at:(index + 1) = '\n'
+      String.get_unchecked data ~at:index = '\r' && String.get_unchecked data ~at:(index + 1) = '\n'
     then
       Some index
     else
@@ -183,7 +182,7 @@ let parse_chunk_size_line line =
         match chunk_size_hex_digit c with
         | None -> Error Error.InvalidChunkSize
         | Some digit ->
-          if acc > (Int.max_int - digit) / 16 then
+            if acc > (Int.max_int - digit) / 16 then
               Error Error.ChunkSizeOverflow
             else
               loop (index + 1) ((acc * 16) + digit)
@@ -311,7 +310,7 @@ let stream = fun (Conn conn as c) ->
                 else
                   ReadingChunkData { remaining = next_remaining }
               );
-              Ok [ Data chunk ]
+            Ok [ Data chunk ]
         | ReadingChunkDataCrlf ->
             let data = Buffer.contents conn.buffer in
             if String.length data < 2 then
@@ -319,8 +318,7 @@ let stream = fun (Conn conn as c) ->
               | Ok () -> parse_chunked ReadingChunkDataCrlf
               | Error e -> Error e
             else if
-              String.get_unchecked data ~at:0 = '\r'
-              && String.get_unchecked data ~at:1 = '\n'
+              String.get_unchecked data ~at:0 = '\r' && String.get_unchecked data ~at:1 = '\n'
             then (
               ignore (consume_buffer_prefix conn.buffer 2);
               parse_chunked ReadingChunkSize

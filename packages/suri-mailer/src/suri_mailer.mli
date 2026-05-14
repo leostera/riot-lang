@@ -36,7 +36,6 @@ module Delivery: sig
     | MissingRecipient
     | MissingSubject
     | MissingBody
-
   type filesystem_error =
     | CreateOutboxDirectoryFailed of {
         path: Path.t;
@@ -46,16 +45,13 @@ module Delivery: sig
         path: Path.t;
         reason: string;
       }
-
   type adapter_error =
     | MailboxNotStarted
     | MailboxTimeout
-
   type error =
     | InvalidMessage of invalid_message
     | FilesystemError of filesystem_error
     | AdapterError of adapter_error
-
   type t
 
   val error_to_string: error -> string
@@ -78,14 +74,10 @@ module Mailbox: sig
     message: Message.t;
     rendered: string;
   }
-
   type error =
     | NotStarted
     | Timeout
-    | StartError of {
-        reason: string;
-      }
-
+    | StartError of { reason: string }
   type t
 
   val error_to_string: error -> string
@@ -156,7 +148,6 @@ end
 
 module Supervisor: sig
   type t
-
   type start_error = Mailbox.error
 
   val start_error_to_string: start_error -> string

@@ -1852,10 +1852,7 @@ let scan_sources_for_intent
                 ~ignore_patterns:source_ignore_patterns
                 ()
           | None ->
-              Ignore.Walker.create
-                ~roots:scan_roots
-                ~ignore_patterns:source_ignore_patterns
-                ()
+              Ignore.Walker.create ~roots:scan_roots ~ignore_patterns:source_ignore_patterns ()
         in
         match create_walker with
         | Ok walker -> walker
@@ -1888,8 +1885,7 @@ let scan_sources_for_intent
                       || List.contains excluded_relpath_strings ~value:rel_path_string)
                   then (
                     match bucket_of_rel_path rel_path_components with
-                    | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
-                        ()
+                    | Some bucket when not (source_bucket_enabled enabled_buckets bucket) -> ()
                     | Some Src
                     | Some Tests
                     | Some Examples
@@ -1906,40 +1902,40 @@ let scan_sources_for_intent
             )
       in
       let finish = fun () ->
-          let sources = {
-            src = List.reverse !src;
-            tests = List.reverse !tests;
-            native = List.reverse !native;
-            examples = List.reverse !examples;
-            bench = List.reverse !bench;
-          }
-          in
-          let () =
-            trace_package
-              ("scan-sources path="
-              ^ Path.to_string package_path
-              ^ " intent="
-              ^ string_of_realization_intent intent
-              ^ " total_us="
-              ^ Int.to_string (elapsed_us_since started_at)
-              ^ " visited_entries="
-              ^ Int.to_string !visited_entries
-              ^ " visited_directories="
-              ^ Int.to_string !visited_directories
-              ^ " visited_files="
-              ^ Int.to_string !visited_files
-              ^ " kept_src="
-              ^ Int.to_string (List.length sources.src)
-              ^ " kept_tests="
-              ^ Int.to_string (List.length sources.tests)
-              ^ " kept_native="
-              ^ Int.to_string (List.length sources.native)
-              ^ " kept_examples="
-              ^ Int.to_string (List.length sources.examples)
-              ^ " kept_bench="
-              ^ Int.to_string (List.length sources.bench))
-          in
-          sources
+        let sources = {
+          src = List.reverse !src;
+          tests = List.reverse !tests;
+          native = List.reverse !native;
+          examples = List.reverse !examples;
+          bench = List.reverse !bench;
+        }
+        in
+        let () =
+          trace_package
+            ("scan-sources path="
+            ^ Path.to_string package_path
+            ^ " intent="
+            ^ string_of_realization_intent intent
+            ^ " total_us="
+            ^ Int.to_string (elapsed_us_since started_at)
+            ^ " visited_entries="
+            ^ Int.to_string !visited_entries
+            ^ " visited_directories="
+            ^ Int.to_string !visited_directories
+            ^ " visited_files="
+            ^ Int.to_string !visited_files
+            ^ " kept_src="
+            ^ Int.to_string (List.length sources.src)
+            ^ " kept_tests="
+            ^ Int.to_string (List.length sources.tests)
+            ^ " kept_native="
+            ^ Int.to_string (List.length sources.native)
+            ^ " kept_examples="
+            ^ Int.to_string (List.length sources.examples)
+            ^ " kept_bench="
+            ^ Int.to_string (List.length sources.bench))
+        in
+        sources
       in
       let failed = fun () ->
         let () =

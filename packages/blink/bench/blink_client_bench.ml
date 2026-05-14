@@ -33,12 +33,7 @@ let bench_execute_injected_transport = fun () ->
     Ok ok_response
   in
   let budget_policy = H.Budget.policy ~capacity:20_000 ~window:(Time.Duration.from_secs 60) in
-  let config =
-    H.Config.make
-      ~budget_policy
-      ~transport
-      ()
-  in
+  let config = H.Config.make ~budget_policy ~transport () in
   let client = H.make ~config () in
   for _i = 1 to 10_000 do
     match H.execute client (request ()) with

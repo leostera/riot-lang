@@ -484,8 +484,7 @@ let content_store_temp_dir = fun content_store hash ->
   in
   Path.(ContentStore.root content_store / Path.v temp_name)
 
-let artifact_temp_dir = fun store hash ->
-  content_store_temp_dir store.package_store hash
+let artifact_temp_dir = fun store hash -> content_store_temp_dir store.package_store hash
 
 let read_opened_file = fun file ->
   let content = Fs.File.read_to_end file in
@@ -547,13 +546,7 @@ type file_source = {
 }
 
 let store_file_sources = fun
-  content_store
-  store
-  ~package
-  ?(ocamlc_warnings = [])
-  ?(exports = [])
-  input_hash
-  file_sources ->
+  content_store store ~package ?(ocamlc_warnings = []) ?(exports = []) input_hash file_sources ->
   let hash_dir = ContentStore.hash_dir_of content_store input_hash in
   let temp_dir = content_store_temp_dir content_store input_hash in
   let* () =
@@ -682,14 +675,7 @@ let store_artifacts = fun
         link = link_outputs;
       })
   in
-  store_file_sources
-    content_store
-    store
-    ~package
-    ~ocamlc_warnings
-    ~exports
-    input_hash
-    file_sources
+  store_file_sources content_store store ~package ~ocamlc_warnings ~exports input_hash file_sources
 
 let load_manifest = fun store ~hash ->
   match Manifest.load ~path:(manifest_path (get_package_hash_dir store hash)) with
@@ -942,13 +928,7 @@ type prehashed_file_source = {
 }
 
 let store_prehashed_file_sources = fun
-  content_store
-  store
-  ~package
-  ?(ocamlc_warnings = [])
-  ?(exports = [])
-  input_hash
-  file_sources ->
+  content_store store ~package ?(ocamlc_warnings = []) ?(exports = []) input_hash file_sources ->
   let hash_dir = ContentStore.hash_dir_of content_store input_hash in
   let temp_dir = content_store_temp_dir content_store input_hash in
   let* () =
@@ -1086,13 +1066,7 @@ let save_package_from_action_artifacts = fun
   Ok artifact
 
 let save_action = fun
-  ?(ocamlc_warnings = [])
-  ?(link_outputs = false)
-  store
-  ~package
-  ~input_hash
-  ~sandbox_dir
-  ~outs ->
+  ?(ocamlc_warnings = []) ?(link_outputs = false) store ~package ~input_hash ~sandbox_dir ~outs ->
   save_to
     store.action_store
     store.action_cache
@@ -1138,18 +1112,23 @@ let promote_action_artifact_files = fun
   ?(preserve_permissions = true) store (artifact: Artifact.t) ~files ~target_dir ->
   let hash_dir = get_action_hash_dir store artifact.input_hash in
   let requested = HashSet.create () in
-  List.for_each files ~fn:(fun file -> ignore (HashSet.insert requested ~value:(Path.to_string file)));
+  List.for_each
+    files
+    ~fn:(fun file -> ignore (HashSet.insert requested ~value:(Path.to_string file)));
   let selected =
     artifact.files
     |> List.filter
       ~fn:(fun (entry: Manifest.file_entry) ->
-        HashSet.contains requested ~value:(Path.to_string entry.path))
+        HashSet.contains
+          requested
+          ~value:(Path.to_string entry.path))
   in
   let missing =
     files
     |> List.find
       ~fn:(fun file ->
-        not (List.any artifact.files ~fn:(fun entry -> Path.equal entry.Manifest.path file)))
+        not
+          (List.any artifact.files ~fn:(fun entry -> Path.equal entry.Manifest.path file)))
   in
   match missing with
   | Some file -> Error (DeclaredOutputMissing { path = Path.(hash_dir / file) })

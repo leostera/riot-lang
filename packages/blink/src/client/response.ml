@@ -82,12 +82,11 @@ let error_class_from_transport_error = fun error ->
   | Error.ProtocolError Error.RequestBudgetExhausted -> RateLimitedByBudget
   | Error.ProtocolError (Error.TransportRaised _ | Error.ApplicationTransportError _) ->
       UnknownError
-  | Error.ProtocolError
-      (Error.UnsupportedWebSocketScheme _
-      | Error.EmptyChunkSize
-      | Error.InvalidChunkSize
-      | Error.ChunkSizeOverflow
-      | Error.InvalidChunkDataLineEnding)
+  | Error.ProtocolError (Error.UnsupportedWebSocketScheme _
+  | Error.EmptyChunkSize
+  | Error.InvalidChunkSize
+  | Error.ChunkSizeOverflow
+  | Error.InvalidChunkDataLineEnding)
   | Error.ParseError _
   | Error.WebSocketParseError _
   | Error.WebSocketSerializeError _

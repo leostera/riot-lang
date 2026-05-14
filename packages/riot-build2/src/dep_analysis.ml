@@ -43,7 +43,8 @@ let from_analyzed_modules = fun analyzed_modules ->
   List.for_each
     sources
     ~fn:(fun source ->
-      ignore (HashMap.insert by_node_id ~key:(G.Node_id.to_int source.node_id) ~value:source));
+      ignore
+        (HashMap.insert by_node_id ~key:(G.Node_id.to_int source.node_id) ~value:source));
   { sources; by_node_id }
 
 let sources = fun t -> t.sources
@@ -62,14 +63,12 @@ let is_source_node = fun node ->
   | _ -> false
 
 let is_concrete_source_node = fun node ->
-  is_source_node node
-  && match (G.value node).Module_node.file with
+  is_source_node node && match (G.value node).Module_node.file with
   | Module_node.Concrete _ -> true
   | Generated _ -> false
 
 let is_generated_source_node = fun node ->
-  is_source_node node
-  && match (G.value node).Module_node.file with
+  is_source_node node && match (G.value node).Module_node.file with
   | Module_node.Generated _ -> true
   | Concrete _ -> false
 
@@ -92,7 +91,9 @@ let cmi_provider_dependency_id = fun module_graph dep_id ->
       match (G.value dep_node).Module_node.kind with
       | Module_node.MLI _ -> Some dep_id
       | ML dep_mod ->
-          G.map module_graph ~fn:(fun (candidate_id, candidate_node) -> (candidate_id, candidate_node))
+          G.map
+            module_graph
+            ~fn:(fun (candidate_id, candidate_node) -> (candidate_id, candidate_node))
           |> List.find
             ~fn:(fun (_candidate_id, candidate_node) ->
               match (G.value candidate_node).Module_node.kind with
@@ -154,7 +155,8 @@ let module_path_segments = fun mod_ ->
   (
     Riot_model.Module_name.namespace module_name
     |> Riot_model.Namespace.to_list
-  ) @ [ Riot_model.Module_name.to_string module_name ]
+  )
+  @ [ Riot_model.Module_name.to_string module_name ]
 
 let module_namespace_prefixes = fun mod_ ->
   let rec loop acc current = fun __tmp1 ->
@@ -179,7 +181,9 @@ let alias_dependency_id_for_namespace = fun module_graph namespace ->
   G.map module_graph ~fn:(fun (candidate_id, candidate_node) -> (candidate_id, candidate_node))
   |> List.find
     ~fn:(fun (_candidate_id, candidate_node) ->
-      is_alias_module_for_namespace namespace (G.value candidate_node))
+      is_alias_module_for_namespace
+        namespace
+        (G.value candidate_node))
   |> Option.map ~fn:(fun (candidate_id, _candidate_node) -> candidate_id)
 
 let alias_cmi_dependency_ids = fun module_graph dep_id ->
@@ -215,7 +219,7 @@ let compile_dependency_ids = fun t module_graph node ->
   let semantic_cmi_ids = direct_cmi_dependency_ids module_graph semantic_ids in
   match ((G.value node).Module_node.kind, (G.value node).file) with
   | ((Module_node.MLI _), Module_node.Concrete _) ->
-      semantic_cmi_ids @ semantic_alias_cmi_ids @ structural_cmi_ids
+      (semantic_cmi_ids @ semantic_alias_cmi_ids) @ structural_cmi_ids
       |> unique_node_ids
   | ((Module_node.ML _), Module_node.Concrete _) ->
       let same_interface_ids = same_module_interface_dependency_ids module_graph node in
@@ -232,7 +236,7 @@ let compile_dependency_ids = fun t module_graph node ->
   | ((Module_node.ML _), Module_node.Generated _) ->
       let same_interface_ids = same_module_interface_dependency_ids module_graph node in
       let same_interface_cmi_ids = direct_cmi_dependency_ids module_graph same_interface_ids in
-      structural_cmi_ids @ same_interface_cmi_ids @ same_interface_ids
+      (structural_cmi_ids @ same_interface_cmi_ids) @ same_interface_ids
       |> unique_node_ids
   | _ ->
       G.deps node

@@ -99,14 +99,10 @@ let copy_package_file = fun (package: Riot_model.Package.t) ~root path ->
 
 let dedup_paths = fun paths ->
   let seen = Collections.HashSet.create () in
-  List.filter
-    paths
-    ~fn:(fun path ->
-      Collections.HashSet.insert seen ~value:(Path.to_string path))
+  List.filter paths ~fn:(fun path -> Collections.HashSet.insert seen ~value:(Path.to_string path))
 
 let package_input_paths = fun (package: Riot_model.Package.t) ->
-  Path.v "riot.toml"
-  :: package.sources.src
+  (Path.v "riot.toml" :: package.sources.src)
   @ package.sources.native
   @ package.sources.tests
   @ package.sources.examples
@@ -141,13 +137,10 @@ let sandbox_root = fun t (input: Package_planning.input) ->
 
 let direct_and_transitive_deps = fun depset ->
   let seen = Collections.HashSet.create () in
-  depset
-  @ Riot_planner.Dependency.transitive_closure depset
+  depset @ Riot_planner.Dependency.transitive_closure depset
   |> List.filter
     ~fn:(fun dep ->
-      let name =
-        Riot_model.Package_name.to_string dep.Riot_planner.Dependency.package.name
-      in
+      let name = Riot_model.Package_name.to_string dep.Riot_planner.Dependency.package.name in
       Collections.HashSet.insert seen ~value:name)
 
 let materialize_dependency = fun t ~current_package ~root dep ->
@@ -155,10 +148,7 @@ let materialize_dependency = fun t ~current_package ~root dep ->
   let target_dir = Path.(root / deps_dir package.name) in
   Riot_store.Store.promote t.store dep.Riot_planner.Dependency.input_hash ~target_dir
   |> Result.map_err
-    ~fn:(fun error ->
-      store_error
-        ~package:current_package
-        (Riot_store.Store.error_message error))
+    ~fn:(fun error -> store_error ~package:current_package (Riot_store.Store.error_message error))
 
 let prepare_root = fun t (input: Package_planning.input) ~depset ->
   let package = input.package in
@@ -190,12 +180,7 @@ let prepare = fun t (input: Package_planning.input) ~depset ->
   | Some prepared -> Ok prepared.root
   | None ->
       let* prepared = prepare_root t input ~depset in
-      ignore (
-        ConcurrentHashMap.insert
-          t.sandboxes
-          ~key:prepared.build
-          ~value:prepared
-      );
+      ignore (ConcurrentHashMap.insert t.sandboxes ~key:prepared.build ~value:prepared);
       Ok prepared.root
 
 let cleanup_success = fun t build ->

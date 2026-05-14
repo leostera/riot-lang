@@ -126,12 +126,7 @@ let source_analysis_sources = fun t (build: Goal.build_package) ->
   let* input = Package_planning.resolve t.package_planning build in
   let package = input.package in
   let* tasks = source_tasks_for_input t input in
-  Ok (
-    List.map
-      tasks
-      ~fn:(fun source ->
-        Source_analysis.make ~package:package.name ~task:source)
-  )
+  Ok (List.map tasks ~fn:(fun source -> Source_analysis.make ~package:package.name ~task:source))
 
 let source_dependency_requests = fun t build ->
   source_analysis_sources t build
@@ -148,8 +143,7 @@ let ocaml_sources = fun t (build: Goal.build_package) ->
   Ok (
     tasks
     |> List.filter
-      ~fn:(fun task ->
-        Rule.is_interface_source task || Rule.is_implementation_source task)
+      ~fn:(fun task -> Rule.is_interface_source task || Rule.is_implementation_source task)
     |> List.map ~fn:(Rule.ocaml_source ~build ~package:package.name)
   )
 
@@ -162,9 +156,7 @@ let c_objects = fun t (build: Goal.build_package) ->
   )
 
 let source_analysis_for_task = fun
-  t
-  package
-  (task: Riot_planner.Module_graph.source_analysis_task) ->
+  t package (task: Riot_planner.Module_graph.source_analysis_task) ->
   let key = Source_analysis.key_from_task ~package task in
   match Source_analyzer.find t.source_analyzer key with
   | Some analysis -> Ok analysis
@@ -175,9 +167,7 @@ let source_analysis_for_task = fun
       })
 
 let source_summary_hashes = fun
-  t
-  package
-  (tasks: Riot_planner.Module_graph.source_analysis_task list) ->
+  t package (tasks: Riot_planner.Module_graph.source_analysis_task list) ->
   let rec loop acc = fun __tmp1 ->
     match __tmp1 with
     | [] -> Ok (List.reverse acc)
@@ -237,9 +227,7 @@ let write_dependency_source = fun hasher (source: Riot_model.Package.dependency_
   )
 
 let module_plan_cache_key = fun
-  t
-  (input: Package_planning.input)
-  (tasks: Riot_planner.Module_graph.source_analysis_task list) ->
+  t (input: Package_planning.input) (tasks: Riot_planner.Module_graph.source_analysis_task list) ->
   let* source_hashes = source_summary_hashes t input.package.name tasks in
   let hasher = Crypto.Sha256.create () in
   Crypto.Sha256.write hasher "riot-build2-module-plan-input:v2";
@@ -297,7 +285,10 @@ let plan_dependencies = fun t _registry build ->
   Ok (Work_request.from_keys package_dependencies @ source_dependencies)
 
 let sandbox_dir = fun t (input: Package_planning.input) ~depset ->
-  Package_sandbox.prepare t.package_sandbox input ~depset
+  Package_sandbox.prepare
+    t.package_sandbox
+    input
+    ~depset
 
 let is_final_archive_action = fun __tmp1 ->
   match __tmp1 with
@@ -323,10 +314,7 @@ let classify_action_executions = fun action_executions ->
   (ocaml_libraries, ocaml_archive)
 
 let module_plan_from_actions = fun
-  (input: Package_planning.input)
-  ~module_plan_hash
-  ~sandbox_dir
-  action_executions ->
+  (input: Package_planning.input) ~module_plan_hash ~sandbox_dir action_executions ->
   let (ocaml_libraries, ocaml_archive) = classify_action_executions action_executions in
   Ok Module_plan.{
     build = input.build;
@@ -497,9 +485,7 @@ let plan = fun t _registry (build: Goal.build_package) ->
         package
     in
     let* module_plan_hash = module_plan_cache_key t input tasks in
-    let* (module_graph, dep_analysis) =
-      build_module_graph t input ~depset ~dependency_packages
-    in
+    let* (module_graph, dep_analysis) = build_module_graph t input ~depset ~dependency_packages in
     let* sandbox_dir = sandbox_dir t input ~depset in
     let* action_executions =
       Action_planner.plan
@@ -516,11 +502,7 @@ let plan = fun t _registry (build: Goal.build_package) ->
         }
     in
     let* module_plan =
-      module_plan_from_actions
-        input
-        ~module_plan_hash
-        ~sandbox_dir
-        action_executions
+      module_plan_from_actions input ~module_plan_hash ~sandbox_dir action_executions
     in
     let* () =
       Graph_cache.put

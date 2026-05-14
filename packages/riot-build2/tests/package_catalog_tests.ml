@@ -76,26 +76,26 @@ let test_catalog_realize_uses_explicit_intent = fun _ctx ->
 
 let runtime_source_count = fun catalog ->
   Package_catalog.realize catalog ~intent:Riot_model.Package.Runtime app_package
-  |> Result.map ~fn:(fun package ->
-    List.length package.Riot_model.Package.sources.src)
+  |> Result.map ~fn:(fun package -> List.length package.Riot_model.Package.sources.src)
 
 let expect_source_count = fun label expected actual ->
   if Int.equal expected actual then
     Ok ()
   else
-    Error (
-      label
-      ^ " expected "
-      ^ Int.to_string expected
-      ^ " runtime source(s), got "
-      ^ Int.to_string actual
-    )
+    Error (label
+    ^ " expected "
+    ^ Int.to_string expected
+    ^ " runtime source(s), got "
+    ^ Int.to_string actual)
 
 let test_catalog_realization_cache_is_scoped_to_execution = fun _ctx ->
   with_app_workspace
     (fun workspace ->
       let catalog = Package_catalog.create workspace in
-      let* first_count = runtime_source_count catalog |> Result.map_err ~fn:Error.message in
+      let* first_count =
+        runtime_source_count catalog
+        |> Result.map_err ~fn:Error.message
+      in
       let* () = expect_source_count "first realization" 1 first_count in
       let app_dir =
         match Package_catalog.find_manifest catalog app_package with
@@ -103,21 +103,14 @@ let test_catalog_realization_cache_is_scoped_to_execution = fun _ctx ->
         | None -> Path.v "."
       in
       let* () =
-        write_file
-          Path.(app_dir / Path.v "src" / Path.v "extra.ml")
-          "let extra = ()\n"
+        write_file Path.(app_dir / Path.v "src" / Path.v "extra.ml") "let extra = ()\n"
         |> Result.map_err ~fn:IO.error_message
       in
       let* same_execution_count =
         runtime_source_count catalog
         |> Result.map_err ~fn:Error.message
       in
-      let* () =
-        expect_source_count
-          "same execution cached realization"
-          1
-          same_execution_count
-      in
+      let* () = expect_source_count "same execution cached realization" 1 same_execution_count in
       Package_catalog.begin_execution catalog;
       let* next_execution_count =
         runtime_source_count catalog

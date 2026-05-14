@@ -24,16 +24,16 @@ let missing = fun t ~package tasks ->
       | None -> Some (Source_analysis.make ~package ~task))
 
 let planning_error = fun source error ->
-  Error.SourceAnalysisFailed {
-    source;
-    reason = Riot_planner.Planning_error.to_string error;
-  }
+  Error.SourceAnalysisFailed { source; reason = Riot_planner.Planning_error.to_string error }
 
 let store_analysis = fun t source analysis ->
-  ignore (ConcurrentHashMap.insert t.analyses ~key:source.Source_analysis.key ~value:analysis)
+  ignore
+    (ConcurrentHashMap.insert t.analyses ~key:source.Source_analysis.key ~value:analysis)
 
 let cached_analysis_has_hash = fun analysis source_hash ->
-  Crypto.Hash.equal analysis.Riot_planner.Module_graph.analysis_source_hash source_hash
+  Crypto.Hash.equal
+    analysis.Riot_planner.Module_graph.analysis_source_hash
+    source_hash
 
 let load_persisted = fun t source source_hash ->
   let input_hash =
@@ -67,21 +67,22 @@ let execute = fun t (source: Source_analysis.t) ->
       let* loaded = load_persisted t source source_hash in
       if loaded then
         Ok ()
-      else (
-        match Riot_planner.Module_graph.analyze_source source.task with
-        | Ok analysis ->
-            let input_hash =
-              Source_analysis_cache.input_hash ~package:source.key.package analysis
-            in
-            let* () =
-              match Source_analysis_cache.payload ~package:source.key.package analysis with
-              | None -> Ok ()
-              | Some payload -> Graph_cache.put t.source_analysis_cache input_hash payload
-            in
-            store_analysis t source analysis;
-            Ok ()
-        | Error error -> Error (planning_error source.task.task_display_path error)
-      )
+      else
+        (
+          match Riot_planner.Module_graph.analyze_source source.task with
+          | Ok analysis ->
+              let input_hash =
+                Source_analysis_cache.input_hash ~package:source.key.package analysis
+              in
+              let* () =
+                match Source_analysis_cache.payload ~package:source.key.package analysis with
+                | None -> Ok ()
+                | Some payload -> Graph_cache.put t.source_analysis_cache input_hash payload
+              in
+              store_analysis t source analysis;
+              Ok ()
+          | Error error -> Error (planning_error source.task.task_display_path error)
+        )
 
 let analyze_from_cache = fun t package ~on_source_analyzed tasks ->
   let source_count = List.length tasks in

@@ -47,9 +47,7 @@ module ThrottledReader = struct
 end
 
 let throttled_reader payload ~max_chunk =
-  IO.Reader.from_source
-    (module ThrottledReader)
-    { ThrottledReader.payload; max_chunk; offset = 0 }
+  IO.Reader.from_source (module ThrottledReader) { ThrottledReader.payload; max_chunk; offset = 0 }
 
 let request () =
   H.Request.make
@@ -88,11 +86,7 @@ let test_connection_await_keeps_fixed_length_body = fun _ctx ->
     |> Result.expect ~msg:"invalid test uri"
   in
   let conn =
-    Blink.Connection.make
-      ~reader:(IO.Reader.from_string response)
-      ~writer:discard_writer
-      ~uri
-      ()
+    Blink.Connection.make ~reader:(IO.Reader.from_string response) ~writer:discard_writer ~uri ()
   in
   match Blink.Connection.await conn with
   | Error error -> Error (Blink.Error.to_string error)
@@ -260,9 +254,7 @@ let test_failure_telemetry_callback = fun _ctx ->
 let test_transport_exception_becomes_error = fun _ctx ->
   let client =
     H.make
-      ~config:(H.Config.make
-        ~transport:(fun _request -> raise (Failure "TLS handshake failed"))
-        ())
+      ~config:(H.Config.make ~transport:(fun _request -> raise (Failure "TLS handshake failed")) ())
       ()
   in
   match H.execute client (request ()) with
@@ -317,8 +309,7 @@ let test_connect_budget_blocks = fun _ctx ->
   | Ok conn ->
       H.close client conn;
       Error "expected managed connect budget exhaustion"
-  | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) ->
-      Ok ()
+  | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) -> Ok ()
   | Error _ -> Error "expected budget protocol error"
 
 let test_websocket_connect_budget_blocks = fun _ctx ->
@@ -331,8 +322,7 @@ let test_websocket_connect_budget_blocks = fun _ctx ->
   | Ok conn ->
       H.WebSocket.close client conn;
       Error "expected managed websocket connect budget exhaustion"
-  | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) ->
-      Ok ()
+  | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) -> Ok ()
   | Error _ -> Error "expected budget protocol error"
 
 let tests =

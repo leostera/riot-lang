@@ -100,8 +100,7 @@ let plan_package_artifact_dependencies = fun t build ->
   package_dependency_goal_keys t build
   |> Result.map ~fn:Work_request.from_keys
 
-let toolchain_request = fun target ->
-  Work_request.existing (Work_node.ToolchainReadyKey { target })
+let toolchain_request = fun target -> Work_request.existing (Work_node.ToolchainReadyKey { target })
 
 let source_analysis_requests = fun t build ->
   Module_planning.source_analysis_sources t.module_planning build
@@ -157,63 +156,52 @@ let create_rule_index = fun t (plan: Module_plan.t) ->
   List.for_each
     ocaml_sources
     ~fn:(fun source ->
-      ignore (
-        ConcurrentHashMap.insert
+      ignore
+        (ConcurrentHashMap.insert
           index.ocaml_sources_by_path
           ~key:(ocaml_source_path source)
-          ~value:source
-      ));
+          ~value:source));
   List.for_each
     c_objects
     ~fn:(fun c_object ->
-      ignore (
-        ConcurrentHashMap.insert
+      ignore
+        (ConcurrentHashMap.insert
           index.c_objects_by_source
           ~key:c_object.Rule.source
-          ~value:c_object
-      ));
+          ~value:c_object));
   List.for_each
     plan.action_executions
     ~fn:(fun (action: Action_execution.t) ->
       ignore (ConcurrentHashMap.insert index.actions_by_ref ~key:action.ref_ ~value:action);
       match action.action with
       | Action.CompileSource { source; _ } ->
-          ignore (
-            ConcurrentHashMap.insert
+          ignore
+            (ConcurrentHashMap.insert
               index.ocaml_actions_by_path_and_role
-              ~key:(
-                source.source,
-                match source.kind with
-                | Action.LibraryInterface -> Interface
-                | Action.LibraryImplementation -> NativeImplementation
-              )
-              ~value:action
-          )
+              ~key:(source.source, match source.kind with
+              | Action.LibraryInterface -> Interface
+              | Action.LibraryImplementation -> NativeImplementation)
+              ~value:action)
       | Action.CompileInterface { source; _ } ->
-          ignore (
-            ConcurrentHashMap.insert
+          ignore
+            (ConcurrentHashMap.insert
               index.ocaml_actions_by_path_and_role
               ~key:(source.source, Interface)
-              ~value:action
-          )
+              ~value:action)
       | Action.CompileByteImplementation { source; _ } ->
-          ignore (
-            ConcurrentHashMap.insert
+          ignore
+            (ConcurrentHashMap.insert
               index.ocaml_actions_by_path_and_role
               ~key:(source.source, ByteImplementation)
-              ~value:action
-          )
+              ~value:action)
       | Action.CompileNativeImplementation { source; _ } ->
-          ignore (
-            ConcurrentHashMap.insert
+          ignore
+            (ConcurrentHashMap.insert
               index.ocaml_actions_by_path_and_role
               ~key:(source.source, NativeImplementation)
-              ~value:action
-          )
+              ~value:action)
       | Action.CompileC { source; _ } ->
-          ignore (
-            ConcurrentHashMap.insert index.c_actions_by_source ~key:source ~value:action
-          )
+          ignore (ConcurrentHashMap.insert index.c_actions_by_source ~key:source ~value:action)
       | CompileSources _
       | CompileLibrary _
       | CopyFile _
@@ -252,37 +240,37 @@ let action_key = fun t (plan: Module_plan.t) (action: Action_execution.t) ->
   | Some key -> Ok key
   | None ->
       let* key =
-  match action.action with
-  | Action.CompileSource { source = { content = Some _; _ }; _ } ->
-      Ok (Work_node.OCamlGeneratedKey (Rule.ocaml_generated ~build:plan.build action))
-  | Action.CompileInterface { source = { content = Some _; _ }; _ }
-  | Action.CompileByteImplementation { source = { content = Some _; _ }; _ }
-  | Action.CompileNativeImplementation { source = { content = Some _; _ }; _ } ->
-      Ok (Work_node.OCamlGeneratedKey (Rule.ocaml_generated ~build:plan.build action))
-  | Action.CompileSource { source = { source; kind = Action.LibraryInterface; _ }; _ } ->
-      let* rule = source_rule_by_path t plan source in
-      Ok (Work_node.OCamlInterfaceKey rule)
-  | Action.CompileSource { source = { source; kind = Action.LibraryImplementation; _ }; _ } ->
-      let* rule = source_rule_by_path t plan source in
-      Ok (Work_node.OCamlImplementationKey rule)
-  | Action.CompileInterface { source = { source; _ }; _ } ->
-      let* rule = source_rule_by_path t plan source in
-      Ok (Work_node.OCamlInterfaceKey rule)
-  | Action.CompileByteImplementation { source = { source; _ }; _ } ->
-      let* rule = source_rule_by_path t plan source in
-      Ok (Work_node.OCamlByteImplementationKey rule)
-  | Action.CompileNativeImplementation { source = { source; _ }; _ } ->
-      let* rule = source_rule_by_path t plan source in
-      Ok (Work_node.OCamlImplementationKey rule)
-  | Action.CompileC { source; _ } ->
-      let* rule = c_object_rule_by_source t plan source in
-      Ok (Work_node.CObjectKey rule)
-  | Action.CompileLibrary _ when is_final_archive_action action.action ->
-      Ok (Work_node.OCamlArchiveKey plan.build)
-  | Action.CompileSources _
-  | Action.CompileLibrary _
-  | Action.CopyFile _
-  | Action.WriteFile _ -> Ok (Work_node.ActionExecutionKey action.ref_)
+        match action.action with
+        | Action.CompileSource { source = { content = Some _; _ }; _ } ->
+            Ok (Work_node.OCamlGeneratedKey (Rule.ocaml_generated ~build:plan.build action))
+        | Action.CompileInterface { source = { content = Some _; _ }; _ }
+        | Action.CompileByteImplementation { source = { content = Some _; _ }; _ }
+        | Action.CompileNativeImplementation { source = { content = Some _; _ }; _ } ->
+            Ok (Work_node.OCamlGeneratedKey (Rule.ocaml_generated ~build:plan.build action))
+        | Action.CompileSource { source = { source; kind = Action.LibraryInterface; _ }; _ } ->
+            let* rule = source_rule_by_path t plan source in
+            Ok (Work_node.OCamlInterfaceKey rule)
+        | Action.CompileSource { source = { source; kind = Action.LibraryImplementation; _ }; _ } ->
+            let* rule = source_rule_by_path t plan source in
+            Ok (Work_node.OCamlImplementationKey rule)
+        | Action.CompileInterface { source = { source; _ }; _ } ->
+            let* rule = source_rule_by_path t plan source in
+            Ok (Work_node.OCamlInterfaceKey rule)
+        | Action.CompileByteImplementation { source = { source; _ }; _ } ->
+            let* rule = source_rule_by_path t plan source in
+            Ok (Work_node.OCamlByteImplementationKey rule)
+        | Action.CompileNativeImplementation { source = { source; _ }; _ } ->
+            let* rule = source_rule_by_path t plan source in
+            Ok (Work_node.OCamlImplementationKey rule)
+        | Action.CompileC { source; _ } ->
+            let* rule = c_object_rule_by_source t plan source in
+            Ok (Work_node.CObjectKey rule)
+        | Action.CompileLibrary _ when is_final_archive_action action.action ->
+            Ok (Work_node.OCamlArchiveKey plan.build)
+        | Action.CompileSources _
+        | Action.CompileLibrary _
+        | Action.CopyFile _
+        | Action.WriteFile _ -> Ok (Work_node.ActionExecutionKey action.ref_)
       in
       ignore (ConcurrentHashMap.insert index.action_keys_by_ref ~key:action.ref_ ~value:key);
       Ok key
@@ -312,7 +300,10 @@ let dependency_requests_for_refs = fun t plan refs ->
   loop [] refs
 
 let dependency_requests_for_action = fun t plan action ->
-  dependency_requests_for_refs t plan action.Action_execution.dependencies
+  dependency_requests_for_refs
+    t
+    plan
+    action.Action_execution.dependencies
 
 let find_archive_action = fun (plan: Module_plan.t) ->
   match plan.ocaml_archive with
@@ -329,19 +320,16 @@ let find_ocaml_action = fun t (plan: Module_plan.t) (source: Rule.ocaml_source) 
   let* source_rule = source_rule_by_path t plan source_path in
   let same_source = Path.equal (ocaml_source_path source_rule) source_path in
   if not same_source then
-    Error (Error.ExecutorInvariantViolated { message = "OCaml source rule mismatch"; })
+    Error (Error.ExecutorInvariantViolated { message = "OCaml source rule mismatch" })
   else
     let* index = rule_index t plan in
-    match
-      ConcurrentHashMap.get
-        index.ocaml_actions_by_path_and_role
-        ~key:(source.source.path, expected_role)
-    with
+    match ConcurrentHashMap.get
+      index.ocaml_actions_by_path_and_role
+      ~key:(source.source.path, expected_role) with
     | Some action -> Ok action
     | None ->
         Error (Error.ExecutorInvariantViolated {
-          message = "no compiler action found for OCaml source "
-          ^ Path.to_string source.source.path;
+          message = "no compiler action found for OCaml source " ^ Path.to_string source.source.path;
         })
 
 let find_c_action = fun t (plan: Module_plan.t) c_object ->
@@ -350,8 +338,7 @@ let find_c_action = fun t (plan: Module_plan.t) c_object ->
   | Some action -> Ok action
   | None ->
       Error (Error.ExecutorInvariantViolated {
-        message = "no C compiler action found for source "
-        ^ Path.to_string c_object.Rule.source;
+        message = "no C compiler action found for source " ^ Path.to_string c_object.Rule.source;
       })
 
 let missing_dependency_requests = fun t plan action ->
@@ -427,12 +414,10 @@ let plan_ocaml_archive = fun t build ->
     c_objects
     |> List.map ~fn:(fun c_object -> Work_request.existing (Work_node.CObjectKey c_object))
   in
-  Ok (
-    toolchain_request build.target
-    :: Work_request.existing (Work_node.ModuleDependenciesKey build)
-    :: c_requests
-    @ ocaml_requests
-  )
+  Ok ((toolchain_request build.target
+  :: Work_request.existing (Work_node.ModuleDependenciesKey build)
+  :: c_requests)
+  @ ocaml_requests)
 
 let execute_ocaml_archive = fun t registry build ->
   let* plan = ensure_module_plan t registry build in
@@ -468,14 +453,18 @@ let action_artifacts = fun t (plan: Module_plan.t) ->
   plan.action_executions
   |> List.filter_map
     ~fn:(fun (action: Action_execution.t) ->
-      Action_executor.artifact t.action_executor action.Action_execution.ref_)
+      Action_executor.artifact
+        t.action_executor
+        action.Action_execution.ref_)
 
 let finalize = fun t (plan: Module_plan.t) ->
   let failed =
     plan.action_executions
     |> List.filter_map
       ~fn:(fun (action: Action_execution.t) ->
-        Action_executor.failure t.action_executor action.Action_execution.ref_)
+        Action_executor.failure
+          t.action_executor
+          action.Action_execution.ref_)
   in
   match failed with
   | reason :: _ -> Error (Error.ActionExecutionFailed { package = plan.package.name; reason })
@@ -505,7 +494,9 @@ let finalize = fun t (plan: Module_plan.t) ->
               plan.action_executions
               |> List.filter_map
                 ~fn:(fun (action: Action_execution.t) ->
-                  Action_executor.find_result t.action_executor action.Action_execution.ref_)
+                  Action_executor.find_result
+                    t.action_executor
+                    action.Action_execution.ref_)
               |> List.flat_map ~fn:(fun result -> result.Action_execution.ocamlc_warnings)
             in
             match Riot_store.Store.save_package_from_action_artifacts

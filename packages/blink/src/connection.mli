@@ -10,7 +10,7 @@ type message =
   | Status of Net.Http.Status.t
 
 (** Build a connection from reader and writer handles. *)
-val make :
+val make:
   ?on_close:(unit -> unit) ->
   reader:IO.Reader.t ->
   writer:IO.Writer.t ->
@@ -19,17 +19,16 @@ val make :
   t
 
 (** Send an HTTP request on the connection. *)
-val request : t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result
+val request: t -> Net.Http.Request.t -> ?body:string -> unit -> (unit, Error.t) result
 
 (** Read the next batch of response messages. *)
-val stream : t -> (message list, Error.t) result
+val stream: t -> (message list, Error.t) result
 
 (** Collect messages until the response body completes. *)
-val messages : ?on_message:(message list -> unit) -> t -> (message list, Error.t) result
+val messages: ?on_message:(message list -> unit) -> t -> (message list, Error.t) result
 
 (** Wait for the response to complete and return the response plus body. *)
-val await :
-  ?on_message:(message list -> unit) -> t -> (Net.Http.Response.t * string, Error.t) result
+val await: ?on_message:(message list -> unit) -> t -> (Net.Http.Response.t * string, Error.t) result
 
 (** Close the connection. *)
-val close : t -> unit
+val close: t -> unit

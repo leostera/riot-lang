@@ -5,13 +5,11 @@ type ocaml_source = {
   source: Source_analysis.key;
   module_name: Riot_model.Module_name.t;
 }
-
 type c_object = {
   build: Goal.build_package;
   source: Path.t;
   output: Path.t;
 }
-
 type ocaml_generated = {
   build: Goal.build_package;
   action: Action_execution.t;

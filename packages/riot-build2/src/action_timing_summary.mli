@@ -1,12 +1,6 @@
 open Std
 
-type counts = {
-  total: int;
-  cached: int;
-  executed: int;
-  failed: int;
-}
-
+type counts = { total: int; cached: int; executed: int; failed: int }
 type phase_totals = {
   dependency_hashing: Time.Duration.t;
   input_hashing: Time.Duration.t;
@@ -19,13 +13,11 @@ type phase_totals = {
   store_save: Time.Duration.t;
   total: Time.Duration.t;
 }
-
 type group = {
   label: string;
   counts: counts;
   phases: phase_totals;
 }
-
 type t = {
   counts: counts;
   phases: phase_totals;

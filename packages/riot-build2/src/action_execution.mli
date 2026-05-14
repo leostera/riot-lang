@@ -6,7 +6,6 @@ type ref_ = {
   target: Riot_model.Target.t;
   hash: Crypto.hash;
 }
-
 type t = {
   ref_: ref_;
   package: Riot_model.Package.t;
@@ -15,12 +14,10 @@ type t = {
   dependencies: ref_ list;
   sandbox_dir: Path.t;
 }
-
 type status =
   | Cached of Riot_store.Artifact.t
   | Executed of Riot_store.Artifact.t
   | Failed of string
-
 type timing = {
   dependency_hashing: Time.Duration.t;
   input_hashing: Time.Duration.t;
@@ -33,7 +30,6 @@ type timing = {
   store_save: Time.Duration.t;
   total: Time.Duration.t;
 }
-
 type result = {
   ref_: ref_;
   action_kind: string;

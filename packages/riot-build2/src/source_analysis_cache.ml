@@ -44,8 +44,9 @@ let de_list = fun decode -> De.map (De.list decode) vector_to_list
 let ser_list = fun encode -> Ser.contramap Vector.from_list (Ser.list encode)
 
 let fields =
-  De.fields [
-    De.field "version" Version;
+  De.fields
+    [
+      De.field "version" Version;
       De.field "package" Package;
       De.field "path" Path;
       De.field "module_path" Module_path;
@@ -74,8 +75,9 @@ let deserialize =
           builder.module_path <- Some (De.read reader (De.option (de_list De.string)))
       | Some Source_hash -> builder.source_hash <- Some (De.read reader De.string)
       | Some Source_summary ->
-          builder.source_summary <-
-            Some (De.read reader Riot_planner.Dep_analyzer.source_summary_deserializer)
+          builder.source_summary <- Some (De.read
+            reader
+            Riot_planner.Dep_analyzer.source_summary_deserializer)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (
@@ -87,33 +89,40 @@ let deserialize =
         builder.source_summary
       ) with
       | (
-        Some version,
-        Some package,
-        Some path,
-        Some module_path,
-        Some source_hash,
-        Some source_summary
-      ) ->
-          ({ version; package; path; module_path; source_hash; source_summary }: payload)
+          Some version,
+          Some package,
+          Some path,
+          Some module_path,
+          Some source_hash,
+          Some source_summary
+        ) -> ({
+        version;
+        package;
+        path;
+        module_path;
+        source_hash;
+        source_summary;
+      }: payload)
       | _ -> De.missing_field ())
 
 let serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "version" Ser.int (fun (value: payload) -> value.version);
-        Ser.field "package" Ser.string (fun (value: payload) -> value.package);
-        Ser.field "path" Ser.string (fun (value: payload) -> value.path);
-        Ser.field
-          "module_path"
-          (Ser.option (ser_list Ser.string))
-          (fun (value: payload) -> value.module_path);
-        Ser.field "source_hash" Ser.string (fun (value: payload) -> value.source_hash);
-        Ser.field
-          "source_summary"
-          Riot_planner.Dep_analyzer.source_summary_serializer
-          (fun (value: payload) -> value.source_summary);
-      ]
+      Ser.fields
+        [
+          Ser.field "version" Ser.int (fun (value: payload) -> value.version);
+          Ser.field "package" Ser.string (fun (value: payload) -> value.package);
+          Ser.field "path" Ser.string (fun (value: payload) -> value.path);
+          Ser.field
+            "module_path"
+            (Ser.option (ser_list Ser.string))
+            (fun (value: payload) -> value.module_path);
+          Ser.field "source_hash" Ser.string (fun (value: payload) -> value.source_hash);
+          Ser.field
+            "source_summary"
+            Riot_planner.Dep_analyzer.source_summary_serializer
+            (fun (value: payload) -> value.source_summary);
+        ]
     )
 
 let create_cache = fun ~store ->
@@ -137,7 +146,8 @@ let write_list_list = fun hasher items ->
       write_list hasher item;
       Crypto.Sha256.write hasher "\x1e")
 
-let input_hash_for_task = fun ~package ~(task: Riot_planner.Module_graph.source_analysis_task) ~source_hash ->
+let input_hash_for_task = fun
+  ~package ~(task:Riot_planner.Module_graph.source_analysis_task) ~source_hash ->
   let hasher = Crypto.Sha256.create () in
   Crypto.Sha256.write hasher "riot-build2-source-analysis:v3";
   Crypto.Sha256.write hasher (Riot_model.Package_name.to_string package);
@@ -173,12 +183,9 @@ let payload = fun ~package (analysis: Riot_planner.Module_graph.source_analysis)
         source_summary;
       }: payload)
 
-let planning_error = fun reason ->
-  Riot_planner.Planning_error.DependencyAnalysisFailed { reason }
+let planning_error = fun reason -> Riot_planner.Planning_error.DependencyAnalysisFailed { reason }
 
-let analysis = fun
-  ~(task: Riot_planner.Module_graph.source_analysis_task)
-  (payload: payload) ->
+let analysis = fun ~(task:Riot_planner.Module_graph.source_analysis_task) (payload: payload) ->
   if payload.version != 2 then
     Error (planning_error "unsupported source analysis cache payload version")
   else if not (String.equal payload.path (Path.to_string task.task_path)) then
@@ -192,10 +199,7 @@ let source_hash = fun (payload: payload) ->
   payload.source_summary.Riot_planner.Dep_analyzer.source_hash
 
 let cache_error = fun reason ->
-  Error.GraphCacheEncodeFailed {
-    namespace = Riot_store.Store.SourceAnalysis;
-    reason;
-  }
+  Error.GraphCacheEncodeFailed { namespace = Riot_store.Store.SourceAnalysis; reason }
 
 let summary_hash = fun summary ->
   let stable_summary =

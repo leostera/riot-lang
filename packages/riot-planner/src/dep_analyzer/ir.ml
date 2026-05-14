@@ -180,11 +180,7 @@ module Item = struct
   let ident_deserializer = De.map (de_list De.string) Ident.of_strings
 
   let include_mode_deserializer =
-    De.variant
-      [
-        De.Variant.unit "Structure" Structure;
-        De.Variant.unit "Signature" Signature;
-      ]
+    De.variant [ De.Variant.unit "Structure" Structure; De.Variant.unit "Signature" Signature; ]
 
   let include_mode_serializer =
     Ser.variant
@@ -257,10 +253,7 @@ module Item = struct
         let item_list_deserializer = de_list deserializer in
         let functor_arg_fields =
           De.fields
-            [
-              De.field "name" Functor_arg_name;
-              De.field "ascription" Functor_arg_ascription;
-            ]
+            [ De.field "name" Functor_arg_name; De.field "ascription" Functor_arg_ascription; ]
         in
         let functor_arg_deserializer =
           De.record
@@ -278,10 +271,7 @@ module Item = struct
         in
         let bound_module_fields =
           De.fields
-            [
-              De.field "name" Bound_module_name;
-              De.field "ascription" Bound_module_ascription;
-            ]
+            [ De.field "name" Bound_module_name; De.field "ascription" Bound_module_ascription; ]
         in
         let bound_module_deserializer =
           De.record
@@ -311,8 +301,10 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (mode, expr))
-            ~finish:(fun (include_mode, include_expr) ->
-              { include_mode = required include_mode; include_expr = required include_expr })
+            ~finish:(fun (include_mode, include_expr) -> {
+              include_mode = required include_mode;
+              include_expr = required include_expr;
+            })
         in
         let module_payload_fields =
           De.fields
@@ -334,19 +326,14 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (name, signature, body))
-            ~finish:(fun (module_name, module_signature, module_body) ->
-              {
-                module_name = required module_name;
-                module_signature = required module_signature;
-                module_body = required module_body;
-              })
+            ~finish:(fun (module_name, module_signature, module_body) -> {
+              module_name = required module_name;
+              module_signature = required module_signature;
+              module_body = required module_body;
+            })
         in
         let module_alias_payload_fields =
-          De.fields
-            [
-              De.field "name" Module_alias_name;
-              De.field "target" Module_alias_target;
-            ]
+          De.fields [ De.field "name" Module_alias_name; De.field "target" Module_alias_target; ]
         in
         let module_alias_payload_deserializer =
           De.record
@@ -359,11 +346,10 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (name, target))
-            ~finish:(fun (module_alias_name, module_alias_target) ->
-              {
-                module_alias_name = required module_alias_name;
-                module_alias_target = required module_alias_target;
-              })
+            ~finish:(fun (module_alias_name, module_alias_target) -> {
+              module_alias_name = required module_alias_name;
+              module_alias_target = required module_alias_target;
+            })
         in
         let functor_payload_fields =
           De.fields
@@ -380,18 +366,20 @@ module Item = struct
             ~step:(fun reader (name, args, body) field ->
               match field with
               | Some Functor_name -> (Some (De.read reader De.string), args, body)
-              | Some Functor_args ->
-                  (name, Some (De.read reader (de_list functor_arg_deserializer)), body)
+              | Some Functor_args -> (
+                name,
+                Some (De.read reader (de_list functor_arg_deserializer)),
+                body
+              )
               | Some Functor_body -> (name, args, Some (De.read reader item_list_deserializer))
               | None ->
                   ignore (De.read reader De.skip_any);
                   (name, args, body))
-            ~finish:(fun (functor_name, functor_args, functor_body) ->
-              {
-                functor_name = required functor_name;
-                functor_args = required functor_args;
-                functor_body = required functor_body;
-              })
+            ~finish:(fun (functor_name, functor_args, functor_body) -> {
+              functor_name = required functor_name;
+              functor_args = required functor_args;
+              functor_body = required functor_body;
+            })
         in
         let module_type_payload_fields =
           De.fields [ De.field "name" Module_type_name; De.field "body" Module_type_body ]
@@ -407,18 +395,14 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (name, body))
-            ~finish:(fun (module_type_name, module_type_body) ->
-              {
-                module_type_name = required module_type_name;
-                module_type_body = required module_type_body;
-              })
+            ~finish:(fun (module_type_name, module_type_body) -> {
+              module_type_name = required module_type_name;
+              module_type_body = required module_type_body;
+            })
         in
         let functor_apply_payload_fields =
           De.fields
-            [
-              De.field "callee" Functor_apply_callee;
-              De.field "argument" Functor_apply_argument;
-            ]
+            [ De.field "callee" Functor_apply_callee; De.field "argument" Functor_apply_argument; ]
         in
         let functor_apply_payload_deserializer =
           De.record
@@ -431,18 +415,13 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (callee, argument))
-            ~finish:(fun (functor_apply_callee, functor_apply_argument) ->
-              {
-                functor_apply_callee = required functor_apply_callee;
-                functor_apply_argument = required functor_apply_argument;
-              })
+            ~finish:(fun (functor_apply_callee, functor_apply_argument) -> {
+              functor_apply_callee = required functor_apply_callee;
+              functor_apply_argument = required functor_apply_argument;
+            })
         in
         let constraint_payload_fields =
-          De.fields
-            [
-              De.field "expr" Constraint_expr;
-              De.field "signature" Constraint_signature;
-            ]
+          De.fields [ De.field "expr" Constraint_expr; De.field "signature" Constraint_signature; ]
         in
         let constraint_payload_deserializer =
           De.record
@@ -455,18 +434,13 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (expr, signature))
-            ~finish:(fun (constraint_expr, constraint_signature) ->
-              {
-                constraint_expr = required constraint_expr;
-                constraint_signature = required constraint_signature;
-              })
+            ~finish:(fun (constraint_expr, constraint_signature) -> {
+              constraint_expr = required constraint_expr;
+              constraint_signature = required constraint_signature;
+            })
         in
         let with_constraint_payload_fields =
-          De.fields
-            [
-              De.field "base" With_base;
-              De.field "constraints" With_constraints;
-            ]
+          De.fields [ De.field "base" With_base; De.field "constraints" With_constraints; ]
         in
         let with_constraint_payload_deserializer =
           De.record
@@ -479,18 +453,14 @@ module Item = struct
               | None ->
                   ignore (De.read reader De.skip_any);
                   (base, constraints))
-            ~finish:(fun (with_base, with_constraints) ->
-              {
-                with_base = required with_base;
-                with_constraints = required with_constraints;
-              })
+            ~finish:(fun (with_base, with_constraints) -> {
+              with_base = required with_base;
+              with_constraints = required with_constraints;
+            })
         in
         let bind_modules_payload_fields =
           De.fields
-            [
-              De.field "modules" Bind_modules_modules;
-              De.field "scope" Bind_modules_scope;
-            ]
+            [ De.field "modules" Bind_modules_modules; De.field "scope" Bind_modules_scope; ]
         in
         let bind_modules_payload_deserializer =
           De.record
@@ -498,17 +468,18 @@ module Item = struct
             ~init:(None, None)
             ~step:(fun reader (modules, scope) field ->
               match field with
-              | Some Bind_modules_modules ->
-                  (Some (De.read reader (de_list bound_module_deserializer)), scope)
+              | Some Bind_modules_modules -> (
+                Some (De.read reader (de_list bound_module_deserializer)),
+                scope
+              )
               | Some Bind_modules_scope -> (modules, Some (De.read reader item_list_deserializer))
               | None ->
                   ignore (De.read reader De.skip_any);
                   (modules, scope))
-            ~finish:(fun (bind_modules_modules, bind_modules_scope) ->
-              {
-                bind_modules_modules = required bind_modules_modules;
-                bind_modules_scope = required bind_modules_scope;
-              })
+            ~finish:(fun (bind_modules_modules, bind_modules_scope) -> {
+              bind_modules_modules = required bind_modules_modules;
+              bind_modules_scope = required bind_modules_scope;
+            })
         in
         let decode =
           De.variant
@@ -918,10 +889,7 @@ let source_kind_serializer =
 
 let source_kind_deserializer =
   De.variant
-    [
-      De.Variant.unit "Implementation" Implementation;
-      De.Variant.unit "Interface" Interface;
-    ]
+    [ De.Variant.unit "Implementation" Implementation; De.Variant.unit "Interface" Interface; ]
 
 let hash_of_hex = fun hex ->
   let hex_nibble ch =
@@ -985,12 +953,41 @@ let source_summary_deserializer =
     ~init:(None, None, Some None, None, None)
     ~step:(fun reader (source, source_hash, module_path, kind, items) field ->
       match field with
-      | Some Source -> (Some (Path.v (De.read reader De.string)), source_hash, module_path, kind, items)
-      | Some Source_hash -> (source, Some (De.read reader hash_deserializer), module_path, kind, items)
-      | Some Module_path ->
-          (source, source_hash, Some (De.read reader (De.option (de_list De.string))), kind, items)
-      | Some Kind -> (source, source_hash, module_path, Some (De.read reader source_kind_deserializer), items)
-      | Some Items -> (source, source_hash, module_path, kind, Some (De.read reader (de_list Item.deserializer)))
+      | Some Source -> (
+        Some (Path.v (De.read reader De.string)),
+        source_hash,
+        module_path,
+        kind,
+        items
+      )
+      | Some Source_hash -> (
+        source,
+        Some (De.read reader hash_deserializer),
+        module_path,
+        kind,
+        items
+      )
+      | Some Module_path -> (
+        source,
+        source_hash,
+        Some (De.read reader (De.option (de_list De.string))),
+        kind,
+        items
+      )
+      | Some Kind -> (
+        source,
+        source_hash,
+        module_path,
+        Some (De.read reader source_kind_deserializer),
+        items
+      )
+      | Some Items -> (
+        source,
+        source_hash,
+        module_path,
+        kind,
+        Some (De.read reader (de_list Item.deserializer))
+      )
       | None ->
           ignore (De.read reader De.skip_any);
           (source, source_hash, module_path, kind, items))

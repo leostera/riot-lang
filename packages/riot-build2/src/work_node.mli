@@ -22,22 +22,18 @@ type status =
   | Running
   | Completed
   | Failed
-
 type execution_mode =
   | Virtual
   | Concrete
-
 type module_ref = {
   package: Riot_model.Package_name.t option;
   scope: string option;
   name: string;
 }
-
 type source_ref = {
   package: Riot_model.Package_name.t option;
   path: Path.t;
 }
-
 type key =
   | Intent of User_intent.t
   | Package of Riot_model.Package_name.t
@@ -59,7 +55,6 @@ type key =
   | OCamlArchiveKey of Goal.build_package
   | OCamlLibraryKey of Action_execution.ref_
   | ActionExecutionKey of Action_execution.ref_
-
 type kind =
   | UserIntent of User_intent.t
   | Goal of Goal.t
@@ -78,7 +73,6 @@ type kind =
   | OCamlArchive of Goal.build_package
   | OCamlLibrary of Action_execution.t
   | ActionExecution of Action_execution.t
-
 type t
 
 val key_from_kind: kind -> key

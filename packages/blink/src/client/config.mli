@@ -19,15 +19,15 @@ type t = {
   telemetry: Telemetry.t -> unit;
 }
 
-val pool : ?idle_ttl:Std.Time.Duration.t -> max_idle_per_endpoint:int -> unit -> pool_config
+val pool: ?idle_ttl:Std.Time.Duration.t -> max_idle_per_endpoint:int -> unit -> pool_config
 
-val connection_policy_to_string : connection_policy -> string
+val connection_policy_to_string: connection_policy -> string
 
-val close_behavior : connection_policy -> string
+val close_behavior: connection_policy -> string
 
-val default_budget_policy : Budget.policy
+val default_budget_policy: Budget.policy
 
-val make :
+val make:
   ?now:(unit -> Std.Time.Instant.t) ->
   ?transport:transport ->
   ?connection_policy:connection_policy ->

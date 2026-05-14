@@ -52,7 +52,10 @@ let trim_trailing_slash path =
     path
 
 let mounted_path conn ~suffix =
-  let path = Suri.Conn.path conn |> trim_trailing_slash in
+  let path =
+    Suri.Conn.path conn
+    |> trim_trailing_slash
+  in
   if not (String.is_empty suffix) && String.ends_with ~suffix path then
     String.sub path ~offset:0 ~len:(String.length path - String.length suffix)
     |> trim_trailing_slash
@@ -303,9 +306,7 @@ let show_html store conn _req =
       | Error error -> error_json conn error
       | Ok None -> not_found conn
       | Ok (Some job) ->
-          let mount_path =
-            mounted_path conn ~suffix:("/jobs/" ^ Job_id.to_string job_id)
-          in
+          let mount_path = mounted_path conn ~suffix:("/jobs/" ^ Job_id.to_string job_id) in
           Suri.Conn.render_text
             ~headers:[ ("Content-Type", "text/html; charset=utf-8"); ]
             Net.Http.Status.Ok

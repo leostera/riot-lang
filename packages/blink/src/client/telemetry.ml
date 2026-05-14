@@ -42,14 +42,7 @@ let lifecycle_to_string = fun value ->
   | Blocked -> "blocked"
 
 let attempt = fun
-  ~attempt
-  ~started_at
-  ~completed_at
-  ~lifecycle
-  ?status
-  ?error_class
-  ?error_message
-  () ->
+  ~attempt ~started_at ~completed_at ~lifecycle ?status ?error_class ?error_message () ->
   {
     attempt;
     started_at;

@@ -37,18 +37,19 @@ let timing = fun
   ?(output_verification = Time.Duration.zero)
   ?(store_save = Time.Duration.zero)
   ~total
-  () -> {
-  Action_execution.dependency_hashing = dependency_hashing;
-  input_hashing;
-  store_lookup;
-  cache_promotion;
-  sandbox_prepare;
-  source_staging;
-  command_execution;
-  output_verification;
-  store_save;
-  total;
-}
+  () ->
+  {
+    Action_execution.dependency_hashing = dependency_hashing;
+    input_hashing;
+    store_lookup;
+    cache_promotion;
+    sandbox_prepare;
+    source_staging;
+    command_execution;
+    output_verification;
+    store_save;
+    total;
+  }
 
 let result = fun ~package ~hash ~action_kind ~status ~timing ->
   Action_execution.{
@@ -112,35 +113,29 @@ let test_summary_counts_statuses_and_action_kinds = fun _ctx ->
     |> Action_timing_summary.for_package kernel
     |> Action_timing_summary.of_results
   in
-  if not (
-    Int.equal summary.counts.total 3
-    && Int.equal summary.counts.cached 1
-    && Int.equal summary.counts.executed 1
-    && Int.equal summary.counts.failed 1
-  ) then
+  if
+    not
+      (Int.equal summary.counts.total 3
+      && Int.equal summary.counts.cached 1
+      && Int.equal summary.counts.executed 1
+      && Int.equal summary.counts.failed 1)
+  then
     Error "expected status counts for kernel action timing summary"
   else
     match (group "CompileSource" summary.by_action_kind, group "cached" summary.by_status) with
     | (Some compile_source, Some cached) ->
         if not (Int.equal compile_source.counts.total 2) then
           Error "expected two CompileSource action results"
-        else if not (
-          duration_equal
-            compile_source.phases.command_execution
-            (Time.Duration.from_millis 12)
-        ) then
+        else if
+          not
+            (duration_equal compile_source.phases.command_execution (Time.Duration.from_millis 12))
+        then
           Error "expected CompileSource command execution totals to be aggregated"
-        else if not (
-          duration_equal
-            cached.phases.cache_promotion
-            (Time.Duration.from_millis 3)
-        ) then
+        else if
+          not (duration_equal cached.phases.cache_promotion (Time.Duration.from_millis 3))
+        then
           Error "expected cached action promotion totals to be aggregated"
-        else if not (
-          duration_equal
-            summary.phases.total
-            (Time.Duration.from_millis 20)
-        ) then
+        else if not (duration_equal summary.phases.total (Time.Duration.from_millis 20)) then
           Error "expected package filter to exclude non-kernel action timings"
         else
           Ok ()

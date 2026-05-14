@@ -3,13 +3,11 @@ open Std
 type compile_library_source_kind =
   | LibraryInterface
   | LibraryImplementation
-
 type compile_library_source = {
   source: Path.t;
   kind: compile_library_source_kind;
   content: string option;
 }
-
 type t =
   | CompileC of {
       source: Path.t;

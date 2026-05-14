@@ -28,42 +28,42 @@ type interaction = {
 }
 type t
 
-val make : name:string -> record_mode:mode -> unit -> t
+val make: name:string -> record_mode:mode -> unit -> t
 
-val name : t -> string
+val name: t -> string
 
-val path_stem : t -> string
+val path_stem: t -> string
 
-val sanitize_name : string -> string
+val sanitize_name: string -> string
 
-val record_mode : t -> mode
+val record_mode: t -> mode
 
-val with_record_mode : t -> record_mode:mode -> t
+val with_record_mode: t -> record_mode:mode -> t
 
-val interactions : t -> interaction Collections.Vector.t
+val interactions: t -> interaction Collections.Vector.t
 
-val request_fingerprint : Client.Request.t -> request_fingerprint
+val request_fingerprint: Client.Request.t -> request_fingerprint
 
-val from_blink_request :
+val from_blink_request:
   redact_headers:((string * string) list -> (string * string) list) ->
   Client.Request.t ->
   stored_request
 
-val from_blink_response :
+val from_blink_response:
   redact_headers:((string * string) list -> (string * string) list) ->
   Client.Response.t ->
   stored_response
 
-val response_to_blink : stored_response -> Client.Response.t
+val response_to_blink: stored_response -> Client.Response.t
 
-val find_interaction : t -> Client.Request.t -> interaction option
+val find_interaction: t -> Client.Request.t -> interaction option
 
-val to_json : t -> Data.Json.t
+val to_json: t -> Data.Json.t
 
-val from_json :
+val from_json:
   fallback_name:string ->
   fallback_mode:mode ->
   Data.Json.t ->
   (t, Recorder_error.recording_violation) result
 
-val push : t -> value:interaction -> unit
+val push: t -> value:interaction -> unit

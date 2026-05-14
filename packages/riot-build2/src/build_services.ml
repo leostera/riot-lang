@@ -89,27 +89,23 @@ let plan_dependencies = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent intent ->
       Intent_planner.expand t.catalog intent
-      |> Result.map ~fn:(fun goals ->
-        List.map goals ~fn:(fun goal -> Work_request.existing (Work_node.GoalKey goal)))
-  | Goal (BuildPackage build) ->
-      Rule_service.plan_goal_dependencies t.rule_service build
+      |> Result.map
+        ~fn:(fun goals ->
+          List.map
+            goals
+            ~fn:(fun goal -> Work_request.existing (Work_node.GoalKey goal)))
+  | Goal (BuildPackage build) -> Rule_service.plan_goal_dependencies t.rule_service build
   | Goal _
   | ToolchainReady _
   | SourceAnalysis _ -> Ok []
-  | PackageArtifact build ->
-      Rule_service.plan_package_artifact_dependencies t.rule_service build
-  | ModuleDependencies build ->
-      Rule_service.plan_module_dependencies t.rule_service build
-  | OCamlArchive build ->
-      Rule_service.plan_ocaml_archive t.rule_service build
+  | PackageArtifact build -> Rule_service.plan_package_artifact_dependencies t.rule_service build
+  | ModuleDependencies build -> Rule_service.plan_module_dependencies t.rule_service build
+  | OCamlArchive build -> Rule_service.plan_ocaml_archive t.rule_service build
   | OCamlInterface source
   | OCamlByteImplementation source
-  | OCamlImplementation source ->
-      Rule_service.plan_ocaml_source t.rule_service source
-  | OCamlGenerated source ->
-      Rule_service.plan_ocaml_generated t.rule_service source
-  | CObject c_object ->
-      Rule_service.plan_c_object t.rule_service c_object
+  | OCamlImplementation source -> Rule_service.plan_ocaml_source t.rule_service source
+  | OCamlGenerated source -> Rule_service.plan_ocaml_generated t.rule_service source
+  | CObject c_object -> Rule_service.plan_c_object t.rule_service c_object
   | PackageFinalize build ->
       Error (Error.ExecutorInvariantViolated {
         message = "legacy package finalize node was planned in rule-based build service for "
@@ -123,6 +119,7 @@ let plan_dependencies = fun t registry node ->
         Ok (Work_request.from_keys [ Work_node.ToolchainReadyKey { target = action.ref_.target } ])
       else
         Ok []
+
 let execute_node = fun t registry node ->
   match Work_node.kind node with
   | Work_node.UserIntent _ ->
@@ -146,8 +143,7 @@ let execute_node = fun t registry node ->
       Rule_service.execute_ocaml_byte_implementation t.rule_service registry source
   | OCamlImplementation source ->
       Rule_service.execute_ocaml_implementation t.rule_service registry source
-  | OCamlGenerated source ->
-      Rule_service.execute_ocaml_generated t.rule_service registry source
+  | OCamlGenerated source -> Rule_service.execute_ocaml_generated t.rule_service registry source
   | CObject c_object -> Rule_service.execute_c_object t.rule_service registry c_object
   | PackageFinalize build ->
       Error (Error.ExecutorInvariantViolated {

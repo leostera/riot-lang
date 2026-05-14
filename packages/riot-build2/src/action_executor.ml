@@ -84,17 +84,14 @@ let measured_duration = fun duration ->
     duration
 
 let timed = fun fn ->
-  let result, duration = Timer.measure fn in
+  let (result, duration) = Timer.measure fn in
   (result, measured_duration duration)
 
 let action_run_result = fun
   ?(source_staging_duration = Time.Duration.zero)
   ?(command_execution_duration = Time.Duration.zero)
-  result -> {
-  result;
-  source_staging_duration;
-  command_execution_duration;
-}
+  result ->
+  { result; source_staging_duration; command_execution_duration }
 
 let action_run_failed = fun
   ?(source_staging_duration = Time.Duration.zero)
@@ -155,8 +152,7 @@ let source_include_dir = fun source ->
   | Some dir -> dir
   | None -> Path.v "."
 
-let generated_source_path = fun ~sandbox_dir source ->
-  Path.join sandbox_dir source.Action.source
+let generated_source_path = fun ~sandbox_dir source -> Path.join sandbox_dir source.Action.source
 
 let compile_source_path = fun ~package_root ~sandbox_dir source ->
   match source.Action.content with
@@ -204,10 +200,7 @@ let prepare_compile_sources = fun ~package ~package_root ~sandbox_dir sources ->
   if List.is_empty sources then
     (Ok [], Time.Duration.zero)
   else if List.all sources ~fn:(fun source -> Option.is_none source.Action.content) then
-    (
-      Ok (List.map sources ~fn:(compile_source_path ~package_root ~sandbox_dir)),
-      Time.Duration.zero
-    )
+    (Ok (List.map sources ~fn:(compile_source_path ~package_root ~sandbox_dir)), Time.Duration.zero)
   else
     timed
       (fun () ->
@@ -221,7 +214,9 @@ let prepare_compile_sources = fun ~package ~package_root ~sandbox_dir sources ->
         |> Result.map ~fn:List.reverse)
 
 let generated_check_cmi_outputs = fun outputs ->
-  List.filter outputs ~fn:(fun output -> Path.extension output = Some ".cmi")
+  List.filter
+    outputs
+    ~fn:(fun output -> Path.extension output = Some ".cmi")
 
 let copy_generated_cmi_to_check_store = fun ~package ~sandbox_dir outputs ->
   let rec loop = fun __tmp1 ->
@@ -282,7 +277,7 @@ let run_action = fun
               ~output:(compiler_output_path sandbox_dir output)
               source
           in
-          let result, command_execution_duration =
+          let (result, command_execution_duration) =
             timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
           in
           action_run_result ~command_execution_duration result)
@@ -296,7 +291,7 @@ let run_action = fun
       with_toolchain
         native_ocamlc
         (fun ocamlc ->
-          let source_result, source_staging_duration =
+          let (source_result, source_staging_duration) =
             prepare_compile_source ~package ~package_root ~sandbox_dir source
           in
           match source_result with
@@ -325,7 +320,7 @@ let run_action = fun
                       ~output:(compiler_output_path sandbox_dir output)
                       source_path
               in
-              let result, command_execution_duration =
+              let (result, command_execution_duration) =
                 timed
                   (fun () ->
                     let result = Riot_toolchain.Ocamlc.run invocation in
@@ -334,8 +329,7 @@ let run_action = fun
                         copy_generated_cmi_to_check_store ~package ~sandbox_dir outputs
                         |> Result.fold
                           ~ok:(fun () -> result)
-                          ~error:(fun error ->
-                            ocamlc_failed (Error.message error))
+                          ~error:(fun error -> ocamlc_failed (Error.message error))
                     | _ -> result)
               in
               action_run_result ~source_staging_duration ~command_execution_duration result)
@@ -349,7 +343,7 @@ let run_action = fun
       with_toolchain
         byte_ocamlc
         (fun ocamlc ->
-          let source_result, source_staging_duration =
+          let (source_result, source_staging_duration) =
             prepare_compile_source ~package ~package_root ~sandbox_dir source
           in
           match source_result with
@@ -368,7 +362,7 @@ let run_action = fun
                   ~output:(compiler_output_path sandbox_dir output)
                   source_path
               in
-              let result, command_execution_duration =
+              let (result, command_execution_duration) =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
               in
               action_run_result ~source_staging_duration ~command_execution_duration result)
@@ -382,7 +376,7 @@ let run_action = fun
       with_toolchain
         byte_ocamlc
         (fun ocamlc ->
-          let source_result, source_staging_duration =
+          let (source_result, source_staging_duration) =
             prepare_compile_source ~package ~package_root ~sandbox_dir source
           in
           match source_result with
@@ -401,7 +395,7 @@ let run_action = fun
                   ~output:(compiler_output_path sandbox_dir output)
                   source_path
               in
-              let result, command_execution_duration =
+              let (result, command_execution_duration) =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
               in
               action_run_result ~source_staging_duration ~command_execution_duration result)
@@ -416,7 +410,7 @@ let run_action = fun
       with_toolchain
         native_ocamlc
         (fun ocamlc ->
-          let source_result, source_staging_duration =
+          let (source_result, source_staging_duration) =
             prepare_compile_source ~package ~package_root ~sandbox_dir source
           in
           match source_result with
@@ -436,7 +430,7 @@ let run_action = fun
                   ~output:(compiler_output_path sandbox_dir output)
                   source_path
               in
-              let result, command_execution_duration =
+              let (result, command_execution_duration) =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
               in
               action_run_result ~source_staging_duration ~command_execution_duration result)
@@ -449,7 +443,7 @@ let run_action = fun
       with_toolchain
         native_ocamlc
         (fun ocamlc ->
-          let source_paths, source_staging_duration =
+          let (source_paths, source_staging_duration) =
             prepare_compile_sources ~package ~package_root ~sandbox_dir sources
           in
           match source_paths with
@@ -467,7 +461,7 @@ let run_action = fun
                   ~flags:(make_flags_absolute sandbox_dir flags)
                   source_paths
               in
-              let result, command_execution_duration =
+              let (result, command_execution_duration) =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
               in
               action_run_result ~source_staging_duration ~command_execution_duration result)
@@ -482,7 +476,7 @@ let run_action = fun
       with_toolchain
         native_ocamlc
         (fun ocamlc ->
-          let source_paths, source_staging_duration =
+          let (source_paths, source_staging_duration) =
             prepare_compile_sources ~package ~package_root ~sandbox_dir sources
           in
           match source_paths with
@@ -501,7 +495,7 @@ let run_action = fun
                   ~output
                   (source_paths @ objects)
               in
-              let result, command_execution_duration =
+              let (result, command_execution_duration) =
                 timed (fun () -> Riot_toolchain.Ocamlc.run invocation)
               in
               action_run_result ~source_staging_duration ~command_execution_duration result)
@@ -509,7 +503,7 @@ let run_action = fun
       let src = resolve_source ~package_root ~sandbox_dir source in
       let dst = Path.join sandbox_dir destination in
       let _ = ensure_parent_dir dst in
-      let result, command_execution_duration =
+      let (result, command_execution_duration) =
         timed
           (fun () ->
             Fs.copy ~src ~dst
@@ -521,7 +515,7 @@ let run_action = fun
   | Action.WriteFile { destination; content } ->
       let dst = Path.join sandbox_dir destination in
       let _ = ensure_parent_dir dst in
-      let result, command_execution_duration =
+      let (result, command_execution_duration) =
         timed
           (fun () ->
             Fs.write content dst
@@ -553,8 +547,10 @@ let verify_outputs = fun outputs ->
   else
     Error missing
 
-let finish_timing = fun started_at (timing: Action_execution.timing) ->
-  { timing with total = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ()) }
+let finish_timing = fun started_at (timing: Action_execution.timing) -> {
+  timing with
+  total = Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ());
+}
 
 let artifact_paths = fun (artifact: Riot_store.Artifact.t) ->
   artifact.files
@@ -587,15 +583,14 @@ let dependency_outputs_for_consumer = fun (consumer: Action_execution.t) artifac
       artifact_paths_with_extension artifact ".cmi"
   | Action.CompileInterface _
   | Action.CompileByteImplementation _
-  | Action.CompileNativeImplementation _ ->
-      artifact_paths_with_extension artifact ".cmi"
+  | Action.CompileNativeImplementation _ -> artifact_paths_with_extension artifact ".cmi"
   | Action.CompileSources { flags; _ } when flags_include_opaque flags ->
       artifact_paths_with_extension artifact ".cmi"
   | Action.CompileSource _
-  | Action.CompileSources _ ->
-      artifact_paths_with_extensions artifact [ ".cmi"; ".cmx" ]
-  | Action.CompileLibrary { sources = []; outputs; _ }
-    when List.any outputs ~fn:(fun output -> Path.extension output = Some ".cmxa") -> []
+  | Action.CompileSources _ -> artifact_paths_with_extensions artifact [ ".cmi"; ".cmx" ]
+  | Action.CompileLibrary { sources = []; outputs; _ } when List.any
+    outputs
+    ~fn:(fun output -> Path.extension output = Some ".cmxa") -> []
   | Action.CompileC _
   | Action.CompileLibrary _
   | Action.CopyFile _
@@ -613,7 +608,8 @@ let dependency_promotion_preserves_permissions = fun (consumer: Action_execution
   | Action.CopyFile _
   | Action.WriteFile _ -> true
 
-let materialize_cached_dependencies_for_execution = fun t (action: Action_execution.t) ~sandbox_dir ->
+let materialize_cached_dependencies_for_execution = fun
+  t (action: Action_execution.t) ~sandbox_dir ->
   let preserve_permissions = dependency_promotion_preserves_permissions action in
   let rec loop = fun __tmp1 ->
     match __tmp1 with
@@ -645,7 +641,9 @@ let materialize_cached_dependencies_for_execution = fun t (action: Action_execut
                   ~target_dir:sandbox_dir
                 |> Result.map_err
                   ~fn:(fun error ->
-                    store_error ~package:action.ref_.package (Riot_store.Store.error_message error))
+                    store_error
+                      ~package:action.ref_.package
+                      (Riot_store.Store.error_message error))
                 |> Result.and_then ~fn:(fun () -> loop rest)
       )
   in
@@ -657,9 +655,9 @@ let execute_uncached = fun
   toolchain
   action_input_hash
   ~started_at
-  ~(timing: Action_execution.timing) ->
+  ~(timing:Action_execution.timing) ->
   let package = action.package in
-  let sandbox_result, sandbox_prepare_duration =
+  let (sandbox_result, sandbox_prepare_duration) =
     timed
       (fun () ->
         let* sandbox_dir = absolute_path action.sandbox_dir in
@@ -671,7 +669,7 @@ let execute_uncached = fun
   let byte_ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc_bytecode in
   let native_ocamlc = Option.map toolchain ~fn:Riot_toolchain.ocamlc in
   let c_compiler = Option.and_then toolchain ~fn:Riot_toolchain.c_compiler in
-  let dependency_materialization_result, dependency_materialization_duration =
+  let (dependency_materialization_result, dependency_materialization_duration) =
     timed (fun () -> materialize_cached_dependencies_for_execution t action ~sandbox_dir)
   in
   let* () = dependency_materialization_result in
@@ -704,18 +702,20 @@ let execute_uncached = fun
         })
   in
   let abs_outputs = List.map (Action.outputs action.action) ~fn:(Path.join sandbox_dir) in
-  let output_result, output_verification_duration =
+  let (output_result, output_verification_duration) =
     timed (fun () -> verify_outputs abs_outputs)
   in
-  let timing: Action_execution.timing =
-    { timing with output_verification = output_verification_duration }
+  let timing: Action_execution.timing = {
+    timing with
+    output_verification = output_verification_duration;
+  }
   in
   let* () =
     output_result
     |> Result.map_err
       ~fn:(fun missing -> Error.ActionOutputsNotCreated { package = package.name; missing })
   in
-  let save_result, store_save_duration =
+  let (save_result, store_save_duration) =
     timed
       (fun () ->
         Riot_store.Store.save_action
@@ -747,8 +747,8 @@ let promote_cached = fun
   (action: Action_execution.t)
   (artifact: Riot_store.Artifact.t)
   ~started_at
-  ~(timing: Action_execution.timing) ->
-  let promote_result, cache_promotion =
+  ~(timing:Action_execution.timing) ->
+  let (promote_result, cache_promotion) =
     timed
       (fun () ->
         let* sandbox_dir = absolute_path action.sandbox_dir in
@@ -770,7 +770,9 @@ let promote_cached = fun
           ~target_dir:sandbox_dir
         |> Result.map_err
           ~fn:(fun error ->
-            store_error ~package:action.ref_.package (Riot_store.Store.error_message error)))
+            store_error
+              ~package:action.ref_.package
+              (Riot_store.Store.error_message error)))
   in
   let* () = promote_result in
   let timing: Action_execution.timing = { timing with cache_promotion } in
@@ -827,16 +829,18 @@ let execute = fun t (action: Action_execution.t) ->
         })
       else
         let started_at = Time.Instant.now () in
-        let dependency_hashes_result, dependency_hashing =
+        let (dependency_hashes_result, dependency_hashing) =
           timed (fun () -> dependency_output_hashes t action)
         in
         let* dependency_output_hashes = dependency_hashes_result in
-        let action_input_hash, input_hashing =
+        let (action_input_hash, input_hashing) =
           timed
             (fun () ->
-              compute_action_input_hash ~planned_hash:action.ref_.hash ~dependency_output_hashes)
+              compute_action_input_hash
+                ~planned_hash:action.ref_.hash
+                ~dependency_output_hashes)
         in
-        let artifact, store_lookup =
+        let (artifact, store_lookup) =
           timed (fun () -> Riot_store.Store.get_action t.store action_input_hash)
         in
         let timing: Action_execution.timing = {

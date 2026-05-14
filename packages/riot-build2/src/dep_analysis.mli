@@ -11,11 +11,9 @@ type source = {
   unresolved: string list;
   resolved_dep_ids: G.Node_id.t list;
 }
-
 type t
 
-val from_analyzed_modules:
-  (G.Node_id.t * Riot_planner.Module_graph.analyzed_module) list -> t
+val from_analyzed_modules: (G.Node_id.t * Riot_planner.Module_graph.analyzed_module) list -> t
 
 val sources: t -> source list
 

@@ -502,7 +502,8 @@ let compute_output_hash = fun ~package ~files ~exports ->
       write entry.action_hash);
   Std.Crypto.Sha256.finish hasher
 
-let create_from_entries = fun ?(ocamlc_warnings = []) ?(exports = []) () ~package ~input_hash ~files ->
+let create_from_entries = fun
+  ?(ocamlc_warnings = []) ?(exports = []) () ~package ~input_hash ~files ->
   let timestamp = Time.SystemTime.now () in
   let output_hash = compute_output_hash ~package ~files ~exports in
   let size_bytes = file_entries_size_bytes files in

@@ -3,44 +3,37 @@ open Std
 type packages =
   | WorkspaceMembers
   | NamedPackages of Riot_model.Package_name.t list
-
 type targets =
   | HostTarget
   | AllTargets
   | ManyTargets of Riot_model.Target.t list
-
 type profiles =
   | DefaultProfile
   | ManyProfiles of Riot_model.Profile.t list
-
 type build = {
   packages: packages;
   profiles: profiles;
   targets: targets;
   scope: Goal.scope;
 }
-
 type test = {
   packages: packages;
   filter: string option;
   profiles: profiles;
   targets: targets;
 }
-
 type runnable =
   | ByName of string
   | Scoped of {
       package: Riot_model.Package_name.t;
       binary: string option;
     }
-
 type run = {
   runnable: runnable;
   args: string list;
   profile: Riot_model.Profile.t;
   target: Riot_model.Target.t;
 }
-
 type t =
   | Build of build
   | Test of test

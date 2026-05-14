@@ -308,7 +308,8 @@ let test_complete_spawned_canonicalizes_returned_nodes = fun _ctx ->
   let events = Queue.create () in
   let execute _context node =
     match Work_node.kind node with
-    | Work_node.UserIntent _ -> Ok (Work_result.Complete [ goal_request action; goal_request action ])
+    | Work_node.UserIntent _ ->
+        Ok (Work_result.Complete [ goal_request action; goal_request action ])
     | Work_node.Goal _ -> Ok (Work_result.Complete [])
     | _ -> unexpected_node node
   in

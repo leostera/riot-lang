@@ -187,21 +187,11 @@ let interface_dependency_workspace = fun root ->
   let* () = write_source a_interface "val value : int\n" in
   let* () = write_source a_implementation "let value = 1\n" in
   let* () = write_source c_implementation "let value = 2\n" in
-  let* () =
-    write_source
-      b_implementation
-      "let from_a = A.value\nlet from_c = C.value\n"
-  in
+  let* () = write_source b_implementation "let from_a = A.value\nlet from_c = C.value\n" in
   let* () = write_source root_source "let value = B.from_a + B.from_c\n" in
   let sources =
     Riot_model.Package.{
-      src = [
-        root_source;
-        a_interface;
-        a_implementation;
-        b_implementation;
-        c_implementation;
-      ];
+      src = [ root_source; a_interface; a_implementation; b_implementation; c_implementation; ];
       native = [];
       tests = [];
       examples = [];
@@ -257,8 +247,7 @@ let dependencies_for_action = fun plan action ->
 
 let compile_source_is = fun path kind action ->
   match action.Action_execution.action with
-  | Action.CompileSource { source; _ } ->
-      Path.equal source.source path && source.kind = kind
+  | Action.CompileSource { source; _ } -> Path.equal source.source path && source.kind = kind
   | Action.CompileInterface { source; _ } ->
       kind = Action.LibraryInterface && Path.equal source.source path
   | Action.CompileNativeImplementation { source; _ } ->
@@ -267,25 +256,16 @@ let compile_source_is = fun path kind action ->
 
 let compile_byte_implementation_is = fun path action ->
   match action.Action_execution.action with
-  | Action.CompileByteImplementation { source; _ } ->
-      Path.equal source.source path
+  | Action.CompileByteImplementation { source; _ } -> Path.equal source.source path
   | _ -> false
 
 let require_compile_source = fun (plan: Module_plan.t) path kind ->
-  match
-    List.find
-      plan.action_executions
-      ~fn:(compile_source_is path kind)
-  with
+  match List.find plan.action_executions ~fn:(compile_source_is path kind) with
   | Some action -> Ok action
   | None -> Error ("expected compile source action for " ^ Path.to_string path)
 
 let require_compile_byte_implementation = fun (plan: Module_plan.t) path ->
-  match
-    List.find
-      plan.action_executions
-      ~fn:(compile_byte_implementation_is path)
-  with
+  match List.find plan.action_executions ~fn:(compile_byte_implementation_is path) with
   | Some action -> Ok action
   | None -> Error ("expected byte implementation action for " ^ Path.to_string path)
 
@@ -319,17 +299,29 @@ let generated_implementations_use_impl_flags = fun (plan: Module_plan.t) ->
       ~fn:(fun action ->
         match action.Action_execution.action with
         | Action.CompileSource {
-            source = { source; kind = Action.LibraryImplementation; content = Some _ };
+            source = {
+              source;
+              kind = Action.LibraryImplementation;
+              content = Some _;
+            };
             flags;
             _;
           }
         | Action.CompileByteImplementation {
-            source = { source; kind = Action.LibraryImplementation; content = Some _ };
+            source = {
+              source;
+              kind = Action.LibraryImplementation;
+              content = Some _;
+            };
             flags;
             _;
           }
         | Action.CompileNativeImplementation {
-            source = { source; kind = Action.LibraryImplementation; content = Some _ };
+            source = {
+              source;
+              kind = Action.LibraryImplementation;
+              content = Some _;
+            };
             flags;
             _;
           } -> Some (source, flags)
@@ -338,11 +330,12 @@ let generated_implementations_use_impl_flags = fun (plan: Module_plan.t) ->
   not (List.is_empty generated)
   && List.all generated ~fn:(fun (source, flags) -> flags_include_impl flags source)
 
-let action_depends_on_source = fun deps path kind ->
-  List.any deps ~fn:(compile_source_is path kind)
+let action_depends_on_source = fun deps path kind -> List.any deps ~fn:(compile_source_is path kind)
 
 let action_depends_on_byte_implementation = fun deps path ->
-  List.any deps ~fn:(compile_byte_implementation_is path)
+  List.any
+    deps
+    ~fn:(compile_byte_implementation_is path)
 
 let action_output_extensions = fun action ->
   Action.outputs action.Action_execution.action
@@ -353,13 +346,11 @@ let expect_output_extensions = fun label action expected ->
   if actual = expected then
     Ok ()
   else
-    Error (
-      label
-      ^ " expected output extensions "
-      ^ Int.to_string (List.length expected)
-      ^ " entries, got "
-      ^ Int.to_string (List.length actual)
-    )
+    Error (label
+    ^ " expected output extensions "
+    ^ Int.to_string (List.length expected)
+    ^ " entries, got "
+    ^ Int.to_string (List.length actual))
 
 let test_build_package_plans_package_dependencies_before_execution = fun _ctx ->
   let services = Build_services.create ~config:(config ()) () in
@@ -490,8 +481,7 @@ let test_module_plan_execution_requires_planned_source_analysis = fun _ctx ->
       match Build_services.execute_node services registry node with
       | Error (Error.ExecutorInvariantViolated _) -> Ok ()
       | Error error -> Error (Error.message error)
-      | Ok _ -> Error "expected module planning execution to require planned source analysis")
-  with
+      | Ok _ -> Error "expected module planning execution to require planned source analysis") with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -573,11 +563,7 @@ let test_opaque_implementation_dependencies_use_cmi_producers = fun _ctx ->
     (fun root ->
       let* workspace = interface_dependency_workspace root in
       let build = build_package "sourcepkg" in
-      let services =
-        Build_services.create
-          ~config:(Config.make ~workspace ~parallelism:1 ())
-          ()
-      in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
       let registry = Work_registry.create () in
       let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
       let* source_keys =
@@ -622,11 +608,7 @@ let test_opaque_implementation_dependencies_use_direct_cmi_frontier = fun _ctx -
     (fun root ->
       let* workspace = interface_dependency_workspace root in
       let build = build_package "sourcepkg" in
-      let services =
-        Build_services.create
-          ~config:(Config.make ~workspace ~parallelism:1 ())
-          ()
-      in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
       let registry = Work_registry.create () in
       let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
       let* source_keys =
@@ -665,11 +647,7 @@ let test_ocaml_compile_actions_declare_only_graph_required_outputs = fun _ctx ->
     (fun root ->
       let* workspace = interface_dependency_workspace root in
       let build = build_package "sourcepkg" in
-      let services =
-        Build_services.create
-          ~config:(Config.make ~workspace ~parallelism:1 ())
-          ()
-      in
+      let services = Build_services.create ~config:(Config.make ~workspace ~parallelism:1 ()) () in
       let registry = Work_registry.create () in
       let node = Work_node.module_plan ~id:(Work_node.Node_id.from_int 1) build in
       let* source_keys =
@@ -688,23 +666,13 @@ let test_ocaml_compile_actions_declare_only_graph_required_outputs = fun _ctx ->
       let* interface_action =
         require_compile_source plan (Path.v "src/a.mli") Action.LibraryInterface
       in
-      let* byte_action =
-        require_compile_byte_implementation plan (Path.v "src/c.ml")
-      in
+      let* byte_action = require_compile_byte_implementation plan (Path.v "src/c.ml") in
       let* native_action =
         require_compile_source plan (Path.v "src/a.ml") Action.LibraryImplementation
       in
+      let* () = expect_output_extensions "interface CMI producer" interface_action [ Some ".cmi" ] in
       let* () =
-        expect_output_extensions
-          "interface CMI producer"
-          interface_action
-          [ Some ".cmi" ]
-      in
-      let* () =
-        expect_output_extensions
-          "byte implementation CMI producer"
-          byte_action
-          [ Some ".cmi" ]
+        expect_output_extensions "byte implementation CMI producer" byte_action [ Some ".cmi" ]
       in
       expect_output_extensions
         "native implementation compiler"
@@ -764,9 +732,8 @@ let test_source_analyzer_refreshes_changed_source = fun _ctx ->
         |> Result.map_err ~fn:Error.message
       in
       match Source_analyzer.find analyzer source_analysis.key with
-      | Some analysis
-        when not (Crypto.Hash.equal first analysis.Riot_planner.Module_graph.analysis_source_hash) ->
-          Ok ()
+      | Some analysis when not
+        (Crypto.Hash.equal first analysis.Riot_planner.Module_graph.analysis_source_hash) -> Ok ()
       | Some _ -> Error "expected changed source to refresh the stored source analysis"
       | None -> Error "expected refreshed source analysis to be stored") with
   | Ok result -> result
@@ -822,10 +789,9 @@ let test_source_analyzer_cache_reader_requires_completed_source_node = fun _ctx 
       match cache_read () with
       | [ Ok analysis ] -> (
           match Source_analyzer.find analyzer source_analysis.key with
-          | Some cached
-            when Crypto.Hash.equal
-              analysis.Riot_planner.Module_graph.analysis_source_hash
-              cached.Riot_planner.Module_graph.analysis_source_hash -> Ok ()
+          | Some cached when Crypto.Hash.equal
+            analysis.Riot_planner.Module_graph.analysis_source_hash
+            cached.Riot_planner.Module_graph.analysis_source_hash -> Ok ()
           | Some _ -> Error "expected cache-only source reader to return stored analysis"
           | None -> Error "expected executed source analysis to be stored"
         )
@@ -1100,11 +1066,12 @@ let test_uncached_action_reads_concrete_package_sources_without_sandbox_copy = f
       let executor = Action_executor.create ~store ~toolchains () in
       let action = copy_file_action_execution root in
       match Action_executor.execute executor action with
-      | Ok (Work_result.Complete []) ->
-          (match Fs.read Path.(action.sandbox_dir / Path.v "copied.txt") with
+      | Ok (Work_result.Complete []) -> (
+          match Fs.read Path.(action.sandbox_dir / Path.v "copied.txt") with
           | Ok "package-source\n" -> Ok ()
           | Ok _ -> Error "expected copied package source content"
-          | Error error -> Error ("expected copied package source: " ^ IO.error_message error))
+          | Error error -> Error ("expected copied package source: " ^ IO.error_message error)
+        )
       | Ok _ -> Error "expected package-source copy action not to request dependencies"
       | Error error -> Error (Error.message error)) with
   | Ok result -> result
@@ -1124,8 +1091,7 @@ let test_uncached_compiler_action_requires_planned_toolchain_readiness = fun _ct
       match Action_executor.execute executor action with
       | Error (Error.ExecutorInvariantViolated _) -> Ok ()
       | Error error -> Error (Error.message error)
-      | Ok _ -> Error "expected uncached compiler action to require planned toolchain readiness")
-  with
+      | Ok _ -> Error "expected uncached compiler action to require planned toolchain readiness") with
   | Ok result -> result
   | Error error -> Error ("tempdir failed: " ^ IO.error_message error)
 
@@ -1158,8 +1124,7 @@ let test_package_sandbox_prepares_package_scoped_layout = fun _ctx ->
     match Fs.exists path with
     | Ok true -> Ok ()
     | Ok false -> Error ("expected package sandbox path to exist: " ^ Path.to_string path)
-    | Error error ->
-        Error ("failed to check package sandbox path: " ^ IO.error_message error)
+    | Error error -> Error ("failed to check package sandbox path: " ^ IO.error_message error)
   in
   match Fs.with_tempdir
     ~prefix:"riot_build2_package_sandbox"
@@ -1230,9 +1195,7 @@ let tests =
     case
       "OCaml compile actions declare only graph-required outputs"
       test_ocaml_compile_actions_declare_only_graph_required_outputs;
-    case
-      "source analyzer refreshes changed source"
-      test_source_analyzer_refreshes_changed_source;
+    case "source analyzer refreshes changed source" test_source_analyzer_refreshes_changed_source;
     case
       "source analyzer cache reader requires completed source node"
       test_source_analyzer_cache_reader_requires_completed_source_node;

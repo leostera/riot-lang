@@ -49,10 +49,7 @@ let de_list = fun decode -> De.map (De.list decode) vector_to_list
 let ser_list = fun encode -> Ser.contramap Vector.from_list (Ser.list encode)
 
 let action_fields =
-  De.fields [
-    De.field "action" Action;
-    De.field "dependency_indexes" Dependency_indexes;
-  ]
+  De.fields [ De.field "action" Action; De.field "dependency_indexes" Dependency_indexes; ]
 
 let action_payload_deserialize =
   De.record_mut
@@ -61,29 +58,29 @@ let action_payload_deserialize =
     ~step:(fun reader builder field ->
       match field with
       | Some Action -> builder.action <- Some (De.read reader Action.deserialize)
-      | Some Dependency_indexes -> builder.dependency_indexes <- Some (De.read reader (de_list De.int))
+      | Some Dependency_indexes ->
+          builder.dependency_indexes <- Some (De.read reader (de_list De.int))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.action, builder.dependency_indexes) with
-      | (Some action, Some dependency_indexes) ->
-          ({ action; dependency_indexes }: action_payload)
+      | (Some action, Some dependency_indexes) -> ({ action; dependency_indexes }: action_payload)
       | _ -> De.missing_field ())
 
 let action_payload_serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "action" Action.serialize (fun (value: action_payload) -> value.action);
-        Ser.field "dependency_indexes" (ser_list Ser.int) (fun (value: action_payload) -> value.dependency_indexes);
-      ]
+      Ser.fields
+        [
+          Ser.field "action" Action.serialize (fun (value: action_payload) -> value.action);
+          Ser.field
+            "dependency_indexes"
+            (ser_list Ser.int)
+            (fun (value: action_payload) -> value.dependency_indexes);
+        ]
     )
 
 let fields =
-  De.fields [
-    De.field "version" Version;
-    De.field "package" Package;
-    De.field "actions" Actions;
-  ]
+  De.fields [ De.field "version" Version; De.field "package" Package; De.field "actions" Actions; ]
 
 let deserialize =
   De.record_mut
@@ -93,25 +90,26 @@ let deserialize =
       match field with
       | Some Version -> builder.version <- Some (De.read reader De.int)
       | Some Package -> builder.package <- Some (De.read reader De.string)
-      | Some Actions -> builder.actions <- Some (De.read reader (de_list action_payload_deserialize))
+      | Some Actions ->
+          builder.actions <- Some (De.read reader (de_list action_payload_deserialize))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun builder ->
       match (builder.version, builder.package, builder.actions) with
-      | (Some version, Some package, Some actions) -> ({
-          version;
-          package;
-          actions;
-        }: payload)
+      | (Some version, Some package, Some actions) -> ({ version; package; actions }: payload)
       | _ -> De.missing_field ())
 
 let serialize =
   Ser.record
     (
-      Ser.fields [
-        Ser.field "version" Ser.int (fun (value: payload) -> value.version);
-        Ser.field "package" Ser.string (fun (value: payload) -> value.package);
-        Ser.field "actions" (ser_list action_payload_serialize) (fun (value: payload) -> value.actions);
-      ]
+      Ser.fields
+        [
+          Ser.field "version" Ser.int (fun (value: payload) -> value.version);
+          Ser.field "package" Ser.string (fun (value: payload) -> value.package);
+          Ser.field
+            "actions"
+            (ser_list action_payload_serialize)
+            (fun (value: payload) -> value.actions);
+        ]
     )
 
 let create_cache = fun ~store ->
@@ -138,22 +136,19 @@ let payload_of_plan = fun (plan: Module_plan.t) ->
   ({
     version = 8;
     package = Riot_model.Package_name.to_string plan.package.name;
-    actions =
-      List.map
-        plan.action_executions
-        ~fn:(fun (action: Action_execution.t) ->
-          ({
-            action = action.Action_execution.action;
-            dependency_indexes =
-              List.map action.dependencies ~fn:(index_of_ref plan.action_executions);
-          }: action_payload));
+    actions = List.map
+      plan.action_executions
+      ~fn:(fun (action: Action_execution.t) ->
+        ({
+          action = action.Action_execution.action;
+          dependency_indexes = List.map
+            action.dependencies
+            ~fn:(index_of_ref plan.action_executions);
+        }: action_payload));
   }: payload)
 
 let decode_error = fun reason ->
-  Error.GraphCacheDecodeFailed {
-    namespace = Riot_store.Store.ModulePlans;
-    reason;
-  }
+  Error.GraphCacheDecodeFailed { namespace = Riot_store.Store.ModulePlans; reason }
 
 let action_at = fun actions index ->
   let rec loop current = fun __tmp1 ->
@@ -167,7 +162,8 @@ let action_at = fun actions index ->
   else
     loop 0 actions
 
-let action_executions = fun ~(package:Riot_model.Package.t) ~profile ~target ~toolchain ~sandbox_dir (payload: payload) ->
+let action_executions = fun
+  ~(package:Riot_model.Package.t) ~profile ~target ~toolchain ~sandbox_dir (payload: payload) ->
   let expected = Riot_model.Package_name.to_string package.name in
   if not (Int.equal payload.version 8) then
     Error (decode_error "unsupported module plan cache payload version")

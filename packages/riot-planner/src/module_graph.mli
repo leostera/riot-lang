@@ -69,7 +69,10 @@ val read_source: source_analysis_task -> (string, Planning_error.t) result
 
 val source_hash_of_text: source_analysis_task -> string -> Crypto.hash
 
-val analyze_source_text: source_analysis_task -> string -> (source_analysis, Planning_error.t) result
+val analyze_source_text:
+  source_analysis_task ->
+  string ->
+  (source_analysis, Planning_error.t) result
 
 val source_analysis_of_summary:
   source_analysis_task ->

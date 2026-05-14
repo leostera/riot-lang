@@ -319,9 +319,11 @@ let mark_dependency_completed = fun node ->
   loop ()
 
 let add_dependencies = fun node new_dependencies ->
-  List.for_each new_dependencies ~fn:(fun dependency ->
-    ignore (add_dependency node dependency))
+  List.for_each
+    new_dependencies
+    ~fn:(fun dependency -> ignore (add_dependency node dependency))
 
 let add_dependents = fun node new_dependents ->
-  List.for_each new_dependents ~fn:(fun dependent ->
-    ignore (add_dependent node dependent))
+  List.for_each
+    new_dependents
+    ~fn:(fun dependent -> ignore (add_dependent node dependent))
