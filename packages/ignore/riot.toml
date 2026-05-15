@@ -1,6 +1,6 @@
 [package]
 name = "ignore"
-version = "0.0.41"
+version = "0.0.42"
 description = "Ignore-aware recursive filesystem walking"
 license = "Apache-2.0"
 public = true

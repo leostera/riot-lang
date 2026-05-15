@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.42 - 2026-05-15
+
+### riot
+- `riot build --deps` now rejects unsupported package, watch, and dev-artifact flags before workspace resolution, so Docker dependency-cache stages fail with clear argument errors instead of ambiguous build planning behavior.
+- CLI commands now surface workspace resolution and command parsing failures through the normal human and JSON error paths across build, plan, test, bench, fuzz, clean, fmt, doc, publish, and toolchain flows.
+
+### blink
+- Streaming client and SSE errors are now preserved and reported instead of being silently dropped, making failed or malformed response streams visible to callers.
+
+### kernel
+- Linux timer polling now reports timer-drain read failures through the selector result instead of ignoring them, so unexpected kernel I/O failures stop the poller visibly.
+
+### std
+- `Fs.ReadDir.next_result` is available for callers that need to distinguish end-of-directory from read failures, and recursive filesystem helpers now propagate directory read, close, and temporary-directory cleanup errors instead of treating them as successful completion.
+
+### suri
+- Socket pool read and write failures now preserve their underlying TCP errors, and HTTP/WebSocket handlers log or return those connection failures instead of collapsing them into generic closed-connection cases.
+
 ## 0.0.41 - 2026-05-14
 
 ### riot
