@@ -9,11 +9,15 @@ module Connection: sig
   type send_file_range_error = { off: int; len: int; size: int }
   type error =
     | Closed
+    | ReadError of Std.Net.TcpStream.error
+    | WriteError of Std.Net.TcpStream.error
     | FileError of Std.Fs.error
     | InvalidRange of send_file_range_error
 
+  val error_to_string: error -> string
+
   val write_all_with:
-    write:(bytes -> pos:int -> len:int -> (int, 'error) Std.result) ->
+    write:(bytes -> pos:int -> len:int -> (int, Std.Net.TcpStream.error) Std.result) ->
     string ->
     (unit, error) Std.result
 

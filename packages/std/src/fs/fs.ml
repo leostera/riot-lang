@@ -97,8 +97,9 @@ let read_to_string = fun path ->
           let _ = File.close file in
           Error (from_file_error error)
       | Ok content ->
-          let _ = File.close file in
-          Ok content
+          match File.close file with
+          | Ok () -> Ok content
+          | Error error -> Error (from_file_error error)
     )
 
 let read_dir = fun path ->
@@ -127,9 +128,10 @@ let remove_dir_all = fun path ->
         | Error e -> Error e
         | Ok dir ->
             let rec collect_entries acc =
-              match ReadDir.next dir with
-              | None -> Ok (List.reverse acc)
-              | Some entry -> collect_entries (entry.path :: acc)
+              match ReadDir.next_result dir with
+              | Error error -> Error error
+              | Ok None -> Ok (List.reverse acc)
+              | Ok (Some entry) -> collect_entries (entry.path :: acc)
             in
             match collect_entries [] with
             | Error _ as err -> err
@@ -214,9 +216,10 @@ let rec remove_dir = fun path ->
   | Error error -> Error error
   | Ok dir ->
       let rec process_entries () =
-        match ReadDir.next dir with
-        | None -> Ok ()
-        | Some entry -> (
+        match ReadDir.next_result dir with
+        | Error error -> Error error
+        | Ok None -> Ok ()
+        | Ok (Some entry) -> (
             let file_path = entry.path in
             let full_path = Path.join path file_path in
             match dir_exists full_path with
@@ -353,8 +356,17 @@ let with_tempdir = fun ?(prefix = "tmp") fn ->
           try Ok (fn temp_path) with
           | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
         in
-        let _ = remove_dir_all temp_path in
-        result
+        let cleanup = remove_dir_all temp_path in
+        (
+          match (result, cleanup) with
+          | (Ok value, Ok ()) -> Ok value
+          | (Ok _, Error error) -> Error error
+          | (Error error, Ok ()) -> Error error
+          | (Error error, Error cleanup_error) ->
+              Error (IO.Unknown_error (IO.error_message error
+              ^ "; tempdir cleanup failed: "
+              ^ IO.error_message cleanup_error))
+        )
   with
   | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
 
@@ -371,9 +383,10 @@ let rec walk = fun path fn ->
       | Error e -> Error e
       | Ok dir ->
           let rec walk_entries () =
-            match ReadDir.next dir with
-            | None -> Ok ()
-            | Some entry -> (
+            match ReadDir.next_result dir with
+            | Error e -> Error e
+            | Ok None -> Ok ()
+            | Ok (Some entry) -> (
                 let entry_path = entry.path in
                 let full_path = Path.join path entry_path in
                 match walk full_path fn with

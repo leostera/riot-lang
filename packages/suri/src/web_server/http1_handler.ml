@@ -73,6 +73,7 @@ type websocket_frame_limit_error =
 
 type websocket_bridge_error =
   | WebSocketChannelError of Channel.Handler.reported_error
+  | WebSocketConnectionFailed of Socket_pool.Connection.error
   | WebSocketParseFailed of Http.Ws.Parser.error
   | WebSocketMessageFailed of Http.Ws.Message.error
   | WebSocketSerializeFailed of Http.Ws.Serializer.error
@@ -177,6 +178,8 @@ let websocket_frame_limit_error_to_string = fun error ->
 let websocket_bridge_error_to_string = fun error ->
   match error with
   | WebSocketChannelError error -> Channel.Handler.reported_error_to_string error
+  | WebSocketConnectionFailed error ->
+      "WebSocket connection send failed: " ^ Socket_pool.Connection.error_to_string error
   | WebSocketParseFailed error ->
       "WebSocket frame parse error: " ^ Http.Ws.Parser.error_to_string error
   | WebSocketMessageFailed error ->
@@ -223,17 +226,7 @@ let request_body_header_error_response = fun error ->
 let request_header_error_to_string = fun MissingHostHeader ->
   "HTTP/1.1 requests must include a Host header"
 
-let connection_error_to_string = fun error ->
-  match error with
-  | Socket_pool.Connection.Closed -> "Connection closed"
-  | Socket_pool.Connection.FileError _ -> "Connection file operation failed"
-  | Socket_pool.Connection.InvalidRange { off; len; size } ->
-      "Invalid connection file range: off="
-      ^ Int.to_string off
-      ^ ", len="
-      ^ Int.to_string len
-      ^ ", size="
-      ^ Int.to_string size
+let connection_error_to_string = Socket_pool.Connection.error_to_string
 
 let io_error_to_string = fun error ->
   match error with
@@ -559,8 +552,7 @@ let send_websocket_frames = fun conn frames state ->
       match Socket_pool.Connection.send conn frame_data with
       | Ok () -> Socket_pool.Handler.Continue state
       | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close state
-      | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-          Socket_pool.Handler.Close state
+      | Error error -> Socket_pool.Handler.Error (state, WebSocketConnectionFailed error)
     )
 
 let websocket_event_to_frame = fun message ->
@@ -711,8 +703,9 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
           | Error Socket_pool.Connection.Closed ->
               Log.error "Failed to send WebSocket upgrade response - connection closed";
               Socket_pool.Handler.Close state
-          | Error (Socket_pool.Connection.FileError _ | Socket_pool.Connection.InvalidRange _) ->
-              Log.error "Failed to send WebSocket upgrade response";
+          | Error error ->
+              Log.error
+                ("Failed to send WebSocket upgrade response: " ^ connection_error_to_string error);
               Socket_pool.Handler.Close state
         )
 

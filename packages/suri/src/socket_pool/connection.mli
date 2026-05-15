@@ -18,9 +18,13 @@ type t
 type send_file_range_error = { off: int; len: int; size: int }
 type error =
   | Closed
+  | ReadError of Std.Net.TcpStream.error
+  | WriteError of Std.Net.TcpStream.error
   | FileError of Std.Fs.error
   | InvalidRange of send_file_range_error
 type send_file_error = error
+
+val error_to_string: error -> string
 
 val make:
   ?protocol:string option ->
@@ -37,7 +41,8 @@ val negotiated_protocol: t -> string option
 (**
    [send conn data] sends [data] through the connection.
 
-   Returns [Ok ()] on success or [Error Closed] if connection closed.
+   Returns [Ok ()] on success, [Error Closed] for a zero-byte write, or
+   [Error (WriteError _)] when the stream write fails.
 *)
 val send: t -> string -> (unit, error) result
 
@@ -48,7 +53,8 @@ val send: t -> string -> (unit, error) result
    - [read_size] overrides the default buffer read size
    - [timeout] optional timeout duration for the read operation
 
-   Returns [Ok data] with received data, or [Error Closed] if closed.
+   Returns [Ok data] with received data, [Error Closed] if closed, or
+   [Error (ReadError _)] when the stream read fails.
    Raises [Syscall_timeout] if timeout is specified and expires.
 *)
 val receive:
@@ -79,13 +85,14 @@ val stream: t -> Std.Net.TcpStream.t
    The current implementation reads the requested file, validates the requested
    slice, and writes all bytes to the socket. It returns [FileError] when the
    file cannot be read, [InvalidRange] when [off] or [len] are outside the file
-   bounds, and [Closed] when the socket cannot be written completely.
+   bounds, [Closed] when the socket cannot be written completely, and
+   [WriteError _] when the stream write fails.
 *)
 val send_file: t -> ?off:int -> len:int -> string -> (unit, send_file_error) result
 
 (** [write_all_with ~write data] writes all bytes in [data] through [write]. *)
 val write_all_with:
-  write:(bytes -> pos:int -> len:int -> (int, 'error) result) ->
+  write:(bytes -> pos:int -> len:int -> (int, Std.Net.TcpStream.error) result) ->
   string ->
   (unit, error) result
 

@@ -61,6 +61,13 @@ val open_dir: Path.t -> (t, error) result
 *)
 val next: t -> entry option
 
+(**
+   Result-returning variant of [next].
+
+   Use this in code that must distinguish end-of-directory from I/O errors.
+*)
+val next_result: t -> (entry option, error) result
+
 (** Close the directory handle. *)
 val close: t -> (unit, error) Result.t
 

@@ -49,18 +49,25 @@ let close = fun dir ->
     | Error error -> Error (from_read_dir_error error)
   )
 
-let next = fun dir ->
+let next_result = fun dir ->
   if dir.closed then
-    None
+    Error IO.Closed
   else
     match Kernel.Fs.ReadDir.read_entry dir.handle with
     | Ok None ->
+        close dir
+        |> Result.map ~fn:(fun () -> None)
+    | Ok (Some entry) ->
+        Ok (Some { path = Path.from_string_unchecked entry.path; kind = entry.kind })
+    | Error error ->
+        let read_error = from_read_dir_error error in
         let _ = close dir in
-        None
-    | Ok (Some entry) -> Some { path = Path.from_string_unchecked entry.path; kind = entry.kind }
-    | Error _ ->
-        let _ = close dir in
-        None
+        Error read_error
+
+let next = fun dir ->
+  match next_result dir with
+  | Ok entry -> entry
+  | Error _ -> None
 
 let size = fun _ -> 0
 

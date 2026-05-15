@@ -19,6 +19,12 @@ let receive_selector = fun msg ->
   | AcceptorMsg msg -> Select msg
   | _ -> Skip
 
+let listener_error_to_string = fun __tmp1 ->
+  match __tmp1 with
+  | Net.TcpListener.Connection_refused -> "connection refused"
+  | Net.TcpListener.Closed -> "closed"
+  | Net.TcpListener.System_error error -> IO.error_message error
+
 let rec loop = fun state ->
   match receive ~selector:receive_selector ~timeout:(Time.Duration.from_millis 5) () with
   | Shutdown -> ()
@@ -43,7 +49,7 @@ and accept_connection = fun state ->
       in
       let _pid = Connector.spawn conn_state in
       ()
-  | Error _err -> ()
+  | Error error -> Log.error ("accept failed: " ^ listener_error_to_string error)
 
 let init = fun state ->
   loop state;

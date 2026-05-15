@@ -89,6 +89,23 @@ let test_fs_clone_rejects_existing_destination = fun _ctx ->
             Error "expected failed Fs.clone to leave existing destination unchanged"
       | Error err -> Error ("expected clone destination error, got " ^ IO.error_message err))
 
+let test_read_dir_next_result_reports_closed = fun _ctx ->
+  with_tempdir
+    "std_fs_readdir_closed"
+    (fun tempdir ->
+      let* dir =
+        Fs.ReadDir.open_dir tempdir
+        |> Result.map_err ~fn:IO.error_message
+      in
+      let* () =
+        Fs.ReadDir.close dir
+        |> Result.map_err ~fn:IO.error_message
+      in
+      match Fs.ReadDir.next_result dir with
+      | Error IO.Closed -> Ok ()
+      | Error error -> Error ("expected closed directory error, got " ^ IO.error_message error)
+      | Ok _ -> Error "expected next_result on a closed directory to fail")
+
 let test_with_tempdir_retries_collisions_under_concurrency = fun _ctx ->
   let parent = self () in
   let workers = 16 in
@@ -141,6 +158,7 @@ let tests = [
   Test.case "Fs.write persists complete payloads" test_fs_write_roundtrips_large_binary_payload;
   Test.case "Fs.copy overwrites existing destinations" test_fs_copy_overwrites_existing_destination;
   Test.case "Fs.clone rejects existing destinations" test_fs_clone_rejects_existing_destination;
+  Test.case "Fs.ReadDir.next_result reports closed handles" test_read_dir_next_result_reports_closed;
   Test.case
     "Fs.with_tempdir retries collisions under concurrency"
     test_with_tempdir_retries_collisions_under_concurrency;

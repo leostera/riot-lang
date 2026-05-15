@@ -127,8 +127,7 @@ let test_connection_write_all_retries_short_writes = fun _ctx ->
   | Ok () ->
       Test.assert_equal ~expected:[ (6, 2); (3, 5); (0, 8); ] ~actual:!calls;
       Ok ()
-  | Error Connection.Closed -> Error "expected short writes to complete"
-  | Error _ -> Error "unexpected connection write error"
+  | Error error -> Error ("unexpected connection write error: " ^ Connection.error_to_string error)
 
 let test_connection_write_all_treats_zero_write_as_closed = fun _ctx ->
   let calls = ref 0 in
@@ -141,7 +140,14 @@ let test_connection_write_all_treats_zero_write_as_closed = fun _ctx ->
       Test.assert_equal ~expected:1 ~actual:!calls;
       Ok ()
   | Ok () -> Error "expected zero-byte write to close connection"
-  | Error _ -> Error "unexpected connection write error"
+  | Error error -> Error ("unexpected connection write error: " ^ Connection.error_to_string error)
+
+let test_connection_write_all_preserves_write_error = fun _ctx ->
+  let write _buf ~pos:_ ~len:_ = Error Net.TcpStream.Connection_refused in
+  match Connection.write_all_with ~write "abc" with
+  | Error (Connection.WriteError Net.TcpStream.Connection_refused) -> Ok ()
+  | Ok () -> Error "expected write error"
+  | Error error -> Error ("unexpected connection write error: " ^ Connection.error_to_string error)
 
 let test_connection_write_all_skips_empty_payload = fun _ctx ->
   let calls = ref 0 in
@@ -153,24 +159,21 @@ let test_connection_write_all_skips_empty_payload = fun _ctx ->
   | Ok () ->
       Test.assert_equal ~expected:0 ~actual:!calls;
       Ok ()
-  | Error Connection.Closed -> Error "expected empty payload to complete without writes"
-  | Error _ -> Error "unexpected connection write error"
+  | Error error -> Error ("unexpected connection write error: " ^ Connection.error_to_string error)
 
 let test_connection_send_file_slice_extracts_range = fun _ctx ->
   match Connection.send_file_slice ~off:2 ~len:4 "abcdefgh" with
   | Ok chunk ->
       Test.assert_equal ~expected:"cdef" ~actual:chunk;
       Ok ()
-  | Error (Connection.InvalidRange _) -> Error "expected valid send_file range"
-  | Error _ -> Error "unexpected send_file error"
+  | Error error -> Error ("unexpected send_file error: " ^ Connection.error_to_string error)
 
 let test_connection_send_file_slice_allows_zero_length = fun _ctx ->
   match Connection.send_file_slice ~off:8 ~len:0 "abcdefgh" with
   | Ok chunk ->
       Test.assert_equal ~expected:"" ~actual:chunk;
       Ok ()
-  | Error (Connection.InvalidRange _) -> Error "expected zero-length send_file range"
-  | Error _ -> Error "unexpected send_file error"
+  | Error error -> Error ("unexpected send_file error: " ^ Connection.error_to_string error)
 
 let test_connection_send_file_slice_rejects_invalid_range = fun _ctx ->
   match Connection.send_file_slice ~off:6 ~len:3 "abcdefgh" with
@@ -180,7 +183,7 @@ let test_connection_send_file_slice_rejects_invalid_range = fun _ctx ->
       Test.assert_equal ~expected:8 ~actual:size;
       Ok ()
   | Ok _ -> Error "expected send_file range beyond file size to fail"
-  | Error _ -> Error "unexpected send_file error"
+  | Error error -> Error ("unexpected send_file error: " ^ Connection.error_to_string error)
 
 let test_socket_pool_rejects_invalid_acceptors = fun _ctx ->
   match SocketPool.validate_start_options ~acceptors:0 ~buffer_size:4_096 with
@@ -200,6 +203,9 @@ let tests =
     case
       "connection write all treats zero write as closed"
       test_connection_write_all_treats_zero_write_as_closed;
+    case
+      "connection write all preserves write errors"
+      test_connection_write_all_preserves_write_error;
     case "connection write all skips empty payload" test_connection_write_all_skips_empty_payload;
     case "connection send file slice extracts range" test_connection_send_file_slice_extracts_range;
     case

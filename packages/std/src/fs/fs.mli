@@ -204,6 +204,13 @@ module ReadDir: sig
   (** Get next entry, or None when done. Skips . and .. *)
   val next: t -> entry option
 
+  (**
+     Result-returning variant of [next].
+
+     Use this when callers must distinguish end-of-directory from I/O errors.
+  *)
+  val next_result: t -> (entry option, error) Result.t
+
   (** Close the directory handle *)
   val close: t -> (unit, error) Result.t
 end

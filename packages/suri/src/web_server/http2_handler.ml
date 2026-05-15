@@ -83,17 +83,7 @@ let io_operation_to_string = fun __tmp1 ->
   | SendData -> "sending DATA"
   | SendPing -> "sending PING"
 
-let connection_error_to_string = fun __tmp1 ->
-  match __tmp1 with
-  | Socket_pool.Connection.Closed -> "connection closed"
-  | Socket_pool.Connection.FileError _ -> "file operation failed"
-  | Socket_pool.Connection.InvalidRange { off; len; size } ->
-      "invalid file range off="
-      ^ Int.to_string off
-      ^ ", len="
-      ^ Int.to_string len
-      ^ ", size="
-      ^ Int.to_string size
+let connection_error_to_string = Socket_pool.Connection.error_to_string
 
 let to_string_error = fun __tmp1 ->
   match __tmp1 with

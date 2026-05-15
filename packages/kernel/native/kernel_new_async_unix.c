@@ -876,10 +876,30 @@ static int kernel_new_linux_timeout_ms(int64_t timeout_ns) {
   return (int)timeout_ms;
 }
 
-static void kernel_new_linux_drain_timer(kernel_new_linux_binding *binding) {
+static int kernel_new_linux_drain_timer(kernel_new_linux_binding *binding) {
   uint64_t expirations = 0;
-  ssize_t read_result = read(binding->epoll_fd, &expirations, sizeof(expirations));
-  (void)read_result;
+  ssize_t read_result;
+
+  do {
+    read_result = read(binding->epoll_fd, &expirations, sizeof(expirations));
+  } while (read_result == -1 && errno == EINTR);
+
+  if (read_result == -1) {
+    if (errno == EAGAIN
+#ifdef EWOULDBLOCK
+        || errno == EWOULDBLOCK
+#endif
+    ) {
+      return 0;
+    }
+    return kernel_new_error_of_errno(errno);
+  }
+
+  if (read_result != (ssize_t)sizeof(expirations)) {
+    return KERNEL_NEW_ERR_INPUT_OUTPUT;
+  }
+
+  return 0;
 }
 
 static int kernel_new_linux_pidfd_open(int pid) {
@@ -951,7 +971,11 @@ CAMLprim value kernel_new_async_unix_selector_wait(value max_events_val, value t
       continue;
     }
     if (binding->kind == KERNEL_NEW_LINUX_BINDING_TIMER) {
-      kernel_new_linux_drain_timer(binding);
+      int drain_code = kernel_new_linux_drain_timer(binding);
+      if (drain_code != 0) {
+        free(events);
+        CAMLreturn(kernel_new_result_error(drain_code));
+      }
     }
     output_count += kernel_new_linux_ready_output_count(binding, events[index].events);
   }

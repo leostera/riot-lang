@@ -7,8 +7,12 @@ module Connection = struct
 
   type error = Socket_pool.Connection.error =
     | Closed
+    | ReadError of Std.Net.TcpStream.error
+    | WriteError of Std.Net.TcpStream.error
     | FileError of Std.Fs.error
     | InvalidRange of send_file_range_error
+
+  let error_to_string = Socket_pool.Connection.error_to_string
 
   let write_all_with = Socket_pool.Connection.write_all_with
 
