@@ -1,6 +1,6 @@
 [package]
 name = "gooey"
-version = "0.0.42"
+version = "0.0.43"
 description = "Terminal UI primitives"
 license = "Apache-2.0"
 public = true

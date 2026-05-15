@@ -287,6 +287,15 @@ let test_init_scaffolds_binary_workspace = fun _ctx ->
           / Path.v "demo-bin"
           / Path.v "src"
           / Path.v "main.ml")
+          "println"
+      in
+      let* () =
+        assert_contains
+          Path.(workspace_root
+          / Path.v "packages"
+          / Path.v "demo-bin"
+          / Path.v "src"
+          / Path.v "main.ml")
           "let main ~args:_ ="
       in
       let* () =

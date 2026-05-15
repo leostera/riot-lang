@@ -69,6 +69,7 @@ Optional environment:
                           default: 1
   RIOT_RELEASE_INSTALL_SCRIPT
                           default: 1
+  RIOT_RELEASE_TARGET_DIR default: _build
   RIOT_RELEASE_DRY_RUN    default: 0
   RIOT_CDN_ENDPOINT_URL
   RIOT_CDN_ACCESS_KEY_ID
@@ -194,6 +195,7 @@ UPLOAD_ARTIFACTS="${RIOT_RELEASE_UPLOAD:-1}"
 PUBLISH_LATEST="${RIOT_RELEASE_PUBLISH_LATEST:-1}"
 UPLOAD_INSTALL_SCRIPT="${RIOT_RELEASE_INSTALL_SCRIPT:-1}"
 DRY_RUN="${RIOT_RELEASE_DRY_RUN:-0}"
+BUILD_TARGET_DIR="${RIOT_RELEASE_TARGET_DIR:-_build}"
 NOTES_URL="${RIOT_RELEASE_NOTES_URL:-}"
 COMPARE_URL="${RIOT_RELEASE_COMPARE_URL:-}"
 PREVIOUS_VERSION="${RIOT_RELEASE_PREVIOUS_VERSION:-}"
@@ -204,6 +206,16 @@ INSTALL_SCRIPT_KEY="$BUCKET_PREFIX/install.sh"
 die() {
   echo "error: $*" >&2
   exit 1
+}
+
+resolve_target_dir_root() {
+  local target_dir="$1"
+
+  if [[ "$target_dir" = /* ]]; then
+    printf '%s\n' "$target_dir"
+  else
+    printf '%s\n' "$REPO_ROOT/$target_dir"
+  fi
 }
 
 run_cmd() {
@@ -798,6 +810,7 @@ fi
 RELEASE_RIOT="${RIOT_RELEASE_RIOT_BIN:-$(command -v riot || true)}"
 [ -n "$RELEASE_RIOT" ] || die "expected an installed riot binary in PATH or RIOT_RELEASE_RIOT_BIN"
 [ -x "$RELEASE_RIOT" ] || die "release driver is not executable: $RELEASE_RIOT"
+BUILD_TARGET_DIR_ROOT="$(resolve_target_dir_root "$BUILD_TARGET_DIR")"
 
 VERSIONED_METADATA="$OUTPUT_DIR/riot-${VERSION}.json"
 LATEST_METADATA="$OUTPUT_DIR/latest.json"
@@ -812,13 +825,14 @@ if [ "$PUBLISH_LATEST" != "0" ]; then
 fi
 
 for TARGET in "${TARGETS[@]}"; do
+  BUILD_ARGS=(build --release --target-dir "$BUILD_TARGET_DIR")
   if [ "$TARGET" = "$HOST_TARGET" ]; then
-    run_cmd "$RELEASE_RIOT" build --release -p riot-cli
+    run_cmd "$RELEASE_RIOT" "${BUILD_ARGS[@]}" -p riot-cli
   else
-    run_cmd "$RELEASE_RIOT" build --release -x "$TARGET" -p riot-cli
+    run_cmd "$RELEASE_RIOT" "${BUILD_ARGS[@]}" -x "$TARGET" -p riot-cli
   fi
 
-  BINARY_PATH="$REPO_ROOT/_build/release/$TARGET/out/riot-cli/riot"
+  BINARY_PATH="$BUILD_TARGET_DIR_ROOT/release/$TARGET/out/riot-cli/riot"
   VERSIONED_TARBALL="$OUTPUT_DIR/riot-${VERSION}-${TARGET}.tar.gz"
   LATEST_TARBALL="$OUTPUT_DIR/riot-latest-${TARGET}.tar.gz"
   STAGING_DIR="$OUTPUT_DIR/.pkg-$TARGET"

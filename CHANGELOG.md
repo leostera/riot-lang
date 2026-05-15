@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.43 - 2026-05-15
+
+### riot
+- `riot init --bin` starter binaries now print their greeting directly while still loading config and starting logging, so generated projects produce deterministic stdout on Linux smoke tests.
+- The Riot binary release script can build from an isolated target directory via `RIOT_RELEASE_TARGET_DIR`, preventing stale `_build/release` outputs from being packaged during forced or repeated releases.
+
 ## 0.0.42 - 2026-05-15
 
 ### riot

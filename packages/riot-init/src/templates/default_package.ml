@@ -32,9 +32,9 @@ let library_mli = fun ~workspace_name ->
   "(** Return the starter greeting for " ^ workspace_name ^ ". *)\nval hello: unit -> string\n"
 
 let binary_main_ml = fun ~module_name ->
-  "open Std\n\nlet main ~args:_ =\n  Std.Config.load ();\n  Std.Log.set_level Info;\n  let _ = Std.Log.start_link () in\n  Log.info ("
+  "open Std\n\nlet main ~args:_ =\n  Std.Config.load ();\n  Std.Log.set_level Info;\n  let _ = Std.Log.start_link () in\n  println ("
   ^ module_name
-  ^ ".hello ());\n  Log.flush ();\n  Ok ()\n\nlet () = Runtime.run ~main ~args:Env.args ()\n"
+  ^ ".hello ());\n  Ok ()\n\nlet () = Runtime.run ~main ~args:Env.args ()\n"
 
 let test_ml = fun ~workspace_name ~module_name ~test_file_stem ->
   "open Std\n\nlet test_starter_greeting = fun _ctx ->\n  Test.assert_equal ~expected:\"Hello from "

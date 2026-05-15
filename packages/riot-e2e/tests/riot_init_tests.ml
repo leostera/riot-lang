@@ -150,7 +150,7 @@ let test_riot_init_scaffolds_operational_defaults =
               Path.(package_root / Path.v "src" / Path.v "main.ml")
               "Std.Log.start_link ()"
           in
-          let* () = assert_contains Path.(package_root / Path.v "src" / Path.v "main.ml") "Log.info" in
+          let* () = assert_contains Path.(package_root / Path.v "src" / Path.v "main.ml") "println" in
           Ok ()))
 
 let test_riot_run_list_json_reports_generated_binary =
