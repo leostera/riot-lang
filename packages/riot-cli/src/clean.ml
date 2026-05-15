@@ -26,6 +26,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       ui
       (Riot_build.Event.phase ~session_id (Riot_build.Event.BuildLockWaiting { lock_path }))
   in
+  let fail error = Ui.send_failure ~kind:"CleanError" ui (Failure error) in
   Riot_build.BuildLock.acquire_existing_lanes
     ~on_waiting
     ~target_dir_root:workspace.target_dir_root
@@ -33,8 +34,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       if ArgParser.get_flag matches "force" then
         match Riot_store.Cache_gc.force_clean_with_events ~workspace ~on_event with
         | Ok () -> Ok ()
-        | Error error -> Error (Failure error)
+        | Error error -> fail error
       else
         match Riot_store.Cache_gc.clean_with_events ~workspace ~on_event with
         | Ok _ -> Ok ()
-        | Error error -> Error (Failure error))
+        | Error error -> fail error)

@@ -805,6 +805,35 @@ let test_build_deps_request_uses_dependency_scope = fun _ctx ->
             Error "expected --deps to use dependency-only scope with external packages enabled"
     )
 
+let expect_build_validate_failure = fun args expected ->
+  match parse_build args with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches -> (
+      match Riot_cli.Build.validate_matches matches with
+      | Ok () -> Error "expected build flag validation to fail"
+      | Error (Failure message) ->
+          if String.equal message expected then
+            Ok ()
+          else
+            Error ("unexpected validation error: " ^ message)
+      | Error err -> Error ("expected Failure validation error: " ^ Exception.to_string err)
+    )
+
+let test_build_deps_rejects_watch = fun _ctx ->
+  expect_build_validate_failure
+    [ "build"; "--deps"; "--watch"; ]
+    "--watch is not supported with --deps"
+
+let test_build_deps_rejects_package_filters = fun _ctx ->
+  expect_build_validate_failure
+    [ "build"; "--deps"; "-p"; "app"; ]
+    "--package is not supported with --deps; omit package filters to build all locked third-party dependencies"
+
+let test_build_deps_rejects_dev_artifact_flags = fun _ctx ->
+  expect_build_validate_failure
+    [ "build"; "--deps"; "--tests"; "--examples"; ]
+    "--deps only builds dependency libraries; unsupported artifact flags: --tests, --examples"
+
 let test_build_rejects_invalid_jobs_flag = fun _ctx ->
   match Fs.with_tempdir
     ~prefix:"riot_cli_build_invalid_jobs"
@@ -1797,6 +1826,9 @@ let tests =
     case "build: parse --all flag" test_build_accepts_all_flag;
     case "build: parse --deps flag" test_build_accepts_deps_flag;
     case "build: --deps request uses dependency scope" test_build_deps_request_uses_dependency_scope;
+    case "build: --deps rejects watch" test_build_deps_rejects_watch;
+    case "build: --deps rejects package filters" test_build_deps_rejects_package_filters;
+    case "build: --deps rejects dev artifact flags" test_build_deps_rejects_dev_artifact_flags;
     case "build: parse --jobs flag" test_build_accepts_jobs_flag;
     case "build: parse --target-dir flag" test_build_accepts_target_dir_flag;
     case "build: reject invalid --jobs flag" test_build_rejects_invalid_jobs_flag;

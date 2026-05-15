@@ -48,6 +48,12 @@ val request_of_matches:
 
 val deps_of_matches: Std.ArgParser.matches -> bool
 
+(**
+   Validate [riot build] flag combinations that can be checked before workspace
+   resolution.
+*)
+val validate_matches: Std.ArgParser.matches -> (unit, exn) result
+
 (** Execute a build command programmatically. *)
 val build_command:
   workspace:Riot_model.Workspace.t ->

@@ -79,7 +79,7 @@ let build_args =
     flag "deps"
     |> long "deps"
     |> help
-      "Fetch and build third-party dependencies from riot.lock without building workspace members";
+      "Fetch and build all third-party dependency libraries from riot.lock without building workspace members";
     flag "release"
     |> long "release"
     |> help "Use the release build profile";
@@ -121,6 +121,29 @@ let mode_of_matches = fun matches -> Ui.mode_of_json_flag (ArgParser.get_flag ma
 let watch_of_matches = fun matches -> ArgParser.get_flag matches "watch"
 
 let deps_of_matches = fun matches -> ArgParser.get_flag matches "deps"
+
+let unsupported_deps_artifact_flags = fun matches ->
+  [ ("all", "--all"); ("tests", "--tests"); ("examples", "--examples"); ("benches", "--benches"); ]
+  |> List.filter_map
+    ~fn:(fun (name, label) ->
+      if ArgParser.get_flag matches name then
+        Some label
+      else
+        None)
+
+let validate_matches = fun matches ->
+  if not (deps_of_matches matches) then
+    Ok ()
+  else if watch_of_matches matches then
+    Error (Failure "--watch is not supported with --deps")
+  else if not (List.is_empty (ArgParser.get_many matches "package")) then
+    Error (Failure "--package is not supported with --deps; omit package filters to build all locked third-party dependencies")
+  else
+    match unsupported_deps_artifact_flags matches with
+    | [] -> Ok ()
+    | flags ->
+        Error (Failure ("--deps only builds dependency libraries; unsupported artifact flags: "
+        ^ String.concat ", " flags))
 
 let dev_artifacts_of_matches = fun matches ->
   if ArgParser.get_flag matches "all" then
@@ -195,32 +218,36 @@ let make_request = fun
   }
 
 let request_of_matches = fun ~workspace matches ->
-  match parse_package_names (ArgParser.get_many matches "package") with
+  match validate_matches matches with
   | Error _ as err -> err
-  | Ok packages -> (
-      match requested_parallelism_of_matches matches with
+  | Ok () -> (
+      match parse_package_names (ArgParser.get_many matches "package") with
       | Error _ as err -> err
-      | Ok requested_parallelism ->
-          let deps_only = deps_of_matches matches in
-          let dev_artifacts = dev_artifacts_of_matches matches in
-          Ok (
-            make_request
-              ~workspace
-              ~scope:(
-                if deps_only then
-                  Dependencies
-                else
-                  scope_of_dev_artifacts dev_artifacts
+      | Ok packages -> (
+          match requested_parallelism_of_matches matches with
+          | Error _ as err -> err
+          | Ok requested_parallelism ->
+              let deps_only = deps_of_matches matches in
+              let dev_artifacts = dev_artifacts_of_matches matches in
+              Ok (
+                make_request
+                  ~workspace
+                  ~scope:(
+                    if deps_only then
+                      Dependencies
+                    else
+                      scope_of_dev_artifacts dev_artifacts
+                  )
+                  ~dev_artifacts
+                  ~profile:(profile_of_matches matches)
+                  ~mode:(mode_of_matches matches)
+                  ~requested_parallelism
+                  ~include_external_packages:deps_only
+                  ~packages
+                  ~targets:(target_request_of_matches matches)
+                  ()
               )
-              ~dev_artifacts
-              ~profile:(profile_of_matches matches)
-              ~mode:(mode_of_matches matches)
-              ~requested_parallelism
-              ~include_external_packages:deps_only
-              ~packages
-              ~targets:(target_request_of_matches matches)
-              ()
-          )
+        )
     )
 
 let should_build_fix_provider_runner = fun (request: request) ->
@@ -426,13 +453,18 @@ let build_command = fun
         ()
     )
 
+let report_argument_error = fun matches err ->
+  let ui = Ui.make ~mode:(mode_of_matches matches) ~profile:(profile_of_matches matches).name () in
+  Ui.send_failure ~kind:"BuildArgumentError" ui err
+
 let run = fun ~workspace matches ->
   match request_of_matches ~workspace matches with
-  | Error _ as err -> err
+  | Error err -> report_argument_error matches err
   | Ok request ->
       if watch_of_matches matches then
         match request.scope with
-        | Dependencies -> Error (Failure "--watch is not supported with --deps")
+        | Dependencies ->
+            report_argument_error matches (Failure "--watch is not supported with --deps")
         | Runtime
         | Dev ->
             Watch.run

@@ -748,6 +748,27 @@ let write_test_error_json = fun ~command_started_at err ->
     );
   print "\n"
 
+let write_command_error = fun ~output_mode message ->
+  let command_started_at = Time.Instant.now () in
+  if output_mode = Ui.Json then
+    Ui.reset_json_clock ~started_at:command_started_at;
+  match output_mode with
+  | Ui.Json ->
+      print
+        (Data.Json.to_string
+          (Data.Json.Object [
+            ("type", Data.Json.String "test.error");
+            ("message", Data.Json.String message);
+            ("completed_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
+          ]));
+      print "\n"
+  | Ui.Line
+  | Ui.TUI -> eprintln ("error: " ^ message)
+
+let report_command_failure = fun ~output_mode err ->
+  write_command_error ~output_mode (Ui.failure_message err);
+  err
+
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let trailing = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
@@ -768,8 +789,24 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let watch = ArgParser.get_flag matches "watch" in
   let profile = profile_of_matches matches in
   if small_only && large_only then
-    Error (Failure "Cannot combine --small and --large")
+    Error (report_command_failure ~output_mode (Failure "Cannot combine --small and --large"))
   else
+    let size_filter =
+      if small_only then
+        Test_selection.Small
+      else if large_only then
+        Test_selection.Large
+      else
+        Test_selection.All
+    in
+    let* package_filters =
+      package_filters
+      |> Result.map_err ~fn:(report_command_failure ~output_mode)
+    in
+    let* request =
+      Test_selection.parse_request ~filter ~package_filters ~size_filter ~flaky_only
+      |> Result.map_err ~fn:(fun message -> report_command_failure ~output_mode (Failure message))
+    in
     match Riot_model.Workspace_operational_config.load ~workspace_root:workspace.root with
     | Error err ->
         let command_started_at = Time.Instant.now () in
@@ -792,19 +829,6 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure message)
     | Ok operational_config ->
-        let size_filter =
-          if small_only then
-            Test_selection.Small
-          else if large_only then
-            Test_selection.Large
-          else
-            Test_selection.All
-        in
-        let* package_filters = package_filters in
-        let* request =
-          Test_selection.parse_request ~filter ~package_filters ~size_filter ~flaky_only
-          |> Result.map_err ~fn:(fun error -> Failure error)
-        in
         let extra_args =
           Test_selection.extra_args
             ~small_test_timeout:operational_config.test.small_test_timeout

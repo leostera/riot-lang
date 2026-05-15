@@ -1021,6 +1021,27 @@ let write_bench_error_json = fun ~command_started_at err ->
     );
   print "\n"
 
+let write_command_error = fun ~output_mode message ->
+  let command_started_at = Time.Instant.now () in
+  if output_mode = Ui.Json then
+    Ui.reset_json_clock ~started_at:command_started_at;
+  match output_mode with
+  | Ui.Json ->
+      print
+        (Data.Json.to_string
+          (Data.Json.Object [
+            ("type", Data.Json.String "bench.error");
+            ("message", Data.Json.String message);
+            ("completed_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
+          ]));
+      print "\n"
+  | Ui.Line
+  | Ui.TUI -> eprintln ("error: " ^ message)
+
+let report_command_failure = fun ~output_mode err ->
+  write_command_error ~output_mode (Ui.failure_message err);
+  err
+
 let bench_history_partial = fun (request: Test_selection.request) ->
   not (List.is_empty request.package_filters)
   || Option.is_some request.suite_filter
@@ -1171,15 +1192,21 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let package_filters = parse_package_names (ArgParser.get_many matches "package") in
   let compare_limit = compare_limit_of_matches matches in
   let profile = profile_of_matches matches in
-  let* package_filters = package_filters in
-  let* compare_limit = compare_limit in
+  let* package_filters =
+    package_filters
+    |> Result.map_err ~fn:(report_command_failure ~output_mode)
+  in
+  let* compare_limit =
+    compare_limit
+    |> Result.map_err ~fn:(report_command_failure ~output_mode)
+  in
   let* request =
     Test_selection.parse_request
       ~filter:pattern
       ~package_filters
       ~size_filter:Test_selection.All
       ~flaky_only:false
-    |> Result.map_err ~fn:(fun error -> Failure error)
+    |> Result.map_err ~fn:(fun error -> report_command_failure ~output_mode (Failure error))
   in
   let extra_args = Test_selection.extra_args request extra_args in
   let command_started_at = Time.Instant.now () in

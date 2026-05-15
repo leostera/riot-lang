@@ -384,9 +384,9 @@ let ensure_locked_dependencies = fun
           ~fn:(fun (pkg: Riot_model.Package.resolved) ->
             Riot_model.Package_manifest.from_package
               pkg.package))
-        ~dependencies:workspace.dependencies
-        ~dev_dependencies:workspace.dev_dependencies
-        ~build_dependencies:workspace.build_dependencies
+        ~dependencies:[]
+        ~dev_dependencies:[]
+        ~build_dependencies:[]
         ~profile_overrides:workspace.profile_overrides
         ~source_ignore_patterns:workspace.source_ignore_patterns
         ?target_dir:workspace.target_dir

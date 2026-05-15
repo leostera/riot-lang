@@ -14,6 +14,8 @@ let command =
 
 let output_mode_of_request = fun (request: Build.request) -> request.mode
 
+let output_mode_of_matches = fun matches -> Ui.mode_of_json_flag (ArgParser.get_flag matches "json")
+
 let out = println
 
 let err = eprintln
@@ -181,5 +183,7 @@ let run_request = fun (request: Build.request) ->
 
 let run = fun ~workspace matches ->
   match Build.request_of_matches ~workspace matches with
-  | Error _ as err -> err
+  | Error err ->
+      write_error ~mode:(output_mode_of_matches matches) (Ui.failure_message err);
+      Error err
   | Ok request -> run_request request

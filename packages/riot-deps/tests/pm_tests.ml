@@ -3689,6 +3689,15 @@ let test_ensure_locked_dependencies_ignores_missing_workspace_members = fun _ctx
         {|
 [workspace]
 members = ["packages/app"]
+
+[dependencies]
+std = "*"
+
+[build-dependencies]
+build-helper = "*"
+
+[dev-dependencies]
+dev-helper = "*"
 |};
       let lockfile =
         Riot_model.Lockfile.{
@@ -3790,10 +3799,17 @@ members = ["packages/app"]
                         ~package_name:"std"
                         ~version:"0.2.0"
                     in
-                    if Path.equal std_pkg.path expected_root then
-                      Ok ()
-                    else
+                    if not (Path.equal std_pkg.path expected_root) then
                       Error "expected locked dependency package to use the registry cache root"
+                    else if
+                      not
+                        (List.is_empty deps_workspace.dependencies
+                        && List.is_empty deps_workspace.build_dependencies
+                        && List.is_empty deps_workspace.dev_dependencies)
+                    then
+                      Error "expected locked dependency workspace to ignore root dependency sections"
+                    else
+                      Ok ()
                 | _ ->
                     Error "expected locked dependency workspace to contain only third-party packages"
               ))

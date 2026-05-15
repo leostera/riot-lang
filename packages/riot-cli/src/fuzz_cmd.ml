@@ -233,6 +233,15 @@ let render_lock_waiting = fun ~mode path ->
         "FuzzLockWaiting"
         [ ("lock_path", Data.Json.String (Path.to_string path)); ]
 
+let write_fuzz_error = fun ~mode message ->
+  match mode with
+  | Human -> eprintln ("error: " ^ message)
+  | Json -> write_command_json "FuzzError" [ ("message", Data.Json.String message); ]
+
+let report_failure = fun ~mode err ->
+  write_fuzz_error ~mode (Ui.failure_message err);
+  Error err
+
 let status_to_json = fun __tmp1 ->
   match __tmp1 with
   | Riot_fuzz.Afl.Exited code ->
@@ -611,91 +620,102 @@ let run_minimize = fun ~workspace matches ->
   let ui = Ui.make ~mode:(build_output_mode mode) ~profile:"fuzz" () in
   if mode = Json then
     Ui.reset_json_clock ~started_at:(Time.Instant.now ());
-  let* timeout_ms = parse_positive_int ~name:"timeout-ms" ~default:1_000 matches in
-  let* cases = collect_selected_cases ~workspace ~ui matches in
-  with_fuzz_lock ~workspace ~mode (fun () -> minimize_cases ~workspace ~mode ~timeout_ms cases)
+  let result =
+    let* timeout_ms = parse_positive_int ~name:"timeout-ms" ~default:1_000 matches in
+    let* cases = collect_selected_cases ~workspace ~ui matches in
+    with_fuzz_lock ~workspace ~mode (fun () -> minimize_cases ~workspace ~mode ~timeout_ms cases)
+  in
+  match result with
+  | Ok () -> Ok ()
+  | Error err -> report_failure ~mode err
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   match ArgParser.get_subcommand matches with
   | Some ("minimize-corpus", sub_matches) -> run_minimize ~workspace sub_matches
-  | Some _ -> Error (Failure "unknown fuzz subcommand")
+  | Some _ ->
+      report_failure ~mode:(output_mode_of_matches matches) (Failure "unknown fuzz subcommand")
   | None ->
       let mode = output_mode_of_matches matches in
       let ui = Ui.make ~mode:(build_output_mode mode) ~profile:"fuzz" () in
       if mode = Json then
         Ui.reset_json_clock ~started_at:(Time.Instant.now ());
-      let list_only = ArgParser.get_flag matches "list" in
-      let minimize_only = ArgParser.get_flag matches "minimize-corpus" in
-      let* duration = parse_duration matches in
-      let* runs = parse_runs ~duration matches in
-      let* max_len = parse_positive_int ~name:"max-len" ~default:4_096 matches in
-      let* timeout_ms = parse_positive_int ~name:"timeout-ms" ~default:1_000 matches in
-      let* concurrency = parse_optional_positive_int ~name:"concurrency" matches in
-      let replay_path =
-        ArgParser.get_one matches "replay"
-        |> Option.map ~fn:Path.v
+      let result =
+        let list_only = ArgParser.get_flag matches "list" in
+        let minimize_only = ArgParser.get_flag matches "minimize-corpus" in
+        let* duration = parse_duration matches in
+        let* runs = parse_runs ~duration matches in
+        let* max_len = parse_positive_int ~name:"max-len" ~default:4_096 matches in
+        let* timeout_ms = parse_positive_int ~name:"timeout-ms" ~default:1_000 matches in
+        let* concurrency = parse_optional_positive_int ~name:"concurrency" matches in
+        let replay_path =
+          ArgParser.get_one matches "replay"
+          |> Option.map ~fn:Path.v
+        in
+        let seed = ArgParser.get_one matches "seed" in
+        let* cases = collect_selected_cases ~workspace ~ui matches in
+        if list_only then (
+          (
+            match mode with
+            | Human ->
+                if List.is_empty cases then
+                  println "No fuzz cases found"
+                else
+                  List.for_each cases ~fn:write_case_human
+            | Json ->
+                List.for_each
+                  cases
+                  ~fn:(fun fuzz_case ->
+                    write_case_json "FuzzCaseListed" fuzz_case []);
+                write_json_line
+                  [
+                    ("type", Data.Json.String "FuzzListCompleted");
+                    ("case_count", Data.Json.Int (List.length cases));
+                  ]
+          );
+          Ok ()
+        ) else if Option.is_some replay_path then
+          with_fuzz_lock
+            ~workspace
+            ~mode
+            (fun () ->
+              replay_case ~workspace ~mode ~timeout_ms (Option.unwrap replay_path) cases)
+        else if minimize_only then
+          with_fuzz_lock
+            ~workspace
+            ~mode
+            (fun () ->
+              minimize_cases ~workspace ~mode ~timeout_ms cases)
+        else
+          match cases with
+          | [] ->
+              let message = "No fuzz cases found" in
+              (
+                match mode with
+                | Human -> println message
+                | Json ->
+                    write_json_line
+                      [
+                        ("type", Data.Json.String "FuzzNoCasesFound");
+                        ("message", Data.Json.String message);
+                      ]
+              );
+              Ok ()
+          | _ :: _ ->
+              with_fuzz_lock
+                ~workspace
+                ~mode
+                (fun () ->
+                  run_campaigns
+                    ~workspace
+                    ~mode
+                    ?concurrency
+                    ~runs
+                    ~max_len
+                    ~duration
+                    ~timeout_ms
+                    ~seed
+                    cases)
       in
-      let seed = ArgParser.get_one matches "seed" in
-      let* cases = collect_selected_cases ~workspace ~ui matches in
-      if list_only then (
-        (
-          match mode with
-          | Human ->
-              if List.is_empty cases then
-                println "No fuzz cases found"
-              else
-                List.for_each cases ~fn:write_case_human
-          | Json ->
-              List.for_each
-                cases
-                ~fn:(fun fuzz_case ->
-                  write_case_json "FuzzCaseListed" fuzz_case []);
-              write_json_line
-                [
-                  ("type", Data.Json.String "FuzzListCompleted");
-                  ("case_count", Data.Json.Int (List.length cases));
-                ]
-        );
-        Ok ()
-      ) else if Option.is_some replay_path then
-        with_fuzz_lock
-          ~workspace
-          ~mode
-          (fun () ->
-            replay_case ~workspace ~mode ~timeout_ms (Option.unwrap replay_path) cases)
-      else if minimize_only then
-        with_fuzz_lock
-          ~workspace
-          ~mode
-          (fun () ->
-            minimize_cases ~workspace ~mode ~timeout_ms cases)
-      else
-        match cases with
-        | [] ->
-            let message = "No fuzz cases found" in
-            (
-              match mode with
-              | Human -> println message
-              | Json ->
-                  write_json_line
-                    [
-                      ("type", Data.Json.String "FuzzNoCasesFound");
-                      ("message", Data.Json.String message);
-                    ]
-            );
-            Ok ()
-        | _ :: _ ->
-            with_fuzz_lock
-              ~workspace
-              ~mode
-              (fun () ->
-                run_campaigns
-                  ~workspace
-                  ~mode
-                  ?concurrency
-                  ~runs
-                  ~max_len
-                  ~duration
-                  ~timeout_ms
-                  ~seed
-                  cases)
+      match result with
+      | Ok () -> Ok ()
+      | Error err -> report_failure ~mode err

@@ -296,6 +296,16 @@ let send_command_error = fun ui ~kind ~details ~message ->
     ui
     (Command_error { kind; details; message })
 
+let failure_message = fun err ->
+  match err with
+  | Failure message -> message
+  | _ -> Exception.to_string err
+
+let send_failure = fun ?(kind = "CliError") ui err ->
+  let message = failure_message err in
+  send_command_error ui ~kind ~details:[ ("message", Data.Json.String message); ] ~message;
+  Error err
+
 let send_build_finished = fun ui ~duration ~progress ->
   call
     ui

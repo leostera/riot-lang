@@ -147,6 +147,21 @@ let fail_not_in_workspace = fun () ->
   eprintln "❌ Not in a riot workspace";
   Error (Failure "Not in a riot workspace")
 
+let print_cli_failure = fun ?mode ?(kind = "CliError") err ->
+  match mode with
+  | Some mode ->
+      let ui = Ui.make ~mode () in
+      let _ = Ui.send_failure ~kind ui err in
+      ()
+  | None -> eprintln ("\027[1;31mError\027[0m: " ^ Ui.failure_message err)
+
+let report_cli_result = fun ?mode ?kind result ->
+  match result with
+  | Ok _ as ok -> ok
+  | Error err ->
+      print_cli_failure ?mode ?kind err;
+      Error err
+
 type current_manifest_status =
   | Missing_manifest of Path.t
   | Existing_manifest of Path.t
@@ -245,6 +260,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                     | Error err ->
                         Log.error
                           ("Failed to ensure workspace for build: " ^ Exception.to_string err);
+                        print_cli_failure ~kind:"WorkspaceResolutionError" err;
                         Some (Error err)
                     | Ok workspace -> (
                         match Build.build_command ~workspace (Some cmd.package_name) None with
@@ -259,6 +275,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                             | Ok () -> Some (Ok ())
                             | Error err ->
                                 Log.error ("Command execution failed: " ^ Exception.to_string err);
+                                print_cli_failure ~kind:"PackageCommandError" err;
                                 Some (Error err)
                       )
                   )
@@ -364,7 +381,9 @@ let run = fun ~args ->
   in
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
   match normalized_args with
-  | _ :: "completions" :: "install" :: rest -> Completions.run_install_args rest
+  | _ :: "completions" :: "install" :: rest ->
+      Completions.run_install_args rest
+      |> report_cli_result ~kind:"CompletionsError"
   | _ :: cmd :: rest when String.contains cmd ":" -> (
       (* This looks like a package command, try to execute it directly *)
       match try_command ?workspace_scan:(Some get_workspace_scan) cmd rest with
@@ -392,6 +411,14 @@ let run = fun ~args ->
           set_verbosity verbose;
           match ArgParser.get_subcommand matches with
           | Some ("build", build_matches) ->
+              let build_mode = Ui.mode_of_json_flag (ArgParser.get_flag build_matches "json") in
+              let* () =
+                match Build.validate_matches build_matches with
+                | Ok () -> Ok ()
+                | Error err ->
+                    print_cli_failure ~mode:build_mode ~kind:"BuildArgumentError" err;
+                    Error err
+              in
               let overrides = workspace_overrides_of_build_matches build_matches in
               let deps_only = Build.deps_of_matches build_matches in
               let* workspace =
@@ -405,19 +432,26 @@ let run = fun ~args ->
               let () = trace_cli "ensure-toolchain-done" in
               let () = trace_cli "build-prepare-start" in
               let* workspace =
-                if deps_only then
-                  ensure_locked_dependencies ?overrides workspace
-                else
-                  ensure_workspace ?overrides workspace
+                (
+                  if deps_only then
+                    ensure_locked_dependencies ?overrides workspace
+                  else
+                    ensure_workspace ?overrides workspace
+                )
+                |> report_cli_result ~mode:build_mode ~kind:"WorkspaceResolutionError"
               in
               let () = trace_cli "build-prepare-done" in
               let () = trace_cli "build-run-start" in
               Build.run ~workspace build_matches
           | Some ("plan", plan_matches) ->
+              let plan_mode = Ui.mode_of_json_flag (ArgParser.get_flag plan_matches "json") in
               let overrides = workspace_overrides_of_build_matches plan_matches in
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
               let () = trace_cli "plan-prepare-start" in
-              let* workspace = ensure_workspace ?overrides workspace in
+              let* workspace =
+                ensure_workspace ?overrides workspace
+                |> report_cli_result ~mode:plan_mode ~kind:"WorkspaceResolutionError"
+              in
               let () = trace_cli "plan-prepare-done" in
               Plan.run ~workspace plan_matches
           | Some ("run", run_matches) -> (
@@ -465,22 +499,37 @@ let run = fun ~args ->
           | Some ("search", search_matches) -> Search.run search_matches
           | Some ("snapshots", snapshots_matches) ->
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
-              let* workspace = ensure_workspace workspace in
+              let* workspace =
+                ensure_workspace workspace
+                |> report_cli_result ~kind:"WorkspaceResolutionError"
+              in
               Snapshots.run ~workspace snapshots_matches
           | Some ("test", test_matches) ->
+              let test_mode = Ui.mode_of_json_flag (ArgParser.get_flag test_matches "json") in
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
               let* () = ensure_toolchain workspace in
-              let* workspace = ensure_workspace workspace in
+              let* workspace =
+                ensure_workspace workspace
+                |> report_cli_result ~mode:test_mode ~kind:"WorkspaceResolutionError"
+              in
               Test_cmd.run ~workspace test_matches
           | Some ("fuzz", fuzz_matches) ->
+              let fuzz_mode = Ui.mode_of_json_flag (ArgParser.get_flag fuzz_matches "json") in
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
               let* () = ensure_toolchain workspace in
-              let* workspace = ensure_workspace workspace in
+              let* workspace =
+                ensure_workspace workspace
+                |> report_cli_result ~mode:fuzz_mode ~kind:"WorkspaceResolutionError"
+              in
               Fuzz_cmd.run ~workspace fuzz_matches
           | Some ("bench", bench_matches) ->
+              let bench_mode = Ui.mode_of_json_flag (ArgParser.get_flag bench_matches "json") in
               let* workspace = require_clean_workspace (get_workspace_scan ()) in
               let* () = ensure_toolchain workspace in
-              let* workspace = ensure_workspace workspace in
+              let* workspace =
+                ensure_workspace workspace
+                |> report_cli_result ~mode:bench_mode ~kind:"WorkspaceResolutionError"
+              in
               Bench_cmd.run ~workspace bench_matches
           | Some ("add", add_matches) -> (
               match get_workspace_scan () with
@@ -528,18 +577,27 @@ let run = fun ~args ->
             )
           | Some ("fmt", fmt_matches) ->
               let explicit_paths = ArgParser.get_many fmt_matches "path" in
-              let workspace =
-                if List.is_empty explicit_paths then
-                  match get_workspace_scan () with
-                  | Loaded (workspace, _load_errors) ->
+              let fmt_mode = Ui.mode_of_json_flag (ArgParser.get_flag fmt_matches "json") in
+              if List.is_empty explicit_paths then
+                match get_workspace_scan () with
+                | Loaded (workspace, load_errors) when List.is_empty load_errors ->
+                    let* workspace =
                       ensure_workspace workspace
-                      |> Result.to_option
-                  | NoWorkspace
-                  | ScanFailed _ -> None
-                else
-                  None
-              in
-              Riot_fmt.run ?workspace fmt_matches
+                      |> report_cli_result ~mode:fmt_mode ~kind:"WorkspaceResolutionError"
+                    in
+                    Riot_fmt.run ~workspace fmt_matches
+                | Loaded (_workspace, load_errors) ->
+                    report_workspace_load_errors load_errors;
+                    Error (Failure "Workspace load failed")
+                | NoWorkspace -> Riot_fmt.run fmt_matches
+                | ScanFailed err ->
+                    print_cli_failure
+                      ~mode:fmt_mode
+                      ~kind:"WorkspaceScanError"
+                      (Failure (Info_cmd.workspace_scan_error_message err));
+                    Error (Failure "Workspace scan failed")
+              else
+                Riot_fmt.run fmt_matches
           | Some ("info", info_matches) -> (
               let workspace_scan =
                 match get_workspace_scan () with
@@ -550,41 +608,55 @@ let run = fun ~args ->
               Info_cmd.run ~workspace_scan info_matches
             )
           | Some ("clean", clean_matches) -> (
+              let clean_mode = Ui.mode_of_json_flag (ArgParser.get_flag clean_matches "json") in
               match require_clean_workspace (get_workspace_scan ()) with
               | Error _ as e -> e
               | Ok workspace -> (
-                  match ensure_workspace workspace with
+                  match ensure_workspace workspace
+                  |> report_cli_result ~mode:clean_mode ~kind:"WorkspaceResolutionError" with
                   | Ok workspace -> Clean.run ~workspace clean_matches
                   | Error _ as e -> e
                 )
             )
-          | Some ("doc", doc_matches) ->
-              let workspace =
-                match get_workspace_scan () with
-                | Loaded (workspace, load_errors) when List.is_empty load_errors ->
+          | Some ("doc", doc_matches) -> (
+              let doc_mode = Ui.mode_of_json_flag (ArgParser.get_flag doc_matches "json") in
+              match get_workspace_scan () with
+              | Loaded (workspace, load_errors) when List.is_empty load_errors ->
+                  let* workspace =
                     ensure_workspace workspace
-                    |> Result.to_option
-                | _ -> None
-              in
-              (
-                match workspace with
-                | Some workspace ->
-                    Doc.run ~workspace doc_matches
-                    |> Result.map_err ~fn:(fun err -> Failure err)
-                | None -> fail_not_in_workspace ()
-              )
+                    |> report_cli_result ~mode:doc_mode ~kind:"WorkspaceResolutionError"
+                  in
+                  Doc.run ~workspace doc_matches
+                  |> Result.map_err ~fn:(fun err -> Failure err)
+              | Loaded (_workspace, load_errors) ->
+                  report_workspace_load_errors load_errors;
+                  Error (Failure "Workspace load failed")
+              | NoWorkspace -> fail_not_in_workspace ()
+              | ScanFailed err ->
+                  print_cli_failure
+                    ~mode:doc_mode
+                    ~kind:"WorkspaceScanError"
+                    (Failure (Info_cmd.workspace_scan_error_message err));
+                  Error (Failure "Workspace scan failed")
+            )
           | Some ("completions", completions_matches) -> Completions.run completions_matches
           | Some ("fix", fix_matches) -> Fix_cmd.run fix_matches
-          | Some ("login", login_matches) -> Login.run login_matches
-          | Some ("logout", logout_matches) -> Logout.run logout_matches
+          | Some ("login", login_matches) ->
+              Login.run login_matches
+              |> report_cli_result ~kind:"AuthError"
+          | Some ("logout", logout_matches) ->
+              Logout.run logout_matches
+              |> report_cli_result ~kind:"AuthError"
           | Some ("lsp", lsp_matches) -> Lsp_cmd.run lsp_matches
           | Some ("yank", yank_matches) -> Yank.run yank_matches
           | Some ("init", init_matches) -> Riot_init.run ~on_event:render_init_event init_matches
           | Some ("new", new_matches) -> New.run new_matches
           | Some ("publish", publish_matches) -> (
+              let publish_mode = Ui.mode_of_json_flag (ArgParser.get_flag publish_matches "json") in
               match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
-                  match ensure_workspace workspace with
+                  match ensure_workspace workspace
+                  |> report_cli_result ~mode:publish_mode ~kind:"WorkspaceResolutionError" with
                   | Ok workspace -> Publish.run workspace publish_matches
                   | Error _ as e -> e
                 )
@@ -630,7 +702,9 @@ let run = fun ~args ->
                   | Ok workspace -> Update_cmd.run ~workspace update_matches
                 )
             )
-          | Some ("toolchain", toolchain_matches) -> Toolchain_cmd.run toolchain_matches
+          | Some ("toolchain", toolchain_matches) ->
+              Toolchain_cmd.run toolchain_matches
+              |> report_cli_result ~kind:"ToolchainError"
           | Some ("upgrade", upgrade_matches) -> Upgrade.run upgrade_matches
           | Some ("version", _) ->
               println (Version_info.version_string ());

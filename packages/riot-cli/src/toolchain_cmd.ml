@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 open Riot_model
 
 let command =
@@ -194,33 +195,33 @@ let run_list_available = fun () ->
       eprintln ("❌ " ^ msg);
       Error (Failure msg)
 
+let path_error_message = fun __tmp1 ->
+  match __tmp1 with
+  | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } ->
+      "system call '" ^ syscall ^ "' returned invalid UTF-8 path: " ^ path
+  | Path.SystemError error -> error
+
+let load_workspace_manifest = fun () ->
+  let* cwd =
+    Env.current_dir ()
+    |> Result.map_err ~fn:(fun err -> Failure ("Failed to get cwd: " ^ path_error_message err))
+  in
+  let workspace_manager = Workspace_manager.create () in
+  Workspace_manager.scan workspace_manager cwd
+  |> Result.map_err
+    ~fn:(fun err ->
+      Failure ("Failed to scan workspace: " ^ Workspace_manager.scan_error_message err))
+
 let run = fun matches ->
   let open ArgParser in
   match get_subcommand matches with
   | Some ("list-available", _) -> run_list_available ()
   | Some ("list", _) ->
-      let cwd =
-        Env.current_dir ()
-        |> Result.expect ~msg:"Failed to get cwd"
-      in
-      let workspace_manager = Workspace_manager.create () in
-      let (workspace, _) =
-        Workspace_manager.scan workspace_manager cwd
-        |> Result.map_err ~fn:Workspace_manager.scan_error_message
-        |> Result.expect ~msg:"Failed to scan workspace"
-      in
+      let* (workspace, _) = load_workspace_manifest () in
       run_list workspace
   | Some ("install", _) ->
-      let cwd =
-        Env.current_dir ()
-        |> Result.expect ~msg:"Failed to get cwd"
-      in
-      let workspace_manager = Workspace_manager.create () in
-      let (workspace, _) =
-        Workspace_manager.scan workspace_manager cwd
-        |> Result.map_err ~fn:Workspace_manager.scan_error_message
-        |> Result.expect ~msg:"Failed to scan workspace"
-      in
+      let* (workspace, _) = load_workspace_manifest () in
       run_install workspace
   | _ ->
       println "Usage: riot toolchain <list|install|list-available>";
