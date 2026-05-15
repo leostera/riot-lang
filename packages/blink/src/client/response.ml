@@ -86,7 +86,8 @@ let error_class_from_transport_error = fun error ->
   | Error.EmptyChunkSize
   | Error.InvalidChunkSize
   | Error.ChunkSizeOverflow
-  | Error.InvalidChunkDataLineEnding)
+  | Error.InvalidChunkDataLineEnding
+  | Error.IncompleteSseEvent)
   | Error.ParseError _
   | Error.WebSocketParseError _
   | Error.WebSocketSerializeError _

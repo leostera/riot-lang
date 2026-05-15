@@ -34,4 +34,4 @@ val send_close: t -> ?code:int -> ?reason:string -> unit -> (unit, error) result
 val receive: t -> (message, error) result
 
 (** Close the WebSocket connection handle. *)
-val close: t -> unit
+val close: t -> (unit, error) result

@@ -143,6 +143,20 @@ let test_connection_streams_partial_chunked_body = fun _ctx ->
           )
       )
 
+let test_connection_stream_rejects_invalid_content_length = fun _ctx ->
+  let response = "HTTP/1.1 200 OK\r\nContent-Length: nope\r\n\r\n" in
+  let uri =
+    Net.Uri.from_string "http://example.test/data"
+    |> Result.expect ~msg:"invalid test uri"
+  in
+  let conn =
+    Blink.Connection.make ~reader:(IO.Reader.from_string response) ~writer:discard_writer ~uri ()
+  in
+  match Blink.Connection.stream conn with
+  | Error (Blink.Error.ParseError (Http.Http1.Common.InvalidContentLength _)) -> Ok ()
+  | Error error -> Error ("expected invalid content-length, got " ^ Blink.Error.to_string error)
+  | Ok _ -> Error "expected invalid content-length error"
+
 let test_connection_close_invokes_close_callback = fun _ctx ->
   let closed = ref false in
   let uri =
@@ -319,9 +333,11 @@ let test_websocket_connect_budget_blocks = fun _ctx ->
   in
   let client = budgetless_client () in
   match H.WebSocket.connect client uri with
-  | Ok conn ->
-      H.WebSocket.close client conn;
-      Error "expected managed websocket connect budget exhaustion"
+  | Ok conn -> (
+      match H.WebSocket.close client conn with
+      | Error error -> Error (Blink.Error.to_string error)
+      | Ok () -> Error "expected managed websocket connect budget exhaustion"
+    )
   | Error (Blink.Error.ProtocolError Blink.Error.RequestBudgetExhausted) -> Ok ()
   | Error _ -> Error "expected budget protocol error"
 
@@ -333,6 +349,9 @@ let tests =
     case
       "connection stream returns partial chunked body data"
       test_connection_streams_partial_chunked_body;
+    case
+      "connection stream rejects invalid content length"
+      test_connection_stream_rejects_invalid_content_length;
     case "connection close invokes close callback" test_connection_close_invokes_close_callback;
     case "status classification" test_status_classification;
     case "rate budget blocks" test_rate_budget_blocks;

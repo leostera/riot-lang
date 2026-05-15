@@ -9,6 +9,7 @@ type protocol_error =
   | InvalidChunkSize
   | ChunkSizeOverflow
   | InvalidChunkDataLineEnding
+  | IncompleteSseEvent
   | TransportRaised of string
   | ApplicationTransportError of string
 type handshake_error =

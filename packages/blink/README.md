@@ -162,7 +162,8 @@ match Blink.Client.execute client req with
 `connect`, `request`, `stream`, `messages`, `await`, and `close`. Use this path when raw
 HTTP streams should still share the client's budget and pooling configuration.
 SSE and WebSocket helpers are available through `Blink.Client.SSE` and
-`Blink.Client.WebSocket`.
+`Blink.Client.WebSocket`. SSE iterators yield `(event, Blink.Error.t) result`
+items so stream failures and truncated events are visible to callers.
 
 Examples:
 

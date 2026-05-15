@@ -157,28 +157,33 @@ module SSEIterator = struct
     mutable done_: bool;
   }
 
-  type item = event
+  type item = (event, Error.t) result
 
   let rec next = fun state ->
-    if state.done_ then
-      None
-    else
-      match parse_event state.buffer with
-      | Some (Event event, remaining) ->
-          state.buffer <- remaining;
-          Some event
-      | Some (Skip, remaining) ->
-          state.buffer <- remaining;
-          next state
-      | Some (Done, remaining) ->
-          state.buffer <- remaining;
-          state.done_ <- true;
-          None
-      | None -> (
+    match parse_event state.buffer with
+    | Some (Event event, remaining) ->
+        state.buffer <- remaining;
+        Some (Ok event)
+    | Some (Skip, remaining) ->
+        state.buffer <- remaining;
+        next state
+    | Some (Done, remaining) ->
+        state.buffer <- remaining;
+        state.done_ <- true;
+        None
+    | None -> (
+        if state.done_ then
+          if String.equal state.buffer "" then
+            None
+          else (
+            state.buffer <- "";
+            Some (Error (Error.ProtocolError Error.IncompleteSseEvent))
+          )
+        else
           match Connection.stream state.conn with
-          | Error _ ->
+          | Error error ->
               state.done_ <- true;
-              None
+              Some (Error error)
           | Ok msgs ->
               List.for_each
                 msgs
@@ -188,11 +193,8 @@ module SSEIterator = struct
                   | Connection.Done -> state.done_ <- true
                   | Connection.Status _
                   | Connection.Headers _ -> ());
-              if state.done_ && String.equal state.buffer "" then
-                None
-              else
-                next state
-        )
+              next state
+      )
 
   let size = fun _state -> 0
 

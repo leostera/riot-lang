@@ -8,6 +8,7 @@ type protocol_error =
   | InvalidChunkSize
   | ChunkSizeOverflow
   | InvalidChunkDataLineEnding
+  | IncompleteSseEvent
   | TransportRaised of string
   | ApplicationTransportError of string
 
@@ -49,6 +50,7 @@ let protocol_error_to_string = fun error ->
   | InvalidChunkSize -> "invalid chunk size"
   | ChunkSizeOverflow -> "chunk size overflow"
   | InvalidChunkDataLineEnding -> "invalid chunk data line ending"
+  | IncompleteSseEvent -> "incomplete server-sent event"
   | TransportRaised reason -> "transport raised: " ^ reason
   | ApplicationTransportError reason -> "application transport error: " ^ reason
 

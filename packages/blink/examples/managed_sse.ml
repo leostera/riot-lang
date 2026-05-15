@@ -30,9 +30,10 @@ let main ~args =
     else
       match Iter.MutIterator.next events with
       | None -> ()
-      | Some event ->
+      | Some (Ok event) ->
           println ("event: " ^ event.data);
           consume (remaining - 1)
+      | Some (Error error) -> panic ("managed SSE stream failed: " ^ Blink.Error.to_string error)
   in
   consume 5;
   Client.close client conn;

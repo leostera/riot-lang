@@ -29,7 +29,8 @@ let main ~args =
     | Ok (Client.WebSocket.Close _) -> println "closed"
     | Error _ -> println "receive failed"
   );
-  Client.WebSocket.close client websocket;
+  Client.WebSocket.close client websocket
+  |> Result.expect ~msg:"managed WebSocket close failed";
   Client.shutdown client;
   Ok ()
 

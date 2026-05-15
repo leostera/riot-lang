@@ -30,12 +30,15 @@ val parse_event: string -> (parsed * string) option
    Return a mutable iterator over SSE events from the connection.
 
    The iterator parses `data:`, `event:`, and `id:` fields lazily as
-   the response stream advances.
+   the response stream advances. Stream and protocol failures are returned
+   as `Error` items instead of being treated as end-of-stream.
 
    ```ocaml
    Blink.SSE.await conn
    |> Iter.MutIterator.for_each (fun event ->
-        Log.info event.data)
+        match event with
+        | Ok event -> Log.info event.data
+        | Error error -> Log.error (Blink.Error.to_string error))
    ```
 *)
-val await: Connection.t -> event Iter.MutIterator.t
+val await: Connection.t -> (event, Error.t) result Iter.MutIterator.t

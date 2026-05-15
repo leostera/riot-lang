@@ -122,11 +122,12 @@ let read_more = fun (Conn conn) ->
     | Ok 0 -> Error Error.Eof
     | Ok _ ->
         let readable = IO.Buffer.readable chunk in
-        let _ =
-          Buffer.append_slice conn.buffer readable
-          |> Result.expect ~msg:"failed to append response chunk"
-        in
-        Ok ()
+        (
+          match Buffer.append_slice conn.buffer readable with
+          | Ok () -> Ok ()
+          | Error _ ->
+              Error (Error.ProtocolError (Error.ApplicationTransportError "response buffer append failed"))
+        )
     | Error e -> Error (Error.from_io_error e)
 
 let status_has_no_body = fun status ->
@@ -137,6 +138,50 @@ let header_value_is_chunked = fun value ->
   String.equal
     (String.lowercase_ascii (String.trim value))
     "chunked"
+
+let transfer_encoding_is_chunked = fun values ->
+  match values with
+  | [ value ] -> header_value_is_chunked value
+  | _ -> false
+
+let parse_content_length_values = fun values ->
+  let rec loop expected values =
+    match values with
+    | [] -> Ok expected
+    | value :: rest -> (
+        match Http.Http1.Common.parse_content_length_value value with
+        | Error error -> Error (Http.Http1.Common.InvalidContentLength error)
+        | Ok length -> (
+            match expected with
+            | None -> loop (Some length) rest
+            | Some previous when previous = length -> loop expected rest
+            | Some previous ->
+                Error (Http.Http1.Common.ConflictingContentLength {
+                  expected = previous;
+                  actual = length;
+                })
+          )
+      )
+  in
+  loop None values
+
+let response_body_state = fun status headers ->
+  if status_has_no_body status then
+    Ok Complete
+  else
+    let transfer_encoding = Net.Http.Header.get_all headers "transfer-encoding" in
+    let content_lengths = Net.Http.Header.get_all headers "content-length" in
+    match (transfer_encoding, content_lengths) with
+    | (_ :: _, _ :: _) -> Error Http.Http1.Common.TransferEncodingWithContentLength
+    | (values, []) when transfer_encoding_is_chunked values ->
+        Ok (ReadingChunkedBody ReadingChunkSize)
+    | (_ :: _, []) -> Error Http.Http1.Common.UnsupportedTransferEncoding
+    | ([], values) -> (
+        match parse_content_length_values values with
+        | Error error -> Error error
+        | Ok None -> Ok Complete
+        | Ok (Some length) -> Ok (ReadingFixedBody { length; received = 0 })
+      )
 
 let find_crlf data =
   let len = String.length data in
@@ -215,26 +260,13 @@ let stream = fun (Conn conn as c) ->
             conn.response <- Some response;
             Buffer.clear conn.buffer;
             Buffer.add_string conn.buffer remaining;
-            let transfer_encoding = Net.Http.Header.get headers "transfer-encoding" in
-            let content_length = Net.Http.Header.get headers "content-length" in
-            conn.state <- (
-              if status_has_no_body status then
-                Complete
-              else
-                match transfer_encoding with
-                | Some value when header_value_is_chunked value ->
-                    ReadingChunkedBody ReadingChunkSize
-                | _ -> (
-                    match content_length with
-                    | Some len -> (
-                        match Int.parse (String.trim len) with
-                        | Some length -> ReadingFixedBody { length; received = 0 }
-                        | None -> Complete
-                      )
-                    | None -> Complete
-                  )
-            );
-            Ok [ Status status; Headers headers ]
+            (
+              match response_body_state status headers with
+              | Error error -> Error (Error.ParseError error)
+              | Ok state ->
+                  conn.state <- state;
+                  Ok [ Status status; Headers headers ]
+            )
         | Http.Http1.Common.Need_more -> (
             match read_more c with
             | Ok () -> try_parse ()

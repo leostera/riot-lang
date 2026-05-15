@@ -26,20 +26,21 @@ type t = {
 
 let generate_websocket_key = fun () ->
   let random_bytes = IO.Bytes.create ~size:16 in
-  for i = 0 to 15 do
-    yield ();
-    IO.Bytes.set_unchecked
-      random_bytes
-      ~at:i
-      ~char:(
-        Char.from_int_unchecked
-          (
-            Random.int 256
-            |> Result.expect ~msg:"failed to generate websocket key byte"
-          )
-      )
-  done;
-  Encoding.Base64.encode_bytes random_bytes
+  let rec loop index =
+    if index >= 16 then
+      Ok (Encoding.Base64.encode_bytes random_bytes)
+    else (
+      yield ();
+      match Random.int 256 with
+      | Error error ->
+          Error (Error.ProtocolError (Error.ApplicationTransportError ("websocket key generation failed: "
+          ^ Random.error_to_string error)))
+      | Ok value ->
+          IO.Bytes.set_unchecked random_bytes ~at:index ~char:(Char.from_int_unchecked value);
+          loop (index + 1)
+    )
+  in
+  loop 0
 
 let compute_accept_key = fun key ->
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" in
@@ -119,15 +120,17 @@ let read_handshake_response = fun conn ->
     | Ok 0 -> Error (Error.HandshakeFailed Error.ConnectionClosedDuringHandshake)
     | Ok _ ->
         let readable = IO.Buffer.readable chunk in
-        let _ =
-          Buffer.append_slice response_buffer readable
-          |> Result.expect ~msg:"failed to append websocket handshake bytes"
-        in
-        let response = Buffer.contents response_buffer in
-        if String.contains response "\r\n\r\n" then
-          Ok response
-        else
-          read_response ()
+        (
+          match Buffer.append_slice response_buffer readable with
+          | Error _ ->
+              Error (Error.ProtocolError (Error.ApplicationTransportError "websocket handshake buffer append failed"))
+          | Ok () ->
+              let response = Buffer.contents response_buffer in
+              if String.contains response "\r\n\r\n" then
+                Ok response
+              else
+                read_response ()
+        )
   in
   read_response ()
 
@@ -176,40 +179,44 @@ let connect = fun uri ->
         closed = false;
       }
       in
-      let key = generate_websocket_key () in
-      let expected_accept = compute_accept_key key in
-      let handshake =
-        "GET "
-        ^ Net.Uri.path_and_query uri
-        ^ " HTTP/1.1\r\n"
-        ^ "Host: "
-        ^ host_header uri host
-        ^ "\r\n"
-        ^ "Upgrade: websocket\r\n"
-        ^ "Connection: Upgrade\r\n"
-        ^ "Sec-WebSocket-Key: "
-        ^ key
-        ^ "\r\n"
-        ^ "Sec-WebSocket-Version: 13\r\n"
-        ^ "\r\n"
-      in
-      match write_all conn handshake with
+      match generate_websocket_key () with
       | Error error ->
           close_transport transport;
           Error error
-      | Ok () -> (
-          match read_handshake_response conn with
+      | Ok key ->
+          let expected_accept = compute_accept_key key in
+          let handshake =
+            "GET "
+            ^ Net.Uri.path_and_query uri
+            ^ " HTTP/1.1\r\n"
+            ^ "Host: "
+            ^ host_header uri host
+            ^ "\r\n"
+            ^ "Upgrade: websocket\r\n"
+            ^ "Connection: Upgrade\r\n"
+            ^ "Sec-WebSocket-Key: "
+            ^ key
+            ^ "\r\n"
+            ^ "Sec-WebSocket-Version: 13\r\n"
+            ^ "\r\n"
+          in
+          match write_all conn handshake with
           | Error error ->
               close_transport transport;
               Error error
-          | Ok response -> (
-              match validate_handshake expected_accept response with
-              | Ok () -> Ok conn
+          | Ok () -> (
+              match read_handshake_response conn with
               | Error error ->
                   close_transport transport;
                   Error error
+              | Ok response -> (
+                  match validate_handshake expected_accept response with
+                  | Ok () -> Ok conn
+                  | Error error ->
+                      close_transport transport;
+                      Error error
+                )
             )
-        )
 
 let send_frame = fun conn frame ->
   if conn.closed then
@@ -261,9 +268,11 @@ let receive = fun conn ->
           match Http.Ws.Frame.(frame.opcode) with
           | Http.Ws.Frame.Text -> Ok (Text frame.payload)
           | Http.Ws.Frame.Binary -> Ok (Binary frame.payload)
-          | Http.Ws.Frame.Ping ->
-              let _ = send_pong conn ~payload:frame.payload () in
-              Ok (Ping frame.payload)
+          | Http.Ws.Frame.Ping -> (
+              match send_pong conn ~payload:frame.payload () with
+              | Ok () -> Ok (Ping frame.payload)
+              | Error error -> Error error
+            )
           | Http.Ws.Frame.Pong -> Ok (Pong frame.payload)
           | Http.Ws.Frame.Close ->
               conn.closed <- true;
@@ -290,20 +299,23 @@ let receive = fun conn ->
           | Ok 0 -> Error Error.Eof
           | Ok _ ->
               let readable = IO.Buffer.readable chunk in
-              let _ =
-                Buffer.append_slice conn.buffer readable
-                |> Result.expect ~msg:"failed to append websocket frame bytes"
-              in
-              try_parse ()
+              (
+                match Buffer.append_slice conn.buffer readable with
+                | Error _ ->
+                    Error (Error.ProtocolError (Error.ApplicationTransportError "websocket frame buffer append failed"))
+                | Ok () -> try_parse ()
+              )
         )
       | Http.Ws.Parser.Error error -> Error (Error.WebSocketParseError error)
     in
     try_parse ()
 
 let close = fun conn ->
-  (
-    if not conn.closed then
-      let _ = send_close conn () in
-      ()
-  );
-  close_transport conn.transport
+  let result =
+    if conn.closed then
+      Ok ()
+    else
+      send_close conn ()
+  in
+  close_transport conn.transport;
+  result

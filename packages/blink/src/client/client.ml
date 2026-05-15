@@ -461,28 +461,33 @@ module SSE = struct
       mutable done_: bool;
     }
 
-    type item = event
+    type item = (event, Error.t) result
 
     let rec next = fun state ->
-      if state.done_ then
-        None
-      else
-        match Sse.parse_event state.buffer with
-        | Some (Sse.Event event, remaining) ->
-            state.buffer <- remaining;
-            Some event
-        | Some (Sse.Skip, remaining) ->
-            state.buffer <- remaining;
-            next state
-        | Some (Sse.Done, remaining) ->
-            state.buffer <- remaining;
-            state.done_ <- true;
-            None
-        | None ->
+      match Sse.parse_event state.buffer with
+      | Some (Sse.Event event, remaining) ->
+          state.buffer <- remaining;
+          Some (Ok event)
+      | Some (Sse.Skip, remaining) ->
+          state.buffer <- remaining;
+          next state
+      | Some (Sse.Done, remaining) ->
+          state.buffer <- remaining;
+          state.done_ <- true;
+          None
+      | None ->
+          if state.done_ then
+            if String.equal state.buffer "" then
+              None
+            else (
+              state.buffer <- "";
+              Some (Error (Error.ProtocolError Error.IncompleteSseEvent))
+            )
+          else
             match stream state.client state.connection with
-            | Error _ ->
+            | Error error ->
                 state.done_ <- true;
-                None
+                Some (Error error)
             | Ok messages ->
                 List.for_each
                   messages
@@ -492,10 +497,7 @@ module SSE = struct
                     | Connection.Done -> state.done_ <- true
                     | Connection.Status _
                     | Connection.Headers _ -> ());
-                if state.done_ && String.equal state.buffer "" then
-                  None
-                else
-                  next state
+                next state
 
     let size = fun _state -> 0
 

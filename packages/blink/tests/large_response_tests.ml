@@ -181,52 +181,62 @@ let test_sse_parsing = fun _ctx ->
             (
               "First event: " ^ (
                 match first_event with
-                | Some _ -> "got one"
+                | Some (Ok _) -> "got one"
+                | Some (Error _) -> "error"
                 | None -> "none"
               )
             );
-          let events =
+          let event_results =
             match first_event with
-            | Some e -> e :: (Iter.MutIterator.to_list iter)
+            | Some event -> event :: (Iter.MutIterator.to_list iter)
             | None -> []
           in
-          let event_count = List.length events in
-          Log.info ("Received " ^ string_of_int event_count ^ " SSE events");
-          (* Verify we got some events *)
-          if event_count = 0 then
-            Error "No SSE events received"
-          else (
-            (* Log each event *)
-            events
-            |> List.fold_left
-              ~init:0
-              ~fn:(fun i event ->
-                Log.info
-                  ("SSE Event "
-                  ^ string_of_int (i + 1)
-                  ^ ": "
-                  ^ Blink.SSE.(String.sub
-                    event.data
-                    ~offset:0
-                    ~len:(min 80 (String.length event.data))));
-                i + 1)
-            |> ignore;
-            (* Verify each event has JSON data *)
-            let all_valid_json =
-              List.for_all
-                (fun event ->
-                  match Blink.SSE.(Data.Json.from_string event.data) with
-                  | Ok _ -> true
-                  | Error _ -> false)
+          let rec collect_events acc results =
+            match results with
+            | [] -> Ok (List.reverse acc)
+            | Ok event :: rest -> collect_events (event :: acc) rest
+            | Error error :: _ -> Error ("SSE stream failed: " ^ Blink.Error.to_string error)
+          in
+          match collect_events [] event_results with
+          | Error error -> Error error
+          | Ok events ->
+              let event_count = List.length events in
+              Log.info ("Received " ^ string_of_int event_count ^ " SSE events");
+              (* Verify we got some events *)
+              if event_count = 0 then
+                Error "No SSE events received"
+              else (
+                (* Log each event *)
                 events
-            in
-            if not all_valid_json then
-              Error "Some SSE events contained invalid JSON"
-            else (
-              Log.info ("✓ Parsed " ^ string_of_int event_count ^ " SSE events successfully");
-              Ok ()
-            )
-          )
+                |> List.fold_left
+                  ~init:0
+                  ~fn:(fun i event ->
+                    Log.info
+                      ("SSE Event "
+                      ^ string_of_int (i + 1)
+                      ^ ": "
+                      ^ Blink.SSE.(String.sub
+                        event.data
+                        ~offset:0
+                        ~len:(min 80 (String.length event.data))));
+                    i + 1)
+                |> ignore;
+                (* Verify each event has JSON data *)
+                let all_valid_json =
+                  List.for_all
+                    (fun event ->
+                      match Blink.SSE.(Data.Json.from_string event.data) with
+                      | Ok _ -> true
+                      | Error _ -> false)
+                    events
+                in
+                if not all_valid_json then
+                  Error "Some SSE events contained invalid JSON"
+                else (
+                  Log.info ("✓ Parsed " ^ string_of_int event_count ^ " SSE events successfully");
+                  Ok ()
+                )
+              )
 
 let tests = [
   case "large JSON response without truncation" test_large_json_response;

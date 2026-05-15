@@ -64,7 +64,7 @@ module SSE: sig
     id: string option;
   }
 
-  val await: t -> connection -> event Std.Iter.MutIterator.t
+  val await: t -> connection -> (event, Error.t) Std.result Std.Iter.MutIterator.t
 end
 
 module WebSocket: sig
@@ -92,7 +92,7 @@ module WebSocket: sig
 
   val receive: client -> t -> (message, error) Std.result
 
-  val close: client -> t -> unit
+  val close: client -> t -> (unit, error) Std.result
 end
 
 val shutdown: t -> unit

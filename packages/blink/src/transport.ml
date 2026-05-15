@@ -20,6 +20,8 @@ let tcp_error_to_io_error = fun error ->
   | Net.TcpStream.Connection_refused -> IO.Connection_refused
   | Net.TcpStream.System_error error -> error
 
+let buffer_error_to_io_error = fun context _error -> IO.Unknown_error context
+
 let tcp_reader ?read_timeout sock =
   match read_timeout with
   | None -> Net.TcpStream.to_reader sock
@@ -31,24 +33,26 @@ let tcp_reader ?read_timeout sock =
         let writable into =
           if IO.Buffer.writable_bytes into = 0 then (
             match IO.Buffer.ensure_free into 4_096 with
-            | Ok () -> IO.Buffer.writable into
-            | Error _ -> panic "Blink.Transport.tcp_reader.ensure_free failed"
+            | Ok () -> Ok (IO.Buffer.writable into)
+            | Error error -> Error (buffer_error_to_io_error "tcp_reader.ensure_free" error)
           ) else
-            IO.Buffer.writable into
+            Ok (IO.Buffer.writable into)
 
         let read t ~into =
-          let writable = writable into in
-          let scratch_len = Int.min max_read_size (IO.IoSlice.length writable) in
-          let scratch = IO.Bytes.create ~size:scratch_len in
-          match Net.TcpStream.read t scratch ~timeout () with
-          | Ok count ->
-              let chunk = IO.Bytes.sub_unchecked scratch ~offset:0 ~len:count in
-              (
-                match IO.Buffer.append_bytes into chunk with
-                | Ok () -> Ok count
-                | Error _ -> panic "Blink.Transport.tcp_reader.append failed"
-              )
-          | Error error -> Error (tcp_error_to_io_error error)
+          match writable into with
+          | Error error -> Error error
+          | Ok writable ->
+              let scratch_len = Int.min max_read_size (IO.IoSlice.length writable) in
+              let scratch = IO.Bytes.create ~size:scratch_len in
+              match Net.TcpStream.read t scratch ~timeout () with
+              | Ok count ->
+                  let chunk = IO.Bytes.sub_unchecked scratch ~offset:0 ~len:count in
+                  (
+                    match IO.Buffer.append_bytes into chunk with
+                    | Ok () -> Ok count
+                    | Error error -> Error (buffer_error_to_io_error "tcp_reader.append" error)
+                  )
+              | Error error -> Error (tcp_error_to_io_error error)
 
         let read_vectored t ~into =
           let total = IO.IoVec.length into in
