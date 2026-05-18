@@ -1,1 +1,2 @@
 {"type":"config","name":"Grow RiotML imported fixture corpus with minimal stage0 support","metricName":"passing_imported_fixtures","metricUnit":"","bestDirection":"higher"}
+{"run":1,"commit":"593ae70","metric":1,"metrics":{"wall_s":3.5},"status":"keep","description":"Baseline with existing imported syn fixture count","timestamp":1779140254504,"segment":0,"confidence":null,"asi":{"hypothesis":"Measure current passing imported fixture corpus before adding translated fixtures."}}
