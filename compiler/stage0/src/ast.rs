@@ -64,6 +64,11 @@ pub(crate) enum AstExpr {
         expr: Box<AstExpr>,
         span: TextSpan,
     },
+    Eq {
+        lhs: Box<AstExpr>,
+        rhs: Box<AstExpr>,
+        span: TextSpan,
+    },
     Bool { value: bool, span: TextSpan },
     Call { callee: AstPath, args: Vec<AstExpr> },
     Int { value: i64, span: TextSpan },
