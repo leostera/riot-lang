@@ -1,0 +1,1 @@
+- Investigate whether old OCaml-style octal fixture `compiler/syn/tests/fixtures/0010_int_octal.ml` should be skipped, converted to decimal, or added to `compiler/riotml.ebnf`; current RiotML integer grammar lists decimal/hex/binary only.

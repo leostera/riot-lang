@@ -72,7 +72,16 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 i64::from_str_radix(raw, 16)
                     .map_err(|error| Rich::custom(span, format!("invalid hex integer literal: {error}")))
             });
+        let binary_int = just("0b")
+            .or(just("0B"))
+            .ignore_then(text::digits(2).to_slice())
+            .try_map(|raw: &str, span| {
+                i64::from_str_radix(raw, 2).map_err(|error| {
+                    Rich::custom(span, format!("invalid binary integer literal: {error}"))
+                })
+            });
         let int_expr = hex_int
+            .or(binary_int)
             .or(decimal_int)
             .padded()
             .map_with(|value, extra| AstExpr::Int {
