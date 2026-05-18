@@ -51,9 +51,9 @@ module Config: sig
     (**
        TLS policy used for the connection.
 
-       Current implementation note: TLS negotiation is not implemented yet.
-       `Require` fails with a structured driver error. `Prefer` currently uses
-       the plaintext path.
+       `Require` negotiates PostgreSQL TLS before authentication and fails if
+       the server rejects TLS. `Prefer` attempts TLS and falls back to plaintext
+       when the server declines it. `Disable` uses plaintext directly.
     *)
     ssl_mode: ssl_mode;
     (** Optional application name reported to PostgreSQL. *)
@@ -79,6 +79,7 @@ module Config: sig
     | MissingUserCredentials
     | InvalidPortNumber of string
     | InvalidConnectionStringFormat
+    | InvalidSslMode of string
     | InvalidUri
 
   val default: unit -> t

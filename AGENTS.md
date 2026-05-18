@@ -55,6 +55,9 @@ Use this file as the route map for package-specific guidance. General contributo
 - `packages/testcontainers/AGENTS.md`: test-oriented Docker container lifecycle helpers on top of docker-client
 - `packages/tty/AGENTS.md`: terminal control and rendering helpers
 - `packages/typ/AGENTS.md`: experimental lowered IR, prototype typing, and snapshot-driven type-analysis exploration
+- `compiler/fixtures/AGENTS.md`: shared positive and diagnostic Riot ML compiler fixtures
+- `compiler/stage0/AGENTS.md`: Rust bootstrap compiler, one-file pipeline, LLVM codegen, and native linking
+- `compiler/rt/AGENTS.md`: Rust runtime crate and exported C ABI for generated Riot ML programs
 - `compiler/asm/AGENTS.md`: typed assembly documents and per-ISA emission DSLs
 - `compiler/raml-core/AGENTS.md`: shared compiler frontend, `Core_ir`, and backend-neutral pipeline contracts
 - `compiler/raml-native/AGENTS.md`: native backend, `NIR`/`MIR`/`LIR`, emitter, linker, and native pass work

@@ -546,14 +546,34 @@ let serialize_websocket_frames = fun frames ->
   loop frames []
 
 let send_websocket_frames = fun conn frames state ->
-  match serialize_websocket_frames frames with
-  | Error error -> Socket_pool.Handler.Error (state, WebSocketSerializeFailed error)
-  | Ok frame_data -> (
-      match Socket_pool.Connection.send conn frame_data with
-      | Ok () -> Socket_pool.Handler.Continue state
-      | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close state
-      | Error error -> Socket_pool.Handler.Error (state, WebSocketConnectionFailed error)
-    )
+  if List.is_empty frames then (
+    Log.debug "WebSocket bridge: no outbound frames to send";
+    Socket_pool.Handler.Continue state
+  ) else
+    match serialize_websocket_frames frames with
+    | Error error -> Socket_pool.Handler.Error (state, WebSocketSerializeFailed error)
+    | Ok frame_data -> (
+        Log.debug
+          ("WebSocket bridge: sending "
+          ^ Int.to_string (List.length frames)
+          ^ " frame(s), bytes="
+          ^ Int.to_string (String.length frame_data));
+        match Socket_pool.Connection.send conn frame_data with
+        | Ok () ->
+            Log.debug "WebSocket bridge: outbound frames sent";
+            Socket_pool.Handler.Continue state
+        | Error Socket_pool.Connection.Closed -> Socket_pool.Handler.Close state
+        | Error error -> Socket_pool.Handler.Error (state, WebSocketConnectionFailed error)
+      )
+
+let websocket_opcode_to_string = fun opcode ->
+  match opcode with
+  | Http.Ws.Frame.Continuation -> "continuation"
+  | Http.Ws.Frame.Text -> "text"
+  | Http.Ws.Frame.Binary -> "binary"
+  | Http.Ws.Frame.Close -> "close"
+  | Http.Ws.Frame.Ping -> "ping"
+  | Http.Ws.Frame.Pong -> "pong"
 
 let websocket_event_to_frame = fun message ->
   match message with
@@ -576,6 +596,13 @@ let rec handle_websocket_input = fun config conn stream state input ->
   | Need_more -> Socket_pool.Handler.Continue { state with pending_data = input }
   | Error error -> Socket_pool.Handler.Error (state, WebSocketParseFailed error)
   | Done { value = frame; remaining } -> (
+      Log.debug
+        ("WebSocket bridge: parsed frame opcode="
+        ^ websocket_opcode_to_string frame.opcode
+        ^ " payload_bytes="
+        ^ Int.to_string (String.length frame.Http.Ws.Frame.payload)
+        ^ " remaining_bytes="
+        ^ Int.to_string (String.length remaining));
       match validate_websocket_frame_limits
         ~max_frame_size:config.max_websocket_frame_size
         ~max_message_size:config.max_websocket_message_size
@@ -643,10 +670,21 @@ let websocket_to_socket_pool_handler:
         handle_data =
           (fun data conn state ->
             (* Parse WebSocket frames from incoming data *)
+            Log.debug
+              ("WebSocket bridge: received socket data bytes="
+              ^ Int.to_string (String.length data)
+              ^ " pending_bytes="
+              ^ Int.to_string (String.length state.pending_data));
             let stream = Socket_pool.Connection.stream conn in
             handle_websocket_input config conn stream state (state.pending_data ^ data));
-        handle_error = (fun err _conn state -> Socket_pool.Handler.Error (state, err));
-        handle_shutdown = (fun _conn state -> Socket_pool.Handler.Close state);
+        handle_error =
+          (fun err _conn state ->
+            Log.debug ("WebSocket bridge: handler error " ^ websocket_bridge_error_to_string err);
+            Socket_pool.Handler.Error (state, err));
+        handle_shutdown =
+          (fun _conn state ->
+            Log.debug "WebSocket bridge: socket shutdown";
+            Socket_pool.Handler.Close state);
         handle_message =
           (fun msg conn state ->
             let stream = Socket_pool.Connection.stream conn in

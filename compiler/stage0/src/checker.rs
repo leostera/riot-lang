@@ -1,0 +1,175 @@
+use std::collections::HashMap;
+
+use camino::Utf8Path;
+use chumsky::span::{SimpleSpan, Span};
+
+use crate::ast::{AstBlock, AstExpr, AstProgram, AstStmt, TextSpan};
+use crate::diagnostic::to_source_diagnostic;
+use crate::ir::{TypedExpr, TypedFunction, TypedProgram};
+
+pub(crate) fn typecheck(
+    source_path: &Utf8Path,
+    source: &str,
+    program: AstProgram,
+) -> miette::Result<TypedProgram> {
+    if program.decls.len() != 1 {
+        let span = program
+            .decls
+            .get(1)
+            .map(|decl| decl.span)
+            .or_else(|| program.decls.first().map(|decl| decl.span))
+            .unwrap_or_else(|| SimpleSpan::new((), 0..source.len().min(1)));
+
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            span,
+            "expected exactly one top-level function",
+            "stage0 requires a single main function per file",
+            Some("keep only: fn main() { println(\"hello world\") }"),
+        )
+        .into());
+    }
+
+    let decl = &program.decls[0];
+    if decl.name != "main" {
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            decl.name_span,
+            "missing main function",
+            "this function must be named main",
+            Some("stage0 requires one entrypoint: fn main() { println(\"hello world\") }"),
+        )
+        .into());
+    }
+
+    let message = resolve_main_message(source_path, source, &decl.body)?;
+
+    Ok(TypedProgram {
+        main: TypedFunction {
+            body: TypedExpr::Println { message },
+        },
+    })
+}
+
+fn resolve_main_message(
+    source_path: &Utf8Path,
+    source: &str,
+    block: &AstBlock,
+) -> miette::Result<String> {
+    let mut bindings = HashMap::new();
+    let mut final_expr = None;
+
+    for (index, stmt) in block.statements.iter().enumerate() {
+        match stmt {
+            AstStmt::Let {
+                name,
+                name_span,
+                value,
+                span,
+            } => {
+                if bindings.contains_key(name) {
+                    return Err(to_source_diagnostic(
+                        source_path,
+                        source,
+                        *name_span,
+                        "duplicate local binding",
+                        format!("`{name}` is already bound in this block"),
+                        Some("use a unique local name"),
+                    )
+                    .into());
+                }
+
+                let value = resolve_string_value(value, &bindings).ok_or_else(|| {
+                    to_source_diagnostic(
+                        source_path,
+                        source,
+                        *span,
+                        "unsupported local binding",
+                        "stage0 currently supports string literal local bindings",
+                        Some("try: let name = \"Alice\";"),
+                    )
+                })?;
+                bindings.insert(name.clone(), value);
+            }
+            AstStmt::Expr(expr) => {
+                if block.tail.is_some() || index + 1 != block.statements.len() {
+                    return Err(to_source_diagnostic(
+                        source_path,
+                        source,
+                        expr_span(expr),
+                        "unsupported main body",
+                        "stage0 currently allows local lets followed by one println expression",
+                        Some("try: fn main() { let name = \"Alice\"; println(name) }"),
+                    )
+                    .into());
+                }
+
+                final_expr = Some(expr);
+            }
+        }
+    }
+
+    if let Some(tail) = &block.tail {
+        final_expr = Some(tail);
+    }
+
+    let Some(expr) = final_expr else {
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            block.span,
+            "unsupported main body",
+            "stage0 currently expects main to call println with one string value",
+            Some("try: fn main() { println(\"hello world\") }"),
+        )
+        .into());
+    };
+
+    println_message(expr, &bindings).ok_or_else(|| {
+        to_source_diagnostic(
+            source_path,
+            source,
+            expr_span(expr),
+            "unsupported main body",
+            "stage0 currently expects main to call println with one string value",
+            Some("try: fn main() { let name = \"Alice\"; println(name) }"),
+        )
+        .into()
+    })
+}
+
+fn println_message(expr: &AstExpr, bindings: &HashMap<String, String>) -> Option<String> {
+    let AstExpr::Call { callee, args } = expr else {
+        return None;
+    };
+    if callee.segments.as_slice() != ["println"] {
+        return None;
+    }
+
+    match args.as_slice() {
+        [arg] => resolve_string_value(arg, bindings),
+        _ => None,
+    }
+}
+
+fn resolve_string_value(expr: &AstExpr, bindings: &HashMap<String, String>) -> Option<String> {
+    match expr {
+        AstExpr::String { value, span: _ } => Some(value.clone()),
+        AstExpr::Path { path, span: _ } if path.segments.len() == 1 => {
+            bindings.get(&path.segments[0]).cloned()
+        }
+        AstExpr::Path { .. } | AstExpr::Call { .. } => None,
+    }
+}
+
+fn expr_span(expr: &AstExpr) -> TextSpan {
+    match expr {
+        AstExpr::Call { callee: _, args } => args
+            .first()
+            .map(expr_span)
+            .unwrap_or_else(|| SimpleSpan::new((), 0..0)),
+        AstExpr::Path { path: _, span } | AstExpr::String { value: _, span } => *span,
+    }
+}

@@ -1,0 +1,33 @@
+use std::process::Command;
+
+use camino::Utf8Path;
+use miette::{IntoDiagnostic, WrapErr};
+
+use crate::command::run_command;
+
+pub(crate) fn link_executable(
+    object_path: &Utf8Path,
+    runtime_lib: &Utf8Path,
+    output: &Utf8Path,
+) -> miette::Result<()> {
+    let linker = which::which("clang")
+        .or_else(|_| which::which("cc"))
+        .into_diagnostic()
+        .wrap_err("failed to find clang or cc in PATH")?;
+
+    let mut command = Command::new(linker);
+    command
+        .arg(object_path.as_std_path())
+        .arg(runtime_lib.as_std_path())
+        .arg("-o")
+        .arg(output.as_std_path());
+
+    if cfg!(target_os = "macos") {
+        command.arg("-Wl,-dead_strip");
+    } else if cfg!(target_os = "linux") {
+        command.arg("-Wl,--gc-sections");
+        command.args(["-lpthread", "-ldl", "-lm"]);
+    }
+
+    run_command(command, "failed to link executable")
+}

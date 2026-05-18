@@ -12,18 +12,21 @@ type config = Config.t
 (* Proper error type that distinguishes transport vs protocol errors *)
 
 type error =
+  | AddressError of Net.Addr.error
   | TransportError of Net.TcpStream.error
+  | TransportIoError of IO.error
   | ProtocolError of Protocol.Error.t
   | ConnectionClosed
   | AuthenticationNotSupported of authentication_error
   | TlsNotSupported of tls_error
+  | TlsError of Net.TlsStream.error
   | UnexpectedMessage of unexpected_message
 
 and authentication_error =
   | UnsupportedSaslMechanisms of string list
 
 and tls_error =
-  | RequiredTlsMode
+  | ServerRejectedTls
 
 and unexpected_message =
   | ScramServerFirstInvalidIterationCount
@@ -40,6 +43,7 @@ and unexpected_message =
   | ScramFinalWithoutSaslStart
   | HandshakeUnexpectedMessageType of int
   | QueryUnexpectedMessageType of int
+  | TlsUnexpectedResponse of int
   | TransactionAlreadyInProgress
   | NoTransactionInProgress
 
@@ -57,11 +61,18 @@ type error_document = {
 
 type connection = {
   id: string;
-  stream: Net.TcpStream.t option;
+  stream: transport option;
   config: config;
   mutable statement_seq: int;
   mutable transaction_status: char;
   mutable closed: bool;
+}
+
+and transport = {
+  tcp: Net.TcpStream.t;
+  mutable tls: Net.TcpStream.t Net.TlsStream.t option;
+  mutable reader: IO.Reader.t;
+  mutable writer: IO.Writer.t;
 }
 
 and statement = {
@@ -77,13 +88,30 @@ type result_set = {
 
 let name = "PostgreSQL"
 
+let addr_error_to_string = fun error ->
+  match error with
+  | Net.Addr.System_error io_err -> IO.error_message io_err
+  | Net.Addr.Invalid_port_number value -> "invalid port number: " ^ value
+  | Net.Addr.Invalid_format value -> "invalid address format: " ^ value
+
 let authentication_error_to_string = fun error ->
   match error with
   | UnsupportedSaslMechanisms mechanisms -> "SASL mechanisms: " ^ String.concat "," mechanisms
 
 let tls_error_to_string = fun error ->
   match error with
-  | RequiredTlsMode -> "require"
+  | ServerRejectedTls -> "server rejected TLS"
+
+let tls_stream_error_to_string = fun error ->
+  match error with
+  | Net.TlsStream.Closed -> "TLS stream closed"
+  | Net.TlsStream.Handshake_failed message -> "TLS handshake failed: " ^ message
+  | Net.TlsStream.System_error error -> IO.error_message error
+  | Net.TlsStream.Network_read_failed error -> "TLS network read failed: " ^ IO.error_message error
+  | Net.TlsStream.Network_write_failed error ->
+      "TLS network write failed: " ^ IO.error_message error
+  | Net.TlsStream.Tls_not_available -> "TLS is not available"
+  | Net.TlsStream.Unsupported_vectored_operation -> "TLS vectored operation is not supported"
 
 let unexpected_message_to_string = fun error ->
   match error with
@@ -110,6 +138,8 @@ let unexpected_message_to_string = fun error ->
       "During handshake: " ^ String.make ~len:1 ~char:(Char.from_int_unchecked message_type)
   | QueryUnexpectedMessageType message_type ->
       "During query: " ^ String.make ~len:1 ~char:(Char.from_int_unchecked message_type)
+  | TlsUnexpectedResponse message_type ->
+      "During TLS negotiation: " ^ String.make ~len:1 ~char:(Char.from_int_unchecked message_type)
   | TransactionAlreadyInProgress -> "Transaction already in progress"
   | NoTransactionInProgress -> "No transaction in progress"
 
@@ -129,25 +159,47 @@ let unexpected_message_kind = fun error ->
   | ScramFinalWithoutSaslStart -> "scram_final_without_sasl_start"
   | HandshakeUnexpectedMessageType _ -> "handshake_unexpected_message_type"
   | QueryUnexpectedMessageType _ -> "query_unexpected_message_type"
+  | TlsUnexpectedResponse _ -> "tls_unexpected_response"
   | TransactionAlreadyInProgress -> "transaction_already_in_progress"
   | NoTransactionInProgress -> "no_transaction_in_progress"
 
 let error_to_string = fun error ->
   match error with
+  | AddressError addr_error -> "Address error: " ^ addr_error_to_string addr_error
   | TransportError Net.TcpStream.Connection_refused -> "Connection refused"
   | TransportError Net.TcpStream.Closed -> "Connection closed"
   | TransportError (Net.TcpStream.System_error io_err) ->
       "Transport error: " ^ IO.error_message io_err
+  | TransportIoError io_err -> "Transport error: " ^ IO.error_message io_err
   | ProtocolError proto_err -> Protocol.Error.to_string proto_err
   | ConnectionClosed -> "Connection is closed"
   | AuthenticationNotSupported error ->
       "Authentication method not supported: " ^ authentication_error_to_string error
-  | TlsNotSupported error ->
-      "PostgreSQL TLS mode is not supported yet: " ^ tls_error_to_string error
+  | TlsNotSupported error -> "PostgreSQL TLS negotiation failed: " ^ tls_error_to_string error
+  | TlsError error -> "PostgreSQL TLS error: " ^ tls_stream_error_to_string error
   | UnexpectedMessage error -> "Unexpected message: " ^ unexpected_message_to_string error
 
 let error_document = fun error ->
   match error with
+  | AddressError addr_error ->
+      let (error, message) =
+        match addr_error with
+        | Net.Addr.System_error io_err -> ("system_error", IO.error_message io_err)
+        | Net.Addr.Invalid_port_number value ->
+            ("invalid_port_number", "invalid port number: " ^ value)
+        | Net.Addr.Invalid_format value -> ("invalid_format", "invalid address format: " ^ value)
+      in
+      {
+        type_ = "address_error";
+        error = Some error;
+        kind = None;
+        message;
+        mode = None;
+        length = None;
+        limit = None;
+        message_type = None;
+        offset = None;
+      }
   | TransportError Net.TcpStream.Connection_refused ->
       {
         type_ = "transport_error";
@@ -176,6 +228,18 @@ let error_document = fun error ->
       {
         type_ = "transport_error";
         error = Some "system_error";
+        kind = None;
+        message = IO.error_message io_err;
+        mode = None;
+        length = None;
+        limit = None;
+        message_type = None;
+        offset = None;
+      }
+  | TransportIoError io_err ->
+      {
+        type_ = "transport_error";
+        error = Some "io_error";
         kind = None;
         message = IO.error_message io_err;
         mode = None;
@@ -226,8 +290,20 @@ let error_document = fun error ->
         type_ = "tls_not_supported";
         error = None;
         kind = None;
-        message = "PostgreSQL TLS mode is not supported yet: " ^ tls_error_to_string tls_error;
+        message = "PostgreSQL TLS negotiation failed: " ^ tls_error_to_string tls_error;
         mode = Some (tls_error_to_string tls_error);
+        length = None;
+        limit = None;
+        message_type = None;
+        offset = None;
+      }
+  | TlsError tls_error ->
+      {
+        type_ = "tls_error";
+        error = None;
+        kind = None;
+        message = tls_stream_error_to_string tls_error;
+        mode = None;
         length = None;
         limit = None;
         message_type = None;
@@ -252,7 +328,8 @@ let error_document = fun error ->
         | BackendMessageBodyTooLarge { length; limit } ->
             { document with length = Some length; limit = Some limit }
         | HandshakeUnexpectedMessageType message_type
-        | QueryUnexpectedMessageType message_type ->
+        | QueryUnexpectedMessageType message_type
+        | TlsUnexpectedResponse message_type ->
             { document with message_type = Some message_type }
         | InvalidBackendMessage error ->
             {
@@ -285,19 +362,51 @@ let error_serializer =
         )
     )
 
-let write_message = fun stream msg ->
+let transport_of_tcp = fun tcp ->
+  {
+    tcp;
+    tls = None;
+    reader = Net.TcpStream.to_reader tcp;
+    writer = Net.TcpStream.to_writer tcp;
+  }
+
+let close_transport = fun transport ->
+  (
+    match transport.tls with
+    | Some tls -> Net.TlsStream.close tls
+    | None -> ()
+  );
+  Net.TcpStream.close transport.tcp
+
+let write_tcp_all = fun tcp msg ->
   let bytes = Bytes.from_string msg in
   let total = Bytes.length bytes in
   let rec loop offset =
     if offset >= total then
       Ok ()
     else
-      match Net.TcpStream.write stream bytes ~pos:offset ~len:(total - offset) () with
+      match Net.TcpStream.write tcp bytes ~pos:offset ~len:(total - offset) () with
       | Error err -> Error (TransportError err)
       | Ok 0 -> Error (TransportError Net.TcpStream.Closed)
       | Ok written -> loop (offset + written)
   in
   loop 0
+
+let read_tcp_byte = fun tcp ->
+  let byte = Bytes.create ~size:1 in
+  match Net.TcpStream.read tcp byte ~pos:0 ~len:1 () with
+  | Error err -> Error (TransportError err)
+  | Ok 0 -> Error (TransportError Net.TcpStream.Closed)
+  | Ok _ -> Ok (Bytes.get_unchecked byte ~at:0)
+
+let write_message = fun transport msg ->
+  match IO.Writer.write_all transport.writer ~from:(IO.Buffer.from_string msg) with
+  | Error error -> Error (TransportIoError error)
+  | Ok () -> (
+      match IO.Writer.flush transport.writer with
+      | Error error -> Error (TransportIoError error)
+      | Ok () -> Ok ()
+    )
 
 let hmac_sha256 = fun ~key ~data ->
   hmac_sha256_bytes key data
@@ -329,6 +438,41 @@ let int32_be = fun value ->
   Bytes.set_unchecked bytes ~at:2 ~char:(Char.from_int_unchecked ((value lsr 8) land 0xff));
   Bytes.set_unchecked bytes ~at:3 ~char:(Char.from_int_unchecked (value land 0xff));
   Bytes.to_string bytes
+
+let ssl_request_code = 80_877_103
+
+let negotiate_tls = fun transport (cfg: Config.t) ->
+  match cfg.ssl_mode with
+  | Config.Disable -> Ok ()
+  | Config.Prefer
+  | Config.Require -> (
+      match write_tcp_all transport.tcp (int32_be 8 ^ int32_be ssl_request_code) with
+      | Error _ as error -> error
+      | Ok () -> (
+          match read_tcp_byte transport.tcp with
+          | Error _ as error -> error
+          | Ok 'S' -> (
+              match Net.TlsStream.from_client_io
+                ~reader:transport.reader
+                ~writer:transport.writer
+                ~hostname:cfg.host
+                () with
+              | Error error -> Error (TlsError error)
+              | Ok tls ->
+                  transport.tls <- Some tls;
+                  transport.reader <- Net.TlsStream.to_reader tls;
+                  transport.writer <- Net.TlsStream.to_writer tls;
+                  Ok ()
+            )
+          | Ok 'N' -> (
+              match cfg.ssl_mode with
+              | Config.Require -> Error (TlsNotSupported ServerRejectedTls)
+              | Config.Prefer -> Ok ()
+              | Config.Disable -> Ok ()
+            )
+          | Ok response -> Error (UnexpectedMessage (TlsUnexpectedResponse (Char.code response)))
+        )
+    )
 
 let pbkdf2_sha256 = fun ~password ~salt ~iterations ->
   let first = hmac_sha256 ~key:password ~data:(salt ^ int32_be 1) in
@@ -425,23 +569,20 @@ let verify_scram_final = fun expected_signature payload ->
   | None -> Error (UnexpectedMessage ScramServerFinalMissingVerifier)
 
 let read_exact = fun stream buf len ->
-  let rec loop offset remaining =
-    if remaining = 0 then
+  let buffer = IO.Buffer.create ~size:len in
+  match IO.Reader.read_exact stream.reader ~into:buffer ~len with
+  | Error error -> Error (TransportIoError error)
+  | Ok () ->
+      let chunk = IO.Buffer.to_bytes buffer in
+      Bytes.blit_unchecked chunk ~src_offset:0 ~dst:buf ~dst_offset:0 ~len;
       Ok ()
-    else
-      match Net.TcpStream.read stream buf ~pos:offset ~len:remaining () with
-      | Error e -> Error e
-      | Ok 0 -> Error Closed
-      | Ok n -> loop (offset + n) (remaining - n)
-  in
-  loop 0 len
 
 let max_backend_message_body_length = 64 * 1_024 * 1_024
 
 let read_message = fun stream ->
   let header = Bytes.create ~size:5 in
   match read_exact stream header 5 with
-  | Error err -> Error (TransportError err)
+  | Error error -> Error error
   | Ok () ->
       let msg_type = Char.code (Option.unwrap (Bytes.get header ~at:0)) in
       let b1 = Char.code (Option.unwrap (Bytes.get header ~at:1)) in
@@ -460,7 +601,7 @@ let read_message = fun stream ->
       else if body_len > 0 then
         let body = Bytes.create ~size:body_len in
         match read_exact stream body body_len with
-        | Error err -> Error (TransportError err)
+        | Error error -> Error error
         | Ok () -> Ok (msg_type, length, body)
       else
         Ok (msg_type, length, Bytes.create ~size:0)
@@ -622,29 +763,26 @@ let connect = fun (cfg: Config.t) ->
         )
     )
   in
-  match cfg.ssl_mode with
-  | Config.Require -> Error (TlsNotSupported RequiredTlsMode)
-  | Config.Disable
-  | Config.Prefer -> (
-      match Net.Addr.from_host_and_port ~host:cfg.host ~port:cfg.port with
-      | Error (Net.Addr.System_error _err) ->
-          (* Host resolution failure - treat as connection refused *)
-          Error (TransportError Net.TcpStream.Connection_refused)
-      | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
-          (* Invalid address format - treat as connection refused *)
-          Error (TransportError Net.TcpStream.Connection_refused)
-      | Ok addr -> (
-          match Net.TcpStream.connect addr with
-          | Error err -> Error (TransportError err)
-          | Ok stream -> (
+  match Net.Addr.from_host_and_port ~host:cfg.host ~port:cfg.port with
+  | Error error -> Error (AddressError error)
+  | Ok addr -> (
+      match Net.TcpStream.connect addr with
+      | Error err -> Error (TransportError err)
+      | Ok tcp -> (
+          let stream = transport_of_tcp tcp in
+          match negotiate_tls stream cfg with
+          | Error e ->
+              close_transport stream;
+              Error e
+          | Ok () -> (
               match perform_handshake stream cfg with
               | Error e ->
-                  Net.TcpStream.close stream;
+                  close_transport stream;
                   Error e
-              | Ok () -> (
+              | Ok () ->
                   match initialize_connection stream with
                   | Error e ->
-                      Net.TcpStream.close stream;
+                      close_transport stream;
                       Error e
                   | Ok () ->
                       Ok {
@@ -655,7 +793,6 @@ let connect = fun (cfg: Config.t) ->
                         transaction_status = 'I';
                         closed = false;
                       }
-                )
             )
         )
     )
@@ -663,7 +800,7 @@ let connect = fun (cfg: Config.t) ->
 let close = fun conn ->
   conn.closed <- true;
   match conn.stream with
-  | Some stream -> Net.TcpStream.close stream
+  | Some stream -> close_transport stream
   | None -> ()
 
 let ping = fun conn -> not conn.closed

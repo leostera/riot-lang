@@ -190,13 +190,17 @@ let test_reader_parses_row_description_and_data_row = fun _ctx ->
   | Ok _ -> Error "expected RowDescription"
 
 let test_config_parses_uri_and_legacy_forms = fun _ctx ->
-  match Postgres.Config.from_string "postgresql://alice:secret@localhost:5433/app" with
+  match Postgres.Config.from_string
+    "postgresql://alice:secret@db.example.test:5433/app?sslmode=require&application_name=raffaello" with
   | Error error -> Error (Postgres.Config.parse_error_to_string error)
   | Ok uri_config ->
+      Test.assert_equal ~expected:"db.example.test" ~actual:uri_config.host;
       Test.assert_equal ~expected:5_433 ~actual:uri_config.port;
       Test.assert_equal ~expected:"app" ~actual:uri_config.database;
       Test.assert_equal ~expected:"alice" ~actual:uri_config.user;
       Test.assert_equal ~expected:"secret" ~actual:uri_config.password;
+      Test.assert_equal ~expected:Postgres.Config.Require ~actual:uri_config.ssl_mode;
+      Test.assert_equal ~expected:(Some "raffaello") ~actual:uri_config.application_name;
       match Postgres.Config.from_string "db.internal:5432:prod:bob:s3cr3t" with
       | Error error -> Error (Postgres.Config.parse_error_to_string error)
       | Ok legacy_config ->
@@ -207,15 +211,23 @@ let test_config_parses_uri_and_legacy_forms = fun _ctx ->
           Test.assert_equal ~expected:"s3cr3t" ~actual:legacy_config.password;
           Ok ()
 
-let test_driver_rejects_required_tls_without_plaintext = fun _ctx ->
-  let config = { (Postgres.Config.default ()) with ssl_mode = Postgres.Config.Require } in
+let test_config_rejects_unknown_sslmode = fun _ctx ->
+  match Postgres.Config.from_string "postgresql://alice:secret@localhost/app?sslmode=surprise" with
+  | Error (Postgres.Config.InvalidSslMode "surprise") -> Ok ()
+  | Error error -> Error ("unexpected parse error: " ^ Postgres.Config.parse_error_to_string error)
+  | Ok _ -> Error "expected invalid sslmode to fail"
+
+let test_driver_reports_address_errors = fun _ctx ->
+  let config = { (Postgres.Config.default ()) with port = -1 } in
   match Postgres.Driver.connect config with
   | Error error ->
-      Test.assert_true (String.contains (Postgres.Driver.error_to_string error) "TLS");
+      let rendered = Postgres.Driver.error_to_string error in
+      Test.assert_true (String.contains rendered "Address error");
+      Test.assert_true (String.contains rendered "invalid port");
       Ok ()
   | Ok connection ->
       Postgres.Driver.close connection;
-      Error "expected ssl_mode=require to fail until TLS negotiation is implemented"
+      Error "expected invalid port to fail before connecting"
 
 let tests =
   Test.[
@@ -234,9 +246,8 @@ let tests =
       "reader parses row description and data row"
       test_reader_parses_row_description_and_data_row;
     case "config parses uri and legacy forms" test_config_parses_uri_and_legacy_forms;
-    case
-      "driver rejects required tls without plaintext"
-      test_driver_rejects_required_tls_without_plaintext;
+    case "config rejects unknown sslmode" test_config_rejects_unknown_sslmode;
+    case "driver reports address errors" test_driver_reports_address_errors;
   ]
 
 let main ~args = Test.Cli.main ~name:"postgres_protocol_tests" ~tests ~args ()

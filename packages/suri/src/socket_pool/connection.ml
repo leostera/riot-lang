@@ -54,8 +54,9 @@ let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () ->
 
 let negotiated_protocol = fun (Conn t) -> t.protocol
 
-let receive = fun ?(limit = 1_024) ?read_size ?timeout (Conn { default_read_size; stream; _ }) ->
+let receive = fun ?limit ?read_size ?timeout (Conn { default_read_size; stream; _ }) ->
   let read_size = Option.unwrap_or ~default:default_read_size read_size in
+  let limit = Option.unwrap_or ~default:read_size limit in
   Log.trace
     ("receive with read_size of "
     ^ string_of_int read_size

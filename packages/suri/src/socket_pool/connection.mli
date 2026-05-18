@@ -49,7 +49,7 @@ val send: t -> string -> (unit, error) result
 (**
    [receive ?limit ?read_size ?timeout conn] reads data from the connection.
 
-   - [limit] sets the maximum bytes to read (default 1024)
+   - [limit] sets the maximum bytes to read (default: configured read size)
    - [read_size] overrides the default buffer read size
    - [timeout] optional timeout duration for the read operation
 
