@@ -129,6 +129,11 @@ pub(crate) enum AstExpr {
         items: Vec<AstExpr>,
         span: TextSpan,
     },
+    Record {
+        path: AstPath,
+        fields: Vec<(String, AstExpr)>,
+        span: TextSpan,
+    },
     Char {
         value: char,
         span: TextSpan,

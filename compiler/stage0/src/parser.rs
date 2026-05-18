@@ -333,7 +333,16 @@ impl<'src> Parser<'src> {
             TokenKind::Int => self.parse_int(),
             TokenKind::Ident => {
                 let (path, span) = self.parse_path()?;
-                Ok(AstExpr::Path { path, span })
+                let is_record_path = path
+                    .segments
+                    .first()
+                    .and_then(|segment| segment.chars().next())
+                    .is_some_and(|ch| ch.is_ascii_uppercase());
+                if is_record_path && self.at(TokenKind::LBrace) {
+                    self.parse_record(path, span)
+                } else {
+                    Ok(AstExpr::Path { path, span })
+                }
             }
             TokenKind::If => self.parse_if(),
             TokenKind::LParen => self.parse_paren_or_tuple_or_unit(),
@@ -459,6 +468,41 @@ impl<'src> Parser<'src> {
         Ok(AstExpr::List {
             items,
             span: start.span.join(end.span),
+        })
+    }
+
+    fn parse_record(&mut self, path: AstPath, path_span: TextSpan) -> Result<AstExpr, ParseError> {
+        self.expect(TokenKind::LBrace, "expected `{` after record path")?;
+        let mut fields = Vec::new();
+
+        if let Some(end) = self.match_kind(TokenKind::RBrace) {
+            return Ok(AstExpr::Record {
+                path,
+                fields,
+                span: path_span.join(end),
+            });
+        }
+
+        loop {
+            let (name, _) = self.expect_lower_ident()?;
+            self.expect(TokenKind::Colon, "expected `:` after record field name")?;
+            let value = self.parse_expr()?;
+            fields.push((name, value));
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RBrace) {
+                break;
+            }
+        }
+
+        let end = self.expect(TokenKind::RBrace, "expected `}` after record fields")?;
+        Ok(AstExpr::Record {
+            path,
+            fields,
+            span: path_span.join(end.span),
         })
     }
 
@@ -724,6 +768,11 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Unit { span }
         | AstExpr::Tuple { items: _, span }
         | AstExpr::List { items: _, span }
+        | AstExpr::Record {
+            path: _,
+            fields: _,
+            span,
+        }
         | AstExpr::Float { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }

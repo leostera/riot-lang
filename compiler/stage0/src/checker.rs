@@ -180,6 +180,10 @@ enum ConstValue {
     Unit,
     Tuple(Vec<ConstValue>),
     List(Vec<ConstValue>),
+    Record {
+        path: String,
+        fields: Vec<(String, ConstValue)>,
+    },
 }
 
 impl ConstValue {
@@ -207,6 +211,14 @@ impl ConstValue {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("[{rendered}]")
+            }
+            ConstValue::Record { path, fields } => {
+                let rendered = fields
+                    .iter()
+                    .map(|(name, value)| format!("{name}: {}", value.to_print_string()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{path} {{ {rendered} }}")
             }
         }
     }
@@ -320,6 +332,18 @@ fn resolve_const_value(
             .map(|item| resolve_const_value(item, bindings))
             .collect::<Option<Vec<_>>>()
             .map(ConstValue::List),
+        AstExpr::Record {
+            path,
+            fields,
+            span: _,
+        } => fields
+            .iter()
+            .map(|(name, value)| Some((name.clone(), resolve_const_value(value, bindings)?)))
+            .collect::<Option<Vec<_>>>()
+            .map(|fields| ConstValue::Record {
+                path: path.segments.join("."),
+                fields,
+            }),
         AstExpr::Float { value, span: _ } => Some(ConstValue::Float(value.clone())),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
@@ -395,6 +419,11 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Unit { span }
         | AstExpr::Tuple { items: _, span }
         | AstExpr::List { items: _, span }
+        | AstExpr::Record {
+            path: _,
+            fields: _,
+            span,
+        }
         | AstExpr::Float { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }
