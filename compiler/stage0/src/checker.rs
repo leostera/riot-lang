@@ -257,6 +257,10 @@ fn resolve_const_value(
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs || rhs)),
             _ => None,
         },
+        AstExpr::Not { expr, span: _ } => match resolve_const_value(expr, bindings)? {
+            ConstValue::Bool(value) => Some(ConstValue::Bool(!value)),
+            _ => None,
+        },
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
@@ -314,7 +318,8 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
             lhs: _,
             rhs: _,
             span,
-        } => *span,
+        }
+        | AstExpr::Not { expr: _, span } => *span,
         AstExpr::Call { callee: _, args } => args
             .first()
             .map(expr_span)
