@@ -105,6 +105,10 @@ pub(crate) enum AstExpr {
     Unit {
         span: TextSpan,
     },
+    Tuple {
+        items: Vec<AstExpr>,
+        span: TextSpan,
+    },
     Char {
         value: char,
         span: TextSpan,

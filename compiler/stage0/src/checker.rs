@@ -162,6 +162,7 @@ enum ConstValue {
     Int(i64),
     String(String),
     Unit,
+    Tuple(Vec<ConstValue>),
 }
 
 impl ConstValue {
@@ -174,6 +175,14 @@ impl ConstValue {
             ConstValue::Int(value) => value.to_string(),
             ConstValue::String(value) => value.clone(),
             ConstValue::Unit => "()".to_owned(),
+            ConstValue::Tuple(items) => {
+                let rendered = items
+                    .iter()
+                    .map(ConstValue::to_print_string)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("({rendered})")
+            }
         }
     }
 }
@@ -276,6 +285,11 @@ fn resolve_const_value(
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
         AstExpr::Char { value, span: _ } => Some(ConstValue::Char(*value)),
         AstExpr::Unit { span: _ } => Some(ConstValue::Unit),
+        AstExpr::Tuple { items, span: _ } => items
+            .iter()
+            .map(|item| resolve_const_value(item, bindings))
+            .collect::<Option<Vec<_>>>()
+            .map(ConstValue::Tuple),
         AstExpr::Float { value, span: _ } => Some(ConstValue::Float(value.clone())),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
@@ -348,6 +362,7 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         AstExpr::Bool { value: _, span }
         | AstExpr::Char { value: _, span }
         | AstExpr::Unit { span }
+        | AstExpr::Tuple { items: _, span }
         | AstExpr::Float { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }

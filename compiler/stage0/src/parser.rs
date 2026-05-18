@@ -178,6 +178,28 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             span: extra.span(),
         });
 
+        let tuple_expr = just('(')
+            .padded()
+            .ignore_then(expr.clone())
+            .then_ignore(just(',').padded())
+            .then(
+                expr.clone()
+                    .separated_by(just(',').padded())
+                    .allow_trailing()
+                    .at_least(1)
+                    .collect::<Vec<_>>(),
+            )
+            .then_ignore(just(')').padded())
+            .map_with(|(first, mut rest), extra| {
+                let mut items = Vec::with_capacity(rest.len() + 1);
+                items.push(first);
+                items.append(&mut rest);
+                AstExpr::Tuple {
+                    items,
+                    span: extra.span(),
+                }
+            });
+
         let paren_expr = expr
             .clone()
             .delimited_by(just('(').padded(), just(')').padded());
@@ -206,6 +228,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             bool_expr,
             char_expr,
             unit_expr,
+            tuple_expr,
             float_expr,
             int_expr,
             if_expr,
