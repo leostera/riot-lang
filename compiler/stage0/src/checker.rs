@@ -224,6 +224,7 @@ fn resolve_const_value(
             _ => None,
         },
         AstExpr::Neg { expr, span: _ } => match resolve_const_value(expr, bindings)? {
+            ConstValue::Float(value) => Some(ConstValue::Float(format!("-{value}"))),
             ConstValue::Int(value) => Some(ConstValue::Int(-value)),
             _ => None,
         },
