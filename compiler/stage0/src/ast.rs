@@ -102,6 +102,9 @@ pub(crate) enum AstExpr {
         callee: AstPath,
         args: Vec<AstExpr>,
     },
+    Unit {
+        span: TextSpan,
+    },
     Char {
         value: char,
         span: TextSpan,

@@ -140,6 +140,10 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
+        let unit_expr = just("()")
+            .padded()
+            .map_with(|_, extra| AstExpr::Unit { span: extra.span() });
+
         let path = ident
             .clone()
             .then(
@@ -201,6 +205,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             string_expr,
             bool_expr,
             char_expr,
+            unit_expr,
             float_expr,
             int_expr,
             if_expr,

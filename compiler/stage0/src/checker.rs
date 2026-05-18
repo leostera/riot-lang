@@ -161,6 +161,7 @@ enum ConstValue {
     Float(String),
     Int(i64),
     String(String),
+    Unit,
 }
 
 impl ConstValue {
@@ -172,6 +173,7 @@ impl ConstValue {
             ConstValue::Float(value) => value.clone(),
             ConstValue::Int(value) => value.to_string(),
             ConstValue::String(value) => value.clone(),
+            ConstValue::Unit => "()".to_owned(),
         }
     }
 }
@@ -273,6 +275,7 @@ fn resolve_const_value(
         },
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
         AstExpr::Char { value, span: _ } => Some(ConstValue::Char(*value)),
+        AstExpr::Unit { span: _ } => Some(ConstValue::Unit),
         AstExpr::Float { value, span: _ } => Some(ConstValue::Float(value.clone())),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
@@ -344,6 +347,7 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
             .unwrap_or_else(|| SimpleSpan::new((), 0..0)),
         AstExpr::Bool { value: _, span }
         | AstExpr::Char { value: _, span }
+        | AstExpr::Unit { span }
         | AstExpr::Float { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }

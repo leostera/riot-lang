@@ -1,1 +1,2 @@
 - Investigate whether old OCaml-style octal fixture `compiler/syn/tests/fixtures/0010_int_octal.ml` should be skipped, converted to decimal, or added to `compiler/riotml.ebnf`; current RiotML integer grammar lists decimal/hex/binary only.
+- Add/use a normalized fixture similarity screen before imports: strip whitespace (and maybe normalize identifiers/literals separately), compute Levenshtein distance against existing imported `.ml` files, and inspect near matches to avoid value-only duplicate fixtures.
