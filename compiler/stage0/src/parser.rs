@@ -164,7 +164,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
 
         let mod_expr = atom
             .clone()
-            .then_ignore(text::keyword("mod").padded())
+            .then_ignore(just('%').padded())
             .then(atom.clone())
             .map_with(|(lhs, rhs), extra| AstExpr::Mod {
                 lhs: Box::new(lhs),
@@ -172,7 +172,16 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        choice((add_expr, sub_expr, mul_expr, div_expr, mod_expr, atom)).labelled("expression")
+        let neg_expr = just('-')
+            .padded()
+            .ignore_then(atom.clone())
+            .map_with(|expr, extra| AstExpr::Neg {
+                expr: Box::new(expr),
+                span: extra.span(),
+            });
+
+        choice((add_expr, sub_expr, mul_expr, div_expr, mod_expr, neg_expr, atom))
+            .labelled("expression")
     });
 
     let let_stmt = text::keyword("let")
