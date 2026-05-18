@@ -35,6 +35,7 @@ pub(crate) enum AstStmt {
 
 #[derive(Debug, Clone)]
 pub(crate) enum AstExpr {
+    Bool { value: bool, span: TextSpan },
     Call { callee: AstPath, args: Vec<AstExpr> },
     Path { path: AstPath, span: TextSpan },
     String { value: String, span: TextSpan },

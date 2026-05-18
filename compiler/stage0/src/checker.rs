@@ -58,7 +58,7 @@ fn resolve_main_message(
     source: &str,
     block: &AstBlock,
 ) -> miette::Result<String> {
-    let mut bindings = HashMap::new();
+    let mut bindings = HashMap::<String, ConstValue>::new();
     let mut final_expr = None;
 
     for (index, stmt) in block.statements.iter().enumerate() {
@@ -81,13 +81,13 @@ fn resolve_main_message(
                     .into());
                 }
 
-                let value = resolve_string_value(value, &bindings).ok_or_else(|| {
+                let value = resolve_const_value(value, &bindings).ok_or_else(|| {
                     to_source_diagnostic(
                         source_path,
                         source,
                         *span,
                         "unsupported local binding",
-                        "stage0 currently supports string literal local bindings",
+                        "stage0 currently supports literal local bindings",
                         Some("try: let name = \"Alice\";"),
                     )
                 })?;
@@ -140,7 +140,7 @@ fn resolve_main_message(
     })
 }
 
-fn println_message(expr: &AstExpr, bindings: &HashMap<String, String>) -> Option<String> {
+fn println_message(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option<String> {
     let AstExpr::Call { callee, args } = expr else {
         return None;
     };
@@ -149,14 +149,34 @@ fn println_message(expr: &AstExpr, bindings: &HashMap<String, String>) -> Option
     }
 
     match args.as_slice() {
-        [arg] => resolve_string_value(arg, bindings),
+        [arg] => resolve_const_value(arg, bindings).map(|value| value.to_print_string()),
         _ => None,
     }
 }
 
-fn resolve_string_value(expr: &AstExpr, bindings: &HashMap<String, String>) -> Option<String> {
+#[derive(Debug, Clone)]
+enum ConstValue {
+    Bool(bool),
+    String(String),
+}
+
+impl ConstValue {
+    fn to_print_string(&self) -> String {
+        match self {
+            ConstValue::Bool(true) => "true".to_owned(),
+            ConstValue::Bool(false) => "false".to_owned(),
+            ConstValue::String(value) => value.clone(),
+        }
+    }
+}
+
+fn resolve_const_value(
+    expr: &AstExpr,
+    bindings: &HashMap<String, ConstValue>,
+) -> Option<ConstValue> {
     match expr {
-        AstExpr::String { value, span: _ } => Some(value.clone()),
+        AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
+        AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
         AstExpr::Path { path, span: _ } if path.segments.len() == 1 => {
             bindings.get(&path.segments[0]).cloned()
         }
@@ -170,6 +190,8 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
             .first()
             .map(expr_span)
             .unwrap_or_else(|| SimpleSpan::new((), 0..0)),
-        AstExpr::Path { path: _, span } | AstExpr::String { value: _, span } => *span,
+        AstExpr::Bool { value: _, span }
+        | AstExpr::Path { path: _, span }
+        | AstExpr::String { value: _, span } => *span,
     }
 }

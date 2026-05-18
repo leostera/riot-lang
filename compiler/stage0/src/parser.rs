@@ -61,6 +61,15 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                     },
                 );
 
+        let bool_expr = text::keyword("true")
+            .to(true)
+            .or(text::keyword("false").to(false))
+            .padded()
+            .map_with(|value, extra| AstExpr::Bool {
+                value,
+                span: extra.span(),
+            });
+
         let path = ident
             .clone()
             .then(
@@ -99,7 +108,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             .clone()
             .delimited_by(just('(').padded(), just(')').padded());
 
-        choice((call_expr, string_expr, path_expr, paren_expr)).labelled("expression")
+        choice((call_expr, string_expr, bool_expr, path_expr, paren_expr)).labelled("expression")
     });
 
     let let_stmt = text::keyword("let")
