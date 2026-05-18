@@ -14,9 +14,8 @@ Error: stage0::source
   × could not parse Riot ML source
    ╭─[tests/fixtures/diagnostics/entrypoints/main-has-params.ml:1:9]
  1 │ fn main(name) {
-   ·         ┬
-   ·         ╰── found 'n' expected ')'
+   ·         ──┬─
+   ·           ╰── stage0 function parameters are not supported yet
  2 │   println("hello world")
    ╰────
-  help: stage0 currently accepts top-level zero-argument fn declarations with
-        println string bodies
+  help: try: fn main() { println("hello world") }

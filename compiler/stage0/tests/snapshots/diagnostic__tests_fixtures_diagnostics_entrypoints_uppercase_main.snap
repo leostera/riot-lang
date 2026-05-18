@@ -18,5 +18,3 @@ Error: stage0::source
    ·      ╰── expected lowercase identifier, found `Main`
  2 │   println("hello world")
    ╰────
-  help: stage0 currently accepts top-level zero-argument fn declarations with
-        println string bodies

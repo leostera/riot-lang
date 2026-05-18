@@ -15,7 +15,5 @@ Error: stage0::source
    ╭─[tests/fixtures/diagnostics/syntax/old-let-main.ml:1:1]
  1 │ let main () = println "hello world"
    · ─┬─
-   ·  ╰── found 'l' expected '"fn"', or end of input
+   ·  ╰── expected top-level function declaration
    ╰────
-  help: stage0 currently accepts top-level zero-argument fn declarations with
-        println string bodies

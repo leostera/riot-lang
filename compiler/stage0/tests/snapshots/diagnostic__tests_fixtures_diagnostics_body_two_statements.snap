@@ -12,11 +12,11 @@ stderr:
 Error: stage0::source
 
   × unsupported main body
-   ╭─[tests/fixtures/diagnostics/body/two-statements.ml:2:11]
+   ╭─[tests/fixtures/diagnostics/body/two-statements.ml:2:3]
  1 │ fn main() {
  2 │   println("first");
-   ·           ───┬───
-   ·              ╰── stage0 currently allows local lets followed by one println expression
+   ·   ────────┬───────
+   ·           ╰── stage0 currently allows local lets followed by one println expression
  3 │   println("second");
    ╰────
   help: try: fn main() { let name = "Alice"; println(name) }

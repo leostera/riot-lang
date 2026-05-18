@@ -16,7 +16,5 @@ Error: stage0::source
  2 │   println("hello world"
  3 │ }
    · ┬
-   · ╰── found '}' expected '|', '&', '=', '<', '+', '-', '*', '/', '%', ',', or ')'
+   · ╰── expected `)` after arguments
    ╰────
-  help: stage0 currently accepts top-level zero-argument fn declarations with
-        println string bodies

@@ -6,6 +6,7 @@ mod command;
 mod diagnostic;
 mod driver;
 mod ir;
+mod lexer;
 mod linker;
 mod parser;
 mod runtime;

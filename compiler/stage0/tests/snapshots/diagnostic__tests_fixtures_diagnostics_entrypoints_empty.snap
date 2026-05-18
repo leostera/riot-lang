@@ -11,9 +11,10 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × could not parse Riot ML source
-   ╭─[tests/fixtures/diagnostics/entrypoints/empty.ml:2:1]
+  × expected exactly one top-level function
+   ╭─[tests/fixtures/diagnostics/entrypoints/empty.ml:1:1]
  1 │ 
+   · ┬
+   · ╰── stage0 requires a single main function per file
    ╰────
-  help: stage0 currently accepts top-level zero-argument fn declarations with
-        println string bodies
+  help: keep only: fn main() { println("hello world") }

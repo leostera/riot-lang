@@ -1,6 +1,21 @@
-use chumsky::span::SimpleSpan;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TextSpan {
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+}
 
-pub(crate) type TextSpan = SimpleSpan<usize>;
+impl TextSpan {
+    pub(crate) fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+
+    pub(crate) fn join(self, other: Self) -> Self {
+        Self {
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct AstProgram {
@@ -101,11 +116,16 @@ pub(crate) enum AstExpr {
     Call {
         callee: AstPath,
         args: Vec<AstExpr>,
+        span: TextSpan,
     },
     Unit {
         span: TextSpan,
     },
     Tuple {
+        items: Vec<AstExpr>,
+        span: TextSpan,
+    },
+    List {
         items: Vec<AstExpr>,
         span: TextSpan,
     },

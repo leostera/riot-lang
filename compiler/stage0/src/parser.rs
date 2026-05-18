@@ -1,477 +1,732 @@
 use camino::Utf8Path;
-use chumsky::prelude::*;
 
 use crate::ast::{AstBlock, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan};
 use crate::diagnostic::to_source_diagnostic;
+use crate::lexer::{Token, TokenKind, lex};
 
 pub(crate) fn parse_source(source_path: &Utf8Path, source: &str) -> miette::Result<AstProgram> {
-    let (program, errors) = parser().parse(source).into_output_errors();
-
-    if let Some(error) = errors.into_iter().next() {
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            *error.span(),
-            "could not parse Riot ML source",
-            error.to_string(),
-            Some("stage0 currently accepts top-level zero-argument fn declarations with println string bodies"),
-        )
-        .into());
-    }
-
-    program.ok_or_else(|| {
+    let tokens = lex(source).map_err(|error| {
         to_source_diagnostic(
             source_path,
             source,
-            SimpleSpan::new((), 0..source.len().min(1)),
-            "could not parse Riot ML source",
-            "expected a top-level function",
-            Some("try: fn main() { println(\"hello world\") }"),
+            error.span,
+            "could not lex Riot ML source",
+            error.message,
+            Some("stage0 currently accepts a small Riot ML subset"),
         )
-        .into()
-    })
+    })?;
+
+    Parser::new(source, tokens)
+        .parse_program()
+        .map_err(|error| {
+            to_source_diagnostic(
+                source_path,
+                source,
+                error.span,
+                "could not parse Riot ML source",
+                error.message,
+                error.help,
+            )
+            .into()
+        })
 }
 
-fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'src, char>>> {
-    let lower_ident = lower_ident();
-    let ident = ident();
+struct Parser<'src> {
+    source: &'src str,
+    tokens: Vec<Token>,
+    cursor: usize,
+}
 
-    let string_char = none_of("\\\"")
-        .ignored()
-        .or(just('\\').then(any()).ignored());
-    let string = just('"')
-        .then(string_char.repeated())
-        .then(just('"'))
-        .to_slice()
-        .try_map(|raw: &str, span| {
-            snailquote::unescape(raw)
-                .map_err(|error| Rich::custom(span, format!("invalid string literal: {error}")))
+#[derive(Debug, Clone)]
+struct ParseError {
+    span: TextSpan,
+    message: String,
+    help: Option<&'static str>,
+}
+
+impl<'src> Parser<'src> {
+    fn new(source: &'src str, tokens: Vec<Token>) -> Self {
+        Self {
+            source,
+            tokens,
+            cursor: 0,
+        }
+    }
+
+    fn parse_program(&mut self) -> Result<AstProgram, ParseError> {
+        let mut decls = Vec::new();
+
+        while !self.at(TokenKind::Eof) {
+            decls.push(self.parse_fn_decl()?);
+        }
+
+        Ok(AstProgram { decls })
+    }
+
+    fn parse_fn_decl(&mut self) -> Result<AstFnDecl, ParseError> {
+        let start = self.expect(TokenKind::Fn, "expected top-level function declaration")?;
+        let (name, name_span) = self.expect_lower_ident()?;
+
+        self.expect(TokenKind::LParen, "expected `(` after function name")?;
+        if !self.at(TokenKind::RParen) {
+            return Err(self.error_at_current(
+                "stage0 function parameters are not supported yet",
+                Some("try: fn main() { println(\"hello world\") }"),
+            ));
+        }
+        self.expect(TokenKind::RParen, "expected `)` after function parameters")?;
+
+        let body = self.parse_block()?;
+        let span = start.span.join(body.span);
+        Ok(AstFnDecl {
+            name,
+            name_span,
+            body,
+            span,
         })
-        .padded();
+    }
 
-    let expr = recursive(|expr| {
-        let string_expr =
-            string
-                .clone()
-                .spanned()
-                .map(
-                    |value: chumsky::span::Spanned<String, TextSpan>| AstExpr::String {
-                        value: value.inner,
-                        span: value.span,
-                    },
-                );
+    fn parse_block(&mut self) -> Result<AstBlock, ParseError> {
+        let start = self.expect(TokenKind::LBrace, "expected `{`")?;
+        let mut statements = Vec::new();
+        let mut tail = None;
 
-        let exponent = one_of("eE")
-            .then(one_of("+-").or_not())
-            .then(text::digits(10));
-        let float_expr = text::int(10)
-            .then(just('.'))
-            .then(text::digits(10))
-            .then(exponent.or_not())
-            .to_slice()
-            .try_map(|raw: &str, span| {
-                raw.parse::<f64>()
-                    .map(|_| raw.to_owned())
-                    .map_err(|error| Rich::custom(span, format!("invalid float literal: {error}")))
-            })
-            .padded()
-            .map_with(|value, extra| AstExpr::Float {
-                value,
-                span: extra.span(),
-            });
+        while !self.at(TokenKind::RBrace) {
+            if self.at(TokenKind::Eof) {
+                return Err(self.error_at_current("expected `}`", Some("close this block")));
+            }
 
-        let decimal_int = text::int(10).to_slice().try_map(|raw: &str, span| {
-            raw.parse::<i64>()
-                .map_err(|error| Rich::custom(span, format!("invalid integer literal: {error}")))
-        });
-        let hex_int = just("0x")
-            .or(just("0X"))
-            .ignore_then(text::digits(16).to_slice())
-            .try_map(|raw: &str, span| {
-                i64::from_str_radix(raw, 16).map_err(|error| {
-                    Rich::custom(span, format!("invalid hex integer literal: {error}"))
-                })
-            });
-        let binary_int = just("0b")
-            .or(just("0B"))
-            .ignore_then(text::digits(2).to_slice())
-            .try_map(|raw: &str, span| {
-                i64::from_str_radix(raw, 2).map_err(|error| {
-                    Rich::custom(span, format!("invalid binary integer literal: {error}"))
-                })
-            });
-        let int_expr = hex_int
-            .or(binary_int)
-            .or(decimal_int)
-            .padded()
-            .map_with(|value, extra| AstExpr::Int {
-                value,
-                span: extra.span(),
-            });
+            if self.at(TokenKind::Let) {
+                statements.push(self.parse_let_stmt()?);
+                continue;
+            }
 
-        let bool_expr = text::keyword("true")
-            .to(true)
-            .or(text::keyword("false").to(false))
-            .padded()
-            .map_with(|value, extra| AstExpr::Bool {
-                value,
-                span: extra.span(),
-            });
+            let expr = self.parse_expr()?;
+            if self.match_kind(TokenKind::Semicolon).is_some() {
+                statements.push(AstStmt::Expr(expr));
+            } else {
+                tail = Some(expr);
+                break;
+            }
+        }
 
-        let escaped_char = just('\\')
-            .ignore_then(any())
-            .try_map(|escaped, span| match escaped {
-                '\\' => Ok('\\'),
-                '\'' => Ok('\''),
-                'n' => Ok('\n'),
-                'r' => Ok('\r'),
-                't' => Ok('\t'),
-                other => Err(Rich::custom(
-                    span,
-                    format!("unsupported character escape: \\{other}"),
-                )),
-            });
-        let char_expr = just('\'')
-            .ignore_then(escaped_char.or(none_of("\\'")))
-            .then_ignore(just('\''))
-            .padded()
-            .map_with(|value, extra| AstExpr::Char {
-                value,
-                span: extra.span(),
-            });
-
-        let unit_expr = just("()")
-            .padded()
-            .map_with(|_, extra| AstExpr::Unit { span: extra.span() });
-
-        let path = ident
-            .clone()
-            .then(
-                just('.')
-                    .padded()
-                    .ignore_then(ident.clone())
-                    .repeated()
-                    .collect(),
-            )
-            .map(|(head, mut tail): (String, Vec<String>)| {
-                let mut segments = Vec::with_capacity(tail.len() + 1);
-                segments.push(head);
-                segments.append(&mut tail);
-                AstPath { segments }
-            })
-            .padded();
-
-        let arg_list = expr
-            .clone()
-            .separated_by(just(',').padded())
-            .allow_trailing()
-            .collect::<Vec<_>>()
-            .delimited_by(just('(').padded(), just(')').padded());
-
-        let call_expr = path
-            .clone()
-            .then(arg_list)
-            .map(|(callee, args): (AstPath, Vec<AstExpr>)| AstExpr::Call { callee, args });
-
-        let path_expr = path.map_with(|path, extra| AstExpr::Path {
-            path,
-            span: extra.span(),
-        });
-
-        let tuple_expr = just('(')
-            .padded()
-            .ignore_then(expr.clone())
-            .then_ignore(just(',').padded())
-            .then(
-                expr.clone()
-                    .separated_by(just(',').padded())
-                    .allow_trailing()
-                    .at_least(1)
-                    .collect::<Vec<_>>(),
-            )
-            .then_ignore(just(')').padded())
-            .map_with(|(first, mut rest), extra| {
-                let mut items = Vec::with_capacity(rest.len() + 1);
-                items.push(first);
-                items.append(&mut rest);
-                AstExpr::Tuple {
-                    items,
-                    span: extra.span(),
-                }
-            });
-
-        let paren_expr = expr
-            .clone()
-            .delimited_by(just('(').padded(), just(')').padded());
-
-        let braced_expr = expr
-            .clone()
-            .delimited_by(just('{').padded(), just('}').padded());
-        let if_expr = text::keyword("if")
-            .padded()
-            .ignore_then(expr.clone())
-            .then(braced_expr.clone())
-            .then_ignore(text::keyword("else").padded())
-            .then(braced_expr)
-            .map_with(
-                |((condition, then_branch), else_branch), extra| AstExpr::If {
-                    condition: Box::new(condition),
-                    then_branch: Box::new(then_branch),
-                    else_branch: Box::new(else_branch),
-                    span: extra.span(),
-                },
-            );
-
-        let atom = choice((
-            call_expr,
-            string_expr,
-            bool_expr,
-            char_expr,
-            unit_expr,
-            tuple_expr,
-            float_expr,
-            int_expr,
-            if_expr,
-            path_expr,
-            paren_expr,
-        ));
-
-        let add_expr = atom
-            .clone()
-            .then_ignore(just('+').padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Add {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let sub_expr = atom
-            .clone()
-            .then_ignore(just('-').padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Sub {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let mul_expr = atom
-            .clone()
-            .then_ignore(just('*').padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Mul {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let div_expr = atom
-            .clone()
-            .then_ignore(just('/').padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Div {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let mod_expr = atom
-            .clone()
-            .then_ignore(just('%').padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Mod {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let neg_expr = just('-')
-            .padded()
-            .ignore_then(atom.clone())
-            .map_with(|expr, extra| AstExpr::Neg {
-                expr: Box::new(expr),
-                span: extra.span(),
-            });
-
-        let not_expr = just('!')
-            .padded()
-            .ignore_then(atom.clone())
-            .map_with(|expr, extra| AstExpr::Not {
-                expr: Box::new(expr),
-                span: extra.span(),
-            });
-
-        let eq_expr = atom
-            .clone()
-            .then_ignore(just("==").padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Eq {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let lt_expr = atom
-            .clone()
-            .then_ignore(just('<').padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Lt {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let and_expr = atom
-            .clone()
-            .then_ignore(just("&&").padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::And {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        let or_expr = atom
-            .clone()
-            .then_ignore(just("||").padded())
-            .then(atom.clone())
-            .map_with(|(lhs, rhs), extra| AstExpr::Or {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span: extra.span(),
-            });
-
-        choice((
-            or_expr, and_expr, eq_expr, lt_expr, add_expr, sub_expr, mul_expr, div_expr, mod_expr,
-            neg_expr, not_expr, atom,
-        ))
-        .labelled("expression")
-    });
-
-    let type_annot = just(':').padded().ignore_then(ident.clone()).or_not();
-
-    let let_stmt = text::keyword("let")
-        .padded()
-        .ignore_then(lower_ident.clone().spanned())
-        .then_ignore(type_annot)
-        .then_ignore(just('=').padded())
-        .then(expr.clone())
-        .then_ignore(just(';').padded())
-        .map_with(
-            |(name, value): (chumsky::span::Spanned<String, TextSpan>, AstExpr), extra| {
-                AstStmt::Let {
-                    name: name.inner,
-                    name_span: name.span,
-                    value,
-                    span: extra.span(),
-                }
-            },
-        );
-
-    let expr_stmt = expr
-        .clone()
-        .then_ignore(just(';').padded())
-        .map(AstStmt::Expr);
-
-    let stmt = choice((let_stmt, expr_stmt));
-
-    let block = just('{')
-        .padded()
-        .ignore_then(stmt.repeated().collect::<Vec<_>>())
-        .then(expr.clone().or_not())
-        .then_ignore(just('}').padded())
-        .map_with(|(statements, tail), extra| AstBlock {
+        let end = self.expect(TokenKind::RBrace, "expected `}` after block")?;
+        Ok(AstBlock {
             statements,
             tail,
-            span: extra.span(),
-        });
-
-    let empty_params = just('(').padded().then_ignore(just(')').padded());
-
-    let fn_decl = text::keyword("fn")
-        .padded()
-        .ignore_then(lower_ident.spanned())
-        .then_ignore(empty_params)
-        .then(block)
-        .map_with(
-            |(name, body): (chumsky::span::Spanned<String, TextSpan>, AstBlock), extra| AstFnDecl {
-                name: name.inner,
-                name_span: name.span,
-                body,
-                span: extra.span(),
-            },
-        );
-
-    fn_decl
-        .repeated()
-        .collect()
-        .then_ignore(end())
-        .map(|decls| AstProgram { decls })
-}
-
-fn ident<'src>() -> impl Parser<'src, &'src str, String, extra::Err<Rich<'src, char>>> + Clone {
-    text::ident()
-        .try_map(|ident: &str, span| {
-            if is_reserved_word(ident) {
-                Err(Rich::custom(
-                    span,
-                    format!("reserved word `{ident}` cannot be used as an identifier"),
-                ))
-            } else {
-                Ok(ident.to_owned())
-            }
+            span: start.span.join(end.span),
         })
-        .padded()
-}
+    }
 
-fn lower_ident<'src>() -> impl Parser<'src, &'src str, String, extra::Err<Rich<'src, char>>> + Clone
-{
-    text::ident()
-        .try_map(|ident: &str, span| {
-            let is_lower = ident
-                .chars()
-                .next()
-                .is_some_and(|c| c == '_' || c.is_ascii_lowercase());
-            if is_reserved_word(ident) {
-                Err(Rich::custom(
-                    span,
-                    format!("reserved word `{ident}` cannot be used as an identifier"),
-                ))
-            } else if !is_lower {
-                Err(Rich::custom(
-                    span,
-                    format!("expected lowercase identifier, found `{ident}`"),
-                ))
-            } else {
-                Ok(ident.to_owned())
-            }
+    fn parse_let_stmt(&mut self) -> Result<AstStmt, ParseError> {
+        let start = self.expect(TokenKind::Let, "expected `let`")?;
+        let (name, name_span) = self.expect_lower_ident()?;
+
+        if self.match_kind(TokenKind::Colon).is_some() {
+            self.skip_type_annotation()?;
+        }
+
+        self.expect(TokenKind::Eq, "expected `=` in let binding")?;
+        let value = self.parse_expr()?;
+        let end = self.expect(TokenKind::Semicolon, "expected `;` after let binding")?;
+
+        Ok(AstStmt::Let {
+            name,
+            name_span,
+            value,
+            span: start.span.join(end.span),
         })
-        .padded()
+    }
+
+    fn skip_type_annotation(&mut self) -> Result<(), ParseError> {
+        while !self.at(TokenKind::Eq) {
+            if self.at(TokenKind::Semicolon)
+                || self.at(TokenKind::RBrace)
+                || self.at(TokenKind::Eof)
+            {
+                return Err(self.error_at_current("expected `=` after type annotation", None));
+            }
+            self.bump();
+        }
+        Ok(())
+    }
+
+    fn parse_expr(&mut self) -> Result<AstExpr, ParseError> {
+        self.parse_or()
+    }
+
+    fn parse_or(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_and()?;
+        while self.match_kind(TokenKind::OrOr).is_some() {
+            let rhs = self.parse_and()?;
+            let span = expr_span(&expr).join(expr_span(&rhs));
+            expr = AstExpr::Or {
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    fn parse_and(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_equality()?;
+        while self.match_kind(TokenKind::AndAnd).is_some() {
+            let rhs = self.parse_equality()?;
+            let span = expr_span(&expr).join(expr_span(&rhs));
+            expr = AstExpr::And {
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    fn parse_equality(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_comparison()?;
+        while self.match_kind(TokenKind::EqEq).is_some() {
+            let rhs = self.parse_comparison()?;
+            let span = expr_span(&expr).join(expr_span(&rhs));
+            expr = AstExpr::Eq {
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    fn parse_comparison(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_additive()?;
+        while self.match_kind(TokenKind::Lt).is_some() {
+            let rhs = self.parse_additive()?;
+            let span = expr_span(&expr).join(expr_span(&rhs));
+            expr = AstExpr::Lt {
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    fn parse_additive(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_multiplicative()?;
+
+        loop {
+            if self.match_kind(TokenKind::Plus).is_some() {
+                let rhs = self.parse_multiplicative()?;
+                let span = expr_span(&expr).join(expr_span(&rhs));
+                expr = AstExpr::Add {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    span,
+                };
+            } else if self.match_kind(TokenKind::Minus).is_some() {
+                let rhs = self.parse_multiplicative()?;
+                let span = expr_span(&expr).join(expr_span(&rhs));
+                expr = AstExpr::Sub {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    span,
+                };
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_multiplicative(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_unary()?;
+
+        loop {
+            if self.match_kind(TokenKind::Star).is_some() {
+                let rhs = self.parse_unary()?;
+                let span = expr_span(&expr).join(expr_span(&rhs));
+                expr = AstExpr::Mul {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    span,
+                };
+            } else if self.match_kind(TokenKind::Slash).is_some() {
+                let rhs = self.parse_unary()?;
+                let span = expr_span(&expr).join(expr_span(&rhs));
+                expr = AstExpr::Div {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    span,
+                };
+            } else if self.match_kind(TokenKind::Percent).is_some() {
+                let rhs = self.parse_unary()?;
+                let span = expr_span(&expr).join(expr_span(&rhs));
+                expr = AstExpr::Mod {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    span,
+                };
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_unary(&mut self) -> Result<AstExpr, ParseError> {
+        if let Some(start) = self.match_kind(TokenKind::Minus) {
+            let expr = self.parse_unary()?;
+            let span = start.join(expr_span(&expr));
+            Ok(AstExpr::Neg {
+                expr: Box::new(expr),
+                span,
+            })
+        } else if let Some(start) = self.match_kind(TokenKind::Bang) {
+            let expr = self.parse_unary()?;
+            let span = start.join(expr_span(&expr));
+            Ok(AstExpr::Not {
+                expr: Box::new(expr),
+                span,
+            })
+        } else {
+            self.parse_postfix()
+        }
+    }
+
+    fn parse_postfix(&mut self) -> Result<AstExpr, ParseError> {
+        let mut expr = self.parse_primary()?;
+
+        while self.at(TokenKind::LParen) {
+            let AstExpr::Path { path, span } = expr else {
+                return Err(self.error_at_current(
+                    "stage0 only supports calling named functions",
+                    Some("try: println(\"hello world\")"),
+                ));
+            };
+            let args = self.parse_arg_list()?;
+            let end = self.previous_span();
+            expr = AstExpr::Call {
+                callee: path,
+                args,
+                span: span.join(end),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_primary(&mut self) -> Result<AstExpr, ParseError> {
+        if self.at(TokenKind::True) || self.at(TokenKind::False) {
+            let token = self.bump();
+            return Ok(AstExpr::Bool {
+                value: token.kind == TokenKind::True,
+                span: token.span,
+            });
+        }
+
+        match self.current().kind {
+            TokenKind::String => self.parse_string(),
+            TokenKind::Char => self.parse_char(),
+            TokenKind::Float => self.parse_float(),
+            TokenKind::Int => self.parse_int(),
+            TokenKind::Ident => {
+                let (path, span) = self.parse_path()?;
+                Ok(AstExpr::Path { path, span })
+            }
+            TokenKind::If => self.parse_if(),
+            TokenKind::LParen => self.parse_paren_or_tuple_or_unit(),
+            TokenKind::LBracket => self.parse_list(),
+            _ => Err(self.error_at_current("expected expression", None)),
+        }
+    }
+
+    fn parse_if(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::If, "expected `if`")?;
+        let condition = self.parse_expr()?;
+        let then_branch = self.parse_block_expr()?;
+        self.expect(TokenKind::Else, "expected `else` after if branch")?;
+        let else_branch = if self.at(TokenKind::If) {
+            self.parse_if()?
+        } else {
+            self.parse_block_expr()?
+        };
+
+        let span = start.span.join(expr_span(&else_branch));
+        Ok(AstExpr::If {
+            condition: Box::new(condition),
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
+            span,
+        })
+    }
+
+    fn parse_block_expr(&mut self) -> Result<AstExpr, ParseError> {
+        let block = self.parse_block()?;
+        if block.statements.is_empty() {
+            if let Some(tail) = block.tail {
+                return Ok(tail);
+            }
+        }
+
+        Err(ParseError {
+            span: block.span,
+            message: "stage0 expression blocks must contain a single tail expression".to_owned(),
+            help: Some("try: if condition { value } else { other_value }"),
+        })
+    }
+
+    fn parse_arg_list(&mut self) -> Result<Vec<AstExpr>, ParseError> {
+        self.expect(TokenKind::LParen, "expected `(`")?;
+        let mut args = Vec::new();
+
+        if self.match_kind(TokenKind::RParen).is_some() {
+            return Ok(args);
+        }
+
+        loop {
+            args.push(self.parse_expr()?);
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RParen) {
+                break;
+            }
+        }
+
+        self.expect(TokenKind::RParen, "expected `)` after arguments")?;
+        Ok(args)
+    }
+
+    fn parse_paren_or_tuple_or_unit(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::LParen, "expected `(`")?;
+
+        if let Some(end) = self.match_kind(TokenKind::RParen) {
+            return Ok(AstExpr::Unit {
+                span: start.span.join(end),
+            });
+        }
+
+        let first = self.parse_expr()?;
+        if self.match_kind(TokenKind::Comma).is_none() {
+            self.expect(TokenKind::RParen, "expected `)` after expression")?;
+            return Ok(first);
+        }
+
+        let mut items = vec![first];
+        while !self.at(TokenKind::RParen) {
+            items.push(self.parse_expr()?);
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+        }
+
+        let end = self.expect(TokenKind::RParen, "expected `)` after tuple")?;
+        Ok(AstExpr::Tuple {
+            items,
+            span: start.span.join(end.span),
+        })
+    }
+
+    fn parse_list(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::LBracket, "expected `[`")?;
+        let mut items = Vec::new();
+
+        if let Some(end) = self.match_kind(TokenKind::RBracket) {
+            return Ok(AstExpr::List {
+                items,
+                span: start.span.join(end),
+            });
+        }
+
+        loop {
+            items.push(self.parse_expr()?);
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RBracket) {
+                break;
+            }
+        }
+
+        let end = self.expect(TokenKind::RBracket, "expected `]` after list")?;
+        Ok(AstExpr::List {
+            items,
+            span: start.span.join(end.span),
+        })
+    }
+
+    fn parse_path(&mut self) -> Result<(AstPath, TextSpan), ParseError> {
+        let (head, start) = self.expect_ident()?;
+        let mut segments = vec![head];
+        let mut span = start;
+
+        while self.match_kind(TokenKind::Dot).is_some() {
+            let (segment, segment_span) = self.expect_ident()?;
+            span = span.join(segment_span);
+            segments.push(segment);
+        }
+
+        Ok((AstPath { segments }, span))
+    }
+
+    fn parse_string(&mut self) -> Result<AstExpr, ParseError> {
+        let token = self.expect(TokenKind::String, "expected string literal")?;
+        let raw = self.text(token.span);
+        let value = snailquote::unescape(raw).map_err(|error| ParseError {
+            span: token.span,
+            message: format!("invalid string literal: {error}"),
+            help: None,
+        })?;
+        Ok(AstExpr::String {
+            value,
+            span: token.span,
+        })
+    }
+
+    fn parse_char(&mut self) -> Result<AstExpr, ParseError> {
+        let token = self.expect(TokenKind::Char, "expected character literal")?;
+        let value = parse_char_literal(self.text(token.span)).map_err(|message| ParseError {
+            span: token.span,
+            message,
+            help: None,
+        })?;
+        Ok(AstExpr::Char {
+            value,
+            span: token.span,
+        })
+    }
+
+    fn parse_float(&mut self) -> Result<AstExpr, ParseError> {
+        let token = self.expect(TokenKind::Float, "expected float literal")?;
+        let raw = self.text(token.span);
+        let normalized = raw.replace('_', "");
+        normalized.parse::<f64>().map_err(|error| ParseError {
+            span: token.span,
+            message: format!("invalid float literal: {error}"),
+            help: None,
+        })?;
+        Ok(AstExpr::Float {
+            value: raw.to_owned(),
+            span: token.span,
+        })
+    }
+
+    fn parse_int(&mut self) -> Result<AstExpr, ParseError> {
+        let token = self.expect(TokenKind::Int, "expected integer literal")?;
+        let raw = self.text(token.span);
+        let value = parse_int_literal(raw).map_err(|message| ParseError {
+            span: token.span,
+            message,
+            help: None,
+        })?;
+        Ok(AstExpr::Int {
+            value,
+            span: token.span,
+        })
+    }
+
+    fn expect_lower_ident(&mut self) -> Result<(String, TextSpan), ParseError> {
+        let (ident, span) = self.expect_ident()?;
+        let is_lower = ident
+            .chars()
+            .next()
+            .is_some_and(|ch| ch == '_' || ch.is_ascii_lowercase());
+
+        if is_lower {
+            Ok((ident, span))
+        } else {
+            Err(ParseError {
+                span,
+                message: format!("expected lowercase identifier, found `{ident}`"),
+                help: None,
+            })
+        }
+    }
+
+    fn expect_ident(&mut self) -> Result<(String, TextSpan), ParseError> {
+        let token = self.expect(TokenKind::Ident, "expected identifier")?;
+        Ok((self.text(token.span).to_owned(), token.span))
+    }
+
+    fn expect(&mut self, kind: TokenKind, message: &'static str) -> Result<Token, ParseError> {
+        if self.at(kind) {
+            Ok(self.bump())
+        } else {
+            Err(self.error_at_current(message, None))
+        }
+    }
+
+    fn match_kind(&mut self, kind: TokenKind) -> Option<TextSpan> {
+        if self.at(kind) {
+            Some(self.bump().span)
+        } else {
+            None
+        }
+    }
+
+    fn at(&self, kind: TokenKind) -> bool {
+        self.current().kind == kind
+    }
+
+    fn current(&self) -> &Token {
+        &self.tokens[self.cursor]
+    }
+
+    fn bump(&mut self) -> Token {
+        let token = self.current().clone();
+        if token.kind != TokenKind::Eof {
+            self.cursor += 1;
+        }
+        token
+    }
+
+    fn previous_span(&self) -> TextSpan {
+        self.tokens
+            .get(self.cursor.saturating_sub(1))
+            .map(|token| token.span)
+            .unwrap_or_else(|| TextSpan::new(0, 0))
+    }
+
+    fn text(&self, span: TextSpan) -> &'src str {
+        &self.source[span.start..span.end]
+    }
+
+    fn error_at_current(
+        &self,
+        message: impl Into<String>,
+        help: Option<&'static str>,
+    ) -> ParseError {
+        ParseError {
+            span: self.current().span,
+            message: message.into(),
+            help,
+        }
+    }
 }
 
-fn is_reserved_word(ident: &str) -> bool {
-    matches!(
-        ident,
-        "pub"
-            | "type"
-            | "sealed"
-            | "opaque"
-            | "mod"
-            | "fn"
-            | "let"
-            | "mut"
-            | "use"
-            | "match"
-            | "receive"
-            | "spawn"
-            | "send"
-            | "when"
-            | "if"
-            | "else"
-            | "after"
-            | "true"
-            | "false"
-            | "unit"
-    )
+fn parse_int_literal(raw: &str) -> Result<i64, String> {
+    let normalized = raw.replace('_', "");
+    if let Some(hex) = normalized
+        .strip_prefix("0x")
+        .or_else(|| normalized.strip_prefix("0X"))
+    {
+        i64::from_str_radix(hex, 16)
+            .map_err(|error| format!("invalid hex integer literal: {error}"))
+    } else if let Some(binary) = normalized
+        .strip_prefix("0b")
+        .or_else(|| normalized.strip_prefix("0B"))
+    {
+        i64::from_str_radix(binary, 2)
+            .map_err(|error| format!("invalid binary integer literal: {error}"))
+    } else {
+        normalized
+            .parse::<i64>()
+            .map_err(|error| format!("invalid integer literal: {error}"))
+    }
+}
+
+fn parse_char_literal(raw: &str) -> Result<char, String> {
+    let body = raw
+        .strip_prefix('\'')
+        .and_then(|body| body.strip_suffix('\''))
+        .ok_or_else(|| "invalid character literal".to_owned())?;
+
+    if let Some(escaped) = body.strip_prefix('\\') {
+        match escaped {
+            "\\" => Ok('\\'),
+            "'" => Ok('\''),
+            "n" => Ok('\n'),
+            "r" => Ok('\r'),
+            "t" => Ok('\t'),
+            other => Err(format!("unsupported character escape: \\{other}")),
+        }
+    } else {
+        let mut chars = body.chars();
+        let Some(value) = chars.next() else {
+            return Err("empty character literal".to_owned());
+        };
+        if chars.next().is_some() {
+            return Err("character literal contains more than one character".to_owned());
+        }
+        Ok(value)
+    }
+}
+
+fn expr_span(expr: &AstExpr) -> TextSpan {
+    match expr {
+        AstExpr::Add {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Sub {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Mul {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Div {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Mod {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Neg { expr: _, span }
+        | AstExpr::Eq {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Lt {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::And {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Or {
+            lhs: _,
+            rhs: _,
+            span,
+        }
+        | AstExpr::Not { expr: _, span }
+        | AstExpr::If {
+            condition: _,
+            then_branch: _,
+            else_branch: _,
+            span,
+        }
+        | AstExpr::Call {
+            callee: _,
+            args: _,
+            span,
+        }
+        | AstExpr::Bool { value: _, span }
+        | AstExpr::Char { value: _, span }
+        | AstExpr::Unit { span }
+        | AstExpr::Tuple { items: _, span }
+        | AstExpr::List { items: _, span }
+        | AstExpr::Float { value: _, span }
+        | AstExpr::Int { value: _, span }
+        | AstExpr::Path { path: _, span }
+        | AstExpr::String { value: _, span } => *span,
+    }
 }

@@ -22,3 +22,5 @@
    per `.ml` fixture.
 6. Review compiler-output snapshot changes under `tests/snapshots` with
    `cargo insta review` or update them intentionally with `INSTA_UPDATE`.
+7. Keep the parser explicit: `logos` tokenization followed by recursive descent
+   with precedence-focused expression parsing.

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use camino::Utf8Path;
-use chumsky::span::{SimpleSpan, Span};
 
 use crate::ast::{AstBlock, AstExpr, AstProgram, AstStmt, TextSpan};
 use crate::diagnostic::to_source_diagnostic;
@@ -18,7 +17,7 @@ pub(crate) fn typecheck(
             .get(1)
             .map(|decl| decl.span)
             .or_else(|| program.decls.first().map(|decl| decl.span))
-            .unwrap_or_else(|| SimpleSpan::new((), 0..source.len().min(1)));
+            .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
 
         return Err(to_source_diagnostic(
             source_path,
@@ -141,7 +140,12 @@ fn resolve_main_message(
 }
 
 fn println_message(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option<String> {
-    let AstExpr::Call { callee, args } = expr else {
+    let AstExpr::Call {
+        callee,
+        args,
+        span: _,
+    } = expr
+    else {
         return None;
     };
     if callee.segments.as_slice() != ["println"] {
@@ -163,6 +167,7 @@ enum ConstValue {
     String(String),
     Unit,
     Tuple(Vec<ConstValue>),
+    List(Vec<ConstValue>),
 }
 
 impl ConstValue {
@@ -182,6 +187,14 @@ impl ConstValue {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("({rendered})")
+            }
+            ConstValue::List(items) => {
+                let rendered = items
+                    .iter()
+                    .map(ConstValue::to_print_string)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{rendered}]")
             }
         }
     }
@@ -290,6 +303,11 @@ fn resolve_const_value(
             .map(|item| resolve_const_value(item, bindings))
             .collect::<Option<Vec<_>>>()
             .map(ConstValue::Tuple),
+        AstExpr::List { items, span: _ } => items
+            .iter()
+            .map(|item| resolve_const_value(item, bindings))
+            .collect::<Option<Vec<_>>>()
+            .map(ConstValue::List),
         AstExpr::Float { value, span: _ } => Some(ConstValue::Float(value.clone())),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
@@ -355,14 +373,16 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
             else_branch: _,
             span,
         } => *span,
-        AstExpr::Call { callee: _, args } => args
-            .first()
-            .map(expr_span)
-            .unwrap_or_else(|| SimpleSpan::new((), 0..0)),
+        AstExpr::Call {
+            callee: _,
+            args: _,
+            span,
+        } => *span,
         AstExpr::Bool { value: _, span }
         | AstExpr::Char { value: _, span }
         | AstExpr::Unit { span }
         | AstExpr::Tuple { items: _, span }
+        | AstExpr::List { items: _, span }
         | AstExpr::Float { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }
