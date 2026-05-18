@@ -162,7 +162,17 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        choice((add_expr, sub_expr, mul_expr, div_expr, atom)).labelled("expression")
+        let mod_expr = atom
+            .clone()
+            .then_ignore(text::keyword("mod").padded())
+            .then(atom.clone())
+            .map_with(|(lhs, rhs), extra| AstExpr::Mod {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span: extra.span(),
+            });
+
+        choice((add_expr, sub_expr, mul_expr, div_expr, mod_expr, atom)).labelled("expression")
     });
 
     let let_stmt = text::keyword("let")
