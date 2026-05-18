@@ -120,8 +120,19 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             .clone()
             .delimited_by(just('(').padded(), just(')').padded());
 
-        choice((call_expr, string_expr, bool_expr, int_expr, path_expr, paren_expr))
-            .labelled("expression")
+        let atom = choice((call_expr, string_expr, bool_expr, int_expr, path_expr, paren_expr));
+
+        let add_expr = atom
+            .clone()
+            .then_ignore(just('+').padded())
+            .then(atom.clone())
+            .map_with(|(lhs, rhs), extra| AstExpr::Add {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span: extra.span(),
+            });
+
+        choice((add_expr, atom)).labelled("expression")
     });
 
     let let_stmt = text::keyword("let")

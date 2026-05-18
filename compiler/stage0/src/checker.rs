@@ -177,6 +177,14 @@ fn resolve_const_value(
     bindings: &HashMap<String, ConstValue>,
 ) -> Option<ConstValue> {
     match expr {
+        AstExpr::Add {
+            lhs,
+            rhs,
+            span: _,
+        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs + rhs)),
+            _ => None,
+        },
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
@@ -189,6 +197,11 @@ fn resolve_const_value(
 
 fn expr_span(expr: &AstExpr) -> TextSpan {
     match expr {
+        AstExpr::Add {
+            lhs: _,
+            rhs: _,
+            span,
+        } => *span,
         AstExpr::Call { callee: _, args } => args
             .first()
             .map(expr_span)
