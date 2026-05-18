@@ -17,3 +17,8 @@
 3. Use LLVM through Rust bindings for native codegen.
 4. Preserve `fn main() { ... }` as the only entrypoint form until the language
    design grows a module/package model.
+5. Keep the fixture harness generated from `tests/fixtures`, which is a symlink
+   to `compiler/fixtures`; `build.rs` should continue emitting one cargo test
+   per `.ml` fixture.
+6. Review compiler-output snapshot changes under `tests/snapshots` with
+   `cargo insta review` or update them intentionally with `INSTA_UPDATE`.

@@ -16,4 +16,4 @@ which = "8.0.2"
 
 [dev-dependencies]
 assert_cmd = "2.2.2"
-walkdir = "2.5.0"
+insta = "1.47.2"

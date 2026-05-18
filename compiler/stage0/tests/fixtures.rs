@@ -1,108 +1,172 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 use assert_cmd::cargo::cargo_bin;
 use tempfile::TempDir;
-use walkdir::WalkDir;
 
-#[test]
-fn compiler_program_fixtures_compile() {
-    let fixtures = ml_fixtures(&compiler_dir().join("fixtures/programs"));
-    assert!(
-        !fixtures.is_empty(),
-        "expected at least one program fixture"
-    );
+type FixtureResult = Result<(), Box<dyn std::error::Error>>;
 
-    for fixture in fixtures {
-        let temp_dir = TempDir::new().expect("create temp dir");
-        let output = temp_dir.path().join(output_name(&fixture));
+fn program_fixture_compiles(fixture: &Path) -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let output_path = temp_dir.path().join(output_name(fixture));
 
-        let compile = Command::new(cargo_bin("stage0"))
-            .arg(&fixture)
-            .arg("-o")
-            .arg(&output)
-            .output()
-            .expect("run stage0");
+    let compile = compile_fixture(fixture, &output_path)?;
+    let mut transcript = Transcript::new(fixture);
+    transcript.push_output("compile", &compile);
 
-        assert!(
-            compile.status.success(),
-            "expected program fixture to compile: {}\nstdout:\n{}\nstderr:\n{}",
-            fixture.display(),
-            String::from_utf8_lossy(&compile.stdout),
-            String::from_utf8_lossy(&compile.stderr),
-        );
+    if !compile.status.success() {
+        assert_fixture_snapshot("program", fixture, &transcript.finish());
+        return fail(format!(
+            "expected program fixture to compile: {}",
+            fixture.display()
+        ));
+    }
 
-        let expected_stdout = fixture.with_extension("stdout");
-        if expected_stdout.exists() {
-            let run = Command::new(&output)
-                .output()
-                .expect("run generated fixture binary");
-            assert!(
-                run.status.success(),
-                "expected generated fixture binary to run: {}\nstdout:\n{}\nstderr:\n{}",
-                output.display(),
-                String::from_utf8_lossy(&run.stdout),
-                String::from_utf8_lossy(&run.stderr),
-            );
+    let expected_stdout = fixture_path(fixture).with_extension("stdout");
+    if expected_stdout.exists() {
+        let run = Command::new(&output_path).output()?;
+        transcript.push_output("run", &run);
 
-            let expected = std::fs::read(&expected_stdout).expect("read expected stdout sidecar");
-            assert_eq!(
-                run.stdout,
-                expected,
-                "stdout mismatch for {}",
-                fixture.display()
-            );
+        if !run.status.success() {
+            assert_fixture_snapshot("program", fixture, &transcript.finish());
+            return fail(format!(
+                "expected generated fixture binary to run: {}",
+                output_path.display()
+            ));
+        }
+
+        let expected = std::fs::read(&expected_stdout)?;
+        if run.stdout != expected {
+            assert_fixture_snapshot("program", fixture, &transcript.finish());
+            return fail(format!("stdout mismatch for {}", fixture.display()));
+        }
+    }
+
+    assert_fixture_snapshot("program", fixture, &transcript.finish());
+    Ok(())
+}
+
+fn diagnostic_fixture_fails(fixture: &Path) -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let output_path = temp_dir.path().join(output_name(fixture));
+
+    let compile = compile_fixture(fixture, &output_path)?;
+    let mut transcript = Transcript::new(fixture);
+    transcript.push_output("compile", &compile);
+
+    assert_fixture_snapshot("diagnostic", fixture, &transcript.finish());
+
+    if compile.status.success() {
+        return fail(format!(
+            "expected diagnostics fixture to fail: {}",
+            fixture.display()
+        ));
+    }
+
+    Ok(())
+}
+
+fn compile_fixture(fixture: &Path, output_path: &Path) -> std::io::Result<Output> {
+    Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg(fixture)
+        .arg("-o")
+        .arg(output_path)
+        .output()
+}
+
+struct Transcript {
+    contents: String,
+}
+
+impl Transcript {
+    fn new(fixture: &Path) -> Self {
+        let mut contents = String::new();
+        contents.push_str("fixture: ");
+        contents.push_str(&relative_fixture(fixture));
+        contents.push('\n');
+        Self { contents }
+    }
+
+    fn push_output(&mut self, label: &str, output: &Output) {
+        self.contents.push('\n');
+        self.contents.push_str(label);
+        self.contents.push_str(":\n");
+        self.contents.push_str("status: ");
+        self.contents.push_str(&status_label(output));
+        self.contents.push('\n');
+        self.push_bytes("stdout", &output.stdout);
+        self.push_bytes("stderr", &output.stderr);
+    }
+
+    fn push_bytes(&mut self, label: &str, bytes: &[u8]) {
+        self.contents.push_str(label);
+        self.contents.push_str(":\n");
+
+        if bytes.is_empty() {
+            self.contents.push_str("<empty>\n");
+        } else {
+            self.contents.push_str(&String::from_utf8_lossy(bytes));
+            if !bytes.ends_with(b"\n") {
+                self.contents.push('\n');
+            }
+        }
+    }
+
+    fn finish(self) -> String {
+        self.contents
+    }
+}
+
+fn assert_fixture_snapshot(kind: &str, fixture: &Path, transcript: &str) {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_snapshot_path(manifest_dir().join("tests/snapshots"));
+    settings.set_prepend_module_to_snapshot(false);
+    settings.bind(|| {
+        insta::assert_snapshot!(snapshot_name(kind, fixture), transcript);
+    });
+}
+
+fn status_label(output: &Output) -> String {
+    if output.status.success() {
+        "success".to_owned()
+    } else {
+        match output.status.code() {
+            Some(code) => format!("failure({code})"),
+            None => "failure".to_owned(),
         }
     }
 }
 
-#[test]
-fn compiler_diagnostic_fixtures_fail() {
-    let fixtures = ml_fixtures(&compiler_dir().join("fixtures/diagnostics"));
-    assert!(
-        !fixtures.is_empty(),
-        "expected at least one diagnostics fixture"
-    );
+fn relative_fixture(fixture: &Path) -> String {
+    fixture.to_string_lossy().replace('\\', "/")
+}
 
-    for fixture in fixtures {
-        let temp_dir = TempDir::new().expect("create temp dir");
-        let output = temp_dir.path().join(output_name(&fixture));
+fn snapshot_name(kind: &str, fixture: &Path) -> String {
+    let path = relative_fixture(fixture);
+    let stem = path
+        .strip_suffix(".ml")
+        .unwrap_or(&path)
+        .chars()
+        .map(|ch| match ch {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => ch,
+            _ => '_',
+        })
+        .collect::<String>();
+    format!("{kind}__{stem}")
+}
 
-        let compile = Command::new(cargo_bin("stage0"))
-            .arg(&fixture)
-            .arg("-o")
-            .arg(&output)
-            .output()
-            .expect("run stage0");
+fn manifest_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
+}
 
-        assert!(
-            !compile.status.success(),
-            "expected diagnostics fixture to fail: {}\nstdout:\n{}\nstderr:\n{}",
-            fixture.display(),
-            String::from_utf8_lossy(&compile.stdout),
-            String::from_utf8_lossy(&compile.stderr),
-        );
+fn fixture_path(fixture: &Path) -> PathBuf {
+    if fixture.is_absolute() {
+        fixture.to_path_buf()
+    } else {
+        manifest_dir().join(fixture)
     }
-}
-
-fn ml_fixtures(root: &Path) -> Vec<PathBuf> {
-    let mut fixtures = WalkDir::new(root)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.file_type().is_file())
-        .map(|entry| entry.into_path())
-        .filter(|path| path.extension() == Some(OsStr::new("ml")))
-        .collect::<Vec<_>>();
-    fixtures.sort();
-    fixtures
-}
-
-fn compiler_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("stage0 lives under compiler/")
-        .to_path_buf()
 }
 
 fn output_name(fixture: &Path) -> String {
@@ -112,3 +176,9 @@ fn output_name(fixture: &Path) -> String {
         .unwrap_or("fixture")
         .to_owned()
 }
+
+fn fail(message: String) -> FixtureResult {
+    Err(std::io::Error::other(message).into())
+}
+
+include!(concat!(env!("OUT_DIR"), "/fixture_tests.rs"));

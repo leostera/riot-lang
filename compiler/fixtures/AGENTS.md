@@ -22,3 +22,5 @@ frontends.
    features together.
 4. Do not embed test metadata in `.ml` source comments; keep metadata in
    sidecar files so the source remains ordinary Riot ML.
+5. Preserve the `programs` and `diagnostics` roots unless stage0's generated
+   fixture harness is updated at the same time.

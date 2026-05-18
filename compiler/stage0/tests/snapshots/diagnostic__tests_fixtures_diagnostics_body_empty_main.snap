@@ -1,0 +1,20 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/body/empty-main.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × unsupported main body
+   ╭─[tests/fixtures/diagnostics/body/empty-main.ml:1:11]
+ 1 │ ╭─▶ fn main() {
+ 2 │ ├─▶ }
+   · ╰──── stage0 currently expects main to call println with one string value
+   ╰────
+  help: try: fn main() { println("hello world") }

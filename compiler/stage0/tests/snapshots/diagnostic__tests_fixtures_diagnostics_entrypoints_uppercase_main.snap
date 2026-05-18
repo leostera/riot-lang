@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/entrypoints/uppercase-main.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/entrypoints/uppercase-main.ml:1:4]
+ 1 │ fn Main() {
+   ·    ──┬─
+   ·      ╰── expected lowercase identifier, found `Main`
+ 2 │   println("hello world")
+   ╰────
+  help: stage0 currently accepts top-level zero-argument fn declarations with
+        println string bodies

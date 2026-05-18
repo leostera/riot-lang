@@ -94,13 +94,34 @@ pub(crate) enum AstExpr {
         else_branch: Box<AstExpr>,
         span: TextSpan,
     },
-    Bool { value: bool, span: TextSpan },
-    Call { callee: AstPath, args: Vec<AstExpr> },
-    Char { value: char, span: TextSpan },
-    Float { value: String, span: TextSpan },
-    Int { value: i64, span: TextSpan },
-    Path { path: AstPath, span: TextSpan },
-    String { value: String, span: TextSpan },
+    Bool {
+        value: bool,
+        span: TextSpan,
+    },
+    Call {
+        callee: AstPath,
+        args: Vec<AstExpr>,
+    },
+    Char {
+        value: char,
+        span: TextSpan,
+    },
+    Float {
+        value: String,
+        span: TextSpan,
+    },
+    Int {
+        value: i64,
+        span: TextSpan,
+    },
+    Path {
+        path: AstPath,
+        span: TextSpan,
+    },
+    String {
+        value: String,
+        span: TextSpan,
+    },
 }
 
 #[derive(Debug, Clone)]

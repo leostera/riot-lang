@@ -1,0 +1,21 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/entrypoints/missing-main.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × missing main function
+   ╭─[tests/fixtures/diagnostics/entrypoints/missing-main.ml:1:4]
+ 1 │ fn start() {
+   ·    ──┬──
+   ·      ╰── this function must be named main
+ 2 │   println("hello world")
+   ╰────
+  help: stage0 requires one entrypoint: fn main() { println("hello world") }

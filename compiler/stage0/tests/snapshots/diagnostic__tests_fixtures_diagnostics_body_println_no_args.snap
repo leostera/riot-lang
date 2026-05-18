@@ -1,0 +1,21 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/body/println-no-args.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × unsupported main body
+   ╭─[tests/fixtures/diagnostics/body/println-no-args.ml:1:1]
+ 1 │ fn main() {
+   · ▲
+   · ╰── stage0 currently expects main to call println with one string value
+ 2 │   println()
+   ╰────
+  help: try: fn main() { let name = "Alice"; println(name) }

@@ -61,9 +61,13 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                     },
                 );
 
+        let exponent = one_of("eE")
+            .then(one_of("+-").or_not())
+            .then(text::digits(10));
         let float_expr = text::int(10)
             .then(just('.'))
             .then(text::digits(10))
+            .then(exponent.or_not())
             .to_slice()
             .try_map(|raw: &str, span| {
                 raw.parse::<f64>()
@@ -84,8 +88,9 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             .or(just("0X"))
             .ignore_then(text::digits(16).to_slice())
             .try_map(|raw: &str, span| {
-                i64::from_str_radix(raw, 16)
-                    .map_err(|error| Rich::custom(span, format!("invalid hex integer literal: {error}")))
+                i64::from_str_radix(raw, 16).map_err(|error| {
+                    Rich::custom(span, format!("invalid hex integer literal: {error}"))
+                })
             });
         let binary_int = just("0b")
             .or(just("0B"))
@@ -113,8 +118,9 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        let escaped_char = just('\\').ignore_then(any()).try_map(|escaped, span| {
-            match escaped {
+        let escaped_char = just('\\')
+            .ignore_then(any())
+            .try_map(|escaped, span| match escaped {
                 '\\' => Ok('\\'),
                 '\'' => Ok('\''),
                 'n' => Ok('\n'),
@@ -124,8 +130,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                     span,
                     format!("unsupported character escape: \\{other}"),
                 )),
-            }
-        });
+            });
         let char_expr = just('\'')
             .ignore_then(escaped_char.or(none_of("\\'")))
             .then_ignore(just('\''))
@@ -182,12 +187,14 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             .then(braced_expr.clone())
             .then_ignore(text::keyword("else").padded())
             .then(braced_expr)
-            .map_with(|((condition, then_branch), else_branch), extra| AstExpr::If {
-                condition: Box::new(condition),
-                then_branch: Box::new(then_branch),
-                else_branch: Box::new(else_branch),
-                span: extra.span(),
-            });
+            .map_with(
+                |((condition, then_branch), else_branch), extra| AstExpr::If {
+                    condition: Box::new(condition),
+                    then_branch: Box::new(then_branch),
+                    else_branch: Box::new(else_branch),
+                    span: extra.span(),
+                },
+            );
 
         let atom = choice((
             call_expr,
@@ -307,8 +314,11 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        choice((or_expr, and_expr, eq_expr, lt_expr, add_expr, sub_expr, mul_expr, div_expr, mod_expr, neg_expr, not_expr, atom))
-            .labelled("expression")
+        choice((
+            or_expr, and_expr, eq_expr, lt_expr, add_expr, sub_expr, mul_expr, div_expr, mod_expr,
+            neg_expr, not_expr, atom,
+        ))
+        .labelled("expression")
     });
 
     let let_stmt = text::keyword("let")

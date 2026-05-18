@@ -181,44 +181,39 @@ fn resolve_const_value(
     bindings: &HashMap<String, ConstValue>,
 ) -> Option<ConstValue> {
     match expr {
-        AstExpr::Add {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Add { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs + rhs)),
             _ => None,
         },
-        AstExpr::Sub {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Sub { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs - rhs)),
             _ => None,
         },
-        AstExpr::Mul {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Mul { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs * rhs)),
             _ => None,
         },
-        AstExpr::Div {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Div { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Int(_), ConstValue::Int(0)) => None,
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs / rhs)),
             _ => None,
         },
-        AstExpr::Mod {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Mod { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Int(_), ConstValue::Int(0)) => None,
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs % rhs)),
             _ => None,
@@ -228,39 +223,37 @@ fn resolve_const_value(
             ConstValue::Int(value) => Some(ConstValue::Int(-value)),
             _ => None,
         },
-        AstExpr::Eq {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Eq { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             (ConstValue::Char(lhs), ConstValue::Char(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             (ConstValue::Float(lhs), ConstValue::Float(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
-            (ConstValue::String(lhs), ConstValue::String(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
+            (ConstValue::String(lhs), ConstValue::String(rhs)) => {
+                Some(ConstValue::Bool(lhs == rhs))
+            }
             _ => None,
         },
-        AstExpr::Lt {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Lt { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Bool(lhs < rhs)),
             _ => None,
         },
-        AstExpr::And {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::And { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs && rhs)),
             _ => None,
         },
-        AstExpr::Or {
-            lhs,
-            rhs,
-            span: _,
-        } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
+        AstExpr::Or { lhs, rhs, span: _ } => match (
+            resolve_const_value(lhs, bindings)?,
+            resolve_const_value(rhs, bindings)?,
+        ) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs || rhs)),
             _ => None,
         },
