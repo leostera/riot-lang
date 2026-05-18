@@ -95,7 +95,11 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             span: extra.span(),
         });
 
-        choice((call_expr, string_expr, path_expr)).labelled("expression")
+        let paren_expr = expr
+            .clone()
+            .delimited_by(just('(').padded(), just(')').padded());
+
+        choice((call_expr, string_expr, path_expr, paren_expr)).labelled("expression")
     });
 
     let let_stmt = text::keyword("let")
