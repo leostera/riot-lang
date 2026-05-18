@@ -1,4 +1,0 @@
-fn main() {
-  let value = 1;
-  println(value)
-}

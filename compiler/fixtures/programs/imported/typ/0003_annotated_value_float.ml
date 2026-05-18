@@ -1,4 +1,4 @@
 fn main() {
-  let value: float = 2.0;
+  let value: f64 = 2.0;
   println(value)
 }
