@@ -98,6 +98,28 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
+        let escaped_char = just('\\').ignore_then(any()).try_map(|escaped, span| {
+            match escaped {
+                '\\' => Ok('\\'),
+                '\'' => Ok('\''),
+                'n' => Ok('\n'),
+                'r' => Ok('\r'),
+                't' => Ok('\t'),
+                other => Err(Rich::custom(
+                    span,
+                    format!("unsupported character escape: \\{other}"),
+                )),
+            }
+        });
+        let char_expr = just('\'')
+            .ignore_then(escaped_char.or(none_of("\\'")))
+            .then_ignore(just('\''))
+            .padded()
+            .map_with(|value, extra| AstExpr::Char {
+                value,
+                span: extra.span(),
+            });
+
         let path = ident
             .clone()
             .then(
@@ -152,7 +174,16 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        let atom = choice((call_expr, string_expr, bool_expr, int_expr, if_expr, path_expr, paren_expr));
+        let atom = choice((
+            call_expr,
+            string_expr,
+            bool_expr,
+            char_expr,
+            int_expr,
+            if_expr,
+            path_expr,
+            paren_expr,
+        ));
 
         let add_expr = atom
             .clone()

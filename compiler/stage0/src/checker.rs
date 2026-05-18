@@ -157,6 +157,7 @@ fn println_message(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Op
 #[derive(Debug, Clone)]
 enum ConstValue {
     Bool(bool),
+    Char(char),
     Int(i64),
     String(String),
 }
@@ -166,6 +167,7 @@ impl ConstValue {
         match self {
             ConstValue::Bool(true) => "true".to_owned(),
             ConstValue::Bool(false) => "false".to_owned(),
+            ConstValue::Char(value) => value.to_string(),
             ConstValue::Int(value) => value.to_string(),
             ConstValue::String(value) => value.clone(),
         }
@@ -229,6 +231,7 @@ fn resolve_const_value(
             span: _,
         } => match (resolve_const_value(lhs, bindings)?, resolve_const_value(rhs, bindings)?) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
+            (ConstValue::Char(lhs), ConstValue::Char(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             (ConstValue::String(lhs), ConstValue::String(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             _ => None,
@@ -272,6 +275,7 @@ fn resolve_const_value(
             _ => None,
         },
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
+        AstExpr::Char { value, span: _ } => Some(ConstValue::Char(*value)),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
         AstExpr::Path { path, span: _ } if path.segments.len() == 1 => {
@@ -341,6 +345,7 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
             .map(expr_span)
             .unwrap_or_else(|| SimpleSpan::new((), 0..0)),
         AstExpr::Bool { value: _, span }
+        | AstExpr::Char { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }
         | AstExpr::String { value: _, span } => *span,
