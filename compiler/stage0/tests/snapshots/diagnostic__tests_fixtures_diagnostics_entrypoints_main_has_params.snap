@@ -18,4 +18,4 @@ Error: stage0::source
    ·           ╰── stage0 function parameters are not supported yet
  2 │   println("hello world")
    ╰────
-  help: try: fn main() { println("hello world") }
+  help: try: fn main() { dbg("hello world") }

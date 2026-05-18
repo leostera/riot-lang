@@ -71,7 +71,7 @@ impl<'src> Parser<'src> {
         if !self.at(TokenKind::RParen) {
             return Err(self.error_at_current(
                 "stage0 function parameters are not supported yet",
-                Some("try: fn main() { println(\"hello world\") }"),
+                Some("try: fn main() { dbg(\"hello world\") }"),
             ));
         }
         self.expect(TokenKind::RParen, "expected `)` after function parameters")?;
@@ -302,7 +302,7 @@ impl<'src> Parser<'src> {
             let AstExpr::Path { path, span } = expr else {
                 return Err(self.error_at_current(
                     "stage0 only supports calling named functions",
-                    Some("try: println(\"hello world\")"),
+                    Some("try: dbg(\"hello world\")"),
                 ));
             };
             let args = self.parse_arg_list()?;
