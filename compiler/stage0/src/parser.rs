@@ -136,7 +136,23 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             .clone()
             .delimited_by(just('(').padded(), just(')').padded());
 
-        let atom = choice((call_expr, string_expr, bool_expr, int_expr, path_expr, paren_expr));
+        let braced_expr = expr
+            .clone()
+            .delimited_by(just('{').padded(), just('}').padded());
+        let if_expr = text::keyword("if")
+            .padded()
+            .ignore_then(expr.clone())
+            .then(braced_expr.clone())
+            .then_ignore(text::keyword("else").padded())
+            .then(braced_expr)
+            .map_with(|((condition, then_branch), else_branch), extra| AstExpr::If {
+                condition: Box::new(condition),
+                then_branch: Box::new(then_branch),
+                else_branch: Box::new(else_branch),
+                span: extra.span(),
+            });
+
+        let atom = choice((call_expr, string_expr, bool_expr, int_expr, if_expr, path_expr, paren_expr));
 
         let add_expr = atom
             .clone()
