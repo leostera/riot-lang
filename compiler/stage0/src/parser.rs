@@ -61,6 +61,18 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                     },
                 );
 
+        let int_expr = text::int(10)
+            .to_slice()
+            .try_map(|raw: &str, span| {
+                raw.parse::<i64>()
+                    .map_err(|error| Rich::custom(span, format!("invalid integer literal: {error}")))
+            })
+            .padded()
+            .map_with(|value, extra| AstExpr::Int {
+                value,
+                span: extra.span(),
+            });
+
         let bool_expr = text::keyword("true")
             .to(true)
             .or(text::keyword("false").to(false))
@@ -108,7 +120,8 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             .clone()
             .delimited_by(just('(').padded(), just(')').padded());
 
-        choice((call_expr, string_expr, bool_expr, path_expr, paren_expr)).labelled("expression")
+        choice((call_expr, string_expr, bool_expr, int_expr, path_expr, paren_expr))
+            .labelled("expression")
     });
 
     let let_stmt = text::keyword("let")

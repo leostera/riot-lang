@@ -37,6 +37,7 @@ pub(crate) enum AstStmt {
 pub(crate) enum AstExpr {
     Bool { value: bool, span: TextSpan },
     Call { callee: AstPath, args: Vec<AstExpr> },
+    Int { value: i64, span: TextSpan },
     Path { path: AstPath, span: TextSpan },
     String { value: String, span: TextSpan },
 }
