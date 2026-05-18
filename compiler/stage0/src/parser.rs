@@ -132,7 +132,17 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        choice((add_expr, atom)).labelled("expression")
+        let sub_expr = atom
+            .clone()
+            .then_ignore(just('-').padded())
+            .then(atom.clone())
+            .map_with(|(lhs, rhs), extra| AstExpr::Sub {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span: extra.span(),
+            });
+
+        choice((add_expr, sub_expr, atom)).labelled("expression")
     });
 
     let let_stmt = text::keyword("let")
