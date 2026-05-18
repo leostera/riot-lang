@@ -321,9 +321,12 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
         .labelled("expression")
     });
 
+    let type_annot = just(':').padded().ignore_then(ident.clone()).or_not();
+
     let let_stmt = text::keyword("let")
         .padded()
         .ignore_then(lower_ident.clone().spanned())
+        .then_ignore(type_annot)
         .then_ignore(just('=').padded())
         .then(expr.clone())
         .then_ignore(just(';').padded())
