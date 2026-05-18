@@ -1,4 +1,4 @@
 fn main() {
   let value: bool = true;
-  println(value)
+  dbg(value)
 }

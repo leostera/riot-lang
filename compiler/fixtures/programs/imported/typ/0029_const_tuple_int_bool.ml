@@ -1,4 +1,4 @@
 fn main() {
-  let value: i64 = 0;
+  let value = (0, true);
   dbg(value)
 }

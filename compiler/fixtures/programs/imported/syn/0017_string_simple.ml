@@ -1,4 +1,4 @@
 fn main() {
   let x = "hello world";
-  println(x)
+  dbg(x)
 }

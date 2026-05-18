@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/body/non-println-call.ml
@@ -16,7 +17,7 @@ Error: stage0::source
  1 │ fn main() {
  2 │   log("hello world")
    ·   ─────────┬────────
-   ·            ╰── stage0 currently expects main to call println with one string value
+   ·            ╰── stage0 currently expects main to call dbg with one constant value
  3 │ }
    ╰────
-  help: try: fn main() { let name = "Alice"; println(name) }
+  help: try: fn main() { let name = "Alice"; dbg(name) }

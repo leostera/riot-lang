@@ -10,6 +10,7 @@ pub(crate) struct TypedFunction {
 
 #[derive(Debug, Clone)]
 pub(crate) enum TypedExpr {
+    Dbg { message: String },
     Println { message: String },
 }
 
@@ -25,11 +26,13 @@ pub(crate) struct RirFunction {
 
 #[derive(Debug, Clone)]
 pub(crate) enum RirInstruction {
+    RuntimeDbg { message: String },
     RuntimePrintln { message: String },
 }
 
 pub(crate) fn lower_to_rir(program: TypedProgram) -> RirProgram {
     let instruction = match program.main.body {
+        TypedExpr::Dbg { message } => RirInstruction::RuntimeDbg { message },
         TypedExpr::Println { message } => RirInstruction::RuntimePrintln { message },
     };
 

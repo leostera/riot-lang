@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/entrypoints/missing-main.ml
@@ -18,4 +19,4 @@ Error: stage0::source
    ·      ╰── this function must be named main
  2 │   println("hello world")
    ╰────
-  help: stage0 requires one entrypoint: fn main() { println("hello world") }
+  help: stage0 requires one entrypoint: fn main() { dbg("hello world") }

@@ -25,7 +25,7 @@ pub(crate) fn typecheck(
             span,
             "expected exactly one top-level function",
             "stage0 requires a single main function per file",
-            Some("keep only: fn main() { println(\"hello world\") }"),
+            Some("keep only: fn main() { dbg(\"hello world\") }"),
         )
         .into());
     }
@@ -38,25 +38,23 @@ pub(crate) fn typecheck(
             decl.name_span,
             "missing main function",
             "this function must be named main",
-            Some("stage0 requires one entrypoint: fn main() { println(\"hello world\") }"),
+            Some("stage0 requires one entrypoint: fn main() { dbg(\"hello world\") }"),
         )
         .into());
     }
 
-    let message = resolve_main_message(source_path, source, &decl.body)?;
+    let body = resolve_main_output(source_path, source, &decl.body)?;
 
     Ok(TypedProgram {
-        main: TypedFunction {
-            body: TypedExpr::Println { message },
-        },
+        main: TypedFunction { body },
     })
 }
 
-fn resolve_main_message(
+fn resolve_main_output(
     source_path: &Utf8Path,
     source: &str,
     block: &AstBlock,
-) -> miette::Result<String> {
+) -> miette::Result<TypedExpr> {
     let mut bindings = HashMap::<String, ConstValue>::new();
     let mut final_expr = None;
 
@@ -99,8 +97,8 @@ fn resolve_main_message(
                         source,
                         expr_span(expr),
                         "unsupported main body",
-                        "stage0 currently allows local lets followed by one println expression",
-                        Some("try: fn main() { let name = \"Alice\"; println(name) }"),
+                        "stage0 currently allows local lets followed by one dbg expression",
+                        Some("try: fn main() { let name = \"Alice\"; dbg(name) }"),
                     )
                     .into());
                 }
@@ -120,26 +118,26 @@ fn resolve_main_message(
             source,
             block.span,
             "unsupported main body",
-            "stage0 currently expects main to call println with one string value",
-            Some("try: fn main() { println(\"hello world\") }"),
+            "stage0 currently expects main to call dbg with one constant value",
+            Some("try: fn main() { dbg(\"hello world\") }"),
         )
         .into());
     };
 
-    println_message(expr, &bindings).ok_or_else(|| {
+    output_expr(expr, &bindings).ok_or_else(|| {
         to_source_diagnostic(
             source_path,
             source,
             expr_span(expr),
             "unsupported main body",
-            "stage0 currently expects main to call println with one string value",
-            Some("try: fn main() { let name = \"Alice\"; println(name) }"),
+            "stage0 currently expects main to call dbg with one constant value",
+            Some("try: fn main() { let name = \"Alice\"; dbg(name) }"),
         )
         .into()
     })
 }
 
-fn println_message(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option<String> {
+fn output_expr(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option<TypedExpr> {
     let AstExpr::Call {
         callee,
         args,
@@ -148,12 +146,26 @@ fn println_message(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Op
     else {
         return None;
     };
-    if callee.segments.as_slice() != ["println"] {
-        return None;
-    }
+    let callee = match callee.segments.as_slice() {
+        [segment] => segment.as_str(),
+        _ => return None,
+    };
 
-    match args.as_slice() {
-        [arg] => resolve_const_value(arg, bindings).map(|value| value.to_print_string()),
+    let value = match args.as_slice() {
+        [arg] => resolve_const_value(arg, bindings)?,
+        _ => return None,
+    };
+
+    match callee {
+        "dbg" => Some(TypedExpr::Dbg {
+            message: value.to_print_string(),
+        }),
+        "println" => {
+            let ConstValue::String(message) = value else {
+                return None;
+            };
+            Some(TypedExpr::Println { message })
+        }
         _ => None,
     }
 }

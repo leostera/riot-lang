@@ -3,5 +3,5 @@ fn main() {
   let left = true;
   let right = false;
   let answer = if flag { left } else { right };
-  println(answer)
+  dbg(answer)
 }

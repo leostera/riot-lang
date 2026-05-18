@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/body/empty-main.ml
@@ -15,6 +16,6 @@ Error: stage0::source
    ╭─[tests/fixtures/diagnostics/body/empty-main.ml:1:11]
  1 │ ╭─▶ fn main() {
  2 │ ├─▶ }
-   · ╰──── stage0 currently expects main to call println with one string value
+   · ╰──── stage0 currently expects main to call dbg with one constant value
    ╰────
-  help: try: fn main() { println("hello world") }
+  help: try: fn main() { dbg("hello world") }

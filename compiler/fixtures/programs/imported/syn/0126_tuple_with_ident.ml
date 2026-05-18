@@ -3,5 +3,5 @@ fn main() {
   let b = 2;
   let c = 3;
   let x = (a, b, c);
-  println(x)
+  dbg(x)
 }

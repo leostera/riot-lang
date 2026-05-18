@@ -1,5 +1,5 @@
 fn main() {
   let a = false;
   let x = if a { true } else { false };
-  println(x)
+  dbg(x)
 }

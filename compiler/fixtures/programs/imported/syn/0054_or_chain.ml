@@ -1,4 +1,4 @@
 fn main() {
   let x = (false || false) || true;
-  println(x)
+  dbg(x)
 }

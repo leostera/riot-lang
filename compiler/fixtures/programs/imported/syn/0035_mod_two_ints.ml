@@ -1,4 +1,4 @@
 fn main() {
   let x = 10 % 3;
-  println(x)
+  dbg(x)
 }

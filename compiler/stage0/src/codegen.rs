@@ -48,6 +48,11 @@ pub(crate) fn emit_object(
         void_type.fn_type(&[ptr_type.into(), i64_type.into()], false),
         None,
     );
+    let dbg_fn = module.add_function(
+        "riot_rt_dbg",
+        void_type.fn_type(&[ptr_type.into(), i64_type.into()], false),
+        None,
+    );
 
     let main_fn = module.add_function("main", i32_type.fn_type(&[], false), None);
     let entry = context.append_basic_block(main_fn, "entry");
@@ -59,18 +64,25 @@ pub(crate) fn emit_object(
 
     for instruction in &program.entry.instructions {
         match instruction {
+            RirInstruction::RuntimeDbg { message } => {
+                emit_string_runtime_call(
+                    &builder,
+                    dbg_fn,
+                    i64_type,
+                    message,
+                    "riot_rt_dbg",
+                    "failed to emit dbg call",
+                )?;
+            }
             RirInstruction::RuntimePrintln { message } => {
-                let value = builder
-                    .build_global_string_ptr(message, "str")
-                    .map_err(|error| miette::miette!("failed to emit string literal: {error}"))?;
-                let len = i64_type.const_int(message.len() as u64, false);
-                builder
-                    .build_call(
-                        println_fn,
-                        &[value.as_pointer_value().into(), len.into()],
-                        "riot_rt_println",
-                    )
-                    .map_err(|error| miette::miette!("failed to emit println call: {error}"))?;
+                emit_string_runtime_call(
+                    &builder,
+                    println_fn,
+                    i64_type,
+                    message,
+                    "riot_rt_println",
+                    "failed to emit println call",
+                )?;
             }
         }
     }
@@ -96,5 +108,27 @@ pub(crate) fn emit_object(
         .write_to_file(&module, FileType::Object, object_path.as_std_path())
         .map_err(|error| miette::miette!("failed to emit object file: {error}"))?;
 
+    Ok(())
+}
+
+fn emit_string_runtime_call<'ctx>(
+    builder: &inkwell::builder::Builder<'ctx>,
+    function: inkwell::values::FunctionValue<'ctx>,
+    i64_type: inkwell::types::IntType<'ctx>,
+    message: &str,
+    call_name: &str,
+    error_context: &'static str,
+) -> miette::Result<()> {
+    let value = builder
+        .build_global_string_ptr(message, "str")
+        .map_err(|error| miette::miette!("failed to emit string literal: {error}"))?;
+    let len = i64_type.const_int(message.len() as u64, false);
+    builder
+        .build_call(
+            function,
+            &[value.as_pointer_value().into(), len.into()],
+            call_name,
+        )
+        .map_err(|error| miette::miette!("{error_context}: {error}"))?;
     Ok(())
 }

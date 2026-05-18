@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/entrypoints/empty.ml
@@ -17,4 +18,4 @@ Error: stage0::source
    · ┬
    · ╰── stage0 requires a single main function per file
    ╰────
-  help: keep only: fn main() { println("hello world") }
+  help: keep only: fn main() { dbg("hello world") }

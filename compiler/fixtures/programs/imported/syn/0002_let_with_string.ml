@@ -1,4 +1,4 @@
 fn main() {
   let name = "Alice";
-  println(name)
+  dbg(name)
 }

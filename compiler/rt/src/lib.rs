@@ -11,6 +11,15 @@ pub extern "C" fn riot_rt_shutdown() {}
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn riot_rt_println(ptr: *const u8, len: usize) {
+    unsafe { write_stdout_line(ptr, len) };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_dbg(ptr: *const u8, len: usize) {
+    unsafe { write_stdout_line(ptr, len) };
+}
+
+unsafe fn write_stdout_line(ptr: *const u8, len: usize) {
     if ptr.is_null() && len != 0 {
         return;
     }
