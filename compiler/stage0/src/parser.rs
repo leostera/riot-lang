@@ -216,7 +216,17 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                 span: extra.span(),
             });
 
-        choice((eq_expr, lt_expr, add_expr, sub_expr, mul_expr, div_expr, mod_expr, neg_expr, atom))
+        let and_expr = atom
+            .clone()
+            .then_ignore(just("&&").padded())
+            .then(atom.clone())
+            .map_with(|(lhs, rhs), extra| AstExpr::And {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span: extra.span(),
+            });
+
+        choice((and_expr, eq_expr, lt_expr, add_expr, sub_expr, mul_expr, div_expr, mod_expr, neg_expr, atom))
             .labelled("expression")
     });
 
