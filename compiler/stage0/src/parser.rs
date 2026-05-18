@@ -61,6 +61,21 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                     },
                 );
 
+        let float_expr = text::int(10)
+            .then(just('.'))
+            .then(text::digits(10))
+            .to_slice()
+            .try_map(|raw: &str, span| {
+                raw.parse::<f64>()
+                    .map(|_| raw.to_owned())
+                    .map_err(|error| Rich::custom(span, format!("invalid float literal: {error}")))
+            })
+            .padded()
+            .map_with(|value, extra| AstExpr::Float {
+                value,
+                span: extra.span(),
+            });
+
         let decimal_int = text::int(10).to_slice().try_map(|raw: &str, span| {
             raw.parse::<i64>()
                 .map_err(|error| Rich::custom(span, format!("invalid integer literal: {error}")))
@@ -179,6 +194,7 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
             string_expr,
             bool_expr,
             char_expr,
+            float_expr,
             int_expr,
             if_expr,
             path_expr,
