@@ -61,12 +61,19 @@ fn parser<'src>() -> impl Parser<'src, &'src str, AstProgram, extra::Err<Rich<'s
                     },
                 );
 
-        let int_expr = text::int(10)
-            .to_slice()
+        let decimal_int = text::int(10).to_slice().try_map(|raw: &str, span| {
+            raw.parse::<i64>()
+                .map_err(|error| Rich::custom(span, format!("invalid integer literal: {error}")))
+        });
+        let hex_int = just("0x")
+            .or(just("0X"))
+            .ignore_then(text::digits(16).to_slice())
             .try_map(|raw: &str, span| {
-                raw.parse::<i64>()
-                    .map_err(|error| Rich::custom(span, format!("invalid integer literal: {error}")))
-            })
+                i64::from_str_radix(raw, 16)
+                    .map_err(|error| Rich::custom(span, format!("invalid hex integer literal: {error}")))
+            });
+        let int_expr = hex_int
+            .or(decimal_int)
             .padded()
             .map_with(|value, extra| AstExpr::Int {
                 value,
