@@ -10,9 +10,9 @@ use const_eval::{ConstFunction, ConstValue, resolve_const_value};
 use span::expr_span;
 use types::parse_primitive_type;
 
-use crate::ast::{AstBlock, AstExpr, AstProgram, AstStmt, TextSpan};
+use crate::ast::{AstBlock, AstExpr, AstProgram, AstReceivePattern, AstStmt, TextSpan};
 use crate::diagnostic::to_source_diagnostic;
-use crate::ir::{TypedExpr, TypedFunction, TypedProgram};
+use crate::ir::{TypedAction, TypedExpr, TypedFunction, TypedProgram};
 
 pub(crate) fn typecheck(
     source_path: &Utf8Path,
@@ -74,7 +74,7 @@ pub(crate) fn typecheck(
     }
 
     let functions = const_functions(&program);
-    let body = resolve_main_output(source_path, source, &decl.body, &functions)?;
+    let body = resolve_main_body(source_path, source, &decl.body, &functions)?;
 
     Ok(TypedProgram {
         main: TypedFunction { body },
@@ -98,13 +98,43 @@ fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
         .collect()
 }
 
-fn resolve_main_output(
+#[derive(Debug, Clone)]
+enum Binding {
+    Const(ConstValue),
+    Actor,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ActorShape {
+    Debug {
+        receive_count: u64,
+    },
+    ForwardDbg {
+        receive_count: u64,
+        forward_hops: u64,
+    },
+}
+
+impl ActorShape {
+    fn receive_count(self) -> u64 {
+        match self {
+            ActorShape::Debug { receive_count }
+            | ActorShape::ForwardDbg {
+                receive_count,
+                forward_hops: _,
+            } => receive_count,
+        }
+    }
+}
+
+fn resolve_main_body(
     source_path: &Utf8Path,
     source: &str,
     block: &AstBlock,
     functions: &HashMap<String, ConstFunction>,
 ) -> miette::Result<TypedExpr> {
-    let mut bindings = HashMap::<String, ConstValue>::new();
+    let mut bindings = HashMap::<String, Binding>::new();
+    let mut actions = Vec::<TypedAction>::new();
     let mut final_expr = None;
 
     for (index, stmt) in block.statements.iter().enumerate() {
@@ -128,7 +158,27 @@ fn resolve_main_output(
                     .into());
                 }
 
-                let value = resolve_const_value(value, &bindings, functions).ok_or_else(|| {
+                if let AstExpr::Spawn { body, span: _ } = value {
+                    if let Some(type_annotation) = type_annotation {
+                        return Err(to_source_diagnostic(
+                            source_path,
+                            source,
+                            type_annotation.span,
+                            "unsupported actor type annotation",
+                            "stage0 does not have an actor pid type annotation yet",
+                            Some("omit the annotation for now"),
+                        )
+                        .into());
+                    }
+
+                    let shape = analyze_actor_body(source_path, source, body)?;
+                    actions.push(spawn_action(name.clone(), shape));
+                    bindings.insert(name.clone(), Binding::Actor);
+                    continue;
+                }
+
+                let consts = const_bindings(&bindings);
+                let value = resolve_const_value(value, &consts, functions).ok_or_else(|| {
                     to_source_diagnostic(
                         source_path,
                         source,
@@ -141,9 +191,16 @@ fn resolve_main_output(
                 if let Some(type_annotation) = type_annotation {
                     validate_type_annotation(source_path, source, type_annotation, &value)?;
                 }
-                bindings.insert(name.clone(), value);
+                bindings.insert(name.clone(), Binding::Const(value));
             }
             AstStmt::Expr(expr) => {
+                if let Some(action) =
+                    action_expr(source_path, source, expr, &bindings, functions)?
+                {
+                    actions.push(action);
+                    continue;
+                }
+
                 if block.tail.is_some() || index + 1 != block.statements.len() {
                     return Err(to_source_diagnostic(
                         source_path,
@@ -156,13 +213,27 @@ fn resolve_main_output(
                     .into());
                 }
 
+                if !actions.is_empty() {
+                    return Err(unsupported_actor_expr(source_path, source, expr).into());
+                }
+
                 final_expr = Some(expr);
             }
         }
     }
 
     if let Some(tail) = &block.tail {
-        final_expr = Some(tail);
+        if let Some(action) = action_expr(source_path, source, tail, &bindings, functions)? {
+            actions.push(action);
+        } else if actions.is_empty() {
+            final_expr = Some(tail);
+        } else {
+            return Err(unsupported_actor_expr(source_path, source, tail).into());
+        }
+    }
+
+    if !actions.is_empty() {
+        return Ok(TypedExpr::Sequence { actions });
     }
 
     let Some(expr) = final_expr else {
@@ -188,6 +259,33 @@ fn resolve_main_output(
         )
         .into()
     })
+}
+
+fn const_bindings(bindings: &HashMap<String, Binding>) -> HashMap<String, ConstValue> {
+    bindings
+        .iter()
+        .filter_map(|(name, binding)| match binding {
+            Binding::Const(value) => Some((name.clone(), value.clone())),
+            Binding::Actor => None,
+        })
+        .collect()
+}
+
+fn spawn_action(binding: String, shape: ActorShape) -> TypedAction {
+    match shape {
+        ActorShape::Debug { receive_count } => TypedAction::SpawnDbgActor {
+            binding,
+            receive_count,
+        },
+        ActorShape::ForwardDbg {
+            receive_count,
+            forward_hops,
+        } => TypedAction::SpawnForwardDbgActor {
+            binding,
+            receive_count,
+            forward_hops,
+        },
+    }
 }
 
 fn validate_type_annotation(
