@@ -236,9 +236,26 @@ pub(super) fn resolve_const_value(
         AstExpr::Float { value, span: _ } => Some(ConstValue::Float(value.clone())),
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
-        AstExpr::Path { path, span: _ } if path.segments.len() == 1 => {
-            bindings.get(&path.segments[0]).cloned()
-        }
-        AstExpr::Path { .. } | AstExpr::Call { .. } => None,
+        AstExpr::Path { path, span: _ } => resolve_path_value(path.segments.as_slice(), bindings),
+        AstExpr::Call { .. } => None,
     }
+}
+
+fn resolve_path_value(
+    segments: &[String],
+    bindings: &HashMap<String, ConstValue>,
+) -> Option<ConstValue> {
+    let (head, tail) = segments.split_first()?;
+    let mut value = bindings.get(head)?.clone();
+
+    for segment in tail {
+        let ConstValue::Record { path: _, fields } = value else {
+            return None;
+        };
+        value = fields
+            .into_iter()
+            .find_map(|(name, value)| (name == *segment).then_some(value))?;
+    }
+
+    Some(value)
 }
