@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/int-annotation.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × unsupported type annotation
+   ╭─[tests/fixtures/diagnostics/types/int-annotation.ml:2:14]
+ 1 │ fn main() {
+ 2 │   let value: int = 1;
+   ·              ─┬─
+   ·               ╰── `int` is not a primitive Riot ML type
+ 3 │   dbg(value)
+   ╰────
+  help: use an explicitly sized integer type, for example `i64` or `u64`

@@ -2,6 +2,14 @@ use std::collections::HashMap;
 
 use camino::Utf8Path;
 
+mod const_eval;
+mod span;
+mod types;
+
+use const_eval::{ConstValue, resolve_const_value};
+use span::expr_span;
+use types::parse_primitive_type;
+
 use crate::ast::{AstBlock, AstExpr, AstProgram, AstStmt, TextSpan};
 use crate::diagnostic::to_source_diagnostic;
 use crate::ir::{TypedExpr, TypedFunction, TypedProgram};
@@ -63,6 +71,7 @@ fn resolve_main_output(
             AstStmt::Let {
                 name,
                 name_span,
+                type_annotation,
                 value,
                 span,
             } => {
@@ -88,6 +97,9 @@ fn resolve_main_output(
                         Some("try: let name = \"Alice\";"),
                     )
                 })?;
+                if let Some(type_annotation) = type_annotation {
+                    validate_type_annotation(source_path, source, type_annotation, &value)?;
+                }
                 bindings.insert(name.clone(), value);
             }
             AstStmt::Expr(expr) => {
@@ -137,6 +149,42 @@ fn resolve_main_output(
     })
 }
 
+fn validate_type_annotation(
+    source_path: &Utf8Path,
+    source: &str,
+    annotation: &crate::ast::AstTypeAnnotation,
+    value: &ConstValue,
+) -> miette::Result<()> {
+    let primitive = parse_primitive_type(&annotation.text).map_err(|error| {
+        to_source_diagnostic(
+            source_path,
+            source,
+            annotation.span,
+            "unsupported type annotation",
+            error.message,
+            error.help,
+        )
+    })?;
+
+    if value.matches_primitive(primitive) {
+        return Ok(());
+    }
+
+    Err(to_source_diagnostic(
+        source_path,
+        source,
+        annotation.span,
+        "type annotation does not match value",
+        format!(
+            "expected `{}`, but this binding has type `{}`",
+            primitive.name(),
+            value.type_name()
+        ),
+        Some("change the annotation or the value"),
+    )
+    .into())
+}
+
 fn output_expr(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option<TypedExpr> {
     let AstExpr::Call {
         callee,
@@ -167,266 +215,5 @@ fn output_expr(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option
             Some(TypedExpr::Println { message })
         }
         _ => None,
-    }
-}
-
-#[derive(Debug, Clone)]
-enum ConstValue {
-    Bool(bool),
-    Char(char),
-    Float(String),
-    Int(i64),
-    String(String),
-    Unit,
-    Tuple(Vec<ConstValue>),
-    List(Vec<ConstValue>),
-    Record {
-        path: String,
-        fields: Vec<(String, ConstValue)>,
-    },
-}
-
-impl ConstValue {
-    fn to_print_string(&self) -> String {
-        match self {
-            ConstValue::Bool(true) => "true".to_owned(),
-            ConstValue::Bool(false) => "false".to_owned(),
-            ConstValue::Char(value) => value.to_string(),
-            ConstValue::Float(value) => value.clone(),
-            ConstValue::Int(value) => value.to_string(),
-            ConstValue::String(value) => value.clone(),
-            ConstValue::Unit => "()".to_owned(),
-            ConstValue::Tuple(items) => {
-                let rendered = items
-                    .iter()
-                    .map(ConstValue::to_print_string)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("({rendered})")
-            }
-            ConstValue::List(items) => {
-                let rendered = items
-                    .iter()
-                    .map(ConstValue::to_print_string)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("[{rendered}]")
-            }
-            ConstValue::Record { path, fields } => {
-                let rendered = fields
-                    .iter()
-                    .map(|(name, value)| format!("{name}: {}", value.to_print_string()))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{path} {{ {rendered} }}")
-            }
-        }
-    }
-}
-
-fn resolve_const_value(
-    expr: &AstExpr,
-    bindings: &HashMap<String, ConstValue>,
-) -> Option<ConstValue> {
-    match expr {
-        AstExpr::Add { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs + rhs)),
-            _ => None,
-        },
-        AstExpr::Sub { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs - rhs)),
-            _ => None,
-        },
-        AstExpr::Mul { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs * rhs)),
-            _ => None,
-        },
-        AstExpr::Div { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Int(_), ConstValue::Int(0)) => None,
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs / rhs)),
-            _ => None,
-        },
-        AstExpr::Mod { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Int(_), ConstValue::Int(0)) => None,
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs % rhs)),
-            _ => None,
-        },
-        AstExpr::Neg { expr, span: _ } => match resolve_const_value(expr, bindings)? {
-            ConstValue::Float(value) => Some(ConstValue::Float(format!("-{value}"))),
-            ConstValue::Int(value) => Some(ConstValue::Int(-value)),
-            _ => None,
-        },
-        AstExpr::Eq { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
-            (ConstValue::Char(lhs), ConstValue::Char(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
-            (ConstValue::Float(lhs), ConstValue::Float(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
-            (ConstValue::String(lhs), ConstValue::String(rhs)) => {
-                Some(ConstValue::Bool(lhs == rhs))
-            }
-            _ => None,
-        },
-        AstExpr::Lt { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Bool(lhs < rhs)),
-            _ => None,
-        },
-        AstExpr::And { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs && rhs)),
-            _ => None,
-        },
-        AstExpr::Or { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
-        ) {
-            (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs || rhs)),
-            _ => None,
-        },
-        AstExpr::Not { expr, span: _ } => match resolve_const_value(expr, bindings)? {
-            ConstValue::Bool(value) => Some(ConstValue::Bool(!value)),
-            _ => None,
-        },
-        AstExpr::If {
-            condition,
-            then_branch,
-            else_branch,
-            span: _,
-        } => match resolve_const_value(condition, bindings)? {
-            ConstValue::Bool(true) => resolve_const_value(then_branch, bindings),
-            ConstValue::Bool(false) => resolve_const_value(else_branch, bindings),
-            _ => None,
-        },
-        AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
-        AstExpr::Char { value, span: _ } => Some(ConstValue::Char(*value)),
-        AstExpr::Unit { span: _ } => Some(ConstValue::Unit),
-        AstExpr::Tuple { items, span: _ } => items
-            .iter()
-            .map(|item| resolve_const_value(item, bindings))
-            .collect::<Option<Vec<_>>>()
-            .map(ConstValue::Tuple),
-        AstExpr::List { items, span: _ } => items
-            .iter()
-            .map(|item| resolve_const_value(item, bindings))
-            .collect::<Option<Vec<_>>>()
-            .map(ConstValue::List),
-        AstExpr::Record {
-            path,
-            fields,
-            span: _,
-        } => fields
-            .iter()
-            .map(|(name, value)| Some((name.clone(), resolve_const_value(value, bindings)?)))
-            .collect::<Option<Vec<_>>>()
-            .map(|fields| ConstValue::Record {
-                path: path.segments.join("."),
-                fields,
-            }),
-        AstExpr::Float { value, span: _ } => Some(ConstValue::Float(value.clone())),
-        AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
-        AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
-        AstExpr::Path { path, span: _ } if path.segments.len() == 1 => {
-            bindings.get(&path.segments[0]).cloned()
-        }
-        AstExpr::Path { .. } | AstExpr::Call { .. } => None,
-    }
-}
-
-fn expr_span(expr: &AstExpr) -> TextSpan {
-    match expr {
-        AstExpr::Add {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Sub {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Mul {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Div {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Mod {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Neg { expr: _, span }
-        | AstExpr::Eq {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Lt {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::And {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Or {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Not { expr: _, span }
-        | AstExpr::If {
-            condition: _,
-            then_branch: _,
-            else_branch: _,
-            span,
-        } => *span,
-        AstExpr::Call {
-            callee: _,
-            args: _,
-            span,
-        } => *span,
-        AstExpr::Bool { value: _, span }
-        | AstExpr::Char { value: _, span }
-        | AstExpr::Unit { span }
-        | AstExpr::Tuple { items: _, span }
-        | AstExpr::List { items: _, span }
-        | AstExpr::Record {
-            path: _,
-            fields: _,
-            span,
-        }
-        | AstExpr::Float { value: _, span }
-        | AstExpr::Int { value: _, span }
-        | AstExpr::Path { path: _, span }
-        | AstExpr::String { value: _, span } => *span,
     }
 }

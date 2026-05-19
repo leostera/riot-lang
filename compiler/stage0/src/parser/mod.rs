@@ -1,8 +1,18 @@
 use camino::Utf8Path;
 
-use crate::ast::{AstBlock, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan};
+use crate::ast::{
+    AstBlock, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, AstTypeAnnotation, TextSpan,
+};
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
+
+mod error;
+mod literal;
+mod span;
+
+use error::ParseError;
+use literal::{parse_char_literal, parse_int_literal};
+use span::expr_span;
 
 pub(crate) fn parse_source(source_path: &Utf8Path, source: &str) -> miette::Result<AstProgram> {
     let tokens = lex(source).map_err(|error| {
@@ -35,13 +45,6 @@ struct Parser<'src> {
     source: &'src str,
     tokens: Vec<Token>,
     cursor: usize,
-}
-
-#[derive(Debug, Clone)]
-struct ParseError {
-    span: TextSpan,
-    message: String,
-    help: Option<&'static str>,
 }
 
 impl<'src> Parser<'src> {
@@ -122,9 +125,11 @@ impl<'src> Parser<'src> {
         let start = self.expect(TokenKind::Let, "expected `let`")?;
         let (name, name_span) = self.expect_lower_ident()?;
 
-        if self.match_kind(TokenKind::Colon).is_some() {
-            self.skip_type_annotation()?;
-        }
+        let type_annotation = if self.match_kind(TokenKind::Colon).is_some() {
+            Some(self.parse_type_annotation()?)
+        } else {
+            None
+        };
 
         self.expect(TokenKind::Eq, "expected `=` in let binding")?;
         let value = self.parse_expr()?;
@@ -133,12 +138,14 @@ impl<'src> Parser<'src> {
         Ok(AstStmt::Let {
             name,
             name_span,
+            type_annotation,
             value,
             span: start.span.join(end.span),
         })
     }
 
-    fn skip_type_annotation(&mut self) -> Result<(), ParseError> {
+    fn parse_type_annotation(&mut self) -> Result<AstTypeAnnotation, ParseError> {
+        let start = self.current().span;
         while !self.at(TokenKind::Eq) {
             if self.at(TokenKind::Semicolon)
                 || self.at(TokenKind::RBrace)
@@ -148,7 +155,17 @@ impl<'src> Parser<'src> {
             }
             self.bump();
         }
-        Ok(())
+
+        let end = self.previous_span();
+        if start.start >= end.end {
+            return Err(self.error_at_current("expected type annotation after `:`", None));
+        }
+
+        let span = TextSpan::new(start.start, end.end);
+        Ok(AstTypeAnnotation {
+            text: self.text(span).trim().to_owned(),
+            span,
+        })
     }
 
     fn parse_expr(&mut self) -> Result<AstExpr, ParseError> {
@@ -652,130 +669,5 @@ impl<'src> Parser<'src> {
             message: message.into(),
             help,
         }
-    }
-}
-
-fn parse_int_literal(raw: &str) -> Result<i64, String> {
-    let normalized = raw.replace('_', "");
-    if let Some(hex) = normalized
-        .strip_prefix("0x")
-        .or_else(|| normalized.strip_prefix("0X"))
-    {
-        i64::from_str_radix(hex, 16)
-            .map_err(|error| format!("invalid hex integer literal: {error}"))
-    } else if let Some(binary) = normalized
-        .strip_prefix("0b")
-        .or_else(|| normalized.strip_prefix("0B"))
-    {
-        i64::from_str_radix(binary, 2)
-            .map_err(|error| format!("invalid binary integer literal: {error}"))
-    } else {
-        normalized
-            .parse::<i64>()
-            .map_err(|error| format!("invalid integer literal: {error}"))
-    }
-}
-
-fn parse_char_literal(raw: &str) -> Result<char, String> {
-    let body = raw
-        .strip_prefix('\'')
-        .and_then(|body| body.strip_suffix('\''))
-        .ok_or_else(|| "invalid character literal".to_owned())?;
-
-    if let Some(escaped) = body.strip_prefix('\\') {
-        match escaped {
-            "\\" => Ok('\\'),
-            "'" => Ok('\''),
-            "n" => Ok('\n'),
-            "r" => Ok('\r'),
-            "t" => Ok('\t'),
-            other => Err(format!("unsupported character escape: \\{other}")),
-        }
-    } else {
-        let mut chars = body.chars();
-        let Some(value) = chars.next() else {
-            return Err("empty character literal".to_owned());
-        };
-        if chars.next().is_some() {
-            return Err("character literal contains more than one character".to_owned());
-        }
-        Ok(value)
-    }
-}
-
-fn expr_span(expr: &AstExpr) -> TextSpan {
-    match expr {
-        AstExpr::Add {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Sub {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Mul {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Div {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Mod {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Neg { expr: _, span }
-        | AstExpr::Eq {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Lt {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::And {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Or {
-            lhs: _,
-            rhs: _,
-            span,
-        }
-        | AstExpr::Not { expr: _, span }
-        | AstExpr::If {
-            condition: _,
-            then_branch: _,
-            else_branch: _,
-            span,
-        }
-        | AstExpr::Call {
-            callee: _,
-            args: _,
-            span,
-        }
-        | AstExpr::Bool { value: _, span }
-        | AstExpr::Char { value: _, span }
-        | AstExpr::Unit { span }
-        | AstExpr::Tuple { items: _, span }
-        | AstExpr::List { items: _, span }
-        | AstExpr::Record {
-            path: _,
-            fields: _,
-            span,
-        }
-        | AstExpr::Float { value: _, span }
-        | AstExpr::Int { value: _, span }
-        | AstExpr::Path { path: _, span }
-        | AstExpr::String { value: _, span } => *span,
     }
 }

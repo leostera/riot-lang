@@ -42,10 +42,17 @@ pub(crate) enum AstStmt {
     Let {
         name: String,
         name_span: TextSpan,
+        type_annotation: Option<AstTypeAnnotation>,
         value: AstExpr,
         span: TextSpan,
     },
     Expr(AstExpr),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstTypeAnnotation {
+    pub(crate) text: String,
+    pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]

@@ -1,24 +1,35 @@
 (*
-  RiotML EBNF v0.1
+  RiotML EBNF v0.7
 
   Surface grammar for a nominal, actor-oriented, eager, impure ML language.
 
-  Notes:
-  - This is syntax-only. Name resolution, exhaustiveness, visibility, nominal typing,
-    constant-expression validation, and actor/mailbox typing are intentionally outside
-    this grammar.
+  Parser-contract notes:
+  - This is syntax-only. Name resolution, nominal typing, exhaustiveness,
+    visibility, constant-expression validation, GADT checking, receive/mailbox
+    typing, and Result/Option propagation for `?` are outside this grammar.
+  - Declarations are keyword-delimited and do not require semicolons.
   - Semicolons are used only for statements inside expression blocks.
-  - Top-level/module declarations are keyword-delimited and do not require semicolons.
-  - Values/functions/parameters are lowercase. Modules/types/constructors are uppercase.
+  - Blocks are expressions; their value is the final expression when present.
+  - Values/functions/parameters/fields are lowercase.
+  - Modules/types/constructors are uppercase.
+  - Primitive type names such as string/u8/f32 are lowercase built-ins.
+  - Placeholder-lambda shorthand is intentionally not part of v0.7.
 *)
 
 program
   ::= item* EOF ;
 
 item
+  ::= type_item
+   |  non_type_item
+   ;
+
+type_item
+  ::= type_visibility? type_decl ;
+
+non_type_item
   ::= visibility? use_decl
    |  visibility? let_decl
-   |  visibility? type_decl
    |  visibility? fn_decl
    |  visibility? module_decl
    |  visibility? module_type_decl
@@ -27,6 +38,17 @@ item
 
 visibility
   ::= "pub" ;
+
+type_visibility
+  ::= "pub" type_export_mode? ;
+
+type_export_mode
+  ::= "(" type_export_kind ")" ;
+
+type_export_kind
+  ::= "view"
+   |  "opaque"
+   ;
 
 
 (* -------------------------------------------------------------------------- *)
@@ -39,37 +61,75 @@ ident
    ;
 
 lower_ident
-  ::= LOWER_START IDENT_CONT* ;
+  ::= LOWER_ALPHA IDENT_CONT*
+   |  "_" IDENT_CONT+
+   ;
 
 upper_ident
-  ::= UPPER_START IDENT_CONT* ;
+  ::= UPPER_ALPHA IDENT_CONT* ;
 
-LOWER_START
+wildcard
+  ::= "_" ;
+
+LOWER_ALPHA
   ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
    |  "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
-   |  "u" | "v" | "w" | "x" | "y" | "z" | "_" ;
+   |  "u" | "v" | "w" | "x" | "y" | "z" ;
 
-UPPER_START
+UPPER_ALPHA
   ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
    |  "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
    |  "U" | "V" | "W" | "X" | "Y" | "Z" ;
 
 IDENT_CONT
-  ::= LOWER_START | UPPER_START | DIGIT | "'" ;
+  ::= LOWER_ALPHA | UPPER_ALPHA | DIGIT | "_" | "'" ;
 
 DIGIT
   ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 
-path
-  ::= ident ("." ident)* ;
+
+(* -------------------------------------------------------------------------- *)
+(* Case-restricted paths and references                                       *)
+(* -------------------------------------------------------------------------- *)
 
 upper_path
+  ::= upper_ident ("." upper_ident)* ;
+
+module_path
+  ::= upper_path ;
+
+type_path
+  ::= upper_path ;
+
+constructor_path
+  ::= upper_path ;
+
+qualified_value_ref
+  ::= module_path "." lower_ident ;
+
+constructor_ref
+  ::= constructor_path ;
+
+value_ref
+  ::= lower_ident
+   |  qualified_value_ref
+   |  constructor_ref
+   ;
+
+pin_ref
+  ::= lower_ident
+   |  qualified_value_ref
+   |  constructor_ref
+   ;
+
+use_path
   ::= upper_ident ("." ident)* ;
 
-(* Whitespace and comments are skipped between tokens.
-   // line comment
-   /// doc comment, attached to the following declaration by later tooling
-   /* block comment */
+(* Dotted expression policy:
+   - foo.bar parses as value `foo` plus field/access `bar`.
+   - A.B.foo parses as a qualified value reference.
+   - A.B.foo.bar parses as qualified value `A.B.foo` plus field/access `bar`.
+   - A.B.C parses as an uppercase constructor/type/module-shaped path.
 *)
 
 
@@ -80,19 +140,8 @@ upper_path
 use_decl
   ::= "use" use_path use_star? ;
 
-use_path
-  ::= upper_ident ("." ident)* ;
-
 use_star
   ::= "." "*" ;
-
-(* Examples:
-     use A
-     use A.*
-     use A.B
-     use A.B.*
-     use A.B.foo
-*)
 
 
 (* -------------------------------------------------------------------------- *)
@@ -100,22 +149,21 @@ use_star
 (* -------------------------------------------------------------------------- *)
 
 module_decl
-  ::= "mod" upper_ident module_params? module_body ;
+  ::= "mod" upper_ident module_body
+   |  "mod" upper_ident "=" module_application
+   ;
 
 module_body
   ::= "{" item* "}" ;
 
-module_params
-  ::= "(" module_param_list? ")" ;
+module_application
+  ::= upper_path "(" module_arg_list? ")" ;
 
-module_param_list
-  ::= module_param ("," module_param)* ","? ;
-
-module_param
-  ::= upper_ident ":" module_type_expr ;
+module_arg_list
+  ::= upper_path ("," upper_path)* ","? ;
 
 module_type_expr
-  ::= path ;
+  ::= upper_path ;
 
 module_type_decl
   ::= "mod" "type" upper_ident module_type_body ;
@@ -124,26 +172,35 @@ module_type_body
   ::= "{" module_spec* "}" ;
 
 module_spec
-  ::= use_decl
-   |  type_decl
-   |  fn_spec
-   |  let_spec
-   |  module_decl
-   |  module_type_decl
-   |  module_fn_spec
+  ::= type_visibility? type_decl
+   |  visibility? use_decl
+   |  visibility? fn_spec
+   |  visibility? let_spec
+   |  visibility? module_spec_decl
+   |  visibility? module_type_decl
+   |  visibility? module_fn_spec
    ;
+
+module_spec_decl
+  ::= "mod" upper_ident ":" module_type_expr ;
 
 fn_spec
   ::= "fn" lower_ident "(" param_list? ")" return_type? ;
 
 let_spec
-  ::= "let" lower_ident ":" type_expr ;
+  ::= "let" lower_ident type_annot ;
 
 module_fn_spec
   ::= "mod" "fn" upper_ident "(" module_param_list? ")" module_return? ;
 
 module_fn_decl
   ::= "mod" "fn" upper_ident "(" module_param_list? ")" module_return? module_body ;
+
+module_param_list
+  ::= module_param ("," module_param)* ","? ;
+
+module_param
+  ::= upper_ident ":" module_type_expr ;
 
 module_return
   ::= "->" module_type_expr ;
@@ -174,6 +231,9 @@ param_list
 param
   ::= lower_ident type_annot? ;
 
+type_annot
+  ::= ":" type_expr ;
+
 return_type
   ::= "->" type_expr ;
 
@@ -195,7 +255,10 @@ let_stmt
   ::= let_binding ";" ;
 
 assign_stmt
-  ::= path "=" expr ";" ;
+  ::= assign_target "=" expr ";" ;
+
+assign_target
+  ::= lower_ident ;
 
 expr_stmt
   ::= expr ";" ;
@@ -243,22 +306,24 @@ postfix_expr
 postfix_suffix
   ::= call_suffix
    |  field_suffix
+   |  try_suffix
    ;
 
 call_suffix
   ::= "(" arg_list? ")" ;
 
 field_suffix
-  ::= "." ident ;
+  ::= "." lower_ident ;
+
+try_suffix
+  ::= "?" ;
 
 primary_expr
   ::= literal
-   |  placeholder
    |  record_expr
-   |  path
+   |  value_ref
    |  block
    |  lambda_expr
-   |  placeholder_lambda
    |  if_expr
    |  match_expr
    |  receive_expr
@@ -278,11 +343,12 @@ arg
    |  expr
    ;
 
-placeholder_lambda
-  ::= "&" expr ;
+(* Pipeline inserts the left-hand expression as the final argument:
+     x |> foo(a: 1)    means    foo(a: 1, x)
 
-placeholder
-  ::= "&" int_lit ;
+   Rust-like `?` is a postfix syntax form. Its Result/Option behavior is not
+   specified by this grammar.
+*)
 
 
 (* -------------------------------------------------------------------------- *)
@@ -408,8 +474,47 @@ HEX_DIGIT
    |  "a" | "b" | "c" | "d" | "e" | "f"
    |  "A" | "B" | "C" | "D" | "E" | "F" ;
 
-(* char_content, string_content, bytes_content, and multiline_* are lexical
-   productions handled by the lexer, including escapes. *)
+char_content
+  ::= escape_sequence
+   |  CHAR_SCALAR
+   ;
+
+string_content
+  ::= escape_sequence
+   |  STRING_SCALAR
+   ;
+
+multiline_string_content
+  ::= escape_sequence
+   |  MULTILINE_STRING_SCALAR
+   ;
+
+bytes_content
+  ::= byte_escape_sequence
+   |  BYTE_SCALAR
+   ;
+
+multiline_bytes_content
+  ::= byte_escape_sequence
+   |  MULTILINE_BYTE_SCALAR
+   ;
+
+escape_sequence
+  ::= "\\" ESCAPE_CODE ;
+
+byte_escape_sequence
+  ::= "\\" ESCAPE_CODE ;
+
+ESCAPE_CODE
+  ::= "n" | "r" | "t" | "\\" | "\"" | "'"
+   |  "x" HEX_DIGIT HEX_DIGIT
+   ;
+
+CHAR_SCALAR ::= ;
+STRING_SCALAR ::= ;
+MULTILINE_STRING_SCALAR ::= ;
+BYTE_SCALAR ::= ;
+MULTILINE_BYTE_SCALAR ::= ;
 
 
 (* -------------------------------------------------------------------------- *)
@@ -417,7 +522,7 @@ HEX_DIGIT
 (* -------------------------------------------------------------------------- *)
 
 record_expr
-  ::= path "{" record_expr_fields? "}" ;
+  ::= constructor_ref "{" record_expr_fields? "}" ;
 
 record_expr_fields
   ::= record_expr_field ("," record_expr_field)* ","? ;
@@ -444,10 +549,10 @@ list_expr_item
    ;
 
 array_expr
-  ::= "[" expr ";" expr_list? "]" ;
+  ::= "#" "[" expr_list? "]" ;
 
 tuple_expr
-  ::= "(" expr "," expr_list? ")" ;
+  ::= "(" expr "," expr ("," expr)* ","? ")" ;
 
 expr_list
   ::= expr ("," expr)* ","? ;
@@ -464,12 +569,11 @@ range_pattern
   ::= primary_pattern (".." primary_pattern)? ;
 
 primary_pattern
-  ::= "_"
+  ::= wildcard
    |  literal
    |  lower_ident
    |  pin_pattern
    |  constructor_pattern
-   |  record_pattern
    |  tuple_pattern
    |  list_pattern
    |  segment_pattern
@@ -477,13 +581,15 @@ primary_pattern
    ;
 
 pin_pattern
-  ::= "^" path ;
+  ::= "^" pin_ref ;
 
 constructor_pattern
-  ::= path "(" pattern_list? ")" ;
+  ::= constructor_ref ctor_pattern_payload? ;
 
-record_pattern
-  ::= path "{" record_pattern_fields? "}" ;
+ctor_pattern_payload
+  ::= "(" pattern_list? ")"
+   |  "{" record_pattern_fields? "}"
+   ;
 
 record_pattern_fields
   ::= record_pattern_field ("," record_pattern_field)* ","? ;
@@ -494,7 +600,7 @@ record_pattern_field
    ;
 
 tuple_pattern
-  ::= "(" pattern "," pattern_list? ")" ;
+  ::= "(" pattern "," pattern ("," pattern)* ","? ")" ;
 
 list_pattern
   ::= "[" list_pattern_items? "]" ;
@@ -510,50 +616,51 @@ list_pattern_item
 pattern_list
   ::= pattern ("," pattern)* ","? ;
 
-(* Range patterns are inclusive and are not expressions in v0.1. *)
-
 
 (* -------------------------------------------------------------------------- *)
 (* Segment patterns                                                           *)
 (* -------------------------------------------------------------------------- *)
 
 segment_pattern
-  ::= "<<" segment_list? ">>" ;
+  ::= "<<" segment_sequence? ">>" ;
 
-segment_list
-  ::= segment ("," segment)* ","? ;
-
-segment
-  ::= string_lit
-   |  bytes_lit
-   |  segment_capture
-   |  segment_capture "::" decoder
-   |  segment_pin
-   |  segment_pin "::" decoder
+segment_sequence
+  ::= segment_fixed_sequence
+   |  segment_tail ","?
    ;
 
+segment_fixed_sequence
+  ::= segment_fixed ("," segment_fixed)* ("," segment_tail)? ","? ;
+
+segment_fixed
+  ::= string_lit
+   |  bytes_lit
+   |  segment_capture segment_decoder
+   |  segment_pin segment_decoder?
+   ;
+
+segment_tail
+  ::= segment_capture ;
+
 segment_capture
-  ::= pattern ;
+  ::= lower_ident ;
 
 segment_pin
-  ::= "^" path ;
+  ::= "^" pin_ref ;
+
+segment_decoder
+  ::= "::" decoder ;
 
 decoder
-  ::= path decoder_args? ;
+  ::= decoder_ref decoder_args? ;
+
+decoder_ref
+  ::= lower_ident
+   |  qualified_value_ref
+   ;
 
 decoder_args
   ::= "(" arg_list? ")" ;
-
-(* Examples:
-     << name >>                          captures the whole input
-     << "GET ", path >>                  matches a prefix, captures the rest
-     << first::byte, rest >>             decodes one byte/u8, captures rest
-     << len::u8, payload::var(len) >>    length-prefixed payload
-     << ^prefix, rest >>                 pinned prefix
-     << ^magic::u32be, rest >>           decode then compare with pinned value
-
-   Inside segment patterns, :: means decoder annotation.
-*)
 
 
 (* -------------------------------------------------------------------------- *)
@@ -580,21 +687,16 @@ type_decl_body
    ;
 
 type_alias_body
-  ::= "=" exposure? type_expr ;
+  ::= "=" type_expr ;
 
 record_type_body
-  ::= "=" exposure? "{" record_type_fields? "}" ;
+  ::= "=" "{" record_type_fields? "}" ;
 
 variant_type_body
-  ::= "=" exposure? variant_ctor_list ;
+  ::= "=" variant_ctor_list ;
 
 newtype_body
-  ::= "(" type_expr_list? ")" ;
-
-exposure
-  ::= "sealed"
-   |  "opaque"
-   ;
+  ::= "(" type_expr ("," type_expr)* ","? ")" ;
 
 record_type_fields
   ::= record_type_field ("," record_type_field)* ","? ;
@@ -626,22 +728,37 @@ type_expr
 
 fn_type
   ::= fn_type_arg "->" fn_type
-   |  app_type
+   |  non_arrow_type
    ;
 
 fn_type_arg
-  ::= lower_ident ":" type_expr
-   |  app_type
+  ::= lower_ident ":" non_arrow_type
+   |  non_arrow_type
    ;
 
-app_type
-  ::= type_atom type_args? ;
-
-type_atom
-  ::= path
+non_arrow_type
+  ::= type_app
+   |  array_type
+   |  tuple_type
    |  type_var
    |  "unit"
    |  "(" type_expr ")"
+   ;
+
+type_app
+  ::= primitive_type
+   |  type_path type_args?
+   ;
+
+primitive_type
+  ::= "bool"
+   |  "char"
+   |  "string"
+   |  "bytes"
+   |  "byte"
+   |  "i8" | "i16" | "i32" | "i64" | "i128"
+   |  "u8" | "u16" | "u32" | "u64" | "u128"
+   |  "f16" | "f32" | "f64"
    ;
 
 type_args
@@ -655,37 +772,26 @@ type_arg
    |  int_lit
    ;
 
+array_type
+  ::= "[" type_expr ";" type_size "]" ;
+
+type_size
+  ::= int_lit ;
+
+tuple_type
+  ::= "(" type_expr "," type_expr ("," type_expr)* ","? ")" ;
+
 type_expr_list
   ::= type_expr ("," type_expr)* ","? ;
 
-(* Examples:
-     int
-     string
-     bytes
-     byte
-     u8
-     u16
-     u32
-     u64
-     u128
-     Pid<Command>
-     array<3, int>
-     Option<string>
-     Result<string, Error>
-     int -> int -> int
-     x:int -> y:int -> int
-*)
-
 
 (* -------------------------------------------------------------------------- *)
-(* Reserved words                                                             *)
+(* Reserved and contextual words                                              *)
 (* -------------------------------------------------------------------------- *)
 
 reserved_word
   ::= "pub"
    |  "type"
-   |  "sealed"
-   |  "opaque"
    |  "mod"
    |  "fn"
    |  "let"
@@ -702,4 +808,17 @@ reserved_word
    |  "true"
    |  "false"
    |  "unit"
+   |  "bool"
+   |  "char"
+   |  "string"
+   |  "bytes"
+   |  "byte"
+   |  "i8" | "i16" | "i32" | "i64" | "i128"
+   |  "u8" | "u16" | "u32" | "u64" | "u128"
+   |  "f16" | "f32" | "f64"
+   ;
+
+contextual_word
+  ::= "view"
+   |  "opaque"
    ;
