@@ -1,8 +1,14 @@
 use std::collections::HashMap;
 
-use crate::ast::AstExpr;
+use crate::ast::{AstBlock, AstExpr};
 
 use super::types::PrimitiveType;
+
+#[derive(Debug, Clone)]
+pub(super) struct ConstFunction {
+    pub(super) params: Vec<String>,
+    pub(super) body: AstBlock,
+}
 
 #[derive(Debug, Clone)]
 pub(super) enum ConstValue {
@@ -116,53 +122,54 @@ impl ConstValue {
 pub(super) fn resolve_const_value(
     expr: &AstExpr,
     bindings: &HashMap<String, ConstValue>,
+    functions: &HashMap<String, ConstFunction>,
 ) -> Option<ConstValue> {
     match expr {
         AstExpr::Add { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs + rhs)),
             _ => None,
         },
         AstExpr::Sub { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs - rhs)),
             _ => None,
         },
         AstExpr::Mul { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs * rhs)),
             _ => None,
         },
         AstExpr::Div { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Int(_), ConstValue::Int(0)) => None,
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs / rhs)),
             _ => None,
         },
         AstExpr::Mod { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Int(_), ConstValue::Int(0)) => None,
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Int(lhs % rhs)),
             _ => None,
         },
-        AstExpr::Neg { expr, span: _ } => match resolve_const_value(expr, bindings)? {
+        AstExpr::Neg { expr, span: _ } => match resolve_const_value(expr, bindings, functions)? {
             ConstValue::Float(value) => Some(ConstValue::Float(format!("-{value}"))),
             ConstValue::Int(value) => Some(ConstValue::Int(-value)),
             _ => None,
         },
         AstExpr::Eq { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
             (ConstValue::Char(lhs), ConstValue::Char(rhs)) => Some(ConstValue::Bool(lhs == rhs)),
@@ -174,27 +181,27 @@ pub(super) fn resolve_const_value(
             _ => None,
         },
         AstExpr::Lt { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Int(lhs), ConstValue::Int(rhs)) => Some(ConstValue::Bool(lhs < rhs)),
             _ => None,
         },
         AstExpr::And { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs && rhs)),
             _ => None,
         },
         AstExpr::Or { lhs, rhs, span: _ } => match (
-            resolve_const_value(lhs, bindings)?,
-            resolve_const_value(rhs, bindings)?,
+            resolve_const_value(lhs, bindings, functions)?,
+            resolve_const_value(rhs, bindings, functions)?,
         ) {
             (ConstValue::Bool(lhs), ConstValue::Bool(rhs)) => Some(ConstValue::Bool(lhs || rhs)),
             _ => None,
         },
-        AstExpr::Not { expr, span: _ } => match resolve_const_value(expr, bindings)? {
+        AstExpr::Not { expr, span: _ } => match resolve_const_value(expr, bindings, functions)? {
             ConstValue::Bool(value) => Some(ConstValue::Bool(!value)),
             _ => None,
         },
@@ -203,9 +210,9 @@ pub(super) fn resolve_const_value(
             then_branch,
             else_branch,
             span: _,
-        } => match resolve_const_value(condition, bindings)? {
-            ConstValue::Bool(true) => resolve_const_value(then_branch, bindings),
-            ConstValue::Bool(false) => resolve_const_value(else_branch, bindings),
+        } => match resolve_const_value(condition, bindings, functions)? {
+            ConstValue::Bool(true) => resolve_const_value(then_branch, bindings, functions),
+            ConstValue::Bool(false) => resolve_const_value(else_branch, bindings, functions),
             _ => None,
         },
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
@@ -213,12 +220,12 @@ pub(super) fn resolve_const_value(
         AstExpr::Unit { span: _ } => Some(ConstValue::Unit),
         AstExpr::Tuple { items, span: _ } => items
             .iter()
-            .map(|item| resolve_const_value(item, bindings))
+            .map(|item| resolve_const_value(item, bindings, functions))
             .collect::<Option<Vec<_>>>()
             .map(ConstValue::Tuple),
         AstExpr::List { items, span: _ } => items
             .iter()
-            .map(|item| resolve_const_value(item, bindings))
+            .map(|item| resolve_const_value(item, bindings, functions))
             .collect::<Option<Vec<_>>>()
             .map(ConstValue::List),
         AstExpr::Record {
@@ -227,7 +234,7 @@ pub(super) fn resolve_const_value(
             span: _,
         } => fields
             .iter()
-            .map(|(name, value)| Some((name.clone(), resolve_const_value(value, bindings)?)))
+            .map(|(name, value)| Some((name.clone(), resolve_const_value(value, bindings, functions)?)))
             .collect::<Option<Vec<_>>>()
             .map(|fields| ConstValue::Record {
                 path: path.segments.join("."),
@@ -237,7 +244,11 @@ pub(super) fn resolve_const_value(
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
         AstExpr::Path { path, span: _ } => resolve_path_value(path.segments.as_slice(), bindings),
-        AstExpr::Call { .. } => None,
+        AstExpr::Call {
+            callee,
+            args,
+            span: _,
+        } => resolve_call_value(callee.segments.as_slice(), args.as_slice(), bindings, functions),
     }
 }
 
@@ -258,4 +269,28 @@ fn resolve_path_value(
     }
 
     Some(value)
+}
+
+fn resolve_call_value(
+    callee: &[String],
+    args: &[AstExpr],
+    bindings: &HashMap<String, ConstValue>,
+    functions: &HashMap<String, ConstFunction>,
+) -> Option<ConstValue> {
+    let [name] = callee else {
+        return None;
+    };
+    let function = functions.get(name)?;
+    if function.params.len() != args.len() || !function.body.statements.is_empty() {
+        return None;
+    }
+
+    let mut call_bindings = HashMap::new();
+    for (param, arg) in function.params.iter().zip(args) {
+        let value = resolve_const_value(arg, bindings, functions)?;
+        call_bindings.insert(param.clone(), value);
+    }
+
+    let tail = function.body.tail.as_ref()?;
+    resolve_const_value(tail, &call_bindings, functions)
 }

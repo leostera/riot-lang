@@ -26,6 +26,7 @@ pub(crate) struct AstProgram {
 pub(crate) struct AstFnDecl {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
+    pub(crate) params: Vec<String>,
     pub(crate) body: AstBlock,
     pub(crate) span: TextSpan,
 }

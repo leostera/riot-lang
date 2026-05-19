@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/entrypoints/duplicate-main.ml
@@ -12,7 +11,7 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × expected exactly one top-level function
+  × duplicate main function
    ╭─[tests/fixtures/diagnostics/entrypoints/duplicate-main.ml:5:1]
  4 │     
  5 │ ╭─▶ fn main() {
@@ -20,4 +19,4 @@ Error: stage0::source
  7 │ ├─▶ }
    · ╰──── stage0 requires a single main function per file
    ╰────
-  help: keep only: fn main() { dbg("hello world") }
+  help: keep only one `fn main() { ... }`

@@ -6,7 +6,7 @@ mod const_eval;
 mod span;
 mod types;
 
-use const_eval::{ConstValue, resolve_const_value};
+use const_eval::{ConstFunction, ConstValue, resolve_const_value};
 use span::expr_span;
 use types::parse_primitive_type;
 
@@ -19,26 +19,48 @@ pub(crate) fn typecheck(
     source: &str,
     program: AstProgram,
 ) -> miette::Result<TypedProgram> {
-    if program.decls.len() != 1 {
+    let Some(decl) = program.decls.iter().find(|decl| decl.name == "main") else {
         let span = program
             .decls
-            .get(1)
+            .first()
             .map(|decl| decl.span)
-            .or_else(|| program.decls.first().map(|decl| decl.span))
             .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
-
         return Err(to_source_diagnostic(
             source_path,
             source,
             span,
-            "expected exactly one top-level function",
-            "stage0 requires a single main function per file",
-            Some("keep only: fn main() { dbg(\"hello world\") }"),
+            "missing main function",
+            "stage0 requires one entrypoint named main",
+            Some("add: fn main() { dbg(\"hello world\") }"),
+        )
+        .into());
+    };
+
+    if decl.params.len() != 0 {
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            decl.name_span,
+            "main function cannot have parameters",
+            "stage0 requires main to have no parameters",
+            Some("try: fn main() { dbg(\"hello world\") }"),
         )
         .into());
     }
 
-    let decl = &program.decls[0];
+    let duplicate_main = program.decls.iter().filter(|decl| decl.name == "main").nth(1);
+    if let Some(duplicate_main) = duplicate_main {
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            duplicate_main.span,
+            "duplicate main function",
+            "stage0 requires a single main function per file",
+            Some("keep only one `fn main() { ... }`"),
+        )
+        .into());
+    }
+
     if decl.name != "main" {
         return Err(to_source_diagnostic(
             source_path,
@@ -51,17 +73,36 @@ pub(crate) fn typecheck(
         .into());
     }
 
-    let body = resolve_main_output(source_path, source, &decl.body)?;
+    let functions = const_functions(&program);
+    let body = resolve_main_output(source_path, source, &decl.body, &functions)?;
 
     Ok(TypedProgram {
         main: TypedFunction { body },
     })
 }
 
+fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
+    program
+        .decls
+        .iter()
+        .filter(|decl| decl.name != "main")
+        .map(|decl| {
+            (
+                decl.name.clone(),
+                ConstFunction {
+                    params: decl.params.clone(),
+                    body: decl.body.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
 fn resolve_main_output(
     source_path: &Utf8Path,
     source: &str,
     block: &AstBlock,
+    functions: &HashMap<String, ConstFunction>,
 ) -> miette::Result<TypedExpr> {
     let mut bindings = HashMap::<String, ConstValue>::new();
     let mut final_expr = None;
@@ -87,7 +128,7 @@ fn resolve_main_output(
                     .into());
                 }
 
-                let value = resolve_const_value(value, &bindings).ok_or_else(|| {
+                let value = resolve_const_value(value, &bindings, functions).ok_or_else(|| {
                     to_source_diagnostic(
                         source_path,
                         source,
@@ -136,7 +177,7 @@ fn resolve_main_output(
         .into());
     };
 
-    output_expr(expr, &bindings).ok_or_else(|| {
+    output_expr(expr, &bindings, functions).ok_or_else(|| {
         to_source_diagnostic(
             source_path,
             source,
@@ -185,7 +226,11 @@ fn validate_type_annotation(
     .into())
 }
 
-fn output_expr(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option<TypedExpr> {
+fn output_expr(
+    expr: &AstExpr,
+    bindings: &HashMap<String, ConstValue>,
+    functions: &HashMap<String, ConstFunction>,
+) -> Option<TypedExpr> {
     let AstExpr::Call {
         callee,
         args,
@@ -200,7 +245,7 @@ fn output_expr(expr: &AstExpr, bindings: &HashMap<String, ConstValue>) -> Option
     };
 
     let value = match args.as_slice() {
-        [arg] => resolve_const_value(arg, bindings)?,
+        [arg] => resolve_const_value(arg, bindings, functions)?,
         _ => return None,
     };
 

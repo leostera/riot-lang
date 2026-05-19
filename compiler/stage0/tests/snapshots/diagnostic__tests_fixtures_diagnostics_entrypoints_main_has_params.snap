@@ -11,11 +11,11 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × could not parse Riot ML source
-   ╭─[tests/fixtures/diagnostics/entrypoints/main-has-params.ml:1:9]
+  × main function cannot have parameters
+   ╭─[tests/fixtures/diagnostics/entrypoints/main-has-params.ml:1:4]
  1 │ fn main(name) {
-   ·         ──┬─
-   ·           ╰── stage0 function parameters are not supported yet
+   ·    ──┬─
+   ·      ╰── stage0 requires main to have no parameters
  2 │   println("hello world")
    ╰────
   help: try: fn main() { dbg("hello world") }

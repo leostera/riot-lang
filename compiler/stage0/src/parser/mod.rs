@@ -70,23 +70,42 @@ impl<'src> Parser<'src> {
         let start = self.expect(TokenKind::Fn, "expected top-level function declaration")?;
         let (name, name_span) = self.expect_lower_ident()?;
 
-        self.expect(TokenKind::LParen, "expected `(` after function name")?;
-        if !self.at(TokenKind::RParen) {
-            return Err(self.error_at_current(
-                "stage0 function parameters are not supported yet",
-                Some("try: fn main() { dbg(\"hello world\") }"),
-            ));
-        }
-        self.expect(TokenKind::RParen, "expected `)` after function parameters")?;
+        let params = self.parse_param_list()?;
 
         let body = self.parse_block()?;
         let span = start.span.join(body.span);
         Ok(AstFnDecl {
             name,
             name_span,
+            params,
             body,
             span,
         })
+    }
+
+    fn parse_param_list(&mut self) -> Result<Vec<String>, ParseError> {
+        self.expect(TokenKind::LParen, "expected `(` after function name")?;
+        let mut params = Vec::new();
+
+        if self.match_kind(TokenKind::RParen).is_some() {
+            return Ok(params);
+        }
+
+        loop {
+            let (name, _) = self.expect_lower_ident()?;
+            params.push(name);
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RParen) {
+                break;
+            }
+        }
+
+        self.expect(TokenKind::RParen, "expected `)` after function parameters")?;
+        Ok(params)
     }
 
     fn parse_block(&mut self) -> Result<AstBlock, ParseError> {

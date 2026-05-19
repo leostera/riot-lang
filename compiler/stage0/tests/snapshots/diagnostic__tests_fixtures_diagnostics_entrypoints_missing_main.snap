@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/entrypoints/missing-main.ml
@@ -13,10 +12,10 @@ stderr:
 Error: stage0::source
 
   × missing main function
-   ╭─[tests/fixtures/diagnostics/entrypoints/missing-main.ml:1:4]
- 1 │ fn start() {
-   ·    ──┬──
-   ·      ╰── this function must be named main
- 2 │   println("hello world")
+   ╭─[tests/fixtures/diagnostics/entrypoints/missing-main.ml:1:1]
+ 1 │ ╭─▶ fn start() {
+ 2 │ │     println("hello world")
+ 3 │ ├─▶ }
+   · ╰──── stage0 requires one entrypoint named main
    ╰────
-  help: stage0 requires one entrypoint: fn main() { dbg("hello world") }
+  help: add: fn main() { dbg("hello world") }
