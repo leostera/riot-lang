@@ -185,6 +185,11 @@ pub(crate) enum AstExpr {
         field: String,
         span: TextSpan,
     },
+    TupleIndex {
+        base: Box<AstExpr>,
+        index: usize,
+        span: TextSpan,
+    },
     Char {
         value: char,
         span: TextSpan,

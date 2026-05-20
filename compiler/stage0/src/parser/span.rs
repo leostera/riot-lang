@@ -82,6 +82,11 @@ pub(super) fn expr_span(expr: &AstExpr) -> TextSpan {
             field: _,
             span,
         }
+        | AstExpr::TupleIndex {
+            base: _,
+            index: _,
+            span,
+        }
         | AstExpr::Float { value: _, span }
         | AstExpr::Int { value: _, span }
         | AstExpr::Path { path: _, span }

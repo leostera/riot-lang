@@ -493,6 +493,14 @@ impl<'ctx> Codegen<'ctx, '_> {
                     &[base.into(), field_ptr.into(), field_len.into()],
                 )?))
             }
+            RirExpr::TupleIndex { base, index } => {
+                let base = self.emit_expr(base, env)?;
+                let base = self.value_as_runtime(base)?;
+                Ok(CgValue::Value(self.call_runtime_value(
+                    "riot_rt_value_tuple_get",
+                    &[base.into(), self.context.i64_type().const_int(*index as u64, false).into()],
+                )?))
+            }
             RirExpr::Char(_) | RirExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
                 .map(|value| self.emit_static_value(value))
@@ -1705,6 +1713,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_record_get" => {
                 i64_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
+            "riot_rt_value_tuple_get" => i64_type.fn_type(&[i64_type.into(), i64_type.into()], false),
             "riot_rt_value_bytes_ptr" => ptr_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_len" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_eq" | "riot_rt_value_lt" => {
@@ -2025,6 +2034,7 @@ fn infer_expr_abi(
         | RirExpr::List(_)
         | RirExpr::Record { .. }
         | RirExpr::Field { .. }
+        | RirExpr::TupleIndex { .. }
         | RirExpr::String(_) => AbiType::Value,
         RirExpr::Spawn { .. } => AbiType::Pid,
         RirExpr::Receive { .. }
@@ -2075,7 +2085,7 @@ fn mark_expr_constraints(
                 mark_expr_constraints(value, params, locals, param_types, functions);
             }
         }
-        RirExpr::Field { base, .. } => {
+        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
             mark_expr_constraints(base, params, locals, param_types, functions);
         }
         RirExpr::And(lhs, rhs) | RirExpr::Or(lhs, rhs) | RirExpr::Eq(lhs, rhs) => {

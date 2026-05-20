@@ -72,6 +72,10 @@ pub(crate) enum RirExpr {
         base: Box<RirExpr>,
         field: String,
     },
+    TupleIndex {
+        base: Box<RirExpr>,
+        index: usize,
+    },
     Char(char),
     Float(String),
     Int(i64),

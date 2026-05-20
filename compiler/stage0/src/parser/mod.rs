@@ -444,6 +444,21 @@ impl<'src> Parser<'src> {
         loop {
             if self.at(TokenKind::Dot) {
                 self.bump();
+                if self.at(TokenKind::Int) {
+                    let token = self.bump();
+                    let index = self.text(token.span).parse::<usize>().map_err(|error| ParseError {
+                        span: token.span,
+                        message: format!("invalid tuple projection index: {error}"),
+                        help: None,
+                    })?;
+                    let span = expr_span(&expr).join(token.span);
+                    expr = AstExpr::TupleIndex {
+                        base: Box::new(expr),
+                        index,
+                        span,
+                    };
+                    continue;
+                }
                 let (field, field_span) = self.expect_ident()?;
                 let span = expr_span(&expr).join(field_span);
                 expr = match expr {

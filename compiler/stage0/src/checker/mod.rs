@@ -533,6 +533,23 @@ fn validate_expr(
             validate_expr(ctx, base, bindings, in_actor)?;
             Ok(ExprCategory::Other)
         }
+        AstExpr::TupleIndex { base, index, span } => {
+            validate_expr(ctx, base, bindings, in_actor)?;
+            if let AstExpr::Tuple { items, .. } = base.as_ref()
+                && *index >= items.len()
+            {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "tuple projection is out of bounds",
+                    format!("tuple has {} item(s), but projection requested index {index}", items.len()),
+                    Some("use a tuple projection index that exists"),
+                )
+                .into());
+            }
+            Ok(ExprCategory::Other)
+        }
         AstExpr::Path { path, span } => {
             if let Some(head) = path.segments.first()
                 && !bindings.contains_key(head)
@@ -914,6 +931,7 @@ fn infer_annotation_expr_type(
         ))),
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
         AstExpr::Field { base, field, .. } => infer_annotation_field_type(ctx, base, field, bindings),
+        AstExpr::TupleIndex { base, index, .. } => infer_annotation_tuple_index_type(ctx, base, *index, bindings),
         AstExpr::Char { .. } => Some(RsigType::Char),
         AstExpr::Float { .. } => Some(RsigType::F64),
         AstExpr::Path { path, .. } => path
@@ -939,6 +957,20 @@ fn infer_annotation_field_type(
                 infer_annotation_expr_type(ctx, value, bindings).unwrap_or(RsigType::Unknown)
             })
         });
+    }
+    None
+}
+
+fn infer_annotation_tuple_index_type(
+    ctx: &ValidationContext<'_>,
+    base: &AstExpr,
+    index: usize,
+    bindings: &HashMap<String, RsigType>,
+) -> Option<RsigType> {
+    if let AstExpr::Tuple { items, .. } = base {
+        return items
+            .get(index)
+            .and_then(|item| infer_annotation_expr_type(ctx, item, bindings));
     }
     None
 }
@@ -1065,6 +1097,7 @@ fn simple_expr_type(
         }
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
+        AstExpr::TupleIndex { base, index, .. } => simple_tuple_index_type(ctx, base, *index, bindings),
         AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
     }
@@ -1080,6 +1113,20 @@ fn simple_field_type(
         return fields.iter().find_map(|(name, value)| {
             (name == field).then(|| simple_expr_type(ctx, value, bindings).unwrap_or(RsigType::Unknown))
         });
+    }
+    None
+}
+
+fn simple_tuple_index_type(
+    ctx: &ValidationContext<'_>,
+    base: &AstExpr,
+    index: usize,
+    bindings: &HashMap<String, BindingKind>,
+) -> Option<RsigType> {
+    if let AstExpr::Tuple { items, .. } = base {
+        return items
+            .get(index)
+            .and_then(|item| simple_expr_type(ctx, item, bindings));
     }
     None
 }

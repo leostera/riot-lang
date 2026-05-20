@@ -257,6 +257,10 @@ pub(super) fn resolve_const_value(
                 .find_map(|(name, value)| (name == *field).then_some(value)),
             _ => None,
         },
+        AstExpr::TupleIndex { base, index, .. } => match resolve_const_value(base, bindings, functions)? {
+            ConstValue::Tuple(items) => items.get(*index).cloned(),
+            _ => None,
+        },
         AstExpr::Call {
             callee,
             args,

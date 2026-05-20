@@ -414,6 +414,7 @@ fn infer_ast_expr_type(
             RsigType::Record(path.segments.join("."))
         }
         AstExpr::Field { base, field, .. } => infer_ast_field_type(base, field, locals, functions),
+        AstExpr::TupleIndex { base, index, .. } => infer_ast_tuple_index_type(base, *index, locals, functions),
         AstExpr::Char { .. } => RsigType::Char,
         AstExpr::Float { .. } => RsigType::F64,
         AstExpr::Int { .. } => RsigType::I64,
@@ -439,6 +440,21 @@ fn infer_ast_field_type(
             .find_map(|(name, value)| {
                 (name == field).then(|| infer_ast_expr_type(value, locals, functions))
             })
+            .unwrap_or(RsigType::Unknown);
+    }
+    RsigType::Unknown
+}
+
+fn infer_ast_tuple_index_type(
+    base: &AstExpr,
+    index: usize,
+    locals: &BTreeMap<String, RsigType>,
+    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
+) -> RsigType {
+    if let AstExpr::Tuple { items, .. } = base {
+        return items
+            .get(index)
+            .map(|item| infer_ast_expr_type(item, locals, functions))
             .unwrap_or(RsigType::Unknown);
     }
     RsigType::Unknown
@@ -493,7 +509,7 @@ fn mark_ast_constraints(
                 mark_ast_constraints(value, params, locals, param_types, functions);
             }
         }
-        AstExpr::Field { base, .. } => {
+        AstExpr::Field { base, .. } | AstExpr::TupleIndex { base, .. } => {
             mark_ast_constraints(base, params, locals, param_types, functions);
         }
         AstExpr::Receive { body, .. } => {
@@ -728,6 +744,17 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 },
             }
         }
+        AstExpr::TupleIndex { base, index, .. } => {
+            let base = type_expr(*base, context);
+            let type_ = typed_tuple_index_type(&base, index);
+            TypedExpr {
+                type_,
+                kind: TypedExprKind::TupleIndex {
+                    base: Box::new(base),
+                    index,
+                },
+            }
+        }
         AstExpr::Char { value, .. } => TypedExpr {
             type_: RsigType::Char,
             kind: TypedExprKind::Char(value),
@@ -756,6 +783,16 @@ fn typed_field_type(base: &TypedExpr, field: &str) -> RsigType {
         return fields
             .iter()
             .find_map(|(name, value)| (name == field).then(|| value.type_.clone()))
+            .unwrap_or(RsigType::Unknown);
+    }
+    RsigType::Unknown
+}
+
+fn typed_tuple_index_type(base: &TypedExpr, index: usize) -> RsigType {
+    if let TypedExprKind::Tuple(items) = &base.kind {
+        return items
+            .get(index)
+            .map(|item| item.type_.clone())
             .unwrap_or(RsigType::Unknown);
     }
     RsigType::Unknown
@@ -945,7 +982,7 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(owner, value, locals, context, actors);
             }
         }
-        RirExpr::Field { base, .. } => {
+        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
             collect_actors_from_expr(owner, base, locals, context, actors);
         }
         RirExpr::Receive { binder, body } => {
@@ -1123,7 +1160,9 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(value, bound, free);
             }
         }
-        RirExpr::Field { base, .. } => collect_free_expr(base, bound, free),
+        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
+            collect_free_expr(base, bound, free)
+        }
         RirExpr::Spawn { body, .. } => collect_free_block(body, bound, free),
         RirExpr::Receive { binder, body } => {
             let mut nested = bound.clone();
@@ -1216,6 +1255,7 @@ fn infer_actor_slot_type(
         | RirExpr::List(_)
         | RirExpr::Record { .. }
         | RirExpr::Field { .. }
+        | RirExpr::TupleIndex { .. }
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::String(_) => None,
@@ -1338,6 +1378,10 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         TypedExprKind::Field { base, field } => RirExpr::Field {
             base: Box::new(lower_expr(*base, context)),
             field,
+        },
+        TypedExprKind::TupleIndex { base, index } => RirExpr::TupleIndex {
+            base: Box::new(lower_expr(*base, context)),
+            index,
         },
         TypedExprKind::Char(value) => RirExpr::Char(value),
         TypedExprKind::Float(value) => RirExpr::Float(value),

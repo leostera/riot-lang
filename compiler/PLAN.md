@@ -188,6 +188,8 @@ shape.
   function returns; out-of-bounds projection diagnostics point at the projection
   suffix.
 
+<!-- autoresearch:step-5:done -->
+
 ### 6. Add List Length and Nth Operations
 
 - **Commit:** `feat(rt): add list length and nth operations`

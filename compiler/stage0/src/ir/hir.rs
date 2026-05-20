@@ -96,6 +96,10 @@ pub(crate) enum TypedExprKind {
         base: Box<TypedExpr>,
         field: String,
     },
+    TupleIndex {
+        base: Box<TypedExpr>,
+        index: usize,
+    },
     Char(char),
     Float(String),
     Int(i64),
