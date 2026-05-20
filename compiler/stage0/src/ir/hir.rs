@@ -36,6 +36,7 @@ pub(crate) struct TypedProgram {
 #[derive(Debug, Clone)]
 pub(crate) struct TypedUse {
     pub(crate) name: String,
+    pub(crate) fingerprint: u64,
 }
 
 #[derive(Debug, Clone)]

@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigExport, RsigExternal, RsigFunction, RsigType, RsigTypeScheme,
-    parse_type_signature,
+    ImportedSignatures, Rsig, RsigDependency, RsigExport, RsigExternal, RsigFunction, RsigType,
+    RsigTypeScheme, parse_type_signature,
 };
 
 mod actor;
@@ -30,7 +30,16 @@ pub(crate) fn typed_program_from_ast(
 
     for decl in ast.decls {
         match decl {
-            AstDecl::Use(use_) => uses.push(TypedUse { name: use_.name }),
+            AstDecl::Use(use_) => {
+                let fingerprint = imports
+                    .get(&use_.name)
+                    .map(|rsig| rsig.module_fingerprint)
+                    .unwrap_or(0);
+                uses.push(TypedUse {
+                    name: use_.name,
+                    fingerprint,
+                });
+            }
             AstDecl::External(external) => {
                 let (params, result) = parse_type_signature(&external.type_text);
                 externals.push(TypedExternal {
@@ -146,7 +155,15 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
             fingerprint: 0,
         }));
     }
-    Rsig::new(program.module_name.clone(), exports)
+    let dependencies = program
+        .uses
+        .iter()
+        .map(|use_| RsigDependency {
+            module: use_.name.as_str().into(),
+            fingerprint: use_.fingerprint,
+        })
+        .collect();
+    Rsig::with_dependencies(program.module_name.clone(), dependencies, exports)
 }
 
 pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {

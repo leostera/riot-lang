@@ -1,17 +1,62 @@
 use std::collections::BTreeMap;
+use std::fmt;
 use std::io::{Cursor, Read};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 3;
+const VERSION: u16 = 4;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
-    pub(crate) module: String,
+    pub(crate) module: ModuleName,
+    pub(crate) dependencies: Vec<RsigDependency>,
     pub(crate) exports: Vec<RsigExport>,
     pub(crate) module_fingerprint: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ModuleName(String);
+
+impl ModuleName {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for ModuleName {
+    fn from(value: String) -> Self {
+        ModuleName::new(value)
+    }
+}
+
+impl From<&str> for ModuleName {
+    fn from(value: &str) -> Self {
+        ModuleName::new(value)
+    }
+}
+
+impl AsRef<str> for ModuleName {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for ModuleName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RsigDependency {
+    pub(crate) module: ModuleName,
+    pub(crate) fingerprint: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,7 +182,13 @@ fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
 }
 
 impl Rsig {
-    pub(crate) fn new(module: String, mut exports: Vec<RsigExport>) -> Self {
+    pub(crate) fn with_dependencies(
+        module: impl Into<ModuleName>,
+        mut dependencies: Vec<RsigDependency>,
+        mut exports: Vec<RsigExport>,
+    ) -> Self {
+        let module = module.into();
+        dependencies.sort_by(|lhs, rhs| lhs.module.cmp(&rhs.module));
         for export in &mut exports {
             export.canonicalize_type_vars();
         }
@@ -145,15 +196,26 @@ impl Rsig {
         for export in &mut exports {
             export.set_fingerprint(stable_hash(&export.canonical_without_fingerprint()));
         }
+        let dependency_text = dependencies
+            .iter()
+            .map(RsigDependency::canonical)
+            .collect::<Vec<_>>()
+            .join("\n");
+        let export_text = exports
+            .iter()
+            .map(RsigExport::canonical_with_fingerprint)
+            .collect::<Vec<_>>()
+            .join("\n");
         let module_fingerprint = stable_hash(
-            &exports
-                .iter()
-                .map(RsigExport::canonical_with_fingerprint)
+            &[dependency_text.as_str(), export_text.as_str()]
+                .into_iter()
+                .filter(|part| !part.is_empty())
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
         Self {
             module,
+            dependencies,
             exports,
             module_fingerprint,
         }
@@ -163,6 +225,10 @@ impl Rsig {
         let mut text = String::new();
         text.push_str(&format!("module {}\n", self.module));
         text.push_str(&format!("fingerprint {:016x}\n", self.module_fingerprint));
+        for dependency in &self.dependencies {
+            text.push_str(&dependency.canonical());
+            text.push('\n');
+        }
         for export in &self.exports {
             text.push_str(&export.canonical_with_fingerprint());
             text.push('\n');
@@ -172,6 +238,12 @@ impl Rsig {
 
     pub(crate) fn find(&self, name: &str) -> Option<&RsigExport> {
         self.exports.iter().find(|export| export.name() == name)
+    }
+}
+
+impl RsigDependency {
+    fn canonical(&self) -> String {
+        format!("depends {} {:016x}", self.module, self.fingerprint)
     }
 }
 
@@ -367,7 +439,7 @@ pub(crate) fn resolve_rsig(
     for candidate in &candidates {
         if candidate.exists() {
             let rsig = read_rsig(candidate)?;
-            if rsig.module != module {
+            if rsig.module.as_str() != module {
                 bail!(
                     "signature {} declares module {}, but `use {}` requested {}",
                     candidate,
@@ -524,8 +596,13 @@ fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(MAGIC);
     put_u16(&mut bytes, VERSION);
-    put_string(&mut bytes, &rsig.module);
+    put_string(&mut bytes, rsig.module.as_str());
     put_u64(&mut bytes, rsig.module_fingerprint);
+    put_u32(&mut bytes, rsig.dependencies.len() as u32);
+    for dependency in &rsig.dependencies {
+        put_string(&mut bytes, dependency.module.as_str());
+        put_u64(&mut bytes, dependency.fingerprint);
+    }
     put_u32(&mut bytes, rsig.exports.len() as u32);
     for export in &rsig.exports {
         match export {
@@ -563,8 +640,16 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
     if version != VERSION {
         bail!("unsupported rsig version {version}");
     }
-    let module = get_string(&mut cursor)?;
+    let module = ModuleName::new(get_string(&mut cursor)?);
     let module_fingerprint = get_u64(&mut cursor)?;
+    let dependency_count = get_u32(&mut cursor)?;
+    let mut dependencies = Vec::new();
+    for _ in 0..dependency_count {
+        dependencies.push(RsigDependency {
+            module: ModuleName::new(get_string(&mut cursor)?),
+            fingerprint: get_u64(&mut cursor)?,
+        });
+    }
     let count = get_u32(&mut cursor)?;
     let mut exports = Vec::new();
     for _ in 0..count {
@@ -598,6 +683,7 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
     }
     Ok(Rsig {
         module,
+        dependencies,
         exports,
         module_fingerprint,
     })
@@ -745,8 +831,8 @@ pub(crate) type ImportedSignatures = BTreeMap<String, Rsig>;
 #[cfg(test)]
 mod tests {
     use super::{
-        Rsig, RsigExport, RsigFunction, RsigType, RsigTypeScheme, decode_rsig, encode_rsig,
-        parse_type_signature,
+        Rsig, RsigDependency, RsigExport, RsigFunction, RsigType, RsigTypeScheme, decode_rsig,
+        encode_rsig, parse_type_signature,
     };
 
     #[test]
@@ -768,8 +854,9 @@ mod tests {
 
     #[test]
     fn binary_rsig_roundtrips_arrow_types() {
-        let rsig = Rsig::new(
+        let rsig = Rsig::with_dependencies(
             "Apply".to_owned(),
+            Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "apply_i64".to_owned(),
                 params: vec![
@@ -803,8 +890,9 @@ mod tests {
 
     #[test]
     fn rsig_canonicalizes_type_variables_before_fingerprinting() {
-        let first = Rsig::new(
+        let first = Rsig::with_dependencies(
             "Id".to_owned(),
+            Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "id".to_owned(),
                 params: vec![RsigType::Var("'t17".to_owned())],
@@ -817,8 +905,9 @@ mod tests {
                 fingerprint: 0,
             })],
         );
-        let second = Rsig::new(
+        let second = Rsig::with_dependencies(
             "Id".to_owned(),
+            Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "id".to_owned(),
                 params: vec![RsigType::Var("'source_name".to_owned())],
@@ -835,5 +924,26 @@ mod tests {
         assert_eq!(first, second);
         assert!(first.canonical_text().contains("fn id('a) -> 'a"));
         assert_eq!(decode_rsig(&encode_rsig(&first)).unwrap(), first);
+    }
+
+    #[test]
+    fn binary_rsig_roundtrips_dependency_fingerprints() {
+        let rsig = Rsig::with_dependencies(
+            "UsesMath".to_owned(),
+            vec![RsigDependency {
+                module: "Math".into(),
+                fingerprint: 0xfeed_f00d,
+            }],
+            Vec::new(),
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded.dependencies, rsig.dependencies);
+        assert!(
+            decoded
+                .canonical_text()
+                .contains("depends Math 00000000feedf00d")
+        );
     }
 }
