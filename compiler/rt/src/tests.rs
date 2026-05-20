@@ -12,7 +12,7 @@ use crate::abi::{
     riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
-    POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, runtime_message_from_raw,
+    runtime_message_from_raw, RtMessage, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING,
 };
 use crate::actor_id::ActorId;
 use crate::scheduler::{render_message, with_scheduler_mut};
@@ -112,6 +112,23 @@ fn value_heap_collects_unrooted_values_and_preserves_roots() {
     assert_eq!(riot_rt_gc_heap_len(), 1);
     riot_rt_root_pop(1);
     assert_eq!(riot_rt_gc_collect(), 1);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn value_roots_preserve_nested_children() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let label = unsafe { riot_rt_value_string(b"rooted".as_ptr(), 6) };
+    let values = [label];
+    let tuple = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
+    riot_rt_root_push(tuple);
+    assert_eq!(riot_rt_gc_collect(), 0);
+    assert_eq!(riot_rt_gc_heap_len(), 2);
+
+    riot_rt_root_pop(1);
+    assert_eq!(riot_rt_gc_collect(), 2);
     assert_eq!(riot_rt_gc_heap_len(), 0);
 }
 

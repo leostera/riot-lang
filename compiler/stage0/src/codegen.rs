@@ -201,6 +201,15 @@ enum CgValue<'ctx> {
     Static(StaticValue),
 }
 
+impl<'ctx> CgValue<'ctx> {
+    fn runtime_root(&self) -> Option<IntValue<'ctx>> {
+        match self {
+            CgValue::Value(value) => Some(*value),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 struct Env<'ctx> {
     values: HashMap<String, CgValue<'ctx>>,
@@ -322,6 +331,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         block: &RirBlock,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
+        let mut rooted_values = self.push_env_runtime_roots(env)?;
         for stmt in &block.statements {
             match stmt {
                 RirStmt::Let { name, value } => {
@@ -329,6 +339,10 @@ impl<'ctx> Codegen<'ctx, '_> {
                         env.statics.insert(name.clone(), static_value);
                     }
                     let value = self.emit_expr(value, env)?;
+                    if let Some(root) = value.runtime_root() {
+                        self.push_runtime_root(root)?;
+                        rooted_values += 1;
+                    }
                     env.values.insert(name.clone(), value);
                 }
                 RirStmt::Expr(expr) => {
@@ -337,11 +351,13 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
         }
 
-        if let Some(tail) = &block.tail {
+        let result = if let Some(tail) = &block.tail {
             self.emit_expr(tail, env)
         } else {
             Ok(CgValue::Unit)
-        }
+        }?;
+        self.pop_runtime_roots(rooted_values)?;
+        Ok(result)
     }
 
     fn emit_expr(&mut self, expr: &RirExpr, env: &mut Env<'ctx>) -> miette::Result<CgValue<'ctx>> {
@@ -404,8 +420,10 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             RirExpr::Eq(lhs, rhs) => {
                 let lhs_value = self.emit_expr(lhs, env)?;
+                let lhs_root = self.push_optional_runtime_root(&lhs_value)?;
                 let rhs_value = self.emit_expr(rhs, env)?;
-                match (lhs_value, rhs_value) {
+                let rhs_root = self.push_optional_runtime_root(&rhs_value)?;
+                let result = match (lhs_value, rhs_value) {
                     (CgValue::I64(lhs), CgValue::I64(rhs)) => Ok(CgValue::Bool(
                         self.builder
                             .build_int_compare(IntPredicate::EQ, lhs, rhs, "eqtmp")
@@ -418,18 +436,25 @@ impl<'ctx> Codegen<'ctx, '_> {
                     )),
                     (lhs, rhs) => {
                         let lhs = self.value_as_runtime(lhs)?;
+                        self.push_runtime_root(lhs)?;
                         let rhs = self.value_as_runtime(rhs)?;
-                        Ok(CgValue::Bool(self.call_runtime_value(
-                            "riot_rt_value_eq",
-                            &[lhs.into(), rhs.into()],
-                        )?))
+                        self.push_runtime_root(rhs)?;
+                        let result = Ok(CgValue::Bool(
+                            self.call_runtime_value("riot_rt_value_eq", &[lhs.into(), rhs.into()])?,
+                        ));
+                        self.pop_runtime_roots(2)?;
+                        result
                     }
-                }
+                };
+                self.pop_runtime_roots(lhs_root + rhs_root)?;
+                result
             }
             RirExpr::Lt(lhs, rhs) => {
                 let lhs_value = self.emit_expr(lhs, env)?;
+                let lhs_root = self.push_optional_runtime_root(&lhs_value)?;
                 let rhs_value = self.emit_expr(rhs, env)?;
-                match (lhs_value, rhs_value) {
+                let rhs_root = self.push_optional_runtime_root(&rhs_value)?;
+                let result = match (lhs_value, rhs_value) {
                     (CgValue::I64(lhs), CgValue::I64(rhs)) => Ok(CgValue::Bool(
                         self.builder
                             .build_int_compare(IntPredicate::SLT, lhs, rhs, "lttmp")
@@ -439,13 +464,18 @@ impl<'ctx> Codegen<'ctx, '_> {
                     )),
                     (lhs, rhs) => {
                         let lhs = self.value_as_runtime(lhs)?;
+                        self.push_runtime_root(lhs)?;
                         let rhs = self.value_as_runtime(rhs)?;
-                        Ok(CgValue::Bool(self.call_runtime_value(
-                            "riot_rt_value_lt",
-                            &[lhs.into(), rhs.into()],
-                        )?))
+                        self.push_runtime_root(rhs)?;
+                        let result = Ok(CgValue::Bool(
+                            self.call_runtime_value("riot_rt_value_lt", &[lhs.into(), rhs.into()])?,
+                        ));
+                        self.pop_runtime_roots(2)?;
+                        result
                     }
-                }
+                };
+                self.pop_runtime_roots(lhs_root + rhs_root)?;
+                result
             }
             RirExpr::And(lhs, rhs) => {
                 let lhs = self.emit_bool(lhs, env)?;
@@ -489,27 +519,31 @@ impl<'ctx> Codegen<'ctx, '_> {
             RirExpr::Field { base, field } => {
                 let base = self.emit_expr(base, env)?;
                 let base = self.value_as_runtime(base)?;
+                self.push_runtime_root(base)?;
                 let (field_ptr, field_len) = self.string_literal(field)?;
-                Ok(CgValue::Value(self.call_runtime_value(
+                let value = self.call_runtime_value(
                     "riot_rt_value_record_get",
                     &[base.into(), field_ptr.into(), field_len.into()],
-                )?))
+                )?;
+                self.pop_runtime_roots(1)?;
+                Ok(CgValue::Value(value))
             }
             RirExpr::TupleIndex { base, index } => {
                 let base = self.emit_expr(base, env)?;
                 let base = self.value_as_runtime(base)?;
-                Ok(CgValue::Value(
-                    self.call_runtime_value(
-                        "riot_rt_value_tuple_get",
-                        &[
-                            base.into(),
-                            self.context
-                                .i64_type()
-                                .const_int(*index as u64, false)
-                                .into(),
-                        ],
-                    )?,
-                ))
+                self.push_runtime_root(base)?;
+                let value = self.call_runtime_value(
+                    "riot_rt_value_tuple_get",
+                    &[
+                        base.into(),
+                        self.context
+                            .i64_type()
+                            .const_int(*index as u64, false)
+                            .into(),
+                    ],
+                )?;
+                self.pop_runtime_roots(1)?;
+                Ok(CgValue::Value(value))
             }
             RirExpr::Char(_) | RirExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
@@ -673,21 +707,18 @@ impl<'ctx> Codegen<'ctx, '_> {
         symbol: &str,
         items: Vec<StaticValue>,
     ) -> miette::Result<CgValue<'ctx>> {
-        let values = items
-            .into_iter()
-            .map(|item| {
-                self.emit_static_value(item).and_then(|value| {
-                    if let CgValue::Value(value) = value {
-                        Ok(value)
-                    } else {
-                        self.value_as_runtime(value)
-                    }
-                })
-            })
-            .collect::<miette::Result<Vec<_>>>()?;
-        Ok(CgValue::Value(
-            self.build_value_array_call(symbol, &values)?,
-        ))
+        let mut values = Vec::with_capacity(items.len());
+        let mut rooted_values = 0;
+        for item in items {
+            let value = self.emit_static_value(item)?;
+            let value = self.value_as_runtime(value)?;
+            self.push_runtime_root(value)?;
+            rooted_values += 1;
+            values.push(value);
+        }
+        let result = self.build_value_array_call(symbol, &values)?;
+        self.pop_runtime_roots(rooted_values)?;
+        Ok(CgValue::Value(result))
     }
 
     fn emit_static_record(
@@ -707,9 +738,11 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .into(),
             ],
         )?;
+        self.push_runtime_root(record)?;
         for (index, (name, value)) in fields.into_iter().enumerate() {
             let value = self.emit_static_value(value)?;
             let value = self.value_as_runtime(value)?;
+            self.push_runtime_root(value)?;
             let (name_ptr, name_len) = self.string_literal(&name)?;
             self.call_void_runtime(
                 "riot_rt_value_record_set",
@@ -724,7 +757,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                     value.into(),
                 ],
             )?;
+            self.pop_runtime_roots(1)?;
         }
+        self.pop_runtime_roots(1)?;
         Ok(CgValue::Value(record))
     }
 
@@ -734,16 +769,18 @@ impl<'ctx> Codegen<'ctx, '_> {
         items: &[RirExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        let values = items
-            .iter()
-            .map(|item| {
-                self.emit_expr(item, env)
-                    .and_then(|value| self.value_as_runtime(value))
-            })
-            .collect::<miette::Result<Vec<_>>>()?;
-        Ok(CgValue::Value(
-            self.build_value_array_call(symbol, &values)?,
-        ))
+        let mut values = Vec::with_capacity(items.len());
+        let mut rooted_values = 0;
+        for item in items {
+            let value = self.emit_expr(item, env)?;
+            let value = self.value_as_runtime(value)?;
+            self.push_runtime_root(value)?;
+            rooted_values += 1;
+            values.push(value);
+        }
+        let result = self.build_value_array_call(symbol, &values)?;
+        self.pop_runtime_roots(rooted_values)?;
+        Ok(CgValue::Value(result))
     }
 
     fn build_value_array_call(
@@ -801,9 +838,11 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .into(),
             ],
         )?;
+        self.push_runtime_root(record)?;
         for (index, (name, expr)) in fields.iter().enumerate() {
             let value = self.emit_expr(expr, env)?;
             let value = self.value_as_runtime(value)?;
+            self.push_runtime_root(value)?;
             let (name_ptr, name_len) = self.string_literal(name)?;
             self.call_void_runtime(
                 "riot_rt_value_record_set",
@@ -818,7 +857,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                     value.into(),
                 ],
             )?;
+            self.pop_runtime_roots(1)?;
         }
+        self.pop_runtime_roots(1)?;
         Ok(CgValue::Value(record))
     }
 
@@ -887,10 +928,10 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
         let list = self.emit_expr(&args[0], env)?;
         let list = self.value_as_runtime(list)?;
-        Ok(CgValue::I64(self.call_runtime_value(
-            "riot_rt_value_list_len",
-            &[list.into()],
-        )?))
+        self.push_runtime_root(list)?;
+        let len = self.call_runtime_value("riot_rt_value_list_len", &[list.into()])?;
+        self.pop_runtime_roots(1)?;
+        Ok(CgValue::I64(len))
     }
 
     fn emit_list_get(
@@ -903,11 +944,12 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
         let list = self.emit_expr(&args[0], env)?;
         let list = self.value_as_runtime(list)?;
+        self.push_runtime_root(list)?;
         let index = self.emit_i64(&args[1], env)?;
-        Ok(CgValue::Value(self.call_runtime_value(
-            "riot_rt_value_list_get",
-            &[list.into(), index.into()],
-        )?))
+        let value =
+            self.call_runtime_value("riot_rt_value_list_get", &[list.into(), index.into()])?;
+        self.pop_runtime_roots(1)?;
+        Ok(CgValue::Value(value))
     }
 
     fn emit_string_len(
@@ -920,10 +962,10 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
         let string = self.emit_expr(&args[0], env)?;
         let string = self.value_as_runtime(string)?;
-        Ok(CgValue::I64(self.call_runtime_value(
-            "riot_rt_value_string_len",
-            &[string.into()],
-        )?))
+        self.push_runtime_root(string)?;
+        let len = self.call_runtime_value("riot_rt_value_string_len", &[string.into()])?;
+        self.pop_runtime_roots(1)?;
+        Ok(CgValue::I64(len))
     }
 
     fn emit_string_concat(
@@ -935,13 +977,15 @@ impl<'ctx> Codegen<'ctx, '_> {
             bail!("string_concat expects two arguments");
         }
         let lhs = self.emit_expr(&args[0], env)?;
-        let rhs = self.emit_expr(&args[1], env)?;
         let lhs = self.value_as_runtime(lhs)?;
+        self.push_runtime_root(lhs)?;
+        let rhs = self.emit_expr(&args[1], env)?;
         let rhs = self.value_as_runtime(rhs)?;
-        Ok(CgValue::Value(self.call_runtime_value(
-            "riot_rt_value_string_concat",
-            &[lhs.into(), rhs.into()],
-        )?))
+        self.push_runtime_root(rhs)?;
+        let value =
+            self.call_runtime_value("riot_rt_value_string_concat", &[lhs.into(), rhs.into()])?;
+        self.pop_runtime_roots(2)?;
+        Ok(CgValue::Value(value))
     }
 
     fn emit_local_call(
@@ -956,14 +1000,19 @@ impl<'ctx> Codegen<'ctx, '_> {
             bail!("function `{name}` called with wrong arity");
         }
         let mut call_args = Vec::new();
+        let mut rooted_values = 0;
         for (arg, param_abi) in args.iter().zip(&abi.params) {
-            call_args.push(self.emit_basic_arg(arg, *param_abi, env)?);
+            let (arg, roots) = self.emit_basic_arg(arg, *param_abi, env)?;
+            rooted_values += roots;
+            call_args.push(arg);
         }
         let call = self
             .builder
             .build_call(function, &call_args, &format!("call_{name}"))
             .map_err(|error| miette::miette!("failed to emit call to `{name}`: {error}"))?;
-        self.call_result(call.try_as_basic_value().basic(), abi.result)
+        let result = self.call_result(call.try_as_basic_value().basic(), abi.result);
+        self.pop_runtime_roots(rooted_values)?;
+        result
     }
 
     fn emit_imported_call(
@@ -1017,14 +1066,19 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
         let function = self.get_or_add_function(symbol, self.local_function_type(&abi)?);
         let mut call_args = Vec::new();
+        let mut rooted_values = 0;
         for (arg, param_abi) in args.iter().zip(&abi.params) {
-            call_args.push(self.emit_basic_arg(arg, *param_abi, env)?);
+            let (arg, roots) = self.emit_basic_arg(arg, *param_abi, env)?;
+            rooted_values += roots;
+            call_args.push(arg);
         }
         let call = self
             .builder
             .build_call(function, &call_args, &format!("call_{symbol}"))
             .map_err(|error| miette::miette!("failed to emit imported call `{symbol}`: {error}"))?;
-        self.call_result(call.try_as_basic_value().basic(), abi.result)
+        let result = self.call_result(call.try_as_basic_value().basic(), abi.result);
+        self.pop_runtime_roots(rooted_values)?;
+        result
     }
 
     fn emit_external_call(
@@ -1041,17 +1095,20 @@ impl<'ctx> Codegen<'ctx, '_> {
         let function =
             self.get_or_add_function(symbol, self.external_function_type(params, result)?);
         let mut call_args = Vec::new();
+        let mut rooted_values = 0;
         for (arg, param) in args.iter().zip(params) {
-            self.push_external_arg(&mut call_args, arg, param, env)?;
+            rooted_values += self.push_external_arg(&mut call_args, arg, param, env)?;
         }
         let call = self
             .builder
             .build_call(function, &call_args, &format!("call_{symbol}"))
             .map_err(|error| miette::miette!("failed to emit external call `{symbol}`: {error}"))?;
-        self.call_result(
+        let result = self.call_result(
             call.try_as_basic_value().basic(),
             AbiType::from_rsig(result),
-        )
+        );
+        self.pop_runtime_roots(rooted_values)?;
+        result
     }
 
     fn emit_output(
@@ -1075,6 +1132,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             CgValue::Bool(value) => self.emit_bool_output(name, value)?,
             CgValue::Value(value) => {
+                self.push_runtime_root(value)?;
                 let external_string_abi = self
                     .externals
                     .get(name)
@@ -1091,6 +1149,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     };
                     self.call_void_runtime(symbol, &[value.into()])?;
                 }
+                self.pop_runtime_roots(1)?;
             }
             CgValue::Message(message) if name == "dbg" => {
                 self.call_void_runtime("riot_rt_dbg_msg", &[message.into()])?;
@@ -1166,7 +1225,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.call_void_runtime("riot_rt_send_msg", &[actor_id.into(), message.into()])?;
             }
             CgValue::Value(value) => {
+                self.push_runtime_root(value)?;
                 self.call_void_runtime("riot_rt_send_value", &[actor_id.into(), value.into()])?;
+                self.pop_runtime_roots(1)?;
             }
             CgValue::I64(value) => {
                 self.call_void_runtime("riot_rt_send_i64", &[actor_id.into(), value.into()])?;
@@ -1569,12 +1630,16 @@ impl<'ctx> Codegen<'ctx, '_> {
         arg: &RirExpr,
         abi: AbiType,
         env: &mut Env<'ctx>,
-    ) -> miette::Result<BasicMetadataValueEnum<'ctx>> {
+    ) -> miette::Result<(BasicMetadataValueEnum<'ctx>, usize)> {
         let value = self.emit_expr(arg, env)?;
         Ok(match abi {
-            AbiType::I64 | AbiType::ActorId => self.value_as_i64(value)?.into(),
-            AbiType::Bool => self.value_as_bool(value)?.into(),
-            AbiType::Value => self.value_as_runtime(value)?.into(),
+            AbiType::I64 | AbiType::ActorId => (self.value_as_i64(value)?.into(), 0),
+            AbiType::Bool => (self.value_as_bool(value)?.into(), 0),
+            AbiType::Value => {
+                let value = self.value_as_runtime(value)?;
+                self.push_runtime_root(value)?;
+                (value.into(), 1)
+            }
             AbiType::Unit | AbiType::Unknown => bail!("unsupported function parameter ABI"),
         })
     }
@@ -1585,32 +1650,36 @@ impl<'ctx> Codegen<'ctx, '_> {
         arg: &RirExpr,
         type_: &RsigType,
         env: &mut Env<'ctx>,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<usize> {
         match type_ {
             RsigType::String => {
                 let value = self.emit_expr(arg, env)?;
+                let roots = self.push_optional_runtime_root(&value)?;
                 let (ptr, len) = self.value_as_bytes(value)?;
                 output.push(ptr.into());
                 output.push(len.into());
+                Ok(roots)
             }
             RsigType::I64 => {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_i64(value)?.into());
+                Ok(0)
             }
             RsigType::Bool => {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_bool(value)?.into());
+                Ok(0)
             }
             RsigType::ActorId(_) => {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_i64(value)?.into());
+                Ok(0)
             }
             _ => bail!(
                 "external argument type `{}` is not supported by stage0 codegen yet",
                 type_.canonical()
             ),
         }
-        Ok(())
     }
 
     fn value_as_bytes(
@@ -1721,6 +1790,46 @@ impl<'ctx> Codegen<'ctx, '_> {
         Ok(())
     }
 
+    fn push_env_runtime_roots(&self, env: &Env<'ctx>) -> miette::Result<usize> {
+        let mut count = 0;
+        let mut values = env.values.iter().collect::<Vec<_>>();
+        values.sort_by(|(lhs, _), (rhs, _)| lhs.cmp(rhs));
+        for (_, value) in values {
+            if let Some(root) = value.runtime_root() {
+                self.push_runtime_root(root)?;
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
+    fn push_optional_runtime_root(&self, value: &CgValue<'ctx>) -> miette::Result<usize> {
+        if let Some(root) = value.runtime_root() {
+            self.push_runtime_root(root)?;
+            Ok(1)
+        } else {
+            Ok(0)
+        }
+    }
+
+    fn push_runtime_root(&self, value: IntValue<'ctx>) -> miette::Result<()> {
+        self.call_void_runtime("riot_rt_root_push", &[value.into()])
+    }
+
+    fn pop_runtime_roots(&self, count: usize) -> miette::Result<()> {
+        if count == 0 {
+            return Ok(());
+        }
+        self.call_void_runtime(
+            "riot_rt_root_pop",
+            &[self
+                .context
+                .i64_type()
+                .const_int(count as u64, false)
+                .into()],
+        )
+    }
+
     fn call_void_runtime(
         &self,
         symbol: &str,
@@ -1764,6 +1873,9 @@ impl<'ctx> Codegen<'ctx, '_> {
         let ptr_type = self.ptr_type();
         Ok(match symbol {
             "riot_rt_init" | "riot_rt_shutdown" => void_type.fn_type(&[], false),
+            "riot_rt_root_push" | "riot_rt_root_pop" => {
+                void_type.fn_type(&[i64_type.into()], false)
+            }
             "riot_rt_dbg" | "riot_rt_println" | "riot_prim_println" => {
                 void_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
             }
