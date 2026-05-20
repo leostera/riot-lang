@@ -1464,10 +1464,6 @@ impl<'ctx> Codegen<'ctx, '_> {
                     env,
                 )
             }
-            [name] if name == "list_len" => self.emit_list_len(args, env),
-            [name] if name == "list_get" => self.emit_list_get(args, env),
-            [name] if name == "string_len" => self.emit_string_len(args, env),
-            [name] if name == "string_concat" => self.emit_string_concat(args, env),
             [name] if self.functions.contains_key(name) => self.emit_local_call(name, args, env),
             [name] => {
                 if let Some(static_value) = self.static_eval_call(name, args, &env.statics) {
@@ -1479,76 +1475,6 @@ impl<'ctx> Codegen<'ctx, '_> {
             [module, name] => self.emit_imported_call(module, name, args, env),
             _ => bail!("unsupported call path `{}`", callee.join(".")),
         }
-    }
-
-    fn emit_list_len(
-        &mut self,
-        args: &[RirExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        if args.len() != 1 {
-            bail!("list_len expects one argument");
-        }
-        let list = self.emit_expr(&args[0], env)?;
-        let list = self.value_as_runtime(list)?;
-        self.push_runtime_root(list)?;
-        let len = self.call_runtime_value("riot_rt_value_list_len", &[list.into()])?;
-        self.pop_runtime_roots(1)?;
-        Ok(CgValue::I64(len))
-    }
-
-    fn emit_list_get(
-        &mut self,
-        args: &[RirExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        if args.len() != 2 {
-            bail!("list_get expects two arguments");
-        }
-        let list = self.emit_expr(&args[0], env)?;
-        let list = self.value_as_runtime(list)?;
-        self.push_runtime_root(list)?;
-        let index = self.emit_i64(&args[1], env)?;
-        let value =
-            self.call_runtime_value("riot_rt_value_list_get", &[list.into(), index.into()])?;
-        self.pop_runtime_roots(1)?;
-        Ok(CgValue::Value(value))
-    }
-
-    fn emit_string_len(
-        &mut self,
-        args: &[RirExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        if args.len() != 1 {
-            bail!("string_len expects one argument");
-        }
-        let string = self.emit_expr(&args[0], env)?;
-        let string = self.value_as_runtime(string)?;
-        self.push_runtime_root(string)?;
-        let len = self.call_runtime_value("riot_rt_value_string_len", &[string.into()])?;
-        self.pop_runtime_roots(1)?;
-        Ok(CgValue::I64(len))
-    }
-
-    fn emit_string_concat(
-        &mut self,
-        args: &[RirExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        if args.len() != 2 {
-            bail!("string_concat expects two arguments");
-        }
-        let lhs = self.emit_expr(&args[0], env)?;
-        let lhs = self.value_as_runtime(lhs)?;
-        self.push_runtime_root(lhs)?;
-        let rhs = self.emit_expr(&args[1], env)?;
-        let rhs = self.value_as_runtime(rhs)?;
-        self.push_runtime_root(rhs)?;
-        let value =
-            self.call_runtime_value("riot_rt_value_string_concat", &[lhs.into(), rhs.into()])?;
-        self.pop_runtime_roots(2)?;
-        Ok(CgValue::Value(value))
     }
 
     fn emit_local_call(
@@ -3013,8 +2939,6 @@ fn infer_expr_abi(
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
-            [name] if name == "list_len" || name == "string_len" => AbiType::I64,
-            [name] if name == "list_get" || name == "string_concat" => AbiType::Value,
             [name] => functions
                 .get(name)
                 .map(|abi| abi.result)
