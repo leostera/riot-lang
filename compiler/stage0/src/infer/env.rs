@@ -16,6 +16,7 @@ struct Scope {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Env {
+    prelude: Scope,
     scopes: Vec<Scope>,
     next_ordinal: usize,
 }
@@ -23,6 +24,7 @@ pub(crate) struct Env {
 impl Default for Env {
     fn default() -> Self {
         Self {
+            prelude: Scope::default(),
             scopes: vec![Scope::default()],
             next_ordinal: 0,
         }
@@ -54,11 +56,18 @@ impl Env {
         current.values.insert(name.into(), binding);
     }
 
+    pub(crate) fn add_prelude_value(&mut self, name: impl Into<String>, scheme: TypeScheme) {
+        self.prelude
+            .values
+            .insert(name.into(), ValueBinding { scheme, ordinal: 0 });
+    }
+
     pub(crate) fn get_value(&self, name: &str) -> Option<&TypeScheme> {
         self.scopes
             .iter()
             .rev()
             .find_map(|scope| scope.values.get(name).map(|binding| &binding.scheme))
+            .or_else(|| self.prelude.values.get(name).map(|binding| &binding.scheme))
     }
 
     pub(crate) fn exported_values(&self) -> Vec<(String, TypeScheme)> {
@@ -77,6 +86,7 @@ impl Env {
     pub(crate) fn free_vars(&self) -> std::collections::BTreeSet<TypeVar> {
         self.scopes
             .iter()
+            .chain(std::iter::once(&self.prelude))
             .flat_map(|scope| scope.values.values())
             .flat_map(|binding| binding.scheme.free_vars())
             .collect()

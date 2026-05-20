@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 use super::env::Env;
+use super::scheme::TypeScheme;
 use super::state::State;
 use super::types::Type;
 use super::unifier::UnifyError;
@@ -24,12 +25,72 @@ pub(crate) struct InferredModule {
 
 pub(crate) fn infer_program(program: &AstProgram) -> Result<InferredModule, InferError> {
     let mut state = State::default();
+    install_prelude(&mut state);
     for decl in &program.decls {
         infer_decl(&mut state, decl)?;
     }
     Ok(InferredModule {
         env: state.into_env(),
     })
+}
+
+fn install_prelude(state: &mut State) {
+    let dbg_message = state.fresh_var();
+    state.add_prelude_value(
+        "dbg",
+        state.generalize(Type::Function(vec![dbg_message], Box::new(Type::Unit))),
+    );
+    state.add_prelude_value(
+        "println",
+        TypeScheme::monomorphic(Type::Function(vec![Type::String], Box::new(Type::Unit))),
+    );
+
+    let send_message = state.fresh_var();
+    state.add_prelude_value(
+        "send",
+        state.generalize(Type::Function(
+            vec![Type::ActorId(Box::new(send_message.clone())), send_message],
+            Box::new(Type::Unit),
+        )),
+    );
+
+    let actor_message = state.fresh_var();
+    let actor_action = state.generalize(Type::Function(
+        vec![Type::ActorId(Box::new(actor_message))],
+        Box::new(Type::Unit),
+    ));
+    state.add_prelude_value("monitor", actor_action.clone());
+    state.add_prelude_value("link", actor_action);
+
+    let list_item = state.fresh_var();
+    state.add_prelude_value(
+        "list_len",
+        state.generalize(Type::Function(
+            vec![Type::List(Box::new(list_item))],
+            Box::new(Type::I64),
+        )),
+    );
+
+    let list_get_item = state.fresh_var();
+    state.add_prelude_value(
+        "list_get",
+        state.generalize(Type::Function(
+            vec![Type::List(Box::new(list_get_item.clone())), Type::I64],
+            Box::new(list_get_item),
+        )),
+    );
+
+    state.add_prelude_value(
+        "string_len",
+        TypeScheme::monomorphic(Type::Function(vec![Type::String], Box::new(Type::I64))),
+    );
+    state.add_prelude_value(
+        "string_concat",
+        TypeScheme::monomorphic(Type::Function(
+            vec![Type::String, Type::String],
+            Box::new(Type::String),
+        )),
+    );
 }
 
 fn infer_decl(state: &mut State, decl: &AstDecl) -> Result<(), InferError> {
@@ -275,7 +336,7 @@ mod tests {
     };
     use crate::infer::module::infer_program;
     use crate::infer::scheme::TypeScheme;
-    use crate::infer::types::{Type, TypeVar};
+    use crate::infer::types::Type;
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -425,17 +486,38 @@ mod tests {
 
         let inferred = infer_program(&program).unwrap();
         let exports = inferred.env.exported_values();
+        let var = exports[0].1.quantifiers[0];
 
         assert_eq!(exports[0].0, "id");
+        assert_eq!(exports[0].1.quantifiers.len(), 1);
         assert_eq!(
             exports[0].1,
             TypeScheme {
-                quantifiers: vec![TypeVar::new(0)],
-                body: Type::Function(
-                    vec![Type::Var(TypeVar::new(0))],
-                    Box::new(Type::Var(TypeVar::new(0)))
-                ),
+                quantifiers: vec![var],
+                body: Type::Function(vec![Type::Var(var)], Box::new(Type::Var(var))),
             }
+        );
+    }
+
+    #[test]
+    fn prelude_values_are_visible_but_not_exported() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                call("dbg", vec![int(1)]),
+            )],
+        };
+
+        let inferred = infer_program(&program).unwrap();
+        let exports = inferred.env.exported_values();
+
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports[0].0, "main");
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::Function(Vec::new(), Box::new(Type::Unit)))
         );
     }
 }
