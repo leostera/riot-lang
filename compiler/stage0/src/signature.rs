@@ -60,6 +60,9 @@ pub(crate) enum RsigType {
 
 impl Rsig {
     pub(crate) fn new(module: String, mut exports: Vec<RsigExport>) -> Self {
+        for export in &mut exports {
+            export.canonicalize_type_vars();
+        }
         exports.sort_by(|lhs, rhs| lhs.name().cmp(rhs.name()).then(lhs.kind().cmp(rhs.kind())));
         for export in &mut exports {
             export.set_fingerprint(stable_hash(&export.canonical_without_fingerprint()));
@@ -152,6 +155,68 @@ impl RsigExport {
             RsigExport::Function(function) => function.fingerprint = fingerprint,
             RsigExport::External(external) => external.fingerprint = fingerprint,
         }
+    }
+
+    fn canonicalize_type_vars(&mut self) {
+        let mut vars = TypeVarCanonicalizer::default();
+        match self {
+            RsigExport::Function(function) => {
+                for param in &mut function.params {
+                    vars.canonicalize(param);
+                }
+                vars.canonicalize(&mut function.result);
+            }
+            RsigExport::External(external) => {
+                for param in &mut external.params {
+                    vars.canonicalize(param);
+                }
+                vars.canonicalize(&mut external.result);
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+struct TypeVarCanonicalizer {
+    names: BTreeMap<String, String>,
+}
+
+impl TypeVarCanonicalizer {
+    fn canonicalize(&mut self, type_: &mut RsigType) {
+        match type_ {
+            RsigType::ActorId(message) | RsigType::List(message) => self.canonicalize(message),
+            RsigType::Arrow { parameter, result } => {
+                self.canonicalize(parameter);
+                self.canonicalize(result);
+            }
+            RsigType::Tuple(items) => {
+                for item in items {
+                    self.canonicalize(item);
+                }
+            }
+            RsigType::Var(name) => {
+                let next = canonical_type_var_name(self.names.len());
+                let canonical = self.names.entry(name.clone()).or_insert(next);
+                *name = canonical.clone();
+            }
+            RsigType::Bool
+            | RsigType::Char
+            | RsigType::F64
+            | RsigType::I64
+            | RsigType::Record(_)
+            | RsigType::String
+            | RsigType::Unit
+            | RsigType::Unknown => {}
+        }
+    }
+}
+
+fn canonical_type_var_name(index: usize) -> String {
+    if index < 26 {
+        let name = char::from(b'a' + index as u8);
+        format!("'{name}")
+    } else {
+        format!("'t{}", index - 26)
     }
 }
 
@@ -611,5 +676,33 @@ mod tests {
 
         assert_eq!(decoded, rsig);
         assert!(decoded.canonical_text().contains("(i64 -> i64)"));
+    }
+
+    #[test]
+    fn rsig_canonicalizes_type_variables_before_fingerprinting() {
+        let first = Rsig::new(
+            "Id".to_owned(),
+            vec![RsigExport::Function(RsigFunction {
+                name: "id".to_owned(),
+                params: vec![RsigType::Var("'t17".to_owned())],
+                result: RsigType::Var("'t17".to_owned()),
+                symbol: "riot_mod_Id_id".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+        let second = Rsig::new(
+            "Id".to_owned(),
+            vec![RsigExport::Function(RsigFunction {
+                name: "id".to_owned(),
+                params: vec![RsigType::Var("'source_name".to_owned())],
+                result: RsigType::Var("'source_name".to_owned()),
+                symbol: "riot_mod_Id_id".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+
+        assert_eq!(first, second);
+        assert!(first.canonical_text().contains("fn id('a) -> 'a"));
+        assert_eq!(decode_rsig(&encode_rsig(&first)).unwrap(), first);
     }
 }
