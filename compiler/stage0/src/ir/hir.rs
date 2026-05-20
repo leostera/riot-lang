@@ -144,6 +144,7 @@ pub(crate) enum TypedExprKind {
         scrutinee: Box<TypedExpr>,
         arms: Vec<TypedMatchArm>,
     },
+    Block(Box<TypedBlock>),
     Bool(bool),
     Call {
         callee: Vec<String>,

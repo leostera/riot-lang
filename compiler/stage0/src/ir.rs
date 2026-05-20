@@ -576,6 +576,17 @@ fn infer_ast_expr_type(
                 .reduce(merge_types)
                 .unwrap_or(RsigType::Unknown)
         }
+        AstExpr::Block { block, .. } => {
+            let mut nested_locals = locals.clone();
+            let mut nested_params = Vec::new();
+            infer_ast_block_type(
+                block,
+                &[],
+                &mut nested_locals,
+                &mut nested_params,
+                functions,
+            )
+        }
         AstExpr::Bool { .. } => RsigType::Bool,
         AstExpr::Call { callee, args, .. } => {
             for arg in args {
@@ -724,6 +735,17 @@ fn mark_ast_constraints(
             for arm in arms {
                 mark_ast_constraints(&arm.body, params, locals, param_types, functions);
             }
+        }
+        AstExpr::Block { block, .. } => {
+            let mut nested_locals = locals.clone();
+            let mut nested_params = Vec::new();
+            infer_ast_block_type(
+                block,
+                &[],
+                &mut nested_locals,
+                &mut nested_params,
+                functions,
+            );
         }
         AstExpr::Call { args, .. }
         | AstExpr::Tuple { items: args, .. }
@@ -936,6 +958,13 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     scrutinee: Box::new(scrutinee),
                     arms: typed_arms,
                 },
+            }
+        }
+        AstExpr::Block { block, .. } => {
+            let block = type_block(*block, context);
+            TypedExpr {
+                type_: block.type_.clone(),
+                kind: TypedExprKind::Block(Box::new(block)),
             }
         }
         AstExpr::Bool { value, .. } => TypedExpr {
@@ -1245,6 +1274,7 @@ fn ast_expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Not { span, .. }
         | AstExpr::If { span, .. }
         | AstExpr::Match { span, .. }
+        | AstExpr::Block { span, .. }
         | AstExpr::Bool { span, .. }
         | AstExpr::Call { span, .. }
         | AstExpr::Apply { span, .. }
@@ -1673,6 +1703,10 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(owner, &arm.body, &mut arm_locals, context, actors);
             }
         }
+        RirExpr::Block(block) => {
+            let mut block_locals = locals.clone();
+            collect_actors_from_block(owner, block, &mut block_locals, context, actors);
+        }
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
                 collect_actors_from_expr(owner, arg, locals, context, actors);
@@ -1873,6 +1907,7 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(&arm.body, &nested, free);
             }
         }
+        RirExpr::Block(block) => collect_free_block(block, bound, free),
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
                 collect_free_expr(arg, bound, free);
@@ -1982,6 +2017,7 @@ fn closure_convert_expr(expr: &mut RirExpr) {
                 closure_convert_expr(&mut arm.body);
             }
         }
+        RirExpr::Block(block) => closure_convert_block(block),
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
                 closure_convert_expr(arg);
@@ -2059,6 +2095,7 @@ fn infer_actor_slot_type(
             .iter()
             .map(|arm| infer_actor_slot_type(&arm.body, locals, context))
             .fold(None, unify_actor_slot_type),
+        RirExpr::Block(block) => infer_actor_block_slot_type(block, locals, context),
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => None,
             [name] if name == "send" || name == "monitor" || name == "link" => None,
@@ -2096,6 +2133,29 @@ fn infer_actor_slot_type(
         RirExpr::Apply { result, .. } => ActorSlotType::from_rsig(result),
         RirExpr::Unit | RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => None,
     }
+}
+
+fn infer_actor_block_slot_type(
+    block: &RirBlock,
+    outer_locals: &BTreeMap<String, Option<ActorSlotType>>,
+    context: &ActorLowerContext<'_>,
+) -> Option<ActorSlotType> {
+    let mut locals = outer_locals.clone();
+    for stmt in &block.statements {
+        match stmt {
+            RirStmt::Let { name, value } => {
+                let type_ = infer_actor_slot_type(value, &locals, context);
+                locals.insert(name.as_str().to_owned(), type_);
+            }
+            RirStmt::Expr(expr) => {
+                infer_actor_slot_type(expr, &locals, context);
+            }
+        }
+    }
+    block
+        .tail
+        .as_ref()
+        .and_then(|tail| infer_actor_slot_type(tail, &locals, context))
 }
 
 fn unify_actor_slot_type(
@@ -2197,6 +2257,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 arms,
             }
         }
+        TypedExprKind::Block(block) => RirExpr::Block(Box::new(lower_block(*block, context))),
         TypedExprKind::Bool(value) => RirExpr::Bool(value),
         TypedExprKind::Call { callee, args } => RirExpr::Call {
             callee,

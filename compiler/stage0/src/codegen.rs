@@ -510,6 +510,10 @@ impl<'ctx> Codegen<'ctx, '_> {
                 else_branch,
             } => self.emit_if(condition, then_branch, else_branch, env),
             RirExpr::Match { scrutinee, arms } => self.emit_match(scrutinee, arms, env),
+            RirExpr::Block(block) => {
+                let mut scoped = env.clone();
+                self.emit_block(block, &mut scoped)
+            }
             RirExpr::Bool(value) => Ok(CgValue::Bool(
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
@@ -2723,6 +2727,7 @@ fn infer_expr_abi(
             .iter()
             .map(|arm| infer_expr_abi(&arm.body, locals, functions))
             .fold(AbiType::Unknown, unify_abi),
+        RirExpr::Block(block) => infer_block_expr_abi(block, locals, functions),
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
@@ -2752,6 +2757,16 @@ fn infer_expr_abi(
         RirExpr::Spawn { .. } => AbiType::ActorId,
         RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => AbiType::Unknown,
     }
+}
+
+fn infer_block_expr_abi(
+    block: &RirBlock,
+    outer_locals: &HashMap<String, AbiType>,
+    functions: &HashMap<String, FunctionAbi>,
+) -> AbiType {
+    let mut locals = outer_locals.clone();
+    let mut param_types = Vec::new();
+    infer_block_abi(block, &[], &mut locals, &mut param_types, functions)
 }
 
 fn mark_expr_constraints(
@@ -2786,6 +2801,17 @@ fn mark_expr_constraints(
             for arm in arms {
                 mark_expr_constraints(&arm.body, params, locals, param_types, functions);
             }
+        }
+        RirExpr::Block(block) => {
+            let mut nested_locals = locals.clone();
+            let mut nested_params = Vec::new();
+            infer_block_abi(
+                block,
+                &[],
+                &mut nested_locals,
+                &mut nested_params,
+                functions,
+            );
         }
         RirExpr::Call { args, .. } => {
             for arg in args {
@@ -2859,6 +2885,13 @@ fn mark_expr_as(
     expr: &RirExpr,
     abi: AbiType,
 ) {
+    if let RirExpr::Block(block) = expr {
+        if let Some(tail) = &block.tail {
+            mark_expr_as(params, locals, param_types, tail, abi);
+        }
+        return;
+    }
+
     if let RirExpr::Path(path) = expr
         && let [name] = path.as_slice()
     {

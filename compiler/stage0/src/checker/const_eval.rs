@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::ast::{AstBlock, AstExpr, AstPattern};
+use crate::ast::{AstBlock, AstExpr, AstPattern, AstStmt};
 
 use super::types::PrimitiveType;
 
@@ -234,6 +234,7 @@ pub(super) fn resolve_const_value(
             }
             None
         }
+        AstExpr::Block { block, span: _ } => resolve_const_block(block, bindings, functions),
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
         AstExpr::Char { value, span: _ } => Some(ConstValue::Char(*value)),
         AstExpr::Unit { span: _ } => Some(ConstValue::Unit),
@@ -295,6 +296,30 @@ pub(super) fn resolve_const_value(
         | AstExpr::Lambda { .. }
         | AstExpr::Spawn { .. }
         | AstExpr::Receive { .. } => None,
+    }
+}
+
+fn resolve_const_block(
+    block: &AstBlock,
+    bindings: &HashMap<String, ConstValue>,
+    functions: &HashMap<String, ConstFunction>,
+) -> Option<ConstValue> {
+    let mut bindings = bindings.clone();
+    for stmt in &block.statements {
+        match stmt {
+            AstStmt::Let { name, value, .. } => {
+                let value = resolve_const_value(value, &bindings, functions)?;
+                bindings.insert(name.clone(), value);
+            }
+            AstStmt::Expr(expr) => {
+                resolve_const_value(expr, &bindings, functions)?;
+            }
+        }
+    }
+    if let Some(tail) = &block.tail {
+        resolve_const_value(tail, &bindings, functions)
+    } else {
+        Some(ConstValue::Unit)
     }
 }
 

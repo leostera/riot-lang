@@ -584,6 +584,7 @@ impl<'src> Parser<'src> {
                 }
             }
             TokenKind::If => self.parse_if(),
+            TokenKind::LBrace => self.parse_block_expr(),
             TokenKind::LParen => self.parse_paren_or_tuple_or_unit(),
             TokenKind::LBracket => self.parse_list(),
             _ => Err(self.error_at_current("expected expression", None)),
@@ -765,10 +766,10 @@ impl<'src> Parser<'src> {
             }
         }
 
-        Err(ParseError {
-            span: block.span,
-            message: "stage0 expression blocks must contain a single tail expression".to_owned(),
-            help: Some("try: if condition { value } else { other_value }"),
+        let span = block.span;
+        Ok(AstExpr::Block {
+            block: Box::new(block),
+            span,
         })
     }
 

@@ -717,6 +717,7 @@ fn validate_expr(
             validate_scoped_block(ctx, body, bindings, params, param_types, in_actor)?;
             Ok(ExprCategory::Other)
         }
+        AstExpr::Block { block, .. } => validate_block_expr(ctx, block, bindings, in_actor),
         AstExpr::Spawn { body, span: _ } => {
             validate_actor_block(ctx, body, bindings)?;
             Ok(ExprCategory::Actor)
@@ -954,6 +955,80 @@ fn validate_expr(
         | AstExpr::Float { .. }
         | AstExpr::Int { .. }
         | AstExpr::String { .. } => Ok(ExprCategory::Other),
+    }
+}
+
+fn validate_block_expr(
+    ctx: &ValidationContext<'_>,
+    block: &AstBlock,
+    outer_bindings: &HashMap<String, BindingKind>,
+    in_actor: bool,
+) -> miette::Result<ExprCategory> {
+    let mut bindings = outer_bindings.clone();
+    let mut output_actions = 0_usize;
+    let mut actor_actions = 0_usize;
+
+    for stmt in &block.statements {
+        match stmt {
+            AstStmt::Let {
+                name,
+                type_annotation,
+                value,
+                ..
+            } => {
+                if let Some(annotation) = type_annotation {
+                    validate_type_annotation(ctx, annotation, value, &bindings)?;
+                }
+                let kind = match value {
+                    AstExpr::Spawn { body, .. } => {
+                        validate_actor_block(ctx, body, &bindings)?;
+                        actor_actions += 1;
+                        BindingKind::Actor
+                    }
+                    _ => {
+                        let category = validate_expr(ctx, value, &bindings, in_actor)?;
+                        match category {
+                            ExprCategory::Output => output_actions += 1,
+                            ExprCategory::Actor => actor_actions += 1,
+                            ExprCategory::Other => {}
+                        }
+                        let type_ = type_annotation
+                            .as_ref()
+                            .map(|annotation| {
+                                parse_type_with_variants(&annotation.text, &ctx.declared_variants)
+                            })
+                            .or_else(|| simple_expr_type(ctx, value, &bindings));
+                        BindingKind::Value(type_)
+                    }
+                };
+                bindings.insert(name.clone(), kind);
+            }
+            AstStmt::Expr(expr) => {
+                let category = validate_expr(ctx, expr, &bindings, in_actor)?;
+                match category {
+                    ExprCategory::Output => output_actions += 1,
+                    ExprCategory::Actor => actor_actions += 1,
+                    ExprCategory::Other => {}
+                }
+            }
+        }
+    }
+
+    if let Some(tail) = &block.tail {
+        let category = validate_expr(ctx, tail, &bindings, in_actor)?;
+        match category {
+            ExprCategory::Output => output_actions += 1,
+            ExprCategory::Actor => actor_actions += 1,
+            ExprCategory::Other => {}
+        }
+    }
+
+    if output_actions > 0 {
+        Ok(ExprCategory::Output)
+    } else if actor_actions > 0 {
+        Ok(ExprCategory::Actor)
+    } else {
+        Ok(ExprCategory::Other)
     }
 }
 
@@ -1462,6 +1537,9 @@ fn infer_annotation_expr_type(
             })
             .reduce(merge_annotation_types)
             .or(Some(RsigType::Unknown)),
+        AstExpr::Block { block, .. } => {
+            infer_annotation_block_type(ctx, block, &mut bindings.clone())
+        }
         AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
@@ -1728,6 +1806,7 @@ fn simple_expr_type(
             .iter()
             .map(|arm| simple_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown))
             .reduce(merge_annotation_types),
+        AstExpr::Block { block, .. } => simple_block_type(ctx, block, bindings),
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
         AstExpr::TupleIndex { base, index, .. } => {
@@ -1736,6 +1815,41 @@ fn simple_expr_type(
         AstExpr::Lambda { .. } => Some(RsigType::Unknown),
         AstExpr::Spawn { .. } => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
+    }
+}
+
+fn simple_block_type(
+    ctx: &ValidationContext<'_>,
+    block: &AstBlock,
+    outer_bindings: &HashMap<String, BindingKind>,
+) -> Option<RsigType> {
+    let mut bindings = outer_bindings.clone();
+    for stmt in &block.statements {
+        match stmt {
+            AstStmt::Let {
+                name,
+                type_annotation,
+                value,
+                ..
+            } => {
+                let type_ = type_annotation
+                    .as_ref()
+                    .map(|annotation| {
+                        parse_type_with_variants(&annotation.text, &ctx.declared_variants)
+                    })
+                    .or_else(|| simple_expr_type(ctx, value, &bindings));
+                bindings.insert(name.clone(), BindingKind::Value(type_));
+            }
+            AstStmt::Expr(expr) => {
+                simple_expr_type(ctx, expr, &bindings);
+            }
+        }
+    }
+
+    if let Some(tail) = &block.tail {
+        simple_expr_type(ctx, tail, &bindings)
+    } else {
+        Some(RsigType::Unit)
     }
 }
 

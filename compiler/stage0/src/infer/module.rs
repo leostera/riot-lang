@@ -704,6 +704,18 @@ fn infer_expr_kind(
             }
             Ok(state.resolve(&result))
         }
+        AstExpr::Block { block, .. } => {
+            state.push_scope();
+            let result = infer_block(
+                state,
+                block,
+                declared_variants,
+                expression_types,
+                binding_schemes,
+            );
+            state.pop_scope();
+            result
+        }
         AstExpr::Tuple { items, .. } => Ok(Type::Tuple(
             items
                 .iter()
@@ -949,6 +961,7 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Not { span, .. }
         | AstExpr::If { span, .. }
         | AstExpr::Match { span, .. }
+        | AstExpr::Block { span, .. }
         | AstExpr::Bool { span, .. }
         | AstExpr::Call { span, .. }
         | AstExpr::Apply { span, .. }

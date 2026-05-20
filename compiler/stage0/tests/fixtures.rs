@@ -119,6 +119,38 @@ fn emit_typed_resolves_use_from_sig_dir() -> FixtureResult {
 }
 
 #[test]
+fn emit_typed_preserves_block_expression_boundary() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let source = temp_dir.path().join("main.ml");
+
+    std::fs::write(
+        &source,
+        "fn main() { dbg({ let x = 40; let y = 2; x + y }) }\n",
+    )?;
+
+    let emit_typed = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("typed")
+        .arg(&source)
+        .output()?;
+    if !emit_typed.status.success() {
+        return fail(format!(
+            "expected typed emit to preserve block expression:\n{}",
+            String::from_utf8_lossy(&emit_typed.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit_typed.stdout);
+    if !stdout.contains("Block(") || !stdout.contains("TypedBlock") {
+        return fail(format!(
+            "typed output did not include block expression boundary:\n{stdout}"
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn mixed_case_file_name_is_rejected() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let source = temp_dir.path().join("helloWorld.ml");

@@ -182,6 +182,10 @@ pub(crate) enum AstExpr {
         arms: Vec<AstMatchArm>,
         span: TextSpan,
     },
+    Block {
+        block: Box<AstBlock>,
+        span: TextSpan,
+    },
     Bool {
         value: bool,
         span: TextSpan,

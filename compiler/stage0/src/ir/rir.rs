@@ -135,6 +135,7 @@ pub(crate) enum RirExpr {
         scrutinee: Box<RirExpr>,
         arms: Vec<RirMatchArm>,
     },
+    Block(Box<RirBlock>),
     Bool(bool),
     Call {
         callee: Vec<String>,

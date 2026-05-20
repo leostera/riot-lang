@@ -165,6 +165,10 @@ pub(crate) fn eval_expr(
             }
             None
         }
+        RirExpr::Block(block) => {
+            let mut block_bindings = bindings.clone();
+            eval_block(block, &mut block_bindings, functions, depth)
+        }
         RirExpr::Bool(value) => Some(StaticValue::Bool(*value)),
         RirExpr::Call { callee, args } => {
             let [name] = callee.as_slice() else {
@@ -274,7 +278,9 @@ fn eval_block(
                 let value = eval_expr(value, bindings, functions, depth)?;
                 bindings.insert(name.as_str().to_owned(), value);
             }
-            RirStmt::Expr(_) => return None,
+            RirStmt::Expr(expr) => {
+                eval_expr(expr, bindings, functions, depth)?;
+            }
         }
     }
     block

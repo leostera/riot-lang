@@ -59,7 +59,8 @@ pub(super) fn expr_span(expr: &AstExpr) -> TextSpan {
             scrutinee: _,
             arms: _,
             span,
-        } => *span,
+        }
+        | AstExpr::Block { block: _, span } => *span,
         AstExpr::Call {
             callee: _,
             args: _,
