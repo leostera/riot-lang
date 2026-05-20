@@ -18,7 +18,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "msg",
+                        binder: "msg$1",
                         body: Call {
                             callee: [
                                 "dbg",
@@ -26,7 +26,7 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "msg",
+                                        "msg$1",
                                     ],
                                 ),
                             ],
@@ -44,14 +44,14 @@ ActorIrProgram {
                 align: 8,
                 slots: [
                     ActorFrameSlot {
-                        name: "out",
+                        name: "out$2",
                         type_: ActorId,
                         field_index: 1,
                     },
                 ],
                 captures: [
                     ActorFrameSlot {
-                        name: "out",
+                        name: "out$2",
                         type_: ActorId,
                         field_index: 1,
                     },
@@ -61,7 +61,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "start",
+                        binder: "start$3",
                         body: Call {
                             callee: [
                                 "send",
@@ -69,7 +69,7 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "out",
+                                        "out$2",
                                     ],
                                 ),
                                 Call {

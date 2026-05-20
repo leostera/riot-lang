@@ -218,7 +218,7 @@ fn eval_block(
         match stmt {
             RirStmt::Let { name, value } => {
                 let value = eval_expr(value, bindings, functions, depth)?;
-                bindings.insert(name.clone(), value);
+                bindings.insert(name.as_str().to_owned(), value);
             }
             RirStmt::Expr(_) => return None,
         }

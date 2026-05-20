@@ -13,7 +13,7 @@ ActorIrProgram {
                 align: 8,
                 slots: [
                     ActorFrameSlot {
-                        name: "middle",
+                        name: "middle$3",
                         type_: ActorId,
                         field_index: 1,
                     },
@@ -24,20 +24,24 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Let {
-                        name: "middle",
+                        name: "middle$3",
                         value: Spawn {
                             actor_id: 1,
                             body: RirBlock {
                                 statements: [
                                     Let {
-                                        name: "leaf",
+                                        name: BindingKey(
+                                            "leaf$1",
+                                        ),
                                         value: Spawn {
                                             actor_id: 2,
                                             body: RirBlock {
                                                 statements: [],
                                                 tail: Some(
                                                     Receive {
-                                                        binder: "msg",
+                                                        binder: BindingKey(
+                                                            "msg$0",
+                                                        ),
                                                         body: Call {
                                                             callee: [
                                                                 "dbg",
@@ -45,7 +49,7 @@ ActorIrProgram {
                                                             args: [
                                                                 Path(
                                                                     [
-                                                                        "msg",
+                                                                        "msg$0",
                                                                     ],
                                                                 ),
                                                             ],
@@ -58,7 +62,9 @@ ActorIrProgram {
                                 ],
                                 tail: Some(
                                     Receive {
-                                        binder: "msg",
+                                        binder: BindingKey(
+                                            "msg$2",
+                                        ),
                                         body: Call {
                                             callee: [
                                                 "send",
@@ -66,12 +72,12 @@ ActorIrProgram {
                                             args: [
                                                 Path(
                                                     [
-                                                        "leaf",
+                                                        "leaf$1",
                                                     ],
                                                 ),
                                                 Path(
                                                     [
-                                                        "msg",
+                                                        "msg$2",
                                                     ],
                                                 ),
                                             ],
@@ -88,7 +94,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 1,
                     op: Receive {
-                        binder: "msg",
+                        binder: "msg$4",
                         body: Call {
                             callee: [
                                 "send",
@@ -96,12 +102,12 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "middle",
+                                        "middle$3",
                                     ],
                                 ),
                                 Path(
                                     [
-                                        "msg",
+                                        "msg$4",
                                     ],
                                 ),
                             ],
@@ -119,7 +125,7 @@ ActorIrProgram {
                 align: 8,
                 slots: [
                     ActorFrameSlot {
-                        name: "leaf",
+                        name: "leaf$1",
                         type_: ActorId,
                         field_index: 1,
                     },
@@ -130,14 +136,16 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Let {
-                        name: "leaf",
+                        name: "leaf$1",
                         value: Spawn {
                             actor_id: 2,
                             body: RirBlock {
                                 statements: [],
                                 tail: Some(
                                     Receive {
-                                        binder: "msg",
+                                        binder: BindingKey(
+                                            "msg$0",
+                                        ),
                                         body: Call {
                                             callee: [
                                                 "dbg",
@@ -145,7 +153,7 @@ ActorIrProgram {
                                             args: [
                                                 Path(
                                                     [
-                                                        "msg",
+                                                        "msg$0",
                                                     ],
                                                 ),
                                             ],
@@ -162,7 +170,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 1,
                     op: Receive {
-                        binder: "msg",
+                        binder: "msg$2",
                         body: Call {
                             callee: [
                                 "send",
@@ -170,12 +178,12 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "leaf",
+                                        "leaf$1",
                                     ],
                                 ),
                                 Path(
                                     [
-                                        "msg",
+                                        "msg$2",
                                     ],
                                 ),
                             ],
@@ -198,7 +206,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "msg",
+                        binder: "msg$0",
                         body: Call {
                             callee: [
                                 "dbg",
@@ -206,7 +214,7 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "msg",
+                                        "msg$0",
                                     ],
                                 ),
                             ],

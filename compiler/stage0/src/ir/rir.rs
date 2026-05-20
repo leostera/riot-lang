@@ -1,14 +1,56 @@
 use crate::signature::RsigType;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Param(String);
+pub(crate) struct BindingKey(String);
 
-impl Param {
+impl BindingKey {
     pub(crate) fn new(name: impl Into<String>) -> Self {
         Self(name.into())
     }
 
     pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct Param(BindingKey);
+
+impl Param {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(BindingKey::new(name))
+    }
+
+    pub(crate) fn from_key(key: BindingKey) -> Self {
+        Self(key)
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    pub(crate) fn key(&self) -> &BindingKey {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct Capture(BindingKey);
+
+impl Capture {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(BindingKey::new(name))
+    }
+
+    pub(crate) fn from_key(key: BindingKey) -> Self {
+        Self(key)
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    pub(crate) fn key(&self) -> &BindingKey {
         &self.0
     }
 }
@@ -47,7 +89,7 @@ pub(crate) struct RirBlock {
 
 #[derive(Debug, Clone)]
 pub(crate) enum RirStmt {
-    Let { name: String, value: RirExpr },
+    Let { name: BindingKey, value: RirExpr },
     Expr(RirExpr),
 }
 
@@ -80,7 +122,7 @@ pub(crate) enum RirExpr {
     },
     Lambda {
         params: Vec<Param>,
-        captures: Vec<Param>,
+        captures: Vec<Capture>,
         body: Box<RirBlock>,
     },
     Unit,
@@ -108,7 +150,7 @@ pub(crate) enum RirExpr {
         body: Box<RirBlock>,
     },
     Receive {
-        binder: String,
+        binder: BindingKey,
         body: Box<RirExpr>,
     },
 }

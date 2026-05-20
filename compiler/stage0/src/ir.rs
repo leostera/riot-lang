@@ -157,21 +157,25 @@ pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
         functions: program
             .functions
             .into_iter()
-            .map(|function| RirFunction {
-                name: function.name,
-                params: function
-                    .params
-                    .iter()
-                    .map(|param| Param::new(param.name.clone()))
-                    .collect(),
-                param_types: function
-                    .params
-                    .iter()
-                    .map(|param| param.type_.clone())
-                    .collect(),
-                result: function.result,
-                body: lower_block(function.body, &mut context),
-                symbol: function.symbol,
+            .map(|function| {
+                context.push_scope();
+                let mut params = Vec::new();
+                let mut param_types = Vec::new();
+                for param in function.params {
+                    let key = context.bind_fresh(&param.name);
+                    params.push(Param::from_key(key));
+                    param_types.push(param.type_);
+                }
+                let body = lower_block(function.body, &mut context);
+                context.pop_scope();
+                RirFunction {
+                    name: function.name,
+                    params,
+                    param_types,
+                    result: function.result,
+                    body,
+                    symbol: function.symbol,
+                }
             })
             .collect(),
     }
@@ -1008,6 +1012,8 @@ fn merge_types(lhs: RsigType, rhs: RsigType) -> RsigType {
 #[derive(Default)]
 struct LowerContext {
     next_actor_id: usize,
+    next_binding_id: usize,
+    scopes: Vec<BTreeMap<String, BindingKey>>,
 }
 
 impl LowerContext {
@@ -1015,6 +1021,34 @@ impl LowerContext {
         let id = self.next_actor_id;
         self.next_actor_id += 1;
         id
+    }
+
+    fn push_scope(&mut self) {
+        self.scopes.push(BTreeMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn bind_fresh(&mut self, source_name: &str) -> BindingKey {
+        if self.scopes.is_empty() {
+            self.push_scope();
+        }
+        let key = BindingKey::new(format!("{source_name}${}", self.next_binding_id));
+        self.next_binding_id += 1;
+        self.scopes
+            .last_mut()
+            .expect("lowering always has a lexical scope")
+            .insert(source_name.to_owned(), key.clone());
+        key
+    }
+
+    fn resolve(&self, source_name: &str) -> Option<&BindingKey> {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(source_name))
     }
 }
 
@@ -1061,7 +1095,10 @@ fn collect_actors_from_block(
         match stmt {
             RirStmt::Let { name, value } => {
                 collect_actors_from_expr(owner, value, locals, context, actors);
-                locals.insert(name.clone(), infer_actor_slot_type(value, locals, context));
+                locals.insert(
+                    name.as_str().to_owned(),
+                    infer_actor_slot_type(value, locals, context),
+                );
             }
             RirStmt::Expr(expr) => collect_actors_from_expr(owner, expr, locals, context, actors),
         }
@@ -1141,12 +1178,12 @@ fn collect_actors_from_expr(
             collect_actors_from_expr(owner, base, locals, context, actors);
         }
         RirExpr::Receive { binder, body } => {
-            let previous = locals.insert(binder.clone(), None);
+            let previous = locals.insert(binder.as_str().to_owned(), None);
             collect_actors_from_expr(owner, body, locals, context, actors);
             if let Some(previous) = previous {
-                locals.insert(binder.clone(), previous);
+                locals.insert(binder.as_str().to_owned(), previous);
             } else {
-                locals.remove(binder);
+                locals.remove(binder.as_str());
             }
         }
         RirExpr::Bool(_)
@@ -1248,12 +1285,12 @@ fn actor_ops(block: &RirBlock) -> Vec<ActorFrameOp> {
     for stmt in &block.statements {
         match stmt {
             RirStmt::Let { name, value } => ops.push(ActorFrameOp::Let {
-                name: name.clone(),
+                name: name.as_str().to_owned(),
                 value: value.clone(),
             }),
             RirStmt::Expr(RirExpr::Receive { binder, body }) => {
                 ops.push(ActorFrameOp::Receive {
-                    binder: binder.clone(),
+                    binder: binder.as_str().to_owned(),
                     body: *body.clone(),
                 });
             }
@@ -1264,7 +1301,7 @@ fn actor_ops(block: &RirBlock) -> Vec<ActorFrameOp> {
         match expr {
             RirExpr::Receive { binder, body } => {
                 ops.push(ActorFrameOp::Receive {
-                    binder: binder.clone(),
+                    binder: binder.as_str().to_owned(),
                     body: *body.clone(),
                 });
             }
@@ -1334,7 +1371,7 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
         RirExpr::Spawn { body, .. } => collect_free_block(body, bound, free),
         RirExpr::Receive { binder, body } => {
             let mut nested = bound.clone();
-            nested.insert(binder.clone());
+            nested.insert(binder.as_str().to_owned());
             collect_free_expr(body, &nested, free);
         }
         RirExpr::Bool(_)
@@ -1356,7 +1393,7 @@ fn collect_free_block(
         match stmt {
             RirStmt::Let { name, value } => {
                 collect_free_expr(value, &bound, free);
-                bound.insert(name.clone());
+                bound.insert(name.as_str().to_owned());
             }
             RirStmt::Expr(expr) => collect_free_expr(expr, &bound, free),
         }
@@ -1443,20 +1480,24 @@ fn unify_actor_slot_type(
 }
 
 fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
-    RirBlock {
+    context.push_scope();
+    let lowered = RirBlock {
         statements: block
             .statements
             .into_iter()
             .map(|stmt| match stmt {
-                TypedStmt::Let { name, value } => RirStmt::Let {
-                    name,
-                    value: lower_expr(value, context),
-                },
+                TypedStmt::Let { name, value } => {
+                    let value = lower_expr(value, context);
+                    let name = context.bind_fresh(&name);
+                    RirStmt::Let { name, value }
+                }
                 TypedStmt::Expr(expr) => RirStmt::Expr(lower_expr(expr, context)),
             })
             .collect(),
         tail: block.tail.map(|tail| lower_expr(tail, context)),
-    }
+    };
+    context.pop_scope();
+    lowered
 }
 
 fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
@@ -1524,11 +1565,13 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .collect(),
         },
         TypedExprKind::Lambda { params, body } => {
+            context.push_scope();
             let params = params
                 .into_iter()
-                .map(|param| Param::new(param.name))
+                .map(|param| Param::from_key(context.bind_fresh(&param.name)))
                 .collect::<Vec<_>>();
             let body = lower_block(*body, context);
+            context.pop_scope();
             let bound = params
                 .iter()
                 .map(|param| param.as_str().to_owned())
@@ -1537,7 +1580,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             collect_free_block(&body, &bound, &mut free);
             RirExpr::Lambda {
                 params,
-                captures: free.into_iter().map(Param::new).collect(),
+                captures: free.into_iter().map(Capture::new).collect(),
                 body: Box::new(body),
             }
         }
@@ -1545,10 +1588,16 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             actor_id: context.next_actor_id(),
             body: Box::new(lower_block(*body, context)),
         },
-        TypedExprKind::Receive { binder, body } => RirExpr::Receive {
-            binder,
-            body: Box::new(lower_expr(*body, context)),
-        },
+        TypedExprKind::Receive { binder, body } => {
+            context.push_scope();
+            let binder = context.bind_fresh(&binder);
+            let body = lower_expr(*body, context);
+            context.pop_scope();
+            RirExpr::Receive {
+                binder,
+                body: Box::new(body),
+            }
+        }
         TypedExprKind::Unit => RirExpr::Unit,
         TypedExprKind::Tuple(items) => RirExpr::Tuple(
             items
@@ -1580,17 +1629,26 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         TypedExprKind::Char(value) => RirExpr::Char(value),
         TypedExprKind::Float(value) => RirExpr::Float(value),
         TypedExprKind::Int(value) => RirExpr::Int(value),
-        TypedExprKind::Path(path) => RirExpr::Path(path),
+        TypedExprKind::Path(path) => {
+            if let [name] = path.as_slice()
+                && let Some(binding) = context.resolve(name)
+            {
+                return RirExpr::Path(vec![binding.as_str().to_owned()]);
+            }
+            RirExpr::Path(path)
+        }
         TypedExprKind::String(value) => RirExpr::String(value),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, TextSpan};
+    use crate::ast::{
+        AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
+    };
     use crate::signature::ImportedSignatures;
 
-    use super::{Param, RirExpr, lower_typed_to_rir, typed_program_from_ast};
+    use super::{Capture, RirExpr, RirStmt, lower_typed_to_rir, typed_program_from_ast};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -1643,7 +1701,82 @@ mod tests {
             panic!("expected lowered lambda");
         };
 
-        assert_eq!(captures.as_slice(), &[Param::new("n")]);
+        assert_eq!(captures.as_slice(), &[Capture::new("n$0")]);
+    }
+
+    #[test]
+    fn rir_lambda_captures_track_shadowed_binding_identity() {
+        let program = AstProgram {
+            decls: vec![AstDecl::Function(AstFnDecl {
+                name: "main".to_owned(),
+                name_span: span(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                return_type: None,
+                body: AstBlock {
+                    statements: vec![
+                        AstStmt::Let {
+                            name: "a".to_owned(),
+                            name_span: span(),
+                            type_annotation: None,
+                            value: AstExpr::Int {
+                                value: 1,
+                                span: span(),
+                            },
+                            span: span(),
+                        },
+                        AstStmt::Let {
+                            name: "f".to_owned(),
+                            name_span: span(),
+                            type_annotation: None,
+                            value: AstExpr::Lambda {
+                                params: vec!["ignored".to_owned()],
+                                param_types: Vec::new(),
+                                body: Box::new(AstBlock {
+                                    statements: Vec::new(),
+                                    tail: Some(path("a")),
+                                    span: span(),
+                                }),
+                                span: span(),
+                            },
+                            span: span(),
+                        },
+                        AstStmt::Let {
+                            name: "a".to_owned(),
+                            name_span: span(),
+                            type_annotation: None,
+                            value: AstExpr::Int {
+                                value: 2,
+                                span: span(),
+                            },
+                            span: span(),
+                        },
+                    ],
+                    tail: Some(AstExpr::Call {
+                        callee: AstPath {
+                            segments: vec!["f".to_owned()],
+                        },
+                        args: vec![AstExpr::Unit { span: span() }],
+                        span: span(),
+                    }),
+                    span: span(),
+                },
+                span: span(),
+            })],
+        };
+
+        let typed =
+            typed_program_from_ast("ShadowTest".to_owned(), program, &ImportedSignatures::new());
+        let rir = lower_typed_to_rir(typed);
+        let Some(RirStmt::Let {
+            value: RirExpr::Lambda { captures, .. },
+            ..
+        }) = rir.functions[0].body.statements.get(1)
+        else {
+            panic!("expected second statement to bind a lambda");
+        };
+
+        assert_eq!(captures.as_slice(), &[Capture::new("a$0")]);
     }
 }
 

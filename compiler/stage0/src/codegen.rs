@@ -15,8 +15,8 @@ use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use miette::bail;
 
 use crate::ir::{
-    ActorFrameOp, ActorIrActor, ActorIrProgram, Param, RirBlock, RirExpr, RirFunction, RirProgram,
-    RirStmt, lower_rir_to_actor_ir,
+    ActorFrameOp, ActorIrActor, ActorIrProgram, Capture, Param, RirBlock, RirExpr, RirFunction,
+    RirProgram, RirStmt, lower_rir_to_actor_ir,
 };
 use crate::signature::{ImportedSignatures, RsigExport, RsigType};
 
@@ -336,14 +336,14 @@ impl<'ctx> Codegen<'ctx, '_> {
             match stmt {
                 RirStmt::Let { name, value } => {
                     if let Some(static_value) = self.static_eval(value, &env.statics) {
-                        env.statics.insert(name.clone(), static_value);
+                        env.statics.insert(name.as_str().to_owned(), static_value);
                     }
                     let value = self.emit_expr(value, env)?;
                     if let Some(root) = value.runtime_root() {
                         self.push_runtime_root(root)?;
                         rooted_values += 1;
                     }
-                    env.values.insert(name.clone(), value);
+                    env.values.insert(name.as_str().to_owned(), value);
                 }
                 RirStmt::Expr(expr) => {
                     self.emit_expr(expr, env)?;
@@ -792,7 +792,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_lambda_value(
         &mut self,
         params: &[Param],
-        captures: &[Param],
+        captures: &[Capture],
         body: &RirBlock,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
@@ -894,7 +894,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn declare_lambda_apply_function(
         &mut self,
         params: &[Param],
-        captures: &[Param],
+        captures: &[Capture],
         body: &RirBlock,
     ) -> miette::Result<PointerValue<'ctx>> {
         let index = self.string_counter;
@@ -947,7 +947,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.emit_block(body, &mut env)?
             } else {
                 let mut nested_captures = captures.to_vec();
-                nested_captures.push(param.clone());
+                nested_captures.push(Capture::from_key(param.key().clone()));
                 let nested = RirExpr::Lambda {
                     params: rest.to_vec(),
                     captures: nested_captures,
@@ -1609,7 +1609,8 @@ impl<'ctx> Codegen<'ctx, '_> {
                     self.return_poll(POLL_WAITING)?;
 
                     self.builder.position_at_end(consume);
-                    env.values.insert(binder.clone(), CgValue::Message(message));
+                    env.values
+                        .insert(binder.as_str().to_owned(), CgValue::Message(message));
                     self.emit_expr(body, &mut env)?;
                     self.store_frame_i64(
                         frame_type,
@@ -2397,7 +2398,7 @@ fn infer_block_abi(
         match stmt {
             RirStmt::Let { name, value } => {
                 let abi = infer_expr_abi(value, locals, functions);
-                locals.insert(name.clone(), abi);
+                locals.insert(name.as_str().to_owned(), abi);
             }
             RirStmt::Expr(expr) => {
                 mark_expr_constraints(expr, params, locals, param_types, functions);
@@ -2590,7 +2591,9 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
 
 #[cfg(test)]
 mod tests {
-    use crate::ir::{Param, RirBlock, RirExpr, RirFunction, RirProgram, RirStmt};
+    use crate::ir::{
+        BindingKey, Capture, Param, RirBlock, RirExpr, RirFunction, RirProgram, RirStmt,
+    };
     use crate::signature::{ImportedSignatures, RsigType};
 
     use super::{CodegenMode, emit_llvm_text};
@@ -2608,12 +2611,12 @@ mod tests {
                 result: RsigType::Unknown,
                 body: RirBlock {
                     statements: vec![RirStmt::Let {
-                        name: "n".to_owned(),
+                        name: BindingKey::new("n"),
                         value: RirExpr::Int(1),
                     }],
                     tail: Some(RirExpr::Lambda {
                         params: vec![Param::new("x")],
-                        captures: vec![Param::new("n")],
+                        captures: vec![Capture::new("n")],
                         body: Box::new(RirBlock {
                             statements: Vec::new(),
                             tail: Some(RirExpr::Path(vec!["n".to_owned()])),
