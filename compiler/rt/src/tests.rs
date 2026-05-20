@@ -4,12 +4,13 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::abi::{
     riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
-    riot_rt_gc_heap_len, riot_rt_init, riot_rt_root_pop, riot_rt_root_push, riot_rt_send,
-    riot_rt_send_i64, riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_bool,
-    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get,
-    riot_rt_value_list_len, riot_rt_value_record_begin, riot_rt_value_record_get,
-    riot_rt_value_record_set, riot_rt_value_string, riot_rt_value_string_concat,
-    riot_rt_value_string_len, riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold, riot_rt_init,
+    riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown,
+    riot_rt_spawn_actor_v2, riot_rt_value_bool, riot_rt_value_eq, riot_rt_value_i64,
+    riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
+    riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
+    riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
+    riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
     POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, runtime_message_from_raw,
@@ -135,6 +136,24 @@ fn value_roots_preserve_nested_children() {
     assert_eq!(riot_rt_gc_collect(), 0);
     assert_eq!(riot_rt_gc_heap_len(), 2);
 
+    riot_rt_root_pop(1);
+    assert_eq!(riot_rt_gc_collect(), 2);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn allocation_pressure_collects_before_heap_growth() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+    riot_rt_gc_set_threshold(1);
+
+    let rooted = unsafe { riot_rt_value_string(b"rooted".as_ptr(), 6) };
+    riot_rt_root_push(rooted);
+    let _garbage = unsafe { riot_rt_value_string(b"garbage".as_ptr(), 7) };
+    let _more = unsafe { riot_rt_value_string(b"more".as_ptr(), 4) };
+
+    assert!(riot_rt_gc_collection_count() >= 2);
+    assert_eq!(riot_rt_gc_heap_len(), 2);
     riot_rt_root_pop(1);
     assert_eq!(riot_rt_gc_collect(), 2);
     assert_eq!(riot_rt_gc_heap_len(), 0);

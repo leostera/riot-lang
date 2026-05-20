@@ -321,6 +321,16 @@ pub extern "C" fn riot_rt_gc_heap_len() -> usize {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_gc_set_threshold(threshold: usize) {
+    with_scheduler_mut(|scheduler| scheduler.set_gc_threshold(threshold));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_gc_collection_count() -> usize {
+    with_scheduler_mut(|scheduler| scheduler.gc_collection_count())
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_root_push(value: RtValue) {
     with_scheduler_mut(|scheduler| scheduler.push_root(value));
 }

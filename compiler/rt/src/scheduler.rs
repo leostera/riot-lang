@@ -16,6 +16,7 @@ use crate::value::{
 };
 
 const PRIMARY_SCHEDULER_ID: u32 = 0;
+const DEFAULT_GC_THRESHOLD: usize = 1024;
 
 struct SchedulerCell {
     scheduler: UnsafeCell<SchedulerLocal>,
@@ -44,6 +45,8 @@ pub(crate) struct SchedulerLocal {
     actors: Vec<Box<ActorSlot>>,
     pub(crate) heap: Vec<Option<HeapObject>>,
     roots: Vec<RtValue>,
+    gc_threshold: usize,
+    gc_collection_count: usize,
 }
 
 impl SchedulerLocal {
@@ -53,6 +56,8 @@ impl SchedulerLocal {
             actors: Vec::new(),
             heap: Vec::new(),
             roots: Vec::new(),
+            gc_threshold: DEFAULT_GC_THRESHOLD,
+            gc_collection_count: 0,
         }
     }
 
@@ -60,6 +65,8 @@ impl SchedulerLocal {
         self.shutdown();
         self.heap.clear();
         self.roots.clear();
+        self.gc_threshold = DEFAULT_GC_THRESHOLD;
+        self.gc_collection_count = 0;
     }
 
     pub(crate) fn spawn(
@@ -130,6 +137,9 @@ impl SchedulerLocal {
     }
 
     pub(crate) fn alloc_value(&mut self, kind: HeapObjectKind, owner: HeapOwner) -> RtValue {
+        if self.heap_len() >= self.gc_threshold {
+            self.collect_garbage();
+        }
         let object = HeapObject {
             marked: false,
             owner,
@@ -177,6 +187,7 @@ impl SchedulerLocal {
     }
 
     pub(crate) fn collect_garbage(&mut self) -> usize {
+        self.gc_collection_count += 1;
         for object in self.heap.iter_mut().flatten() {
             object.marked = false;
         }
@@ -207,6 +218,14 @@ impl SchedulerLocal {
 
     pub(crate) fn heap_len(&self) -> usize {
         self.heap.iter().filter(|slot| slot.is_some()).count()
+    }
+
+    pub(crate) fn set_gc_threshold(&mut self, threshold: usize) {
+        self.gc_threshold = threshold.max(1);
+    }
+
+    pub(crate) fn gc_collection_count(&self) -> usize {
+        self.gc_collection_count
     }
 
     fn mark_value(&mut self, value: RtValue) {
