@@ -4,7 +4,7 @@ set -euo pipefail
 # Honest roadmap metric. Count entries marked with an implementation marker in
 # PLAN.md. We only add markers when the corresponding PLAN slice is actually
 # implemented and validated. Until then, progress is measured by tests/checks.
-completed=$(grep -E '^<!-- autoresearch:step-[0-9]+:done -->$' PLAN.md 2>/dev/null | wc -l | tr -d ' ')
+completed=$( (grep -E '^<!-- autoresearch:step-[0-9]+:done -->$' PLAN.md 2>/dev/null || true) | wc -l | tr -d ' ')
 remaining=$((50 - completed))
 
 checks_passed=0
