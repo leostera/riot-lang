@@ -191,7 +191,6 @@ impl Mailbox {
 #[repr(align(16))]
 pub(crate) struct ActorSlot {
     actor_id: ActorId,
-    display_id: u64,
     scheduler_id: u32,
     frame: AtomicUsize,
     layout: RtFrameLayout,
@@ -206,14 +205,12 @@ pub(crate) struct ActorSlot {
 impl ActorSlot {
     fn new(
         scheduler_id: u32,
-        display_id: u64,
         frame: *mut u8,
         layout: RtFrameLayout,
         resume: ActorResumeFn,
     ) -> Self {
         Self {
             actor_id: ActorId::NULL,
-            display_id,
             scheduler_id,
             frame: AtomicUsize::new(frame as usize),
             layout,
@@ -228,22 +225,17 @@ impl ActorSlot {
 
     pub(crate) fn boxed(
         scheduler_id: u32,
-        display_id: u64,
         frame: *mut u8,
         layout: RtFrameLayout,
         resume: ActorResumeFn,
     ) -> Box<Self> {
-        let mut actor = Box::new(Self::new(scheduler_id, display_id, frame, layout, resume));
+        let mut actor = Box::new(Self::new(scheduler_id, frame, layout, resume));
         actor.actor_id = ActorId::from_ptr(actor.as_ref());
         actor
     }
 
     pub(crate) fn actor_id(&self) -> ActorId {
         self.actor_id
-    }
-
-    pub(crate) fn display_id(&self) -> u64 {
-        self.display_id
     }
 
     pub(crate) fn scheduler_id(&self) -> u32 {

@@ -2364,7 +2364,7 @@ fn collect_free_block(
 
 fn bind_pattern_names(pattern: &RirPattern, bound: &mut BTreeSet<String>) {
     match pattern {
-        RirPattern::Bind(binding) => {
+        RirPattern::Bind { binding, .. } => {
             bound.insert(binding.as_str().to_owned());
         }
         RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
@@ -2391,8 +2391,14 @@ fn bind_pattern_actor_slot_types(
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
 ) {
     match pattern {
-        RirPattern::Bind(binding) => {
-            locals.insert(binding.as_str().to_owned(), type_);
+        RirPattern::Bind {
+            binding,
+            type_: binding_type,
+        } => {
+            locals.insert(
+                binding.as_str().to_owned(),
+                ActorSlotType::from_rsig(binding_type).or(type_),
+            );
         }
         RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
             for pattern in payload {
@@ -2807,7 +2813,10 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
 fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPattern {
     match pattern {
         TypedPattern::Wildcard => RirPattern::Wildcard,
-        TypedPattern::Bind { binding, .. } => RirPattern::Bind(context.bind_existing(&binding)),
+        TypedPattern::Bind { binding, type_ } => RirPattern::Bind {
+            binding: context.bind_existing(&binding),
+            type_,
+        },
         TypedPattern::Constructor {
             type_name,
             constructor,

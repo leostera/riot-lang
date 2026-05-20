@@ -11,7 +11,7 @@ use crate::frame::RtFrameLayout;
 use crate::value::{
     ClosureApplyFn, HeapObject, HeapObjectKind, HeapOwner, RtValue, VALUE_ACTOR_ID_TAG,
     VALUE_BOOL_FALSE, VALUE_BOOL_TRUE, VALUE_HEAP_TAG, VALUE_I64_TAG, VALUE_UNIT, heap_index,
-    value_actor_id_payload, value_i64, value_i64_payload, value_tag,
+    value_actor_id, value_actor_id_payload, value_i64_payload, value_tag,
 };
 
 const PRIMARY_SCHEDULER_ID: u32 = 0;
@@ -81,13 +81,7 @@ impl SchedulerLocal {
             return ActorId::NULL;
         }
 
-        let actor = ActorSlot::boxed(
-            self.scheduler_id,
-            (self.actors.len() + 1) as u64,
-            frame,
-            layout,
-            resume,
-        );
+        let actor = ActorSlot::boxed(self.scheduler_id, frame, layout, resume);
         let actor_id = actor.actor_id();
         self.actors.push(actor);
         actor_id
@@ -115,7 +109,7 @@ impl SchedulerLocal {
             return;
         };
         if actor.is_terminated() {
-            self.send_monitor_down(watcher, actor.display_id());
+            self.send_monitor_down(watcher, actor.actor_id());
         } else {
             actor.push_monitor(watcher);
         }
@@ -166,26 +160,26 @@ impl SchedulerLocal {
         let Some(actor) = (unsafe { actor_from_id(actor_id) }) else {
             return;
         };
-        let display_id = actor.display_id();
+        let down_actor_id = actor.actor_id();
         let monitors = actor.monitor_ids();
         let links = actor.link_ids();
         if !actor.terminate() {
             return;
         }
         for watcher in monitors {
-            self.send_monitor_down(watcher, display_id);
+            self.send_monitor_down(watcher, down_actor_id);
         }
         for peer in links {
             self.terminate_actor(peer);
         }
     }
 
-    fn send_monitor_down(&mut self, watcher: ActorId, display_id: u64) {
+    fn send_monitor_down(&mut self, watcher: ActorId, down_actor_id: ActorId) {
         let value = self.alloc_value(
             HeapObjectKind::Variant {
                 type_name: "monitor_down".to_owned(),
                 constructor: "Down".to_owned(),
-                payload: value_i64(display_id as i64),
+                payload: value_actor_id(down_actor_id),
             },
             HeapOwner::Shared,
         );

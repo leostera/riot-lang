@@ -283,7 +283,7 @@ fn actor_id_sends_push_directly_to_foreign_mailboxes() {
 
     let frame = riot_rt_alloc_frame_v2(8, 8, None);
     assert!(!frame.is_null());
-    let actor = ActorSlot::boxed(99, 1, frame, RtFrameLayout::new(8, 8, None), idle_resume);
+    let actor = ActorSlot::boxed(99, frame, RtFrameLayout::new(8, 8, None), idle_resume);
     let actor_id = actor.actor_id();
     assert_eq!(actor.scheduler_id(), 99);
 

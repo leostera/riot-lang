@@ -15,7 +15,7 @@ run:
 status: success
 stdout:
 watched twice
-1
-1
+down
+down
 stderr:
 <empty>

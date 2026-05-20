@@ -245,7 +245,7 @@ pub(crate) fn eval_expr(
 
 fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
     match pattern {
-        RirPattern::Wildcard | RirPattern::Bind(_) => true,
+        RirPattern::Wildcard | RirPattern::Bind { .. } => true,
         RirPattern::Unit => matches!(value, StaticValue::Unit),
         RirPattern::Bool(expected) => {
             matches!(value, StaticValue::Bool(actual) if actual == expected)
@@ -325,7 +325,7 @@ fn bind_static_pattern(
     bindings: &mut HashMap<String, StaticValue>,
 ) {
     match pattern {
-        RirPattern::Bind(binding) => {
+        RirPattern::Bind { binding, .. } => {
             bindings.insert(binding.as_str().to_owned(), value);
         }
         RirPattern::Constructor { payload, .. } => match payload.as_slice() {

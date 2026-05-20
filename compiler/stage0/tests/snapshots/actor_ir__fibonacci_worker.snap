@@ -20,11 +20,12 @@ ActorIrProgram {
                     op: Receive {
                         arms: [
                             RirReceiveArm {
-                                pattern: Bind(
-                                    BindingKey(
+                                pattern: Bind {
+                                    binding: BindingKey(
                                         "msg$0",
                                     ),
-                                ),
+                                    type_: Unknown,
+                                },
                                 body: Call {
                                     callee: [
                                         "dbg",
@@ -71,11 +72,12 @@ ActorIrProgram {
                     op: Receive {
                         arms: [
                             RirReceiveArm {
-                                pattern: Bind(
-                                    BindingKey(
+                                pattern: Bind {
+                                    binding: BindingKey(
                                         "start$2",
                                     ),
-                                ),
+                                    type_: Unknown,
+                                },
                                 body: Call {
                                     callee: [
                                         "send",

@@ -108,7 +108,10 @@ pub(crate) struct RirReceiveArm {
 #[derive(Debug, Clone)]
 pub(crate) enum RirPattern {
     Wildcard,
-    Bind(BindingKey),
+    Bind {
+        binding: BindingKey,
+        type_: RsigType,
+    },
     Constructor {
         type_name: TypeName,
         constructor: ConstructorName,

@@ -15,7 +15,7 @@
   optional drop hooks so the runtime owns frame teardown after actor completion.
 - Monitors are actor-visible messages, not runtime stdout. Stage0 monitor
   notifications are structured runtime values compatible with
-  `type monitor_down = Down(i64)`.
+  `type monitor_down = Down(actor_id<_>)`.
 - Links use direct termination propagation in stage0: when one linked actor
   terminates, the runtime terminates its linked peers deterministically.
 

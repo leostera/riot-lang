@@ -9,7 +9,7 @@ use crate::scheduler::{
 };
 use crate::value::{
     ClosureApplyFn, HeapObjectKind, HeapOwner, RtValue, VALUE_UNIT, heap_index, value_actor_id,
-    value_bool, value_bool_payload, value_i64, value_i64_payload,
+    value_actor_id_payload, value_bool, value_bool_payload, value_i64, value_i64_payload,
 };
 
 #[unsafe(no_mangle)]
@@ -75,6 +75,11 @@ pub extern "C" fn riot_rt_value_as_bool(value: RtValue) -> bool {
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_actor_id(value: ActorId) -> RtValue {
     value_actor_id(value)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_as_actor_id(value: RtValue) -> ActorId {
+    value_actor_id_payload(value).unwrap_or_else(|| runtime_abort("expected an actor id value"))
 }
 
 #[unsafe(no_mangle)]
