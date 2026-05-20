@@ -1449,10 +1449,6 @@ impl<'ctx> Codegen<'ctx, '_> {
     ) -> miette::Result<CgValue<'ctx>> {
         match callee {
             [name] if name == "dbg" || name == "println" => self.emit_output(name, args, env),
-            [name] if name == "monitor" => {
-                self.emit_actor_id_runtime_call("riot_rt_monitor", args, env)
-            }
-            [name] if name == "link" => self.emit_actor_id_runtime_call("riot_rt_link", args, env),
             [name] if self.externals.contains_key(name.as_str()) => {
                 let external = self.externals.get(name.as_str()).unwrap().clone();
                 self.emit_external_call(
@@ -1691,21 +1687,6 @@ impl<'ctx> Codegen<'ctx, '_> {
 
         self.builder.position_at_end(cont_block);
         Ok(())
-    }
-
-    fn emit_actor_id_runtime_call(
-        &mut self,
-        symbol: &str,
-        args: &[RirExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        if args.len() != 1 {
-            bail!("{symbol} expects one argument");
-        }
-        let actor_id = self.emit_expr(&args[0], env)?;
-        let actor_id = self.value_as_actor_id(actor_id)?;
-        self.call_void_runtime(symbol, &[actor_id.into()])?;
-        Ok(CgValue::Unit)
     }
 
     fn emit_spawn(
