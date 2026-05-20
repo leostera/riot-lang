@@ -1205,11 +1205,11 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
 fn export_has_unknown_abi(export: &RsigExport) -> bool {
     match export {
         RsigExport::Function(function) => {
-            function.result == RsigType::Unknown
+            matches!(function.result, RsigType::Unknown | RsigType::Var(_))
                 || function
                     .params
                     .iter()
-                    .any(|param| matches!(param, RsigType::Unknown))
+                    .any(|param| matches!(param, RsigType::Unknown | RsigType::Var(_)))
         }
         RsigExport::External(external) => {
             external.result == RsigType::Unknown
