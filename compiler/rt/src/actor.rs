@@ -270,8 +270,8 @@ impl ActorSlot {
         self.monitors().clone()
     }
 
-    pub(crate) fn link_count(&self) -> usize {
-        self.links().len()
+    pub(crate) fn link_ids(&self) -> Vec<ActorId> {
+        self.links().clone()
     }
 
     pub(crate) fn terminate(&self) -> bool {

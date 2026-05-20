@@ -121,9 +121,22 @@ impl SchedulerLocal {
     }
 
     pub(crate) fn link(&mut self, actor_id: ActorId) {
-        if let Some(actor) = unsafe { actor_from_id(actor_id) } {
-            actor.push_link(current_actor_id());
+        let peer = current_actor_id();
+        if peer.is_null() {
+            return;
         }
+        let Some(actor) = (unsafe { actor_from_id(actor_id) }) else {
+            return;
+        };
+        let Some(peer_actor) = (unsafe { actor_from_id(peer) }) else {
+            return;
+        };
+        if actor.is_terminated() {
+            self.terminate_actor(peer);
+            return;
+        }
+        actor.push_link(peer);
+        peer_actor.push_link(actor_id);
     }
 
     pub(crate) fn shutdown(&mut self) {
@@ -145,14 +158,24 @@ impl SchedulerLocal {
         let Some(actor) = self.actors.get(index) else {
             return;
         };
+        self.terminate_actor(actor.actor_id());
+    }
+
+    fn terminate_actor(&mut self, actor_id: ActorId) {
+        let Some(actor) = (unsafe { actor_from_id(actor_id) }) else {
+            return;
+        };
         let display_id = actor.display_id();
         let monitors = actor.monitor_ids();
-        let _linked = actor.link_count();
+        let links = actor.link_ids();
         if !actor.terminate() {
             return;
         }
         for watcher in monitors {
             self.send_monitor_down(watcher, display_id);
+        }
+        for peer in links {
+            self.terminate_actor(peer);
         }
     }
 
