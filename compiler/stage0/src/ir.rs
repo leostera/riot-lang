@@ -768,24 +768,27 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             kind: TypedExprKind::Bool(value),
         },
         AstExpr::Call { callee, args, .. } => {
-            if is_named_call(&callee.segments, context) {
-                let type_ = call_result_type(&callee.segments, context);
+            let callee_path = callee.segments;
+            let args = args
+                .into_iter()
+                .map(|arg| type_expr(arg, context))
+                .collect::<Vec<_>>();
+            if is_named_call(&callee_path, context) {
+                if let Some((params, result)) = call_signature(&callee_path, context)
+                    && args.len() < params.len()
+                {
+                    return partial_call_lambda(callee_path, args, params, result, context);
+                }
+                let type_ = call_result_type(&callee_path, context);
                 TypedExpr {
                     type_,
                     kind: TypedExprKind::Call {
-                        callee: callee.segments,
-                        args: args
-                            .into_iter()
-                            .map(|arg| type_expr(arg, context))
-                            .collect(),
+                        callee: callee_path,
+                        args,
                     },
                 }
             } else {
-                let callee = type_path_expr(callee.segments, context);
-                let args = args
-                    .into_iter()
-                    .map(|arg| type_expr(arg, context))
-                    .collect::<Vec<_>>();
+                let callee = type_path_expr(callee_path, context);
                 let type_ = apply_result_type(&callee.type_, args.len());
                 TypedExpr {
                     type_,
@@ -956,7 +959,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
     }
 }
 
-fn type_path_expr(path: Vec<String>, context: &TypeContext<'_>) -> TypedExpr {
+fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr {
     let type_ = path_type(&path, context);
     if let [name] = path.as_slice()
         && let Some(binding) = context.resolve(name)
@@ -966,9 +969,59 @@ fn type_path_expr(path: Vec<String>, context: &TypeContext<'_>) -> TypedExpr {
             kind: TypedExprKind::Local(binding.binding.clone()),
         };
     }
+    if let Some((params, result)) = call_signature(&path, context) {
+        return partial_call_lambda(path, Vec::new(), params, result, context);
+    }
     TypedExpr {
         type_,
         kind: TypedExprKind::Path(path),
+    }
+}
+
+fn partial_call_lambda(
+    callee: Vec<String>,
+    mut supplied_args: Vec<TypedExpr>,
+    params: Vec<RsigType>,
+    result: RsigType,
+    context: &mut TypeContext<'_>,
+) -> TypedExpr {
+    let supplied = supplied_args.len();
+    let remaining = params.into_iter().skip(supplied).collect::<Vec<_>>();
+    context.push_scope();
+    let typed_params = remaining
+        .iter()
+        .enumerate()
+        .map(|(index, type_)| {
+            let binding = context.bind(&format!("arg{index}"), type_.clone());
+            TypedParam {
+                binding,
+                type_: type_.clone(),
+            }
+        })
+        .collect::<Vec<_>>();
+    supplied_args.extend(typed_params.iter().map(|param| TypedExpr {
+        type_: param.type_.clone(),
+        kind: TypedExprKind::Local(param.binding.clone()),
+    }));
+    let call = TypedExpr {
+        type_: result.clone(),
+        kind: TypedExprKind::Call {
+            callee,
+            args: supplied_args,
+        },
+    };
+    context.pop_scope();
+    let type_ = rsig_source_function_type(remaining, result.clone());
+    TypedExpr {
+        type_,
+        kind: TypedExprKind::Lambda {
+            params: typed_params,
+            body: Box::new(TypedBlock {
+                statements: Vec::new(),
+                tail: Some(call),
+                type_: result,
+            }),
+        },
     }
 }
 
@@ -1088,30 +1141,63 @@ fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
+    if let Some((_params, result)) = call_signature(callee, context) {
+        return result;
+    }
+    RsigType::Unknown
+}
+
+fn call_signature(
+    callee: &[String],
+    context: &TypeContext<'_>,
+) -> Option<(Vec<RsigType>, RsigType)> {
     match callee {
-        [name] if name == "dbg" || name == "println" => RsigType::Unit,
-        [name] if name == "send" || name == "monitor" || name == "link" => RsigType::Unit,
+        [name] if name == "dbg" => Some((vec![RsigType::Unknown], RsigType::Unit)),
+        [name] if name == "println" => Some((vec![RsigType::String], RsigType::Unit)),
+        [name] if name == "send" => Some((
+            vec![
+                RsigType::ActorId(Box::new(RsigType::Unknown)),
+                RsigType::Unknown,
+            ],
+            RsigType::Unit,
+        )),
+        [name] if name == "monitor" || name == "link" => Some((
+            vec![RsigType::ActorId(Box::new(RsigType::Unknown))],
+            RsigType::Unit,
+        )),
         [name] => context
             .externals
             .get(name)
             .or_else(|| context.functions.get(name))
-            .map(|(_, result)| result.clone())
-            .unwrap_or_else(|| match name.as_str() {
-                "list_len" | "string_len" => RsigType::I64,
-                "string_concat" => RsigType::String,
-                "list_get" => RsigType::Unknown,
-                _ => RsigType::Unknown,
+            .cloned()
+            .or_else(|| match name.as_str() {
+                "list_len" => Some((
+                    vec![RsigType::List(Box::new(RsigType::Unknown))],
+                    RsigType::I64,
+                )),
+                "list_get" => Some((
+                    vec![RsigType::List(Box::new(RsigType::Unknown)), RsigType::I64],
+                    RsigType::Unknown,
+                )),
+                "string_len" => Some((vec![RsigType::String], RsigType::I64)),
+                "string_concat" => {
+                    Some((vec![RsigType::String, RsigType::String], RsigType::String))
+                }
+                _ => None,
             }),
         [module, name] => context
             .imports
             .get(module)
             .and_then(|rsig| rsig.find(name))
             .map(|export| match export {
-                RsigExport::Function(function) => function.result.clone(),
-                RsigExport::External(external) => external.result.clone(),
-            })
-            .unwrap_or(RsigType::Unknown),
-        _ => RsigType::Unknown,
+                RsigExport::Function(function) => {
+                    (function.params.clone(), function.result.clone())
+                }
+                RsigExport::External(external) => {
+                    (external.params.clone(), external.result.clone())
+                }
+            }),
+        _ => None,
     }
 }
 

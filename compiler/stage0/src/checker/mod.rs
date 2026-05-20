@@ -760,18 +760,62 @@ fn validate_expr(
             Ok(ExprCategory::Other)
         }
         AstExpr::Path { path, span } => {
-            if let Some(head) = path.segments.first()
-                && !bindings.contains_key(head)
-            {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "unknown value",
-                    format!("`{head}` is not bound in this scope"),
-                    Some("bind the value with `let` before using it"),
-                )
-                .into());
+            match path.segments.as_slice() {
+                [name]
+                    if bindings.contains_key(name)
+                        || ctx.function_names.contains(name)
+                        || ctx.external_names.contains(name) => {}
+                [module, name] => {
+                    let Some(rsig) = ctx.imports.get(module) else {
+                        return Err(to_source_diagnostic(
+                            ctx.source_path,
+                            ctx.source,
+                            *span,
+                            "unknown imported module",
+                            format!(
+                                "`{module}` has not been brought into scope with `use {module}`"
+                            ),
+                            Some("add a top-level `use` declaration and pass --sig-dir"),
+                        )
+                        .into());
+                    };
+                    let Some(export) = rsig.find(name) else {
+                        return Err(to_source_diagnostic(
+                            ctx.source_path,
+                            ctx.source,
+                            *span,
+                            "unknown imported value",
+                            format!("module `{module}` does not export `{name}`"),
+                            Some("check the producer .rsig"),
+                        )
+                        .into());
+                    };
+                    if export_has_unknown_abi(export) {
+                        return Err(to_source_diagnostic(
+                            ctx.source_path,
+                            ctx.source,
+                            *span,
+                            "imported value has unknown ABI",
+                            format!(
+                                "module `{module}` exports `{name}`, but its .rsig type is not concrete enough to use as a value"
+                            ),
+                            Some("add enough type information for the exported function"),
+                        )
+                        .into());
+                    }
+                }
+                [head, ..] => {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        *span,
+                        "unknown value",
+                        format!("`{head}` is not bound in this scope"),
+                        Some("bind the value with `let` before using it"),
+                    )
+                    .into());
+                }
+                [] => {}
             }
             Ok(ExprCategory::Other)
         }
