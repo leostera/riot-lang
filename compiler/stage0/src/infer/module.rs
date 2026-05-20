@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use thiserror::Error;
 
 use super::env::Env;
@@ -32,6 +34,36 @@ pub(crate) fn infer_program(program: &AstProgram) -> Result<InferredModule, Infe
     Ok(InferredModule {
         env: state.into_env(),
     })
+}
+
+pub(crate) fn infer_function_signatures(
+    program: &AstProgram,
+) -> Result<BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
+    let function_names = program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::Function(function) => Some(function.name.clone()),
+            _ => None,
+        })
+        .collect::<BTreeSet<_>>();
+    let inferred = infer_program(program)?;
+    let mut signatures = BTreeMap::new();
+    for name in function_names {
+        let Some(scheme) = inferred.env.get_value(&name) else {
+            continue;
+        };
+        if let Type::Function(params, result) = &scheme.body {
+            signatures.insert(
+                name,
+                (
+                    params.iter().map(infer_type_to_rsig_type).collect(),
+                    infer_type_to_rsig_type(result),
+                ),
+            );
+        }
+    }
+    Ok(signatures)
 }
 
 fn install_prelude(state: &mut State) {
@@ -329,14 +361,32 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
     }
 }
 
+fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
+    match type_ {
+        Type::ActorId(message) => RsigType::ActorId(Box::new(infer_type_to_rsig_type(message))),
+        Type::Bool => RsigType::Bool,
+        Type::Char => RsigType::Char,
+        Type::F64 => RsigType::F64,
+        Type::Function(_, _) => RsigType::Unknown,
+        Type::I64 => RsigType::I64,
+        Type::List(element) => RsigType::List(Box::new(infer_type_to_rsig_type(element))),
+        Type::Record(name) => RsigType::Record(name.clone()),
+        Type::String => RsigType::String,
+        Type::Tuple(items) => RsigType::Tuple(items.iter().map(infer_type_to_rsig_type).collect()),
+        Type::Unit => RsigType::Unit,
+        Type::Var(var) => RsigType::Var(format!("'t{}", var.index())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
-    use crate::infer::module::infer_program;
+    use crate::infer::module::{infer_function_signatures, infer_program};
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
+    use crate::signature::RsigType;
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -518,6 +568,25 @@ mod tests {
         assert_eq!(
             exports[0].1,
             TypeScheme::monomorphic(Type::Function(Vec::new(), Box::new(Type::Unit)))
+        );
+    }
+
+    #[test]
+    fn function_signatures_project_concrete_parameter_types() {
+        let program = AstProgram {
+            decls: vec![function(
+                "add",
+                vec!["n", "x"],
+                Vec::new(),
+                add(path("x"), path("n")),
+            )],
+        };
+
+        let signatures = infer_function_signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("add"),
+            Some(&(vec![RsigType::I64, RsigType::I64], RsigType::I64))
         );
     }
 }

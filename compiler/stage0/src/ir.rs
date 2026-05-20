@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstProgram, AstStmt};
+use crate::infer::module::infer_function_signatures;
 use crate::signature::{
     ImportedSignatures, Rsig, RsigExport, RsigExternal, RsigFunction, RsigType,
     parse_type_signature,
@@ -21,6 +22,7 @@ pub(crate) fn typed_program_from_ast(
     ast: AstProgram,
     imports: &ImportedSignatures,
 ) -> TypedProgram {
+    let inferred_function_types = infer_function_signatures(&ast).ok();
     let mut uses = Vec::new();
     let mut externals = Vec::new();
     let mut ast_functions = Vec::new();
@@ -42,7 +44,8 @@ pub(crate) fn typed_program_from_ast(
         }
     }
 
-    let function_types = infer_ast_function_types(&ast_functions);
+    let function_types =
+        inferred_function_types.unwrap_or_else(|| infer_ast_function_types(&ast_functions));
     let external_types = externals
         .iter()
         .map(|external| {
