@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use camino::Utf8Path;
 
@@ -11,8 +11,8 @@ use span::expr_span;
 use types::parse_primitive_type;
 
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeAnnotation, AstTypeBody,
-    TextSpan,
+    AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeAnnotation,
+    AstTypeBody, TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
@@ -87,7 +87,15 @@ struct ValidationContext<'a> {
     external_names: HashSet<String>,
     constructor_types: HashMap<String, RsigType>,
     declared_variants: BTreeSet<TypeName>,
+    record_shapes: HashMap<String, RecordShape>,
+    record_shapes_by_type: BTreeMap<TypeName, RecordShape>,
     imports: &'a ImportedSignatures,
+}
+
+#[derive(Debug, Clone)]
+struct RecordShape {
+    type_name: TypeName,
+    fields: Vec<(String, RsigType)>,
 }
 
 fn validate_program(
@@ -104,6 +112,8 @@ fn validate_program(
     let declared_external_names = declared_external_names(program);
     let external_names = external_names(program);
     let constructor_types = constructor_types(program);
+    let (record_shapes, record_shapes_by_type) =
+        record_shapes(program, imports, &declared_variants);
     let ctx = ValidationContext {
         source_path,
         source,
@@ -114,6 +124,8 @@ fn validate_program(
         external_names,
         constructor_types,
         declared_variants,
+        record_shapes,
+        record_shapes_by_type,
         imports,
     };
 
@@ -351,6 +363,104 @@ fn constructor_types(program: &AstProgram) -> HashMap<String, RsigType> {
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+fn record_shapes(
+    program: &AstProgram,
+    imports: &ImportedSignatures,
+    declared_variants: &BTreeSet<TypeName>,
+) -> (
+    HashMap<String, RecordShape>,
+    BTreeMap<TypeName, RecordShape>,
+) {
+    let mut shapes = HashMap::new();
+    let mut shapes_by_type = BTreeMap::new();
+    for decl in &program.decls {
+        match decl {
+            AstDecl::Type(type_) => {
+                let AstTypeBody::Record { fields } = &type_.body else {
+                    continue;
+                };
+                let type_name = TypeName::new(type_.name.clone());
+                let shape = RecordShape {
+                    type_name: type_name.clone(),
+                    fields: fields
+                        .iter()
+                        .map(|field| {
+                            (
+                                field.name.clone(),
+                                parse_type_with_variants(
+                                    &field.type_annotation.text,
+                                    declared_variants,
+                                ),
+                            )
+                        })
+                        .collect(),
+                };
+                insert_record_shape_aliases(&mut shapes, None, &type_name, shape.clone());
+                shapes_by_type.insert(type_name, shape);
+            }
+            AstDecl::Use(use_) => {
+                let Some(rsig) = imports.get(use_.name.as_str()) else {
+                    continue;
+                };
+                for type_ in &rsig.types {
+                    let RsigTypeDeclKind::Record { fields } = &type_.body else {
+                        continue;
+                    };
+                    let type_name = imported_type_name(use_.name.as_str(), &type_.name);
+                    let shape = RecordShape {
+                        type_name: type_name.clone(),
+                        fields: fields
+                            .iter()
+                            .map(|field| (field.name.as_str().to_owned(), field.type_.clone()))
+                            .collect(),
+                    };
+                    insert_record_shape_aliases(
+                        &mut shapes,
+                        Some(use_.name.as_str()),
+                        &type_.name,
+                        shape.clone(),
+                    );
+                    shapes_by_type.insert(type_name, shape);
+                }
+            }
+            _ => {}
+        }
+    }
+    (shapes, shapes_by_type)
+}
+
+fn insert_record_shape_aliases(
+    shapes: &mut HashMap<String, RecordShape>,
+    module: Option<&str>,
+    source_name: &TypeName,
+    shape: RecordShape,
+) {
+    let base = source_name.as_str();
+    shapes.insert(base.to_owned(), shape.clone());
+    shapes.insert(type_constructor_name(base), shape.clone());
+    if let Some(module) = module {
+        shapes.insert(format!("{module}.{base}"), shape.clone());
+        shapes.insert(format!("{module}.{}", type_constructor_name(base)), shape);
+    }
+}
+
+fn type_constructor_name(type_name: &str) -> String {
+    let mut output = String::new();
+    let mut capitalize = true;
+    for ch in type_name.chars() {
+        if ch == '_' || ch == '-' || ch == '.' {
+            capitalize = true;
+        } else if capitalize && ch.is_ascii_lowercase() {
+            output.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            output.push(ch);
+            capitalize = false;
+        }
+    }
+    output
 }
 
 fn validate_block(
@@ -866,14 +976,16 @@ fn validate_expr(
             }
             Ok(ExprCategory::Other)
         }
-        AstExpr::Record { fields, .. } => {
+        AstExpr::Record { path, fields, span } => {
             for (_, value) in fields {
                 validate_expr(ctx, value, bindings, in_actor)?;
             }
+            validate_record_literal_shape(ctx, path, fields, *span, bindings)?;
             Ok(ExprCategory::Other)
         }
-        AstExpr::Field { base, .. } => {
+        AstExpr::Field { base, field, span } => {
             validate_expr(ctx, base, bindings, in_actor)?;
+            validate_declared_record_field(ctx, base, field, *span, bindings)?;
             Ok(ExprCategory::Other)
         }
         AstExpr::TupleIndex { base, index, span } => {
@@ -1209,6 +1321,122 @@ fn validate_static_list_index(
         .into());
     }
     Ok(())
+}
+
+fn validate_record_literal_shape(
+    ctx: &ValidationContext<'_>,
+    path: &AstPath,
+    fields: &[(String, AstExpr)],
+    span: TextSpan,
+    bindings: &HashMap<String, BindingKind>,
+) -> miette::Result<()> {
+    let key = path.segments.join(".");
+    let Some(shape) = ctx.record_shapes.get(&key) else {
+        return Ok(());
+    };
+    let expected = shape
+        .fields
+        .iter()
+        .map(|(name, type_)| (name.as_str(), type_))
+        .collect::<HashMap<_, _>>();
+    let mut seen = HashSet::new();
+    for (name, value) in fields {
+        if !seen.insert(name.as_str()) {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                expr_span(value),
+                "duplicate record field",
+                format!(
+                    "field `{name}` appears more than once in `{}`",
+                    shape.type_name
+                ),
+                Some("keep one value for each declared field"),
+            )
+            .into());
+        }
+        let Some(expected_type) = expected.get(name.as_str()) else {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                expr_span(value),
+                "unknown record field",
+                format!("`{}` has no field named `{name}`", shape.type_name),
+                Some("use one of the fields declared on the record type"),
+            )
+            .into());
+        };
+        if let Some(actual_type) = simple_expr_type(ctx, value, bindings)
+            && !type_matches(expected_type, &actual_type)
+        {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                expr_span(value),
+                "record field type mismatch",
+                format!(
+                    "field `{name}` expects `{}`, but this value has type `{}`",
+                    expected_type.canonical(),
+                    actual_type.canonical()
+                ),
+                Some("provide a value with the declared field type"),
+            )
+            .into());
+        }
+    }
+    for (name, _type_) in &shape.fields {
+        if !seen.contains(name.as_str()) {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                span,
+                "missing record field",
+                format!("`{}` requires field `{name}`", shape.type_name),
+                Some("initialize every field declared on the record type"),
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+fn validate_declared_record_field(
+    ctx: &ValidationContext<'_>,
+    base: &AstExpr,
+    field: &str,
+    span: TextSpan,
+    bindings: &HashMap<String, BindingKind>,
+) -> miette::Result<()> {
+    let Some(RsigType::Record(type_name)) = simple_expr_type(ctx, base, bindings) else {
+        return Ok(());
+    };
+    let Some(shape) = ctx.record_shapes_by_type.get(&type_name) else {
+        return Ok(());
+    };
+    if shape
+        .fields
+        .iter()
+        .any(|(declared_field, _)| declared_field == field)
+    {
+        return Ok(());
+    }
+    Err(to_source_diagnostic(
+        ctx.source_path,
+        ctx.source,
+        span,
+        "unknown record field",
+        format!("`{}` has no field named `{field}`", shape.type_name),
+        Some("use one of the fields declared on the record type"),
+    )
+    .into())
+}
+
+fn record_literal_type(ctx: &ValidationContext<'_>, path: &AstPath) -> RsigType {
+    let key = path.segments.join(".");
+    ctx.record_shapes
+        .get(&key)
+        .map(|shape| RsigType::Record(shape.type_name.clone()))
+        .unwrap_or_else(|| RsigType::Record(TypeName::new(key)))
 }
 
 fn static_i64_expr(expr: &AstExpr) -> Option<i64> {
@@ -1589,9 +1817,7 @@ fn infer_annotation_expr_type(
                 .and_then(|item| infer_annotation_expr_type(ctx, item, bindings))
                 .unwrap_or(RsigType::Unknown),
         ))),
-        AstExpr::Record { path, .. } => {
-            Some(RsigType::Record(TypeName::new(path.segments.join("."))))
-        }
+        AstExpr::Record { path, .. } => Some(record_literal_type(ctx, path)),
         AstExpr::Field { base, field, .. } => {
             infer_annotation_field_type(ctx, base, field, bindings)
         }
@@ -1820,9 +2046,7 @@ fn simple_expr_type(
             .map(|arm| simple_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown))
             .reduce(merge_annotation_types),
         AstExpr::Block { block, .. } => simple_block_type(ctx, block, bindings),
-        AstExpr::Record { path, .. } => {
-            Some(RsigType::Record(TypeName::new(path.segments.join("."))))
-        }
+        AstExpr::Record { path, .. } => Some(record_literal_type(ctx, path)),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
         AstExpr::TupleIndex { base, index, .. } => {
             simple_tuple_index_type(ctx, base, *index, bindings)
