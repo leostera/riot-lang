@@ -4,11 +4,11 @@
 
 ## Current Scope
 
-- Compile one `.ml` source file to one native executable with
-  `stage0 compile <file> -o <output>`.
-- Compile one `.ml` source file to module artifacts with
-  `stage0 compile-lib <file> --out-dir <dir>`, which emits `<Module>.rsig`
-  and `<Module>.o`.
+- Compile one or more `.ml` source files to one native executable with
+  `stage0 compile <file>... -o <output>`.
+- Compile one or more `.ml` source files to module artifacts with
+  `stage0 compile-lib <file>... --out-dir <dir>`, which emits `<Module>.rsig`
+  and `<Module>.o` for each input.
 - Emit compiler artifacts with `stage0 emit <pass> <file>`. Supported passes
   are `cst`, `typed`, `rsig`, `ir`, `actor-ir`, `llvm`, `assembly`,
   `object`, and `all`.
@@ -16,6 +16,9 @@
   when a human-readable canonical signature view is needed in tests or review.
 - Source file stems must be lowercase, for example `hello.ml` and
   `hello_world.ml`; module names are derived as `Hello` and `HelloWorld`.
+- Multi-source `compile` and `compile-lib` parse every input before lowering,
+  build a small module graph from `use`, `pub mod`/`mod`, and `include`
+  declarations, and process inputs in topological order.
 - Keep the pipeline compiler-shaped: parse, typed HIR/signature, RIR,
   actor-frame IR, LLVM codegen, link.
 - Treat `emit actor-ir` as a compiler boundary snapshot: it should expose actor

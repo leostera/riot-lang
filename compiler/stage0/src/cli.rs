@@ -13,9 +13,9 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// Compile one Riot ML source file to a native executable.
+    /// Compile one or more Riot ML source files to a native executable.
     Compile(CompileArgs),
-    /// Compile one Riot ML source file to a module .rsig and .o.
+    /// Compile one or more Riot ML source files to module .rsig and .o artifacts.
     CompileLib(CompileLibArgs),
     /// Emit one compiler pipeline artifact.
     Emit(EmitArgs),
@@ -23,8 +23,9 @@ pub(crate) enum Command {
 
 #[derive(Debug, ClapParser)]
 pub(crate) struct CompileArgs {
-    /// Riot ML .ml source file to compile.
-    pub(crate) input: Utf8PathBuf,
+    /// Riot ML .ml source file(s) to compile.
+    #[arg(required = true)]
+    pub(crate) inputs: Vec<Utf8PathBuf>,
 
     /// Output executable path.
     #[arg(short, long)]
@@ -49,8 +50,9 @@ pub(crate) struct CompileArgs {
 
 #[derive(Debug, ClapParser)]
 pub(crate) struct CompileLibArgs {
-    /// Riot ML .ml source file to compile as a module artifact.
-    pub(crate) input: Utf8PathBuf,
+    /// Riot ML .ml source file(s) to compile as module artifacts.
+    #[arg(required = true)]
+    pub(crate) inputs: Vec<Utf8PathBuf>,
 
     /// Directory that receives <Module>.rsig and <Module>.o.
     #[arg(long = "out-dir")]

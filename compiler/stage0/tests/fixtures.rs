@@ -390,6 +390,93 @@ fn compile_lib_emits_signature_and_object_artifacts() -> FixtureResult {
 }
 
 #[test]
+fn compile_lib_multiple_sources_processes_in_dependency_order() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let math = temp_dir.path().join("math.ml");
+    let constants = temp_dir.path().join("constants.ml");
+
+    std::fs::write(
+        &math,
+        "use Constants\nfn answer() { Constants.base() + 1 }\n",
+    )?;
+    std::fs::write(&constants, "fn base() { 41 }\n")?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&math)
+        .arg(&constants)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected multi-source compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    for artifact in [
+        out_dir.join("Math.rsig"),
+        out_dir.join("Math.o"),
+        out_dir.join("Constants.rsig"),
+        out_dir.join("Constants.o"),
+    ] {
+        if !artifact.exists() {
+            return fail(format!(
+                "missing multi-source artifact: {}",
+                artifact.display()
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn compile_multiple_sources_links_dependency_objects() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let main = temp_dir.path().join("main.ml");
+    let math = temp_dir.path().join("math.ml");
+    let constants = temp_dir.path().join("constants.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(&main, "use Math\nfn main() { dbg(Math.answer()) }\n")?;
+    std::fs::write(
+        &math,
+        "use Constants\nfn answer() { Constants.base() + 1 }\n",
+    )?;
+    std::fs::write(&constants, "fn base() { 41 }\n")?;
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg(&math)
+        .arg(&constants)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected multi-source compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"42\n" {
+        return fail(format!(
+            "unexpected multi-source stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_higher_order_function_uses_arrow_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
