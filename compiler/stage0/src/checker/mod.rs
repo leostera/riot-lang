@@ -337,6 +337,63 @@ fn validate_block(
     Ok(())
 }
 
+fn validate_scoped_block(
+    ctx: &ValidationContext<'_>,
+    block: &AstBlock,
+    outer_bindings: &HashMap<String, BindingKind>,
+    params: &[String],
+    param_types: &[Option<AstTypeAnnotation>],
+    in_actor: bool,
+) -> miette::Result<()> {
+    let mut bindings = outer_bindings.clone();
+    for (index, param) in params.iter().enumerate() {
+        let type_ = param_types
+            .get(index)
+            .and_then(|annotation| annotation.as_ref())
+            .map(|annotation| parse_type(&annotation.text));
+        bindings.insert(param.clone(), BindingKind::Value(type_));
+    }
+
+    for stmt in &block.statements {
+        match stmt {
+            AstStmt::Let {
+                name,
+                type_annotation,
+                value,
+                ..
+            } => {
+                if let Some(annotation) = type_annotation {
+                    validate_type_annotation(ctx, annotation, value, &bindings)?;
+                }
+                let kind = match value {
+                    AstExpr::Spawn { body, .. } => {
+                        validate_actor_block(ctx, body, &bindings)?;
+                        BindingKind::Actor
+                    }
+                    _ => {
+                        validate_expr(ctx, value, &bindings, in_actor)?;
+                        let type_ = type_annotation
+                            .as_ref()
+                            .map(|annotation| parse_type(&annotation.text))
+                            .or_else(|| simple_expr_type(ctx, value, &bindings));
+                        BindingKind::Value(type_)
+                    }
+                };
+                bindings.insert(name.clone(), kind);
+            }
+            AstStmt::Expr(expr) => {
+                validate_expr(ctx, expr, &bindings, in_actor)?;
+            }
+        }
+    }
+
+    if let Some(tail) = &block.tail {
+        validate_expr(ctx, tail, &bindings, in_actor)?;
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ExprCategory {
     Output,
@@ -541,6 +598,15 @@ fn validate_expr(
                 )
                 .into()),
             }
+        }
+        AstExpr::Lambda {
+            params,
+            param_types,
+            body,
+            ..
+        } => {
+            validate_scoped_block(ctx, body, bindings, params, param_types, in_actor)?;
+            Ok(ExprCategory::Other)
         }
         AstExpr::Spawn { body, span: _ } => {
             validate_actor_block(ctx, body, bindings)?;
@@ -1140,6 +1206,7 @@ fn infer_annotation_expr_type(
             .first()
             .and_then(|name| bindings.get(name))
             .cloned(),
+        AstExpr::Lambda { .. } => Some(RsigType::Unknown),
         AstExpr::String { .. } => Some(RsigType::String),
         AstExpr::Spawn { .. } => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } => Some(RsigType::Unit),
@@ -1311,6 +1378,7 @@ fn simple_expr_type(
         AstExpr::TupleIndex { base, index, .. } => {
             simple_tuple_index_type(ctx, base, *index, bindings)
         }
+        AstExpr::Lambda { .. } => Some(RsigType::Unknown),
         AstExpr::Spawn { .. } => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
     }

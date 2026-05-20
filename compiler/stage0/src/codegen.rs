@@ -512,6 +512,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
             RirExpr::Call { callee, args } => self.emit_call(callee, args, env),
+            RirExpr::Lambda { .. } => bail!("lambda values are not lowered to LLVM yet"),
             RirExpr::Unit => Ok(CgValue::Unit),
             RirExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
             RirExpr::List(items) => self.emit_value_sequence("riot_rt_value_list", items, env),
@@ -2290,6 +2291,7 @@ fn infer_expr_abi(
             _ => AbiType::Unknown,
         },
         RirExpr::Unit => AbiType::Unit,
+        RirExpr::Lambda { .. } => AbiType::Value,
         RirExpr::Path(path) => path
             .first()
             .and_then(|name| locals.get(name))
@@ -2337,6 +2339,23 @@ fn mark_expr_constraints(
             for arg in args {
                 mark_expr_constraints(arg, params, locals, param_types, functions);
             }
+        }
+        RirExpr::Lambda {
+            params: lambda_params,
+            body,
+        } => {
+            let mut nested_locals = locals.clone();
+            for param in lambda_params {
+                nested_locals.insert(param.clone(), AbiType::Unknown);
+            }
+            let mut nested_params = vec![AbiType::Unknown; lambda_params.len()];
+            infer_block_abi(
+                body,
+                lambda_params,
+                &mut nested_locals,
+                &mut nested_params,
+                functions,
+            );
         }
         RirExpr::Tuple(items) | RirExpr::List(items) => {
             for item in items {

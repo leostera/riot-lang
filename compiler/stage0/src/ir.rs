@@ -395,6 +395,12 @@ fn infer_ast_expr_type(
                 _ => RsigType::Unknown,
             }
         }
+        AstExpr::Lambda { body, .. } => {
+            let mut nested_locals = locals.clone();
+            let mut nested_params = Vec::new();
+            infer_ast_block_type(body, &[], &mut nested_locals, &mut nested_params, functions);
+            RsigType::Unknown
+        }
         AstExpr::Spawn { .. } => RsigType::ActorId(Box::new(RsigType::Unknown)),
         AstExpr::Receive { body, .. } => {
             infer_ast_expr_type(body, locals, functions);
@@ -511,6 +517,24 @@ fn mark_ast_constraints(
             for arg in args {
                 mark_ast_constraints(arg, params, locals, param_types, functions);
             }
+        }
+        AstExpr::Lambda {
+            params: lambda_params,
+            body,
+            ..
+        } => {
+            let mut nested_locals = locals.clone();
+            for param in lambda_params {
+                nested_locals.insert(param.clone(), RsigType::Unknown);
+            }
+            let mut nested_params = vec![RsigType::Unknown; lambda_params.len()];
+            infer_ast_block_type(
+                body,
+                lambda_params,
+                &mut nested_locals,
+                &mut nested_params,
+                functions,
+            );
         }
         AstExpr::Record { fields, .. } => {
             for (_, value) in fields {
@@ -667,6 +691,39 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         .into_iter()
                         .map(|arg| type_expr(arg, context))
                         .collect(),
+                },
+            }
+        }
+        AstExpr::Lambda {
+            params,
+            param_types,
+            body,
+            ..
+        } => {
+            let saved_bindings = context.bindings.clone();
+            let typed_params = params
+                .iter()
+                .enumerate()
+                .map(|(index, name)| {
+                    let type_ = param_types
+                        .get(index)
+                        .and_then(|annotation| annotation.as_ref())
+                        .map(|annotation| parse_type_signature(&annotation.text).1)
+                        .unwrap_or(RsigType::Unknown);
+                    context.bindings.insert(name.clone(), type_.clone());
+                    TypedParam {
+                        name: name.clone(),
+                        type_,
+                    }
+                })
+                .collect::<Vec<_>>();
+            let body = type_block(*body, context);
+            context.bindings = saved_bindings;
+            TypedExpr {
+                type_: RsigType::Unknown,
+                kind: TypedExprKind::Lambda {
+                    params: typed_params,
+                    body: Box::new(body),
                 },
             }
         }
@@ -990,6 +1047,13 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(owner, arg, locals, context, actors);
             }
         }
+        RirExpr::Lambda { params, body } => {
+            let mut lambda_locals = locals.clone();
+            for param in params {
+                lambda_locals.insert(param.clone(), None);
+            }
+            collect_actors_from_block(owner, body, &mut lambda_locals, context, actors);
+        }
         RirExpr::Record { fields, .. } => {
             for (_, value) in fields {
                 collect_actors_from_expr(owner, value, locals, context, actors);
@@ -1168,6 +1232,13 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(arg, bound, free);
             }
         }
+        RirExpr::Lambda { params, body } => {
+            let mut nested = bound.clone();
+            for param in params {
+                nested.insert(param.clone());
+            }
+            collect_free_block(body, &nested, free);
+        }
         RirExpr::Record { fields, .. } => {
             for (_, value) in fields {
                 collect_free_expr(value, bound, free);
@@ -1266,6 +1337,7 @@ fn infer_actor_slot_type(
         RirExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
         RirExpr::Tuple(_)
         | RirExpr::List(_)
+        | RirExpr::Lambda { .. }
         | RirExpr::Record { .. }
         | RirExpr::Field { .. }
         | RirExpr::TupleIndex { .. }
@@ -1358,6 +1430,10 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .into_iter()
                 .map(|arg| lower_expr(arg, context))
                 .collect(),
+        },
+        TypedExprKind::Lambda { params, body } => RirExpr::Lambda {
+            params: params.into_iter().map(|param| param.name).collect(),
+            body: Box::new(lower_block(*body, context)),
         },
         TypedExprKind::Spawn { body } => RirExpr::Spawn {
             actor_id: context.next_actor_id(),

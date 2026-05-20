@@ -277,6 +277,37 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
         AstExpr::Int { .. } => Ok(Type::I64),
         AstExpr::String { .. } => Ok(Type::String),
         AstExpr::Unit { .. } => Ok(Type::Unit),
+        AstExpr::Lambda {
+            params: names,
+            param_types,
+            body,
+            ..
+        } => {
+            let parameter_types = names
+                .iter()
+                .enumerate()
+                .map(|(index, _param)| {
+                    param_types
+                        .get(index)
+                        .and_then(|annotation| annotation.as_ref())
+                        .map(|annotation| {
+                            rsig_type_to_infer_type(&parse_type(&annotation.text), state)
+                        })
+                        .unwrap_or_else(|| state.fresh_var())
+                })
+                .collect::<Vec<_>>();
+
+            state.push_scope();
+            for (name, type_) in names.iter().zip(&parameter_types) {
+                state.add_value(name.clone(), state.monomorphic(type_.clone()));
+            }
+            let result = infer_block(state, body)?;
+            state.pop_scope();
+            Ok(source_function_type(
+                parameter_types,
+                state.resolve(&result),
+            ))
+        }
         AstExpr::Path { path, .. } if path.segments.len() == 1 => {
             let name = &path.segments[0];
             let scheme = state
@@ -574,6 +605,19 @@ mod tests {
         }
     }
 
+    fn lambda(params: Vec<&str>, tail: AstExpr) -> AstExpr {
+        AstExpr::Lambda {
+            params: params.into_iter().map(str::to_owned).collect(),
+            param_types: Vec::new(),
+            body: Box::new(AstBlock {
+                statements: Vec::new(),
+                tail: Some(tail),
+                span: span(),
+            }),
+            span: span(),
+        }
+    }
+
     fn function(name: &str, params: Vec<&str>, statements: Vec<AstStmt>, tail: AstExpr) -> AstDecl {
         AstDecl::Function(AstFnDecl {
             name: name.to_owned(),
@@ -697,6 +741,26 @@ mod tests {
                 quantifiers: vec![var],
                 body: Type::arrow(Type::Var(var), Type::Var(var)),
             }
+        );
+    }
+
+    #[test]
+    fn lambda_expressions_infer_unary_arrow_chains() {
+        let program = AstProgram {
+            decls: vec![function(
+                "make_adder",
+                vec!["n"],
+                Vec::new(),
+                lambda(vec!["x"], add(path("x"), path("n"))),
+            )],
+        };
+
+        let inferred = infer(&program).unwrap();
+        let exports = inferred.env.exported_values();
+
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::arrow(Type::I64, Type::I64)))
         );
     }
 

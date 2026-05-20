@@ -85,6 +85,10 @@ pub(crate) enum TypedExprKind {
         callee: Vec<String>,
         args: Vec<TypedExpr>,
     },
+    Lambda {
+        params: Vec<TypedParam>,
+        body: Box<TypedBlock>,
+    },
     Unit,
     Tuple(Vec<TypedExpr>),
     List(Vec<TypedExpr>),

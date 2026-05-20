@@ -518,6 +518,7 @@ impl<'src> Parser<'src> {
             TokenKind::Char => self.parse_char(),
             TokenKind::Float => self.parse_float(),
             TokenKind::Int => self.parse_int(),
+            TokenKind::Fn => self.parse_lambda(),
             TokenKind::Spawn => self.parse_spawn(),
             TokenKind::Receive => self.parse_receive(),
             TokenKind::Ident => {
@@ -541,6 +542,19 @@ impl<'src> Parser<'src> {
             TokenKind::LBracket => self.parse_list(),
             _ => Err(self.error_at_current("expected expression", None)),
         }
+    }
+
+    fn parse_lambda(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::Fn, "expected lambda expression")?;
+        let (params, param_types) = self.parse_param_list()?;
+        let body = self.parse_block()?;
+        let span = start.span.join(body.span);
+        Ok(AstExpr::Lambda {
+            params,
+            param_types,
+            body: Box::new(body),
+            span,
+        })
     }
 
     fn parse_spawn(&mut self) -> Result<AstExpr, ParseError> {
@@ -855,5 +869,35 @@ impl<'src> Parser<'src> {
             message: message.into(),
             help,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use camino::Utf8Path;
+
+    use crate::ast::{AstDecl, AstExpr, AstStmt};
+
+    use super::parse_source;
+
+    #[test]
+    fn parses_expression_lambdas() {
+        let program = parse_source(
+            Utf8Path::new("lambda.ml"),
+            "fn main() { let f = fn(n) { fn(x) { x + n } }; dbg(\"ok\") }\n",
+        )
+        .unwrap();
+
+        let AstDecl::Function(function) = &program.decls[0] else {
+            panic!("expected function declaration");
+        };
+        let AstStmt::Let { value, .. } = &function.body.statements[0] else {
+            panic!("expected lambda let binding");
+        };
+        let AstExpr::Lambda { params, body, .. } = value else {
+            panic!("expected outer lambda");
+        };
+        assert_eq!(params, &["n"]);
+        assert!(matches!(body.tail.as_ref(), Some(AstExpr::Lambda { .. })));
     }
 }

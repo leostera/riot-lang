@@ -61,6 +61,10 @@ pub(crate) enum RirExpr {
         callee: Vec<String>,
         args: Vec<RirExpr>,
     },
+    Lambda {
+        params: Vec<String>,
+        body: Box<RirBlock>,
+    },
     Unit,
     Tuple(Vec<RirExpr>),
     List(Vec<RirExpr>),

@@ -60,6 +60,12 @@ pub(super) fn expr_span(expr: &AstExpr) -> TextSpan {
             args: _,
             span,
         }
+        | AstExpr::Lambda {
+            params: _,
+            param_types: _,
+            body: _,
+            span,
+        }
         | AstExpr::Spawn { body: _, span }
         | AstExpr::Receive {
             binder: _,
