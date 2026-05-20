@@ -47,12 +47,14 @@ pub(crate) fn typecheck(
     })?;
     let function_types = inferred.function_signatures(&program);
     let expression_types = inferred.expression_rsig_types();
+    let binding_schemes = inferred.binding_rsig_schemes();
     let typed_tree = typed_program_from_ast(
         module_name,
         program,
         imports,
         &function_types,
         Some(&expression_types),
+        Some(&binding_schemes),
     );
     let signature = signature_for(&typed_tree);
     Ok(CheckedProgram {

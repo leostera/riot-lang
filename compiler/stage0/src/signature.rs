@@ -58,6 +58,33 @@ pub(crate) enum RsigType {
     Unknown,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RsigTypeScheme {
+    pub(crate) quantifiers: Vec<String>,
+    pub(crate) body: RsigType,
+}
+
+impl RsigTypeScheme {
+    pub(crate) fn monomorphic(body: RsigType) -> Self {
+        Self {
+            quantifiers: Vec::new(),
+            body,
+        }
+    }
+
+    pub(crate) fn canonical(&self) -> String {
+        if self.quantifiers.is_empty() {
+            self.body.canonical()
+        } else {
+            format!(
+                "forall {}. {}",
+                self.quantifiers.join(" "),
+                self.body.canonical()
+            )
+        }
+    }
+}
+
 impl Rsig {
     pub(crate) fn new(module: String, mut exports: Vec<RsigExport>) -> Self {
         for export in &mut exports {

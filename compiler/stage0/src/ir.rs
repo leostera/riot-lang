@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigExport, RsigExternal, RsigFunction, RsigType,
+    ImportedSignatures, Rsig, RsigExport, RsigExternal, RsigFunction, RsigType, RsigTypeScheme,
     parse_type_signature,
 };
 
@@ -22,6 +22,7 @@ pub(crate) fn typed_program_from_ast(
     imports: &ImportedSignatures,
     function_types: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
     expression_types: Option<&BTreeMap<TextSpan, RsigType>>,
+    binding_schemes: Option<&BTreeMap<TextSpan, RsigTypeScheme>>,
 ) -> TypedProgram {
     let mut uses = Vec::new();
     let mut externals = Vec::new();
@@ -69,18 +70,24 @@ pub(crate) fn typed_program_from_ast(
             .return_type
             .as_ref()
             .map(|annotation| parse_type_signature(&annotation.text).1);
-        let mut context =
-            TypeContext::new(function_types, &external_types, imports, expression_types);
+        let mut context = TypeContext::new(
+            function_types,
+            &external_types,
+            imports,
+            expression_types,
+            binding_schemes,
+        );
         let params = function
             .params
             .iter()
             .enumerate()
-            .map(|(index, name)| TypedParam {
-                binding: context.bind(
-                    name,
-                    param_types.get(index).cloned().unwrap_or(RsigType::Unknown),
-                ),
-                type_: param_types.get(index).cloned().unwrap_or(RsigType::Unknown),
+            .map(|(index, name)| {
+                let type_ = param_types.get(index).cloned().unwrap_or(RsigType::Unknown);
+                TypedParam {
+                    binding: context.bind(name, type_.clone()),
+                    scheme: RsigTypeScheme::monomorphic(type_.clone()),
+                    type_,
+                }
             })
             .collect::<Vec<_>>();
         let body = type_block(function.body, &mut context);
@@ -223,6 +230,7 @@ struct TypeContext<'a> {
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+    binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
 }
 
 impl<'a> TypeContext<'a> {
@@ -231,6 +239,7 @@ impl<'a> TypeContext<'a> {
         externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         imports: &'a ImportedSignatures,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+        binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
     ) -> Self {
         Self {
             next_binding_id: 0,
@@ -239,6 +248,7 @@ impl<'a> TypeContext<'a> {
             externals,
             imports,
             expression_types,
+            binding_schemes,
         }
     }
 
@@ -277,6 +287,13 @@ impl<'a> TypeContext<'a> {
         self.expression_types
             .and_then(|types| types.get(&span))
             .cloned()
+    }
+
+    fn binding_scheme(&self, span: TextSpan, fallback: RsigType) -> RsigTypeScheme {
+        self.binding_schemes
+            .and_then(|schemes| schemes.get(&span))
+            .cloned()
+            .unwrap_or_else(|| RsigTypeScheme::monomorphic(fallback))
     }
 }
 
@@ -664,6 +681,7 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
         match stmt {
             AstStmt::Let {
                 name,
+                name_span,
                 type_annotation,
                 value,
                 ..
@@ -672,8 +690,13 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
                 if let Some(annotation) = type_annotation {
                     value.type_ = parse_type_signature(&annotation.text).1;
                 }
+                let scheme = context.binding_scheme(name_span, value.type_.clone());
                 let binding = context.bind(&name, value.type_.clone());
-                statements.push(TypedStmt::Let { binding, value });
+                statements.push(TypedStmt::Let {
+                    binding,
+                    scheme,
+                    value,
+                });
             }
             AstStmt::Expr(expr) => statements.push(TypedStmt::Expr(type_expr(expr, context))),
         }
@@ -831,7 +854,11 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         .map(|annotation| parse_type_signature(&annotation.text).1)
                         .unwrap_or(RsigType::Unknown);
                     let binding = context.bind(name, type_.clone());
-                    TypedParam { binding, type_ }
+                    TypedParam {
+                        binding,
+                        scheme: RsigTypeScheme::monomorphic(type_.clone()),
+                        type_,
+                    }
                 })
                 .collect::<Vec<_>>();
             let body = type_block(*body, context);
@@ -995,6 +1022,7 @@ fn partial_call_lambda(
             let binding = context.bind(&format!("arg{index}"), type_.clone());
             TypedParam {
                 binding,
+                scheme: RsigTypeScheme::monomorphic(type_.clone()),
                 type_: type_.clone(),
             }
         })
@@ -1727,7 +1755,7 @@ fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
             .statements
             .into_iter()
             .map(|stmt| match stmt {
-                TypedStmt::Let { binding, value } => {
+                TypedStmt::Let { binding, value, .. } => {
                     let value = lower_expr(value, context);
                     let name = context.bind_existing(&binding);
                     RirStmt::Let { name, value }
@@ -1915,7 +1943,14 @@ mod tests {
     fn typed_program(module: &str, program: AstProgram) -> super::TypedProgram {
         let imports = ImportedSignatures::new();
         let function_types = infer_function_signatures(&program, &imports).unwrap();
-        typed_program_from_ast(module.to_owned(), program, &imports, &function_types, None)
+        typed_program_from_ast(
+            module.to_owned(),
+            program,
+            &imports,
+            &function_types,
+            None,
+            None,
+        )
     }
 
     fn typed_program_with_inference_facts(module: &str, source: &str) -> super::TypedProgram {
@@ -1925,12 +1960,14 @@ mod tests {
         let inferred = crate::infer::module::infer_program(&program, &imports).unwrap();
         let function_types = inferred.function_signatures(&program);
         let expression_types = inferred.expression_rsig_types();
+        let binding_schemes = inferred.binding_rsig_schemes();
         typed_program_from_ast(
             module.to_owned(),
             program,
             &imports,
             &function_types,
             Some(&expression_types),
+            Some(&binding_schemes),
         )
     }
 
@@ -2188,9 +2225,11 @@ mod tests {
             "ApplyFacts",
             "fn main() { let id = fn(x) { x }; id(1) }",
         );
-        let Some(TypedStmt::Let { value, .. }) = typed.functions[0].body.statements.first() else {
+        let Some(TypedStmt::Let { value, scheme, .. }) = typed.functions[0].body.statements.first()
+        else {
             panic!("expected a let-bound lambda");
         };
+        assert_eq!(scheme.quantifiers.len(), 1);
         assert!(matches!(
             value.type_,
             RsigType::Arrow {

@@ -1,4 +1,4 @@
-use crate::signature::{Rsig, RsigType};
+use crate::signature::{Rsig, RsigType, RsigTypeScheme};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct HirBinding {
@@ -59,6 +59,7 @@ pub(crate) struct TypedFunction {
 #[derive(Debug, Clone)]
 pub(crate) struct TypedParam {
     pub(crate) binding: HirBinding,
+    pub(crate) scheme: RsigTypeScheme,
     pub(crate) type_: RsigType,
 }
 
@@ -73,6 +74,7 @@ pub(crate) struct TypedBlock {
 pub(crate) enum TypedStmt {
     Let {
         binding: HirBinding,
+        scheme: RsigTypeScheme,
         value: TypedExpr,
     },
     Expr(TypedExpr),
