@@ -2,8 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstProgram, AstStmt};
-use crate::infer::module::infer_function_signatures;
+use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
     ImportedSignatures, Rsig, RsigExport, RsigExternal, RsigFunction, RsigType,
     parse_type_signature,
@@ -21,8 +20,9 @@ pub(crate) fn typed_program_from_ast(
     module_name: String,
     ast: AstProgram,
     imports: &ImportedSignatures,
+    function_types: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    expression_types: Option<&BTreeMap<TextSpan, RsigType>>,
 ) -> TypedProgram {
-    let inferred_function_types = infer_function_signatures(&ast, imports).ok();
     let mut uses = Vec::new();
     let mut externals = Vec::new();
     let mut ast_functions = Vec::new();
@@ -44,8 +44,6 @@ pub(crate) fn typed_program_from_ast(
         }
     }
 
-    let function_types =
-        inferred_function_types.unwrap_or_else(|| infer_ast_function_types(&ast_functions));
     let external_types = externals
         .iter()
         .map(|external| {
@@ -71,7 +69,8 @@ pub(crate) fn typed_program_from_ast(
             .return_type
             .as_ref()
             .map(|annotation| parse_type_signature(&annotation.text).1);
-        let mut context = TypeContext::new(&function_types, &external_types, imports);
+        let mut context =
+            TypeContext::new(function_types, &external_types, imports, expression_types);
         let params = function
             .params
             .iter()
@@ -223,6 +222,7 @@ struct TypeContext<'a> {
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
+    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
 }
 
 impl<'a> TypeContext<'a> {
@@ -230,6 +230,7 @@ impl<'a> TypeContext<'a> {
         functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         imports: &'a ImportedSignatures,
+        expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
     ) -> Self {
         Self {
             next_binding_id: 0,
@@ -237,6 +238,7 @@ impl<'a> TypeContext<'a> {
             functions,
             externals,
             imports,
+            expression_types,
         }
     }
 
@@ -269,6 +271,12 @@ impl<'a> TypeContext<'a> {
 
     fn resolve(&self, name: &str) -> Option<&TypedBindingInfo> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
+    }
+
+    fn expression_type(&self, span: TextSpan) -> Option<RsigType> {
+        self.expression_types
+            .and_then(|types| types.get(&span))
+            .cloned()
     }
 }
 
@@ -685,6 +693,15 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
 }
 
 fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
+    let span = ast_expr_span(&expr);
+    let mut typed = type_expr_inner(expr, context);
+    if let Some(type_) = context.expression_type(span) {
+        typed.type_ = type_;
+    }
+    typed
+}
+
+fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
     match expr {
         AstExpr::Add { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Add, *lhs, *rhs, context),
         AstExpr::Sub { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Sub, *lhs, *rhs, context),
@@ -952,6 +969,40 @@ fn type_path_expr(path: Vec<String>, context: &TypeContext<'_>) -> TypedExpr {
     TypedExpr {
         type_,
         kind: TypedExprKind::Path(path),
+    }
+}
+
+fn ast_expr_span(expr: &AstExpr) -> TextSpan {
+    match expr {
+        AstExpr::Add { span, .. }
+        | AstExpr::Sub { span, .. }
+        | AstExpr::Mul { span, .. }
+        | AstExpr::Div { span, .. }
+        | AstExpr::Mod { span, .. }
+        | AstExpr::Neg { span, .. }
+        | AstExpr::Eq { span, .. }
+        | AstExpr::Lt { span, .. }
+        | AstExpr::And { span, .. }
+        | AstExpr::Or { span, .. }
+        | AstExpr::Not { span, .. }
+        | AstExpr::If { span, .. }
+        | AstExpr::Bool { span, .. }
+        | AstExpr::Call { span, .. }
+        | AstExpr::Apply { span, .. }
+        | AstExpr::Lambda { span, .. }
+        | AstExpr::Spawn { span, .. }
+        | AstExpr::Receive { span, .. }
+        | AstExpr::Unit { span, .. }
+        | AstExpr::Tuple { span, .. }
+        | AstExpr::List { span, .. }
+        | AstExpr::Record { span, .. }
+        | AstExpr::Field { span, .. }
+        | AstExpr::TupleIndex { span, .. }
+        | AstExpr::Char { span, .. }
+        | AstExpr::Float { span, .. }
+        | AstExpr::Int { span, .. }
+        | AstExpr::Path { span, .. }
+        | AstExpr::String { span, .. } => *span,
     }
 }
 
@@ -1753,6 +1804,8 @@ mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
+    use crate::infer::module::infer_function_signatures;
+    use crate::parser::parse_source;
     use crate::signature::{ImportedSignatures, RsigType};
 
     use super::{
@@ -1771,6 +1824,28 @@ mod tests {
             },
             span: span(),
         }
+    }
+
+    fn typed_program(module: &str, program: AstProgram) -> super::TypedProgram {
+        let imports = ImportedSignatures::new();
+        let function_types = infer_function_signatures(&program, &imports).unwrap();
+        typed_program_from_ast(module.to_owned(), program, &imports, &function_types, None)
+    }
+
+    fn typed_program_with_inference_facts(module: &str, source: &str) -> super::TypedProgram {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = parse_source(path, source).unwrap();
+        let imports = ImportedSignatures::new();
+        let inferred = crate::infer::module::infer_program(&program, &imports).unwrap();
+        let function_types = inferred.function_signatures(&program);
+        let expression_types = inferred.expression_rsig_types();
+        typed_program_from_ast(
+            module.to_owned(),
+            program,
+            &imports,
+            &function_types,
+            Some(&expression_types),
+        )
     }
 
     #[test]
@@ -1804,8 +1879,7 @@ mod tests {
             })],
         };
 
-        let typed =
-            typed_program_from_ast("LambdaTest".to_owned(), program, &ImportedSignatures::new());
+        let typed = typed_program("LambdaTest", program);
         let rir = lower_typed_to_rir(typed);
         let Some(RirExpr::Lambda { captures, .. }) = &rir.functions[0].body.tail else {
             panic!("expected lowered lambda");
@@ -1875,8 +1949,7 @@ mod tests {
             })],
         };
 
-        let typed =
-            typed_program_from_ast("ShadowTest".to_owned(), program, &ImportedSignatures::new());
+        let typed = typed_program("ShadowTest", program);
         let rir = lower_typed_to_rir(typed);
         let Some(RirStmt::Let {
             value: RirExpr::Lambda { captures, .. },
@@ -1944,8 +2017,7 @@ mod tests {
             })],
         };
 
-        let typed =
-            typed_program_from_ast("ShadowTest".to_owned(), program, &ImportedSignatures::new());
+        let typed = typed_program("ShadowTest", program);
         let [
             TypedStmt::Let {
                 binding: first_a, ..
@@ -2012,8 +2084,7 @@ mod tests {
             })],
         };
 
-        let typed =
-            typed_program_from_ast("ApplyTest".to_owned(), program, &ImportedSignatures::new());
+        let typed = typed_program("ApplyTest", program);
         let rir = lower_typed_to_rir(typed);
         let Some(RirExpr::Add(lhs, _)) = &rir.functions[0].body.tail else {
             panic!("expected add tail");
@@ -2023,6 +2094,32 @@ mod tests {
         };
 
         assert_eq!(result, &RsigType::I64);
+    }
+
+    #[test]
+    fn typed_hir_uses_inference_facts_for_lambda_apply_results() {
+        let typed = typed_program_with_inference_facts(
+            "ApplyFacts",
+            "fn main() { let id = fn(x) { x }; id(1) }",
+        );
+        let Some(TypedStmt::Let { value, .. }) = typed.functions[0].body.statements.first() else {
+            panic!("expected a let-bound lambda");
+        };
+        assert!(matches!(
+            value.type_,
+            RsigType::Arrow {
+                parameter: _,
+                result: _
+            }
+        ));
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected a tail expression");
+        };
+        let TypedExprKind::Apply { .. } = &tail.kind else {
+            panic!("expected the local call to lower to HIR apply");
+        };
+
+        assert_eq!(tail.type_, RsigType::I64);
     }
 }
 

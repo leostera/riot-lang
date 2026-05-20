@@ -7,7 +7,7 @@ use super::scheme::TypeScheme;
 use super::state::State;
 use super::types::Type;
 use super::unifier::UnifyError;
-use crate::ast::{AstBlock, AstDecl, AstExpr, AstFnDecl, AstProgram, AstStmt};
+use crate::ast::{AstBlock, AstDecl, AstExpr, AstFnDecl, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
     ImportedSignatures, Rsig, RsigExport, RsigType, parse_type, parse_type_signature,
 };
@@ -25,6 +25,7 @@ pub(crate) enum InferError {
 #[derive(Debug, Clone)]
 pub(crate) struct InferredModule {
     pub(crate) env: Env,
+    pub(crate) expression_types: BTreeMap<TextSpan, Type>,
 }
 
 pub(crate) fn infer_program(
@@ -32,45 +33,63 @@ pub(crate) fn infer_program(
     imports: &ImportedSignatures,
 ) -> Result<InferredModule, InferError> {
     let mut state = State::default();
+    let mut expression_types = BTreeMap::new();
     install_prelude(&mut state);
     install_imports(&mut state, program, imports);
     for decl in &program.decls {
-        infer_decl(&mut state, decl)?;
+        infer_decl(&mut state, decl, &mut expression_types)?;
     }
     Ok(InferredModule {
         env: state.into_env(),
+        expression_types,
     })
+}
+
+impl InferredModule {
+    pub(crate) fn function_signatures(
+        &self,
+        program: &AstProgram,
+    ) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+        let function_arities = program
+            .decls
+            .iter()
+            .filter_map(|decl| match decl {
+                AstDecl::Function(function) => Some((function.name.clone(), function.params.len())),
+                _ => None,
+            })
+            .collect::<BTreeMap<_, _>>();
+        let mut signatures = BTreeMap::new();
+        for (name, arity) in function_arities {
+            let Some(scheme) = self.env.get_value(&name) else {
+                continue;
+            };
+            if let Some((params, result)) = peel_source_function_type(&scheme.body, arity) {
+                signatures.insert(
+                    name,
+                    (
+                        params.iter().map(infer_type_to_rsig_type).collect(),
+                        infer_type_to_rsig_type(&result),
+                    ),
+                );
+            }
+        }
+        signatures
+    }
+
+    pub(crate) fn expression_rsig_types(&self) -> BTreeMap<TextSpan, RsigType> {
+        self.expression_types
+            .iter()
+            .map(|(span, type_)| (*span, infer_type_to_rsig_type(type_)))
+            .collect()
+    }
 }
 
 pub(crate) fn infer_function_signatures(
     program: &AstProgram,
     imports: &ImportedSignatures,
 ) -> Result<BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
-    let function_arities = program
-        .decls
-        .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::Function(function) => Some((function.name.clone(), function.params.len())),
-            _ => None,
-        })
-        .collect::<BTreeMap<_, _>>();
     let inferred = infer_program(program, imports)?;
-    let mut signatures = BTreeMap::new();
-    for (name, arity) in function_arities {
-        let Some(scheme) = inferred.env.get_value(&name) else {
-            continue;
-        };
-        if let Some((params, result)) = peel_source_function_type(&scheme.body, arity) {
-            signatures.insert(
-                name,
-                (
-                    params.iter().map(infer_type_to_rsig_type).collect(),
-                    infer_type_to_rsig_type(&result),
-                ),
-            );
-        }
-    }
-    Ok(signatures)
+    Ok(inferred.function_signatures(program))
 }
 
 fn install_prelude(state: &mut State) {
@@ -186,7 +205,11 @@ fn peel_source_function_type(type_: &Type, arity: usize) -> Option<(Vec<Type>, T
     Some((params, current.clone()))
 }
 
-fn infer_decl(state: &mut State, decl: &AstDecl) -> Result<(), InferError> {
+fn infer_decl(
+    state: &mut State,
+    decl: &AstDecl,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<(), InferError> {
     match decl {
         AstDecl::Use(_) => Ok(()),
         AstDecl::External(external) => {
@@ -196,14 +219,18 @@ fn infer_decl(state: &mut State, decl: &AstDecl) -> Result<(), InferError> {
             Ok(())
         }
         AstDecl::Function(function) => {
-            let type_ = infer_function(state, function)?;
+            let type_ = infer_function(state, function, expression_types)?;
             state.add_value(function.name.clone(), state.generalize(type_));
             Ok(())
         }
     }
 }
 
-fn infer_function(state: &mut State, function: &AstFnDecl) -> Result<Type, InferError> {
+fn infer_function(
+    state: &mut State,
+    function: &AstFnDecl,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<Type, InferError> {
     let params = function
         .params
         .iter()
@@ -230,14 +257,18 @@ fn infer_function(state: &mut State, function: &AstFnDecl) -> Result<Type, Infer
     for (param, type_) in function.params.iter().zip(&params) {
         state.add_value(param.clone(), state.monomorphic(type_.clone()));
     }
-    let result = infer_block(state, &function.body)?;
+    let result = infer_block(state, &function.body, expression_types)?;
     state.unify(&result_constraint, &result)?;
     let result = state.resolve(&result_constraint);
     state.pop_scope();
     Ok(source_function_type(params, state.resolve(&result)))
 }
 
-fn infer_block(state: &mut State, block: &AstBlock) -> Result<Type, InferError> {
+fn infer_block(
+    state: &mut State,
+    block: &AstBlock,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<Type, InferError> {
     for stmt in &block.statements {
         match stmt {
             AstStmt::Let {
@@ -246,7 +277,7 @@ fn infer_block(state: &mut State, block: &AstBlock) -> Result<Type, InferError> 
                 value,
                 ..
             } => {
-                let inferred = infer_expr(state, value)?;
+                let inferred = infer_expr(state, value, expression_types)?;
                 let type_ = if let Some(annotation) = type_annotation {
                     let expected = rsig_type_to_infer_type(&parse_type(&annotation.text), state);
                     state.unify(&expected, &inferred)?;
@@ -257,19 +288,34 @@ fn infer_block(state: &mut State, block: &AstBlock) -> Result<Type, InferError> 
                 state.add_value(name.clone(), state.generalize(type_));
             }
             AstStmt::Expr(expr) => {
-                infer_expr(state, expr)?;
+                infer_expr(state, expr, expression_types)?;
             }
         }
     }
 
     if let Some(tail) = &block.tail {
-        infer_expr(state, tail)
+        infer_expr(state, tail, expression_types)
     } else {
         Ok(Type::Unit)
     }
 }
 
-fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
+fn infer_expr(
+    state: &mut State,
+    expr: &AstExpr,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<Type, InferError> {
+    let inferred = infer_expr_kind(state, expr, expression_types)?;
+    let resolved = state.resolve(&inferred);
+    expression_types.insert(expr_span(expr), resolved.clone());
+    Ok(resolved)
+}
+
+fn infer_expr_kind(
+    state: &mut State,
+    expr: &AstExpr,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<Type, InferError> {
     match expr {
         AstExpr::Bool { .. } => Ok(Type::Bool),
         AstExpr::Char { .. } => Ok(Type::Char),
@@ -301,7 +347,7 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             for (name, type_) in names.iter().zip(&parameter_types) {
                 state.add_value(name.clone(), state.monomorphic(type_.clone()));
             }
-            let result = infer_block(state, body)?;
+            let result = infer_block(state, body, expression_types)?;
             state.pop_scope();
             Ok(source_function_type(
                 parameter_types,
@@ -321,14 +367,14 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
         | AstExpr::Mul { lhs, rhs, .. }
         | AstExpr::Div { lhs, rhs, .. }
         | AstExpr::Mod { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs)?;
-            let rhs = infer_expr(state, rhs)?;
+            let lhs = infer_expr(state, lhs, expression_types)?;
+            let rhs = infer_expr(state, rhs, expression_types)?;
             state.unify(&Type::I64, &lhs)?;
             state.unify(&Type::I64, &rhs)?;
             Ok(Type::I64)
         }
         AstExpr::Neg { expr, .. } => {
-            let actual = infer_expr(state, expr)?;
+            let actual = infer_expr(state, expr, expression_types)?;
             match state.resolve(&actual) {
                 Type::I64 => Ok(Type::I64),
                 Type::F64 => Ok(Type::F64),
@@ -344,14 +390,14 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             }
         }
         AstExpr::Eq { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs)?;
-            let rhs = infer_expr(state, rhs)?;
+            let lhs = infer_expr(state, lhs, expression_types)?;
+            let rhs = infer_expr(state, rhs, expression_types)?;
             state.unify(&lhs, &rhs)?;
             Ok(Type::Bool)
         }
         AstExpr::Lt { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs)?;
-            let rhs = infer_expr(state, rhs)?;
+            let lhs = infer_expr(state, lhs, expression_types)?;
+            let rhs = infer_expr(state, rhs, expression_types)?;
             state.unify(&lhs, &rhs)?;
             match state.resolve(&lhs) {
                 Type::I64 | Type::String | Type::Var(_) => Ok(Type::Bool),
@@ -363,14 +409,14 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             }
         }
         AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs)?;
-            let rhs = infer_expr(state, rhs)?;
+            let lhs = infer_expr(state, lhs, expression_types)?;
+            let rhs = infer_expr(state, rhs, expression_types)?;
             state.unify(&Type::Bool, &lhs)?;
             state.unify(&Type::Bool, &rhs)?;
             Ok(Type::Bool)
         }
         AstExpr::Not { expr, .. } => {
-            let actual = infer_expr(state, expr)?;
+            let actual = infer_expr(state, expr, expression_types)?;
             state.unify(&Type::Bool, &actual)?;
             Ok(Type::Bool)
         }
@@ -380,23 +426,23 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             else_branch,
             ..
         } => {
-            let condition = infer_expr(state, condition)?;
+            let condition = infer_expr(state, condition, expression_types)?;
             state.unify(&Type::Bool, &condition)?;
-            let then_type = infer_expr(state, then_branch)?;
-            let else_type = infer_expr(state, else_branch)?;
+            let then_type = infer_expr(state, then_branch, expression_types)?;
+            let else_type = infer_expr(state, else_branch, expression_types)?;
             state.unify(&then_type, &else_type)?;
             Ok(state.resolve(&then_type))
         }
         AstExpr::Tuple { items, .. } => Ok(Type::Tuple(
             items
                 .iter()
-                .map(|item| infer_expr(state, item))
+                .map(|item| infer_expr(state, item, expression_types))
                 .collect::<Result<Vec<_>, _>>()?,
         )),
         AstExpr::List { items, .. } => {
             let element = state.fresh_var();
             for item in items {
-                let actual = infer_expr(state, item)?;
+                let actual = infer_expr(state, item, expression_types)?;
                 state.unify(&element, &actual)?;
             }
             Ok(Type::List(Box::new(state.resolve(&element))))
@@ -410,27 +456,27 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             let callee_type = state.instantiate(&scheme);
             let arg_types = args
                 .iter()
-                .map(|arg| infer_expr(state, arg))
+                .map(|arg| infer_expr(state, arg, expression_types))
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
         AstExpr::Apply { callee, args, .. } => {
-            let callee_type = infer_expr(state, callee)?;
+            let callee_type = infer_expr(state, callee, expression_types)?;
             let arg_types = args
                 .iter()
-                .map(|arg| infer_expr(state, arg))
+                .map(|arg| infer_expr(state, arg, expression_types))
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
         AstExpr::Spawn { body, .. } => {
             state.push_scope();
-            infer_block(state, body)?;
+            infer_block(state, body, expression_types)?;
             state.pop_scope();
             Ok(Type::ActorId(Box::new(state.fresh_var())))
         }
         AstExpr::Record { path, .. } => Ok(Type::Record(path.segments.join("."))),
         AstExpr::TupleIndex { base, index, .. } => {
-            let inferred_base = infer_expr(state, base)?;
+            let inferred_base = infer_expr(state, base, expression_types)?;
             let base_type = state.resolve(&inferred_base);
             match base_type {
                 Type::Tuple(items) => items
@@ -445,10 +491,12 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             if let AstExpr::Record { fields, .. } = base.as_ref() {
                 fields
                     .iter()
-                    .find_map(|(name, value)| (name == field).then(|| infer_expr(state, value)))
+                    .find_map(|(name, value)| {
+                        (name == field).then(|| infer_expr(state, value, expression_types))
+                    })
                     .unwrap_or_else(|| Err(InferError::Unsupported("record field")))
             } else {
-                infer_expr(state, base)?;
+                infer_expr(state, base, expression_types)?;
                 Ok(state.fresh_var())
             }
         }
@@ -456,7 +504,7 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             let message = state.fresh_var();
             state.push_scope();
             state.add_value(binder.clone(), state.monomorphic(message));
-            infer_expr(state, body)?;
+            infer_expr(state, body, expression_types)?;
             state.pop_scope();
             Ok(Type::Unit)
         }
@@ -469,7 +517,7 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
             let callee_type = state.instantiate(&scheme);
             let arg_types = args
                 .iter()
-                .map(|arg| infer_expr(state, arg))
+                .map(|arg| infer_expr(state, arg, expression_types))
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
@@ -504,6 +552,40 @@ fn apply_call(
     }
 
     Ok(callee_type)
+}
+
+fn expr_span(expr: &AstExpr) -> TextSpan {
+    match expr {
+        AstExpr::Add { span, .. }
+        | AstExpr::Sub { span, .. }
+        | AstExpr::Mul { span, .. }
+        | AstExpr::Div { span, .. }
+        | AstExpr::Mod { span, .. }
+        | AstExpr::Neg { span, .. }
+        | AstExpr::Eq { span, .. }
+        | AstExpr::Lt { span, .. }
+        | AstExpr::And { span, .. }
+        | AstExpr::Or { span, .. }
+        | AstExpr::Not { span, .. }
+        | AstExpr::If { span, .. }
+        | AstExpr::Bool { span, .. }
+        | AstExpr::Call { span, .. }
+        | AstExpr::Apply { span, .. }
+        | AstExpr::Lambda { span, .. }
+        | AstExpr::Spawn { span, .. }
+        | AstExpr::Receive { span, .. }
+        | AstExpr::Unit { span, .. }
+        | AstExpr::Tuple { span, .. }
+        | AstExpr::List { span, .. }
+        | AstExpr::Record { span, .. }
+        | AstExpr::Field { span, .. }
+        | AstExpr::TupleIndex { span, .. }
+        | AstExpr::Char { span, .. }
+        | AstExpr::Float { span, .. }
+        | AstExpr::Int { span, .. }
+        | AstExpr::Path { span, .. }
+        | AstExpr::String { span, .. } => *span,
+    }
 }
 
 fn rsig_signature_to_infer_type(params: &[RsigType], result: &RsigType, state: &mut State) -> Type {

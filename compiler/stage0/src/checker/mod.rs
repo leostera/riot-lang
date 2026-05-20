@@ -31,7 +31,7 @@ pub(crate) fn typecheck(
     mode: CheckMode,
 ) -> miette::Result<CheckedProgram> {
     validate_program(source_path, source, &program, imports, mode)?;
-    infer_program(&program, imports).map_err(|error| {
+    let inferred = infer_program(&program, imports).map_err(|error| {
         to_source_diagnostic(
             source_path,
             source,
@@ -41,7 +41,15 @@ pub(crate) fn typecheck(
             Some("fix the type error before lowering"),
         )
     })?;
-    let typed_tree = typed_program_from_ast(module_name, program, imports);
+    let function_types = inferred.function_signatures(&program);
+    let expression_types = inferred.expression_rsig_types();
+    let typed_tree = typed_program_from_ast(
+        module_name,
+        program,
+        imports,
+        &function_types,
+        Some(&expression_types),
+    );
     let signature = signature_for(&typed_tree);
     Ok(CheckedProgram {
         typed_tree,

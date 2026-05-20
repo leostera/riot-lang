@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct TextSpan {
     pub(crate) start: usize,
     pub(crate) end: usize,
