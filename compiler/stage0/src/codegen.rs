@@ -2331,6 +2331,13 @@ impl<'ctx> Codegen<'ctx, '_> {
                 output.push(self.value_as_actor_id(value)?.into());
                 Ok(0)
             }
+            type_ if external_param_is_boxed(type_) => {
+                let value = self.emit_expr(arg, env)?;
+                let value = self.value_as_runtime(value)?;
+                self.push_runtime_root(value)?;
+                output.push(value.into());
+                Ok(1)
+            }
             _ => bail!(
                 "external argument type `{}` is not supported by stage0 codegen yet",
                 type_.canonical()
@@ -2702,6 +2709,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                     llvm_params.push(self.context.i64_type().into())
                 }
                 RsigType::Bool => llvm_params.push(self.context.bool_type().into()),
+                type_ if external_param_is_boxed(type_) => {
+                    llvm_params.push(self.context.i64_type().into())
+                }
                 _ => bail!(
                     "unsupported external parameter type `{}`",
                     param.canonical()
@@ -2848,6 +2858,19 @@ fn progress_flags(next_index: usize, len: usize) -> u32 {
 
 fn pattern_is_irrefutable(pattern: &RirPattern) -> bool {
     matches!(pattern, RirPattern::Wildcard | RirPattern::Bind { .. })
+}
+
+fn external_param_is_boxed(type_: &RsigType) -> bool {
+    matches!(
+        type_,
+        RsigType::Arrow { .. }
+            | RsigType::List(_)
+            | RsigType::Record(_)
+            | RsigType::Tuple(_)
+            | RsigType::Unknown
+            | RsigType::Var(_)
+            | RsigType::Variant(_)
+    )
 }
 
 fn infer_function_abis(program: &RirProgram) -> HashMap<String, FunctionAbi> {
