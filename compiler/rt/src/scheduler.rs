@@ -555,6 +555,7 @@ pub(crate) fn render_message(message: &RuntimeMessage) -> String {
         RuntimeMessage::I64(value) => value.to_string(),
         RuntimeMessage::Bool(true) => "true".to_owned(),
         RuntimeMessage::Bool(false) => "false".to_owned(),
+        RuntimeMessage::Unit => "()".to_owned(),
         RuntimeMessage::ActorId(value) => value.as_raw().to_string(),
         RuntimeMessage::Value(value) => with_scheduler_mut(|runtime| runtime.render_value(*value)),
     }

@@ -825,7 +825,14 @@ impl<'ctx> Codegen<'ctx, '_> {
         let bool_type = self.context.bool_type();
         match pattern {
             RirPattern::Wildcard | RirPattern::Bind(_) => Ok(bool_type.const_int(1, false)),
-            RirPattern::Unit => Ok(bool_type.const_int(1, false)),
+            RirPattern::Unit => {
+                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
+                let unit = self.call_runtime_value("riot_rt_value_unit", &[])?;
+                Ok(self
+                    .builder
+                    .build_int_compare(IntPredicate::EQ, scrutinee, unit, "match_unit")
+                    .map_err(|error| miette::miette!("failed to emit unit pattern: {error}"))?)
+            }
             RirPattern::Bool(expected) => {
                 let actual = self.value_as_bool(scrutinee.clone())?;
                 Ok(self
@@ -1794,8 +1801,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.call_void_runtime("riot_rt_send_bool", &[actor_id.into(), value.into()])?;
             }
             CgValue::Unit => {
-                let (ptr, len) = self.string_literal("()")?;
-                self.call_void_runtime("riot_rt_send", &[actor_id.into(), ptr.into(), len.into()])?;
+                self.call_void_runtime("riot_rt_send_unit", &[actor_id.into()])?;
             }
         }
         Ok(CgValue::Unit)
@@ -2630,6 +2636,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_send_i64" | "riot_rt_send_actor_id" => {
                 void_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
+            "riot_rt_send_unit" => void_type.fn_type(&[i64_type.into()], false),
             "riot_rt_send_bool" => void_type.fn_type(&[i64_type.into(), bool_type.into()], false),
             "riot_rt_send_value" => void_type.fn_type(&[i64_type.into(), i64_type.into()], false),
             "riot_rt_send_msg" => void_type.fn_type(&[i64_type.into(), ptr_type.into()], false),

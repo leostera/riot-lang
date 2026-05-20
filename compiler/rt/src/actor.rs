@@ -13,6 +13,7 @@ pub(crate) const MSG_I64: u32 = 1;
 pub(crate) const MSG_BOOL: u32 = 2;
 pub(crate) const MSG_ACTOR_ID: u32 = 3;
 pub(crate) const MSG_VALUE: u32 = 4;
+pub(crate) const MSG_UNIT: u32 = 5;
 
 pub(crate) const POLL_CONSUMED: u32 = 1;
 pub(crate) const POLL_DONE: u32 = 2;
@@ -34,6 +35,7 @@ pub struct RtMessage {
 
 #[derive(Clone)]
 pub(crate) enum RuntimeMessage {
+    Unit,
     Bytes(Vec<u8>),
     I64(i64),
     Bool(bool),
@@ -44,6 +46,14 @@ pub(crate) enum RuntimeMessage {
 impl RuntimeMessage {
     pub(crate) fn as_rt_message(&self) -> RtMessage {
         match self {
+            RuntimeMessage::Unit => RtMessage {
+                kind: MSG_UNIT,
+                i64_value: 0,
+                bool_value: 0,
+                value: crate::value::VALUE_UNIT,
+                ptr: ptr::null(),
+                len: 0,
+            },
             RuntimeMessage::Bytes(bytes) => RtMessage {
                 kind: MSG_BYTES,
                 i64_value: 0,
@@ -328,6 +338,7 @@ pub(crate) unsafe fn runtime_message_from_raw(message: *const RtMessage) -> Opti
             ActorId::from_raw(message.i64_value as u64)
         })),
         MSG_VALUE => Some(RuntimeMessage::Value(message.value)),
+        MSG_UNIT => Some(RuntimeMessage::Unit),
         _ => None,
     }
 }

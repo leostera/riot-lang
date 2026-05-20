@@ -597,6 +597,11 @@ pub extern "C" fn riot_rt_send_bool(actor_id: ActorId, value: bool) {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_send_unit(actor_id: ActorId) {
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::Unit));
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_send_actor_id(actor_id: ActorId, value: ActorId) {
     with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::ActorId(value)));
 }
@@ -641,6 +646,7 @@ pub unsafe extern "C" fn riot_rt_msg_value(message: *const RtMessage) -> RtValue
         }),
         RuntimeMessage::I64(value) => value_i64(value),
         RuntimeMessage::Bool(value) => value_bool(value),
+        RuntimeMessage::Unit => VALUE_UNIT,
         RuntimeMessage::ActorId(value) => value_actor_id(value),
         RuntimeMessage::Value(value) => value,
     }
