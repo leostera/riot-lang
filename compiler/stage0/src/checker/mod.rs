@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use camino::Utf8Path;
 
@@ -16,7 +16,9 @@ use crate::ast::{
 use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
-use crate::signature::{ImportedSignatures, RsigExport, RsigType, TypeName, parse_type};
+use crate::signature::{
+    ImportedSignatures, RsigExport, RsigType, TypeName, parse_type_with_variants,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CheckMode {
@@ -82,6 +84,7 @@ struct ValidationContext<'a> {
     declared_external_names: HashSet<String>,
     external_names: HashSet<String>,
     constructor_types: HashMap<String, RsigType>,
+    declared_variants: BTreeSet<TypeName>,
     imports: &'a ImportedSignatures,
 }
 
@@ -94,7 +97,8 @@ fn validate_program(
 ) -> miette::Result<()> {
     let functions = const_functions(program);
     let function_names = functions.keys().cloned().collect::<HashSet<_>>();
-    let function_results = function_results(program);
+    let declared_variants = declared_variant_names(program, imports);
+    let function_results = function_results(program, &declared_variants);
     let declared_external_names = declared_external_names(program);
     let external_names = external_names(program);
     let constructor_types = constructor_types(program);
@@ -107,6 +111,7 @@ fn validate_program(
         declared_external_names,
         external_names,
         constructor_types,
+        declared_variants,
         imports,
     };
 
@@ -214,18 +219,50 @@ fn validate_program(
     Ok(())
 }
 
-fn function_results(program: &AstProgram) -> HashMap<String, RsigType> {
+fn function_results(
+    program: &AstProgram,
+    declared_variants: &BTreeSet<TypeName>,
+) -> HashMap<String, RsigType> {
     program
         .decls
         .iter()
         .filter_map(|decl| match decl {
-            AstDecl::Function(function) => function
-                .return_type
-                .as_ref()
-                .map(|annotation| (function.name.clone(), parse_type(&annotation.text))),
+            AstDecl::Function(function) => function.return_type.as_ref().map(|annotation| {
+                (
+                    function.name.clone(),
+                    parse_type_with_variants(&annotation.text, declared_variants),
+                )
+            }),
             _ => None,
         })
         .collect()
+}
+
+fn declared_variant_names(
+    program: &AstProgram,
+    imports: &ImportedSignatures,
+) -> BTreeSet<TypeName> {
+    let mut names = BTreeSet::new();
+    for decl in &program.decls {
+        match decl {
+            AstDecl::Type(type_) => {
+                names.insert(TypeName::new(type_.name.clone()));
+            }
+            AstDecl::Use(use_) => {
+                if let Some(rsig) = imports.get(&use_.name) {
+                    for type_ in &rsig.types {
+                        names.insert(imported_type_name(&use_.name, &type_.name));
+                    }
+                }
+            }
+            AstDecl::External(_) | AstDecl::Function(_) => {}
+        }
+    }
+    names
+}
+
+fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
+    TypeName::new(format!("{module_name}.{}", type_name.as_str()))
 }
 
 fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
@@ -319,7 +356,9 @@ fn validate_block(
             let type_ = param_types
                 .get(index)
                 .and_then(|annotation| annotation.as_ref())
-                .map(|annotation| parse_type(&annotation.text));
+                .map(|annotation| {
+                    parse_type_with_variants(&annotation.text, &ctx.declared_variants)
+                });
             (param.clone(), BindingKind::Value(type_))
         })
         .collect::<HashMap<_, _>>();
@@ -348,7 +387,9 @@ fn validate_block(
                         validate_expr(ctx, value, &bindings, false)?;
                         let type_ = type_annotation
                             .as_ref()
-                            .map(|annotation| parse_type(&annotation.text))
+                            .map(|annotation| {
+                                parse_type_with_variants(&annotation.text, &ctx.declared_variants)
+                            })
                             .or_else(|| simple_expr_type(ctx, value, &bindings));
                         BindingKind::Value(type_)
                     }
@@ -403,7 +444,7 @@ fn validate_scoped_block(
         let type_ = param_types
             .get(index)
             .and_then(|annotation| annotation.as_ref())
-            .map(|annotation| parse_type(&annotation.text));
+            .map(|annotation| parse_type_with_variants(&annotation.text, &ctx.declared_variants));
         bindings.insert(param.clone(), BindingKind::Value(type_));
     }
 
@@ -427,7 +468,9 @@ fn validate_scoped_block(
                         validate_expr(ctx, value, &bindings, in_actor)?;
                         let type_ = type_annotation
                             .as_ref()
-                            .map(|annotation| parse_type(&annotation.text))
+                            .map(|annotation| {
+                                parse_type_with_variants(&annotation.text, &ctx.declared_variants)
+                            })
                             .or_else(|| simple_expr_type(ctx, value, &bindings));
                         BindingKind::Value(type_)
                     }
@@ -1235,7 +1278,7 @@ fn validate_type_annotation(
     let value_type = resolve_const_value(value, &HashMap::new(), &ctx.functions)
         .map(|value| const_value_type(&value));
     if let Some(value_type) = value_type {
-        let expected = parse_type(&annotation.text);
+        let expected = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
         if type_matches(&expected, &value_type) {
             return Ok(());
         }
@@ -1268,7 +1311,10 @@ fn validate_function_annotations(
         };
         validate_function_abi_annotation(ctx, annotation)?;
         if let Some(param) = function.params.get(index) {
-            bindings.insert(param.clone(), parse_type(&annotation.text));
+            bindings.insert(
+                param.clone(),
+                parse_type_with_variants(&annotation.text, &ctx.declared_variants),
+            );
         }
     }
 
@@ -1277,7 +1323,7 @@ fn validate_function_annotations(
     };
     validate_function_abi_annotation(ctx, return_annotation)?;
 
-    let expected = parse_type(&return_annotation.text);
+    let expected = parse_type_with_variants(&return_annotation.text, &ctx.declared_variants);
     let actual = infer_annotation_block_type(ctx, &function.body, &mut bindings);
     if let Some(actual) = actual
         && !type_matches(&expected, &actual)
@@ -1317,7 +1363,7 @@ fn validate_function_abi_annotation(
         .into());
     }
 
-    let type_ = parse_type(&annotation.text);
+    let type_ = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
     if matches!(
         type_,
         RsigType::I64
@@ -1328,6 +1374,7 @@ fn validate_function_abi_annotation(
             | RsigType::Tuple(_)
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::Variant(_)
             | RsigType::Arrow { .. }
     ) {
         return Ok(());
@@ -1362,7 +1409,9 @@ fn infer_annotation_block_type(
             } => {
                 let type_ = type_annotation
                     .as_ref()
-                    .map(|annotation| parse_type(&annotation.text))
+                    .map(|annotation| {
+                        parse_type_with_variants(&annotation.text, &ctx.declared_variants)
+                    })
                     .or_else(|| infer_annotation_expr_type(ctx, value, bindings))
                     .unwrap_or(RsigType::Unknown);
                 bindings.insert(name.clone(), type_);

@@ -6,7 +6,7 @@ use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, As
 use crate::signature::{
     ConstructorName, ImportedSignatures, Rsig, RsigDependency, RsigExport, RsigExternal,
     RsigFunction, RsigType, RsigTypeDecl, RsigTypeScheme, RsigVariantConstructor, TypeName,
-    parse_type_signature,
+    parse_type_signature, parse_type_signature_with_variants, parse_type_with_variants,
 };
 
 mod actor;
@@ -26,7 +26,7 @@ pub(crate) fn typed_program_from_ast(
     binding_schemes: Option<&BTreeMap<TextSpan, RsigTypeScheme>>,
 ) -> TypedProgram {
     let mut uses = Vec::new();
-    let mut externals = Vec::new();
+    let mut raw_externals = Vec::new();
     let mut types = Vec::new();
     let mut ast_functions = Vec::new();
 
@@ -43,14 +43,7 @@ pub(crate) fn typed_program_from_ast(
                 });
             }
             AstDecl::External(external) => {
-                let (params, result) = parse_type_signature(&external.type_text);
-                externals.push(TypedExternal {
-                    name: external.name,
-                    type_text: external.type_text,
-                    params,
-                    result,
-                    abi: external.abi,
-                });
+                raw_externals.push(external);
             }
             AstDecl::Type(type_) => {
                 types.push(TypedTypeDecl {
@@ -67,6 +60,21 @@ pub(crate) fn typed_program_from_ast(
             AstDecl::Function(function) => ast_functions.push(function),
         }
     }
+    let declared_variants = declared_variant_names(&types, &uses, imports);
+    let externals = raw_externals
+        .into_iter()
+        .map(|external| {
+            let (params, result) =
+                parse_type_signature_with_variants(&external.type_text, &declared_variants);
+            TypedExternal {
+                name: external.name,
+                type_text: external.type_text,
+                params,
+                result,
+                abi: external.abi,
+            }
+        })
+        .collect::<Vec<_>>();
     let constructors = constructor_type_map(&types);
 
     let external_types = externals
@@ -93,12 +101,13 @@ pub(crate) fn typed_program_from_ast(
         let annotated_result = function
             .return_type
             .as_ref()
-            .map(|annotation| parse_type_signature(&annotation.text).1);
+            .map(|annotation| parse_type_with_variants(&annotation.text, &declared_variants));
         let mut context = TypeContext::new(
             function_types,
             &external_types,
             imports,
             &constructors,
+            &declared_variants,
             expression_types,
             binding_schemes,
         );
@@ -296,6 +305,7 @@ struct TypeContext<'a> {
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, TypeName>,
+    declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
     binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
 }
@@ -306,6 +316,7 @@ impl<'a> TypeContext<'a> {
         externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         imports: &'a ImportedSignatures,
         constructors: &'a BTreeMap<String, TypeName>,
+        declared_variants: &'a BTreeSet<TypeName>,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
         binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
     ) -> Self {
@@ -316,6 +327,7 @@ impl<'a> TypeContext<'a> {
             externals,
             imports,
             constructors,
+            declared_variants,
             expression_types,
             binding_schemes,
         }
@@ -376,6 +388,25 @@ fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, TypeName> {
                 .map(|constructor| (constructor.name.as_str().to_owned(), type_.name.clone()))
         })
         .collect()
+}
+
+fn declared_variant_names(
+    types: &[TypedTypeDecl],
+    uses: &[TypedUse],
+    imports: &ImportedSignatures,
+) -> BTreeSet<TypeName> {
+    let mut names = BTreeSet::new();
+    for type_ in types {
+        names.insert(type_.name.clone());
+    }
+    for use_ in uses {
+        if let Some(rsig) = imports.get(use_.name.as_str()) {
+            for type_ in &rsig.types {
+                names.insert(imported_type_name(use_.name.as_str(), &type_.name));
+            }
+        }
+    }
+    names
 }
 
 fn infer_ast_function_types(
@@ -786,7 +817,8 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
             } => {
                 let mut value = type_expr(value, context);
                 if let Some(annotation) = type_annotation {
-                    value.type_ = parse_type_signature(&annotation.text).1;
+                    value.type_ =
+                        parse_type_with_variants(&annotation.text, context.declared_variants);
                 }
                 let scheme = context.binding_scheme(name_span, value.type_.clone());
                 let binding = context.bind(&name, value.type_.clone());
@@ -957,7 +989,9 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     let type_ = param_types
                         .get(index)
                         .and_then(|annotation| annotation.as_ref())
-                        .map(|annotation| parse_type_signature(&annotation.text).1)
+                        .map(|annotation| {
+                            parse_type_with_variants(&annotation.text, context.declared_variants)
+                        })
                         .unwrap_or(RsigType::Unknown);
                     let binding = context.bind(name, type_.clone());
                     TypedParam {
@@ -1361,7 +1395,11 @@ fn imported_constructor_type(path: &[String], context: &TypeContext<'_>) -> Opti
         .imports
         .get(module)
         .and_then(|rsig| rsig.find_constructor(constructor))
-        .map(|type_| TypeName::new(format!("{module}.{}", type_.name.as_str())))
+        .map(|type_| imported_type_name(module, &type_.name))
+}
+
+fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
+    TypeName::new(format!("{module_name}.{}", type_name.as_str()))
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {

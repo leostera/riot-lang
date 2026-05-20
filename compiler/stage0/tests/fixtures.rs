@@ -526,6 +526,66 @@ fn imported_variant_constructors_use_rsig() -> FixtureResult {
 }
 
 #[test]
+fn imported_variant_annotations_use_rsig() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let palette = temp_dir.path().join("palette.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &palette,
+        "type color = Red | Green | Blue\nfn blue() -> color { Blue }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Palette\nfn main() { let c: Palette.color = Palette.blue(); dbg(c) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&palette)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected annotated variant compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported variant annotation compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"Blue\n" {
+        return fail(format!(
+            "unexpected imported variant annotation stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_unknown_abi_call_is_rejected() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");

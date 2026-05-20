@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::io::{Cursor, Read};
 
@@ -54,7 +54,7 @@ impl fmt::Display for ModuleName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct TypeName(String);
 
 impl TypeName {
@@ -611,6 +611,20 @@ pub(crate) fn parse_type_signature(text: &str) -> (Vec<RsigType>, RsigType) {
     (params, result)
 }
 
+pub(crate) fn parse_type_signature_with_variants(
+    text: &str,
+    variants: &BTreeSet<TypeName>,
+) -> (Vec<RsigType>, RsigType) {
+    let (params, result) = parse_type_signature(text);
+    (
+        params
+            .into_iter()
+            .map(|type_| resolve_declared_variants(type_, variants))
+            .collect(),
+        resolve_declared_variants(result, variants),
+    )
+}
+
 pub(crate) fn parse_type(text: &str) -> RsigType {
     let text = text.trim();
     if let Some(inner) = strip_wrapping_parens(text)
@@ -655,6 +669,40 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
             )
         }
         _ => RsigType::Record(text.to_owned()),
+    }
+}
+
+pub(crate) fn parse_type_with_variants(text: &str, variants: &BTreeSet<TypeName>) -> RsigType {
+    resolve_declared_variants(parse_type(text), variants)
+}
+
+fn resolve_declared_variants(type_: RsigType, variants: &BTreeSet<TypeName>) -> RsigType {
+    match type_ {
+        RsigType::ActorId(message) => {
+            RsigType::ActorId(Box::new(resolve_declared_variants(*message, variants)))
+        }
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(resolve_declared_variants(*parameter, variants)),
+            result: Box::new(resolve_declared_variants(*result, variants)),
+        },
+        RsigType::List(element) => {
+            RsigType::List(Box::new(resolve_declared_variants(*element, variants)))
+        }
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .into_iter()
+                .map(|item| resolve_declared_variants(item, variants))
+                .collect(),
+        ),
+        RsigType::Record(name) => {
+            let type_name = TypeName::new(name.clone());
+            if variants.contains(&type_name) {
+                RsigType::Variant(type_name)
+            } else {
+                RsigType::Record(name)
+            }
+        }
+        other => other,
     }
 }
 
@@ -1005,8 +1053,9 @@ mod tests {
     use super::{
         ConstructorName, Rsig, RsigDependency, RsigExport, RsigFunction, RsigType, RsigTypeDecl,
         RsigTypeScheme, RsigVariantConstructor, TypeName, decode_rsig, encode_rsig,
-        parse_type_signature,
+        parse_type_signature, parse_type_signature_with_variants,
     };
+    use std::collections::BTreeSet;
 
     #[test]
     fn parses_parenthesized_arrow_parameter_types() {
@@ -1023,6 +1072,20 @@ mod tests {
             ]
         );
         assert_eq!(result, RsigType::I64);
+    }
+
+    #[test]
+    fn parses_declared_variants_in_type_signatures() {
+        let declared = BTreeSet::from([TypeName::new("color"), TypeName::new("Palette.color")]);
+
+        let (params, result) =
+            parse_type_signature_with_variants("color -> Palette.color list", &declared);
+
+        assert_eq!(params, vec![RsigType::Variant(TypeName::new("color"))]);
+        assert_eq!(
+            result,
+            RsigType::List(Box::new(RsigType::Variant(TypeName::new("Palette.color"))))
+        );
     }
 
     #[test]
