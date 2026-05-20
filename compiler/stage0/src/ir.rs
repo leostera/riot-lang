@@ -382,6 +382,8 @@ fn infer_ast_expr_type(
             match callee.segments.as_slice() {
                 [name] if name == "dbg" || name == "println" => RsigType::Unit,
                 [name] if name == "send" || name == "monitor" || name == "link" => RsigType::Unit,
+                [name] if name == "list_len" => RsigType::I64,
+                [name] if name == "list_get" => RsigType::Unknown,
                 [name] => functions
                     .get(name)
                     .map(|(_, result)| result.clone())
@@ -817,6 +819,8 @@ fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
     match callee {
         [name] if name == "dbg" || name == "println" => RsigType::Unit,
         [name] if name == "send" || name == "monitor" || name == "link" => RsigType::Unit,
+        [name] if name == "list_len" => RsigType::I64,
+        [name] if name == "list_get" => RsigType::Unknown,
         [name] => context
             .externals
             .get(name)
@@ -1228,6 +1232,8 @@ fn infer_actor_slot_type(
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => None,
             [name] if name == "send" || name == "monitor" || name == "link" => None,
+            [name] if name == "list_len" => Some(ActorSlotType::I64),
+            [name] if name == "list_get" => None,
             [name] => context
                 .externals
                 .get(name)

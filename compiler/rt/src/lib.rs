@@ -707,6 +707,43 @@ pub unsafe extern "C" fn riot_rt_value_record_set(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_list_len(list: RtValue) -> i64 {
+    with_runtime_mut(|runtime| {
+        let Some(heap_index) = heap_index(list) else {
+            return 0;
+        };
+        let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
+            return 0;
+        };
+        match &object.kind {
+            HeapObjectKind::List(items) => items.len() as i64,
+            _ => 0,
+        }
+    })
+    .unwrap_or(0)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_list_get(list: RtValue, index: i64) -> RtValue {
+    if index < 0 {
+        return VALUE_NULL;
+    }
+    with_runtime_mut(|runtime| {
+        let Some(heap_index) = heap_index(list) else {
+            return VALUE_NULL;
+        };
+        let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
+            return VALUE_NULL;
+        };
+        match &object.kind {
+            HeapObjectKind::List(items) => items.get(index as usize).copied().unwrap_or(VALUE_NULL),
+            _ => VALUE_NULL,
+        }
+    })
+    .unwrap_or(VALUE_NULL)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_tuple_get(tuple: RtValue, index: usize) -> RtValue {
     with_runtime_mut(|runtime| {
         let Some(heap_index) = heap_index(tuple) else {
@@ -1243,5 +1280,12 @@ mod tests {
         assert!(riot_rt_value_eq(riot_rt_value_tuple_get(tuple, 0), label));
         assert!(riot_rt_value_eq(riot_rt_value_tuple_get(tuple, 1), riot_rt_value_i64(42)));
         assert_eq!(riot_rt_value_tuple_get(tuple, 2), VALUE_NULL);
+
+        let list_items = [label, riot_rt_value_i64(7)];
+        let list = unsafe { riot_rt_value_list(list_items.as_ptr(), list_items.len()) };
+        assert_eq!(riot_rt_value_list_len(list), 2);
+        assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 0), label));
+        assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 1), riot_rt_value_i64(7)));
+        assert_eq!(riot_rt_value_list_get(list, 2), VALUE_NULL);
     }
 }

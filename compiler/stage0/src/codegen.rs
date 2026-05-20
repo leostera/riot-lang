@@ -831,6 +831,8 @@ impl<'ctx> Codegen<'ctx, '_> {
             [name] if name == "send" => self.emit_send(args, env),
             [name] if name == "monitor" => self.emit_pid_runtime_call("riot_rt_monitor", args, env),
             [name] if name == "link" => self.emit_pid_runtime_call("riot_rt_link", args, env),
+            [name] if name == "list_len" => self.emit_list_len(args, env),
+            [name] if name == "list_get" => self.emit_list_get(args, env),
             [name] if self.externals.contains_key(name.as_str()) => {
                 let external = *self.externals.get(name.as_str()).unwrap();
                 self.emit_external_call(
@@ -852,6 +854,39 @@ impl<'ctx> Codegen<'ctx, '_> {
             [module, name] => self.emit_imported_call(module, name, args, env),
             _ => bail!("unsupported call path `{}`", callee.join(".")),
         }
+    }
+
+    fn emit_list_len(
+        &mut self,
+        args: &[RirExpr],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        if args.len() != 1 {
+            bail!("list_len expects one argument");
+        }
+        let list = self.emit_expr(&args[0], env)?;
+        let list = self.value_as_runtime(list)?;
+        Ok(CgValue::I64(self.call_runtime_value(
+            "riot_rt_value_list_len",
+            &[list.into()],
+        )?))
+    }
+
+    fn emit_list_get(
+        &mut self,
+        args: &[RirExpr],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        if args.len() != 2 {
+            bail!("list_get expects two arguments");
+        }
+        let list = self.emit_expr(&args[0], env)?;
+        let list = self.value_as_runtime(list)?;
+        let index = self.emit_i64(&args[1], env)?;
+        Ok(CgValue::Value(self.call_runtime_value(
+            "riot_rt_value_list_get",
+            &[list.into(), index.into()],
+        )?))
     }
 
     fn emit_local_call(
@@ -1713,7 +1748,10 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_record_get" => {
                 i64_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
-            "riot_rt_value_tuple_get" => i64_type.fn_type(&[i64_type.into(), i64_type.into()], false),
+            "riot_rt_value_tuple_get" | "riot_rt_value_list_get" => {
+                i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
+            }
+            "riot_rt_value_list_len" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_ptr" => ptr_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_len" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_eq" | "riot_rt_value_lt" => {
@@ -2018,6 +2056,8 @@ fn infer_expr_abi(
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
+            [name] if name == "list_len" => AbiType::I64,
+            [name] if name == "list_get" => AbiType::Value,
             [name] => functions
                 .get(name)
                 .map(|abi| abi.result)

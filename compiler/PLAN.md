@@ -208,6 +208,8 @@ shape.
 - **Validation:** Runtime unit tests cover empty/non-empty list length and nth;
   stage0 fixtures print `list_len([1, 2])` and `list_get([10, 20], 1)`.
 
+<!-- autoresearch:step-6:done -->
+
 ### 7. Add String Length and Concat Operations
 
 - **Commit:** `feat(rt): add string length and concat operations`

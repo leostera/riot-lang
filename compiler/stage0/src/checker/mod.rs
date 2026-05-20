@@ -205,6 +205,8 @@ fn external_names(program: &AstProgram) -> HashSet<String> {
         "send".to_owned(),
         "monitor".to_owned(),
         "link".to_owned(),
+        "list_len".to_owned(),
+        "list_get".to_owned(),
     ]);
     for decl in &program.decls {
         if let AstDecl::External(external) = decl {
@@ -405,6 +407,21 @@ fn validate_expr(
                     }
                     validate_actor_target(ctx, &args[0], bindings, *span, name)?;
                     Ok(ExprCategory::Actor)
+                }
+                "list_len" => {
+                    if args.len() != 1 {
+                        return Err(call_arity_error(ctx, *span, "list_len", 1, args.len()).into());
+                    }
+                    validate_expr(ctx, &args[0], bindings, in_actor)?;
+                    Ok(ExprCategory::Other)
+                }
+                "list_get" => {
+                    if args.len() != 2 {
+                        return Err(call_arity_error(ctx, *span, "list_get", 2, args.len()).into());
+                    }
+                    validate_expr(ctx, &args[0], bindings, in_actor)?;
+                    validate_expr(ctx, &args[1], bindings, in_actor)?;
+                    Ok(ExprCategory::Other)
                 }
                 _ if ctx.function_names.contains(name) || ctx.external_names.contains(name) => {
                     for arg in args {
@@ -903,6 +920,8 @@ fn infer_annotation_expr_type(
         AstExpr::Call { callee, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
+            [name] if name == "list_len" => Some(RsigType::I64),
+            [name] if name == "list_get" => Some(RsigType::Unknown),
             [name] => ctx.function_results.get(name).cloned(),
             [module, name] => ctx
                 .imports
@@ -1076,6 +1095,8 @@ fn simple_expr_type(
         AstExpr::Call { callee, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
+            [name] if name == "list_len" => Some(RsigType::I64),
+            [name] if name == "list_get" => Some(RsigType::Unknown),
             [module, name] => ctx
                 .imports
                 .get(module)
