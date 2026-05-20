@@ -266,22 +266,11 @@ fn validate_block(
         match stmt {
             AstStmt::Let {
                 name,
-                name_span,
+                name_span: _,
                 type_annotation,
                 value,
                 span: _,
             } => {
-                if bindings.contains_key(name) {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *name_span,
-                        "duplicate local binding",
-                        format!("`{name}` is already bound in this block"),
-                        Some("use a unique local name"),
-                    )
-                    .into());
-                }
                 if let Some(annotation) = type_annotation {
                     validate_type_annotation(ctx, annotation, value, &bindings)?;
                 }
@@ -786,22 +775,11 @@ fn validate_actor_block(
         match stmt {
             AstStmt::Let {
                 name,
-                name_span,
+                name_span: _,
                 value,
                 type_annotation,
                 ..
             } => {
-                if bindings.contains_key(name) {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *name_span,
-                        "duplicate local binding",
-                        format!("`{name}` is already bound in this actor block"),
-                        Some("use a unique local name"),
-                    )
-                    .into());
-                }
                 if type_annotation.is_some() {
                     return Err(to_source_diagnostic(
                         ctx.source_path,
