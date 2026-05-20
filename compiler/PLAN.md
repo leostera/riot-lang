@@ -76,6 +76,7 @@ shape.
 - **Frontend:** lexer/parser/AST/checker/typed HIR work.
 - **Lowering/backend/runtime:** RIR/Actor IR/codegen/runtime ABI work.
 - **Fixtures/tests:** expected test additions.
+- **Validation:** focused acceptance criteria and commands for this slice.
 - **Done when:** acceptance criteria.
 
 ## Wave 1: Runtime Value + GC Foundation
@@ -97,6 +98,9 @@ shape.
   restriction.
 - **Done when:** The fixture binary prints all lines in source order, existing
   actor fixtures still run, and the old diagnostic wording is gone.
+- **Validation:** Add `programs/basic/sequenced_main.ml` with matching
+  `.stdout`; run the generated fixture test and the full stage0 suite without
+  `INSTA_UPDATE`.
 
 ### 2. Add Structural RtValue Equality
 
@@ -116,6 +120,9 @@ shape.
   tests for nested structures.
 - **Done when:** No equality path uses `to_print_string` or rendered output as
   semantic equality.
+- **Validation:** Runtime unit tests cover nested equal/not-equal values; stage0
+  fixtures prove boxed equality emits calls to `riot_rt_value_eq` in LLVM and
+  produces expected stdout.
 
 ### 3. Add RtValue Ordering for I64 and Strings
 
@@ -131,6 +138,9 @@ shape.
   tuple/list/record comparison diagnostics.
 - **Done when:** Boxed string comparison works at runtime and unsupported boxed
   ordering fails in checking, not during codegen.
+- **Validation:** Positive fixtures for i64/string `<` pass; diagnostics for
+  tuple/list/record ordering fail during checking; LLVM snapshots show boxed
+  comparisons call `riot_rt_value_lt`.
 
 ### 4. Lower Record Field Access for Runtime Values
 
@@ -147,6 +157,9 @@ shape.
   record then reading fields, and a diagnostic for unknown declared fields once
   declared records exist.
 - **Done when:** Runtime record projection works without static evaluation.
+- **Validation:** A fixture binds a record returned from a function and prints a
+  projected field; `emit ir` contains field access rather than a precomputed
+  value.
 
 ### 5. Add Tuple Projection Support
 
@@ -163,6 +176,9 @@ shape.
   when the tuple length is statically known.
 - **Done when:** A function can return a tuple and callers can project fields
   from the returned runtime value.
+- **Validation:** Positive fixtures project tuple fields from literals and
+  function returns; out-of-bounds projection diagnostics point at the projection
+  suffix.
 
 ### 6. Add List Length and Nth Operations
 
@@ -179,6 +195,8 @@ shape.
   scalar elements, and indexing boxed elements.
 - **Done when:** Generated code can index a list built at runtime and print the
   selected value.
+- **Validation:** Runtime unit tests cover empty/non-empty list length and nth;
+  stage0 fixtures print `list_len([1, 2])` and `list_get([10, 20], 1)`.
 
 ### 7. Add String Length and Concat Operations
 
@@ -194,6 +212,9 @@ shape.
   string length fixtures.
 - **Done when:** A runtime-computed string can be concatenated and printed
   without going through static evaluation.
+- **Validation:** A fixture concatenates function-returned strings and prints
+  the result; LLVM text calls the runtime string concat ABI instead of embedding
+  the final string.
 
 ### 8. Root Live RtValues Across Runtime Calls
 
@@ -209,6 +230,9 @@ shape.
   unit coverage for root push/pop around nested children.
 - **Done when:** Enabling allocation-pressure GC does not invalidate live
   generated-code values.
+- **Validation:** Add a GC stress fixture that allocates after saving an early
+  value and prints the early value correctly; runtime tests assert roots protect
+  nested children.
 
 ### 9. Store RtValues in Actor Frames
 
@@ -224,6 +248,8 @@ shape.
   receives a message, and prints the captured value after suspension.
 - **Done when:** Actor frames can safely hold boxed values across receive without
   freeing them during GC.
+- **Validation:** Actor fixture captures a boxed tuple/list/record, receives a
+  message, triggers allocation/GC, then prints the captured value after resume.
 
 ### 10. Trigger GC From Heap Allocation Pressure
 
@@ -238,6 +264,8 @@ shape.
   and a stage0 fixture that allocates enough values to trigger collection.
 - **Done when:** Runtime collection occurs automatically under allocation
   pressure without breaking existing fixtures.
+- **Validation:** Runtime unit tests force threshold collection and assert freed
+  counts; full stage0 fixtures pass with a low deterministic test threshold.
 
 ## Wave 2: Blocks, Locals, and Name Resolution
 
@@ -255,6 +283,9 @@ shape.
   and output positions.
 - **Done when:** A function can return a value computed in a nested block with
   local bindings.
+- **Validation:** Add fixtures for nested blocks in `let`, `if`, return, and
+  output positions; `emit typed` shows scoped block types and runtime stdout
+  matches source order.
 
 ### 12. Add Assignment-Free Shadowing Diagnostics
 
@@ -269,6 +300,9 @@ shape.
 - **Fixtures/tests:** Add diagnostics for same-block duplicates and positives
   for nested-block shadowing.
 - **Done when:** Normal and actor blocks report duplicate bindings consistently.
+- **Validation:** Diagnostics cover duplicate same-block bindings in normal and
+  actor blocks; positive nested-shadowing fixtures compile and print the inner
+  and outer values as expected.
 
 ### 13. Implement Resolver Symbol Tables
 
@@ -283,6 +317,9 @@ shape.
 - **Fixtures/tests:** Add unknown local, unknown function, unknown module member,
   and local-shadowing-module diagnostics.
 - **Done when:** Unknown identifiers cannot reach codegen.
+- **Validation:** Unknown local/function/module-member fixtures fail during
+  resolver/checking; no new codegen error snapshot is required for unknown
+  values.
 
 ### 14. Check Function Call Arity in Resolver
 
@@ -295,6 +332,8 @@ shape.
 - **Fixtures/tests:** Add wrong-arity diagnostics for local, external, imported,
   and prelude calls.
 - **Done when:** Wrong arity fails before RIR/codegen.
+- **Validation:** Add diagnostics for local, external, imported, and prelude
+  wrong-arity calls; stderr labels the callee and expected/actual arity.
 
 ### 15. Check Function Argument Types
 
@@ -308,6 +347,8 @@ shape.
 - **Fixtures/tests:** Add diagnostics for scalar mismatch, boxed mismatch,
   imported mismatch, and external mismatch.
 - **Done when:** Calling `fn inc(x: i64)` with a string fails in type checking.
+- **Validation:** Diagnostics cover scalar mismatch, boxed mismatch, imported
+  mismatch, and external mismatch; positive typed calls still compile and run.
 
 ### 16. Infer Unannotated Local Binding Types
 
@@ -320,6 +361,8 @@ shape.
 - **Fixtures/tests:** Add typed snapshot fixtures showing inferred local types.
 - **Done when:** `emit typed` displays concrete local types for ordinary
   unannotated bindings.
+- **Validation:** Typed snapshots show inferred local types for scalar, tuple,
+  list, record, `if`, `spawn`, and receive-supported bindings.
 
 ### 17. Infer Unannotated Function Result Types
 
@@ -332,6 +375,9 @@ shape.
 - **Fixtures/tests:** Add `.rsig` snapshots for unannotated scalar and boxed
   function results.
 - **Done when:** `fn answer() { 42 }` exports `i64`, not `_`.
+- **Validation:** `.rsig` snapshots for unannotated scalar and boxed functions
+  show concrete result types; imported callers type-check against those inferred
+  results.
 
 ### 18. Reject Unsupported Mixed Branch Types
 
@@ -345,6 +391,9 @@ shape.
 - **Fixtures/tests:** Add diagnostics for `if cond { 1 } else { "x" }` and
   positives for matching boxed branch types.
 - **Done when:** Mixed concrete branches fail before codegen.
+- **Validation:** Mixed branch diagnostics point at the incompatible branch;
+  positive fixtures for matching boxed branches compile and produce expected
+  stdout.
 
 ### 19. Snapshot Resolved Typed HIR
 
@@ -358,6 +407,9 @@ shape.
   churn.
 - **Done when:** A reviewer can inspect `emit typed` and understand what each
   name resolved to.
+- **Validation:** Focused typed snapshots include local, function, external, and
+  imported references with stable resolved identifiers and no nondeterministic
+  ordering.
 
 ### 20. Preserve Spans Through Typed HIR
 
@@ -372,6 +424,8 @@ shape.
   and verifies the reported span.
 - **Done when:** Semantic errors from post-parse passes no longer need to use
   broad block spans.
+- **Validation:** Add at least one post-HIR diagnostic whose label points at the
+  offending expression, not the whole function or block.
 
 ## Wave 3: Data Types and Pattern Matching
 
@@ -387,6 +441,8 @@ shape.
 - **Fixtures/tests:** Add CST, typed, and `.rsig` snapshots for exported record
   types.
 - **Done when:** `emit rsig` includes declared record shape information.
+- **Validation:** CST/typed/rsig snapshots for a record type declaration are
+  stable; `.rsig` binary roundtrip preserves field names and types.
 
 ### 22. Construct Declared Record Values
 
@@ -401,6 +457,8 @@ shape.
   across module boundaries.
 - **Done when:** Declared record construction type-checks and exports/imports
   through `.rsig`.
+- **Validation:** A two-module fixture exports a record type, constructs it in a
+  downstream module, and prints the runtime record successfully.
 
 ### 23. Validate Record Field Shapes
 
@@ -412,6 +470,8 @@ shape.
   needed for stable lowering.
 - **Fixtures/tests:** Add diagnostics for each invalid record shape.
 - **Done when:** Bad declared record literals fail in checking with field spans.
+- **Validation:** Diagnostics cover missing, duplicate, unknown, and mismatched
+  fields, each with a label on the specific field or record literal.
 
 ### 24. Parse Variant Type Declarations
 
@@ -425,6 +485,8 @@ shape.
 - **Fixtures/tests:** Add CST, typed, and `.rsig` snapshots for simple variants.
 - **Done when:** Imported modules can expose variant constructor names through
   `.rsig`.
+- **Validation:** CST/typed/rsig snapshots show a simple variant type and its
+  nullary constructors; `.rsig` roundtrip preserves constructor order.
 
 ### 25. Represent Variants as RtValues
 
@@ -438,6 +500,9 @@ shape.
   constructors through a new runtime ABI.
 - **Fixtures/tests:** Add fixtures constructing and printing nullary variants.
 - **Done when:** A nullary variant can be returned from a function and printed.
+- **Validation:** Runtime unit tests allocate/render nullary variants; stage0
+  fixture returns a variant from a function and stdout matches the constructor
+  name.
 
 ### 26. Add Variant Constructors With Payloads
 
@@ -450,6 +515,8 @@ shape.
 - **Fixtures/tests:** Add fixtures for `Some(1)`, error-like variants, nested
   payloads, and payload type mismatch diagnostics.
 - **Done when:** Payload variants flow through functions and `.rsig`.
+- **Validation:** Fixtures cover scalar, tuple, and boxed payload constructors;
+  diagnostics reject wrong payload arity/type before RIR.
 
 ### 27. Parse Match Expressions
 
@@ -462,6 +529,8 @@ shape.
 - **Fixtures/tests:** Add CST/typed/RIR snapshots for match on ints, bools, and
   variants.
 - **Done when:** `emit typed` and `emit ir` preserve match structure clearly.
+- **Validation:** CST, typed, and RIR snapshots for int, bool, and variant match
+  expressions are stable and include all arms in source order.
 
 ### 28. Lower Literal Match Patterns
 
@@ -474,6 +543,9 @@ shape.
 - **Fixtures/tests:** Add runtime fixtures for int, bool, string, and unit
   matches, plus a no-arm-matched diagnostic or runtime trap policy.
 - **Done when:** Literal `match` executes in native generated code.
+- **Validation:** Runtime fixtures for int, bool, string, and unit matches print
+  the selected arm result; unmatched policy is covered by either a diagnostic or
+  deterministic runtime failure fixture.
 
 ### 29. Lower Tuple and Record Patterns
 
@@ -487,6 +559,8 @@ shape.
 - **Fixtures/tests:** Add fixtures destructuring function returns and nested
   values.
 - **Done when:** A match arm can bind fields and use them in its body.
+- **Validation:** Fixtures destructure tuple and record values returned from
+  functions, print bound variables, and reject arity/field mismatches.
 
 ### 30. Lower Variant Constructor Patterns
 
@@ -499,6 +573,9 @@ shape.
 - **Fixtures/tests:** Add fixtures for `Some(x)`, error/result-style matches,
   and wrong-constructor diagnostics.
 - **Done when:** Constructor matches bind payloads and execute in native code.
+- **Validation:** Fixtures match `Some(x)`/result-style constructors and print
+  payload-derived values; diagnostics reject constructors from the wrong variant
+  type.
 
 ## Wave 4: Actor Runtime Semantics
 
@@ -515,6 +592,9 @@ shape.
   for receive arm structure.
 - **Done when:** An actor can receive different messages and choose different
   branches.
+- **Validation:** Actor fixture sends at least two message shapes to one actor
+  and verifies different branch output; `emit actor-ir` shows ordered receive
+  arm tests.
 
 ### 32. Add Mailbox Cursor Receive Scanning
 
@@ -528,6 +608,8 @@ shape.
 - **Fixtures/tests:** Add actor fixture sending unmatched then matched messages
   and verifying the unmatched message remains available.
 - **Done when:** Selective receive semantics are observable and deterministic.
+- **Validation:** Actor fixture sends unmatched then matched messages, consumes
+  only the matched one, and later receives the previously unmatched message.
 
 ### 33. Lower Receive Literal Patterns
 
@@ -540,6 +622,8 @@ shape.
   messages.
 - **Done when:** Literal receive arms execute through Actor IR, not checker
   simulation.
+- **Validation:** Actor fixtures for int, bool, string, and unit receive arms
+  pass; LLVM snapshots include runtime/scalar tests inside resume functions.
 
 ### 34. Lower Receive Tuple and Variant Patterns
 
@@ -552,6 +636,8 @@ shape.
 - **Fixtures/tests:** Add actor fixtures for tuple work items and result/error
   variants.
 - **Done when:** Actors can destructure structured messages after suspension.
+- **Validation:** Actor fixtures receive tuple and variant messages, bind
+  payloads, and print payload-derived output after a suspension/resume cycle.
 
 ### 35. Send Structured Down Messages for Monitors
 
@@ -564,6 +650,9 @@ shape.
 - **Fixtures/tests:** Update monitor fixtures so watcher actors receive and print
   down messages explicitly.
 - **Done when:** Runtime shutdown no longer prints monitor notifications itself.
+- **Validation:** Monitor fixtures pass only when watcher actors explicitly
+  receive and print structured down messages; direct runtime tests assert no
+  monitor stdout is emitted by shutdown.
 
 ### 36. Implement Link Failure Propagation
 
@@ -578,6 +667,8 @@ shape.
 - **Fixtures/tests:** Add linked actor termination fixture and direct runtime
   unit tests.
 - **Done when:** Link behavior is deterministic and no longer a boolean stub.
+- **Validation:** Runtime unit tests and actor fixtures cover linked termination;
+  repeated runs produce the same output and actor termination state.
 
 ### 37. Add Scheduler Run Budget
 
@@ -591,6 +682,8 @@ shape.
   repeated sends or local progress states.
 - **Done when:** Round-robin behavior is enforced by runtime policy, not only by
   fixture shape.
+- **Validation:** A scheduler fixture with one busy actor and one ready actor
+  shows deterministic interleaving under the configured budget.
 
 ### 38. Insert Loop Safepoints
 
@@ -604,6 +697,8 @@ shape.
 - **Fixtures/tests:** Add a long-loop actor fixture that still lets another
   actor run.
 - **Done when:** Long loops cannot starve the single-threaded scheduler.
+- **Validation:** A long-loop actor fixture still allows another actor to print
+  before the loop completes; LLVM/Actor IR snapshots show safepoint insertion.
 
 ### 39. Add Timer Messages for Receive Timeouts
 
@@ -618,6 +713,9 @@ shape.
   normal message arrives.
 - **Done when:** Timeout behavior is tested without relying on flaky wall-clock
   sleeps.
+- **Validation:** Timer tests use a deterministic runtime clock or tick API;
+  actor fixture receives a timeout message only after advancing the scheduler
+  clock.
 
 ### 40. Expose Actor Message Types in Rsig
 
@@ -630,6 +728,9 @@ shape.
 - **Fixtures/tests:** Add `.rsig` roundtrip tests and import diagnostics for
   sending the wrong message type to an imported actor pid.
 - **Done when:** A downstream module can type-check sends to imported actors.
+- **Validation:** `.rsig` roundtrip preserves actor message summaries; imported
+  send fixtures include one accepted message and one rejected wrong-message
+  diagnostic.
 
 ## Wave 5: Control Flow and Self-Hosting Structure
 
@@ -645,6 +746,9 @@ shape.
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
 - **Done when:** A native binary can run a while loop and print the accumulated
   result.
+- **Validation:** A loop accumulator fixture prints the expected result; typed
+  diagnostics reject non-bool conditions; LLVM snapshots show loop branch
+  structure.
 
 ### 42. Support Recursive Functions
 
@@ -658,6 +762,8 @@ shape.
 - **Fixtures/tests:** Add factorial/fibonacci/list-length recursion fixtures.
 - **Done when:** A recursive function compiles to native code without relying on
   static evaluation.
+- **Validation:** Recursive factorial/fibonacci fixtures run with arguments that
+  cannot be const-folded; LLVM contains a self-call to the generated symbol.
 
 ### 43. Support Mutual Recursion Groups
 
@@ -670,6 +776,8 @@ shape.
 - **Fixtures/tests:** Add even/odd mutual recursion fixture and arity/type
   diagnostics across the group.
 - **Done when:** Mutually recursive top-level functions compile and run.
+- **Validation:** Even/odd mutual recursion fixture prints expected output;
+  diagnostics cover missing annotations or mismatched types across the group.
 
 ### 44. Add Non-Capturing Lambdas
 
@@ -684,6 +792,8 @@ shape.
   rejection diagnostic.
 - **Done when:** A non-capturing lambda can be passed to a known higher-order
   helper or called directly if direct-call syntax is implemented.
+- **Validation:** Positive fixture compiles a non-capturing lambda through the
+  chosen call path; capture attempt fixture fails with a clear diagnostic.
 
 ### 45. Add Captured Closures
 
@@ -698,6 +808,8 @@ shape.
 - **Fixtures/tests:** Add closure fixtures for captured scalars, captured boxed
   values, and closure returned from a function.
 - **Done when:** Captured closures survive allocation and call correctly.
+- **Validation:** Closure fixtures capture scalar and boxed values, allocate
+  after capture, and call the closure successfully after GC pressure.
 
 ### 46. Add Typed Multi-Module Linking Fixtures
 
@@ -711,6 +823,8 @@ shape.
   functions, executable main.
 - **Done when:** A binary can call through two imported modules with typed
   `.rsig` interfaces and object files.
+- **Validation:** Integration test builds three modules with `compile-lib`, links
+  the executable with explicit object mappings, and verifies stdout.
 
 ### 47. Add Per-Export Rsig Fingerprints
 
@@ -724,6 +838,8 @@ shape.
   reorder and changed fingerprints under type changes.
 - **Done when:** `emit all` or canonical signature text shows per-export
   fingerprints deterministically.
+- **Validation:** Signature tests prove reorder-stable fingerprints and changed
+  fingerprints after export type changes; binary roundtrip preserves them.
 
 ### 48. Add Dependency Metadata to Rsig
 
@@ -738,6 +854,9 @@ shape.
   binary roundtrip test.
 - **Done when:** A module `.rsig` says which imported module fingerprints it
   depended on.
+- **Validation:** Fixtures with one and multiple `use` declarations show
+  dependency metadata in canonical interface text; binary roundtrip preserves
+  dependency fingerprints.
 
 ### 49. Emit Deterministic Interface Text
 
@@ -752,6 +871,8 @@ shape.
   stable across repeated runs.
 - **Done when:** Reviewers can inspect interface changes without decoding binary
   manually.
+- **Validation:** `emit all` snapshots include deterministic interface text;
+  running the same emit twice produces identical text.
 
 ### 50. Add Compiler-Shaped Smoke Fixture
 
@@ -768,6 +889,9 @@ shape.
   result, and prints a deterministic summary.
 - **Done when:** The fixture passes as a normal stage0 integration test and acts
   as the first “can write compiler-shaped code” milestone.
+- **Validation:** The multi-module smoke fixture builds through `compile-lib`,
+  links as a native executable, runs deterministically, and has typed/RIR/Actor
+  IR snapshots for its representative source file.
 
 ## Documentation Slice Acceptance
 
