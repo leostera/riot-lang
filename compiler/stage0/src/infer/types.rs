@@ -1,0 +1,83 @@
+use std::collections::BTreeSet;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct TypeVar(u32);
+
+impl TypeVar {
+    pub(crate) fn new(index: u32) -> Self {
+        Self(index)
+    }
+
+    pub(crate) fn index(self) -> u32 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Type {
+    Bool,
+    Char,
+    F64,
+    I64,
+    String,
+    Unit,
+    Var(TypeVar),
+    ActorId(Box<Type>),
+    Function(Vec<Type>, Box<Type>),
+    List(Box<Type>),
+    Record(String),
+    Tuple(Vec<Type>),
+}
+
+impl Type {
+    pub(crate) fn contains_var(&self, target: TypeVar) -> bool {
+        match self {
+            Type::Var(var) => *var == target,
+            Type::ActorId(message) | Type::List(message) => message.contains_var(target),
+            Type::Function(params, result) => {
+                params.iter().any(|param| param.contains_var(target)) || result.contains_var(target)
+            }
+            Type::Tuple(items) => items.iter().any(|item| item.contains_var(target)),
+            Type::Bool
+            | Type::Char
+            | Type::F64
+            | Type::I64
+            | Type::String
+            | Type::Unit
+            | Type::Record(_) => false,
+        }
+    }
+
+    pub(crate) fn free_vars(&self) -> BTreeSet<TypeVar> {
+        let mut vars = BTreeSet::new();
+        self.collect_free_vars(&mut vars);
+        vars
+    }
+
+    fn collect_free_vars(&self, vars: &mut BTreeSet<TypeVar>) {
+        match self {
+            Type::Var(var) => {
+                vars.insert(*var);
+            }
+            Type::ActorId(message) | Type::List(message) => message.collect_free_vars(vars),
+            Type::Function(params, result) => {
+                for param in params {
+                    param.collect_free_vars(vars);
+                }
+                result.collect_free_vars(vars);
+            }
+            Type::Tuple(items) => {
+                for item in items {
+                    item.collect_free_vars(vars);
+                }
+            }
+            Type::Bool
+            | Type::Char
+            | Type::F64
+            | Type::I64
+            | Type::String
+            | Type::Unit
+            | Type::Record(_) => {}
+        }
+    }
+}
