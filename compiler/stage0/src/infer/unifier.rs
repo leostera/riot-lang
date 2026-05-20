@@ -17,10 +17,10 @@ impl Substitution {
                 None => ty.clone(),
             },
             Type::ActorId(message) => Type::ActorId(Box::new(self.resolve(message))),
-            Type::Function(params, result) => Type::Function(
-                params.iter().map(|param| self.resolve(param)).collect(),
-                Box::new(self.resolve(result)),
-            ),
+            Type::Arrow { parameter, result } => Type::Arrow {
+                parameter: Box::new(self.resolve(parameter)),
+                result: Box::new(self.resolve(result)),
+            },
             Type::List(element) => Type::List(Box::new(self.resolve(element))),
             Type::Tuple(items) => {
                 Type::Tuple(items.iter().map(|item| self.resolve(item)).collect())
@@ -65,17 +65,17 @@ impl Substitution {
 
                 Ok(())
             }
-            (Type::Function(lhs_params, lhs_result), Type::Function(rhs_params, rhs_result)) => {
-                if lhs_params.len() != rhs_params.len() {
-                    return Err(UnifyError::FunctionArityMismatch {
-                        lhs: lhs_params.len(),
-                        rhs: rhs_params.len(),
-                    });
-                }
-
-                for (lhs, rhs) in lhs_params.iter().zip(rhs_params.iter()) {
-                    self.unify(lhs, rhs)?;
-                }
+            (
+                Type::Arrow {
+                    parameter: lhs_param,
+                    result: lhs_result,
+                },
+                Type::Arrow {
+                    parameter: rhs_param,
+                    result: rhs_result,
+                },
+            ) => {
+                self.unify(&lhs_param, &rhs_param)?;
                 self.unify(&lhs_result, &rhs_result)
             }
             (lhs, rhs) => Err(UnifyError::TypeMismatch { lhs, rhs }),
@@ -98,8 +98,6 @@ impl Substitution {
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub(crate) enum UnifyError {
-    #[error("cannot unify function types with {lhs} and {rhs} parameters")]
-    FunctionArityMismatch { lhs: usize, rhs: usize },
     #[error("cannot bind type variable {var:?} to recursive type {ty:?}")]
     OccursCheck { var: TypeVar, ty: Type },
     #[error("cannot unify tuple types with {lhs} and {rhs} fields")]
@@ -180,8 +178,8 @@ mod tests {
         let result = state.fresh_var();
         let mut subst = Substitution::default();
 
-        let inferred = Type::Function(vec![param.clone()], Box::new(result.clone()));
-        let concrete = Type::Function(vec![Type::I64], Box::new(Type::Bool));
+        let inferred = Type::arrow(param.clone(), result.clone());
+        let concrete = Type::arrow(Type::I64, Type::Bool);
         subst.unify(&inferred, &concrete).unwrap();
 
         assert_eq!(Type::I64, subst.resolve(&param));
@@ -189,14 +187,20 @@ mod tests {
     }
 
     #[test]
-    fn rejects_function_arity_mismatch() {
+    fn rejects_arrow_shape_mismatch() {
         let mut subst = Substitution::default();
-        let lhs = Type::Function(vec![Type::I64], Box::new(Type::I64));
-        let rhs = Type::Function(vec![Type::I64, Type::I64], Box::new(Type::I64));
+        let lhs = Type::arrow(Type::I64, Type::I64);
+        let rhs = Type::arrow(Type::I64, Type::arrow(Type::I64, Type::I64));
 
         let err = subst.unify(&lhs, &rhs).unwrap_err();
 
-        assert_eq!(UnifyError::FunctionArityMismatch { lhs: 1, rhs: 2 }, err);
+        assert_eq!(
+            UnifyError::TypeMismatch {
+                lhs: Type::I64,
+                rhs: Type::arrow(Type::I64, Type::I64),
+            },
+            err
+        );
     }
 
     #[test]

@@ -87,13 +87,10 @@ fn instantiate_type(ty: &Type, replacements: &BTreeMap<TypeVar, Type>) -> Type {
     match ty {
         Type::Var(var) => replacements.get(var).cloned().unwrap_or(Type::Var(*var)),
         Type::ActorId(message) => Type::ActorId(Box::new(instantiate_type(message, replacements))),
-        Type::Function(params, result) => Type::Function(
-            params
-                .iter()
-                .map(|param| instantiate_type(param, replacements))
-                .collect(),
-            Box::new(instantiate_type(result, replacements)),
-        ),
+        Type::Arrow { parameter, result } => Type::Arrow {
+            parameter: Box::new(instantiate_type(parameter, replacements)),
+            result: Box::new(instantiate_type(result, replacements)),
+        },
         Type::List(element) => Type::List(Box::new(instantiate_type(element, replacements))),
         Type::Tuple(items) => Type::Tuple(
             items

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use thiserror::Error;
 
@@ -8,7 +8,9 @@ use super::state::State;
 use super::types::Type;
 use super::unifier::UnifyError;
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstFnDecl, AstProgram, AstStmt};
-use crate::signature::{RsigType, parse_type, parse_type_signature};
+use crate::signature::{
+    ImportedSignatures, Rsig, RsigExport, RsigType, parse_type, parse_type_signature,
+};
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub(crate) enum InferError {
@@ -25,9 +27,13 @@ pub(crate) struct InferredModule {
     pub(crate) env: Env,
 }
 
-pub(crate) fn infer_program(program: &AstProgram) -> Result<InferredModule, InferError> {
+pub(crate) fn infer_program(
+    program: &AstProgram,
+    imports: &ImportedSignatures,
+) -> Result<InferredModule, InferError> {
     let mut state = State::default();
     install_prelude(&mut state);
+    install_imports(&mut state, program, imports);
     for decl in &program.decls {
         infer_decl(&mut state, decl)?;
     }
@@ -38,27 +44,28 @@ pub(crate) fn infer_program(program: &AstProgram) -> Result<InferredModule, Infe
 
 pub(crate) fn infer_function_signatures(
     program: &AstProgram,
+    imports: &ImportedSignatures,
 ) -> Result<BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
-    let function_names = program
+    let function_arities = program
         .decls
         .iter()
         .filter_map(|decl| match decl {
-            AstDecl::Function(function) => Some(function.name.clone()),
+            AstDecl::Function(function) => Some((function.name.clone(), function.params.len())),
             _ => None,
         })
-        .collect::<BTreeSet<_>>();
-    let inferred = infer_program(program)?;
+        .collect::<BTreeMap<_, _>>();
+    let inferred = infer_program(program, imports)?;
     let mut signatures = BTreeMap::new();
-    for name in function_names {
+    for (name, arity) in function_arities {
         let Some(scheme) = inferred.env.get_value(&name) else {
             continue;
         };
-        if let Type::Function(params, result) = &scheme.body {
+        if let Some((params, result)) = peel_source_function_type(&scheme.body, arity) {
             signatures.insert(
                 name,
                 (
                     params.iter().map(infer_type_to_rsig_type).collect(),
-                    infer_type_to_rsig_type(result),
+                    infer_type_to_rsig_type(&result),
                 ),
             );
         }
@@ -70,26 +77,26 @@ fn install_prelude(state: &mut State) {
     let dbg_message = state.fresh_var();
     state.add_prelude_value(
         "dbg",
-        state.generalize(Type::Function(vec![dbg_message], Box::new(Type::Unit))),
+        state.generalize(Type::arrow(dbg_message, Type::Unit)),
     );
     state.add_prelude_value(
         "println",
-        TypeScheme::monomorphic(Type::Function(vec![Type::String], Box::new(Type::Unit))),
+        TypeScheme::monomorphic(Type::arrow(Type::String, Type::Unit)),
     );
 
     let send_message = state.fresh_var();
     state.add_prelude_value(
         "send",
-        state.generalize(Type::Function(
+        state.generalize(Type::arrows(
             vec![Type::ActorId(Box::new(send_message.clone())), send_message],
-            Box::new(Type::Unit),
+            Type::Unit,
         )),
     );
 
     let actor_message = state.fresh_var();
-    let actor_action = state.generalize(Type::Function(
-        vec![Type::ActorId(Box::new(actor_message))],
-        Box::new(Type::Unit),
+    let actor_action = state.generalize(Type::arrow(
+        Type::ActorId(Box::new(actor_message)),
+        Type::Unit,
     ));
     state.add_prelude_value("monitor", actor_action.clone());
     state.add_prelude_value("link", actor_action);
@@ -97,32 +104,86 @@ fn install_prelude(state: &mut State) {
     let list_item = state.fresh_var();
     state.add_prelude_value(
         "list_len",
-        state.generalize(Type::Function(
-            vec![Type::List(Box::new(list_item))],
-            Box::new(Type::I64),
-        )),
+        state.generalize(Type::arrow(Type::List(Box::new(list_item)), Type::I64)),
     );
 
     let list_get_item = state.fresh_var();
     state.add_prelude_value(
         "list_get",
-        state.generalize(Type::Function(
+        state.generalize(Type::arrows(
             vec![Type::List(Box::new(list_get_item.clone())), Type::I64],
-            Box::new(list_get_item),
+            list_get_item,
         )),
     );
 
     state.add_prelude_value(
         "string_len",
-        TypeScheme::monomorphic(Type::Function(vec![Type::String], Box::new(Type::I64))),
+        TypeScheme::monomorphic(Type::arrow(Type::String, Type::I64)),
     );
     state.add_prelude_value(
         "string_concat",
-        TypeScheme::monomorphic(Type::Function(
-            vec![Type::String, Type::String],
-            Box::new(Type::String),
-        )),
+        TypeScheme::monomorphic(Type::arrows(vec![Type::String, Type::String], Type::String)),
     );
+}
+
+fn install_imports(state: &mut State, program: &AstProgram, imports: &ImportedSignatures) {
+    for decl in &program.decls {
+        let AstDecl::Use(use_) = decl else {
+            continue;
+        };
+        let Some(rsig) = imports.get(&use_.name) else {
+            continue;
+        };
+        install_import_signature(state, &use_.name, rsig);
+    }
+}
+
+fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
+    for export in &rsig.exports {
+        let (name, params, result) = match export {
+            RsigExport::Function(function) => {
+                (&function.name, function.params.as_slice(), &function.result)
+            }
+            RsigExport::External(external) => {
+                (&external.name, external.params.as_slice(), &external.result)
+            }
+        };
+        let type_ = rsig_signature_to_infer_type(params, result, state);
+        state.add_prelude_value(format!("{module_name}.{name}"), state.generalize(type_));
+    }
+}
+
+fn source_function_type(params: Vec<Type>, result: Type) -> Type {
+    if params.is_empty() {
+        Type::arrow(Type::Unit, result)
+    } else {
+        Type::arrows(params, result)
+    }
+}
+
+fn peel_source_function_type(type_: &Type, arity: usize) -> Option<(Vec<Type>, Type)> {
+    let mut params = Vec::new();
+    let mut current = type_;
+
+    if arity == 0 {
+        let Type::Arrow { parameter, result } = current else {
+            return None;
+        };
+        if parameter.as_ref() != &Type::Unit {
+            return None;
+        }
+        return Some((params, result.as_ref().clone()));
+    }
+
+    for _ in 0..arity {
+        let Type::Arrow { parameter, result } = current else {
+            return None;
+        };
+        params.push(parameter.as_ref().clone());
+        current = result;
+    }
+
+    Some((params, current.clone()))
 }
 
 fn infer_decl(state: &mut State, decl: &AstDecl) -> Result<(), InferError> {
@@ -130,13 +191,7 @@ fn infer_decl(state: &mut State, decl: &AstDecl) -> Result<(), InferError> {
         AstDecl::Use(_) => Ok(()),
         AstDecl::External(external) => {
             let (params, result) = parse_type_signature(&external.type_text);
-            let type_ = Type::Function(
-                params
-                    .iter()
-                    .map(|param| rsig_type_to_infer_type(param, state))
-                    .collect(),
-                Box::new(rsig_type_to_infer_type(&result, state)),
-            );
+            let type_ = rsig_signature_to_infer_type(&params, &result, state);
             state.add_value(external.name.clone(), state.generalize(type_));
             Ok(())
         }
@@ -174,7 +229,7 @@ fn infer_function(state: &mut State, function: &AstFnDecl) -> Result<Type, Infer
         result
     };
     state.pop_scope();
-    Ok(Type::Function(params, Box::new(state.resolve(&result))))
+    Ok(source_function_type(params, state.resolve(&result)))
 }
 
 fn infer_block(state: &mut State, block: &AstBlock) -> Result<Type, InferError> {
@@ -304,23 +359,25 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
                 .iter()
                 .map(|arg| infer_expr(state, arg))
                 .collect::<Result<Vec<_>, _>>()?;
-            let result = state.fresh_var();
-            state.unify(
-                &callee_type,
-                &Type::Function(arg_types, Box::new(result.clone())),
-            )?;
-            Ok(state.resolve(&result))
+            apply_call(state, callee_type, arg_types)
         }
-        AstExpr::Spawn { .. } => Ok(Type::ActorId(Box::new(state.fresh_var()))),
+        AstExpr::Spawn { body, .. } => {
+            state.push_scope();
+            infer_block(state, body)?;
+            state.pop_scope();
+            Ok(Type::ActorId(Box::new(state.fresh_var())))
+        }
         AstExpr::Record { path, .. } => Ok(Type::Record(path.segments.join("."))),
         AstExpr::TupleIndex { base, index, .. } => {
-            if let AstExpr::Tuple { items, .. } = base.as_ref() {
-                items
+            let inferred_base = infer_expr(state, base)?;
+            let base_type = state.resolve(&inferred_base);
+            match base_type {
+                Type::Tuple(items) => items
                     .get(*index)
-                    .map(|item| infer_expr(state, item))
-                    .unwrap_or_else(|| Err(InferError::Unsupported("tuple projection index")))
-            } else {
-                Err(InferError::Unsupported("tuple projection"))
+                    .cloned()
+                    .ok_or(InferError::Unsupported("tuple projection index")),
+                Type::Var(_) => Ok(state.fresh_var()),
+                _ => Err(InferError::Unsupported("tuple projection")),
             }
         }
         AstExpr::Field { base, field, .. } => {
@@ -330,12 +387,72 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
                     .find_map(|(name, value)| (name == field).then(|| infer_expr(state, value)))
                     .unwrap_or_else(|| Err(InferError::Unsupported("record field")))
             } else {
-                Err(InferError::Unsupported("record field"))
+                infer_expr(state, base)?;
+                Ok(state.fresh_var())
             }
         }
-        AstExpr::Receive { .. } => Ok(Type::Unit),
+        AstExpr::Receive { binder, body, .. } => {
+            let message = state.fresh_var();
+            state.push_scope();
+            state.add_value(binder.clone(), state.monomorphic(message));
+            infer_expr(state, body)?;
+            state.pop_scope();
+            Ok(Type::Unit)
+        }
+        AstExpr::Call { callee, args, .. } if callee.segments.len() == 2 => {
+            let name = callee.segments.join(".");
+            let scheme = state
+                .get_value(&name)
+                .cloned()
+                .ok_or_else(|| InferError::UnknownValue(name.clone()))?;
+            let callee_type = state.instantiate(&scheme);
+            let arg_types = args
+                .iter()
+                .map(|arg| infer_expr(state, arg))
+                .collect::<Result<Vec<_>, _>>()?;
+            apply_call(state, callee_type, arg_types)
+        }
+        AstExpr::Path { path, .. } if path.segments.len() == 2 => {
+            let name = path.segments.join(".");
+            let scheme = state
+                .get_value(&name)
+                .cloned()
+                .ok_or_else(|| InferError::UnknownValue(name.clone()))?;
+            Ok(state.instantiate(&scheme))
+        }
         AstExpr::Call { .. } | AstExpr::Path { .. } => Err(InferError::Unsupported("path")),
     }
+}
+
+fn apply_call(
+    state: &mut State,
+    callee_type: Type,
+    arg_types: Vec<Type>,
+) -> Result<Type, InferError> {
+    let mut callee_type = callee_type;
+    if arg_types.is_empty() {
+        let result = state.fresh_var();
+        state.unify(&callee_type, &Type::arrow(Type::Unit, result.clone()))?;
+        return Ok(state.resolve(&result));
+    }
+
+    for arg_type in arg_types {
+        let result = state.fresh_var();
+        state.unify(&callee_type, &Type::arrow(arg_type, result.clone()))?;
+        callee_type = state.resolve(&result);
+    }
+
+    Ok(callee_type)
+}
+
+fn rsig_signature_to_infer_type(params: &[RsigType], result: &RsigType, state: &mut State) -> Type {
+    source_function_type(
+        params
+            .iter()
+            .map(|param| rsig_type_to_infer_type(param, state))
+            .collect(),
+        rsig_type_to_infer_type(result, state),
+    )
 }
 
 fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
@@ -367,7 +484,7 @@ fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
         Type::Bool => RsigType::Bool,
         Type::Char => RsigType::Char,
         Type::F64 => RsigType::F64,
-        Type::Function(_, _) => RsigType::Unknown,
+        Type::Arrow { .. } => RsigType::Unknown,
         Type::I64 => RsigType::I64,
         Type::List(element) => RsigType::List(Box::new(infer_type_to_rsig_type(element))),
         Type::Record(name) => RsigType::Record(name.clone()),
@@ -383,10 +500,12 @@ mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
-    use crate::infer::module::{infer_function_signatures, infer_program};
+    use crate::infer::module::{
+        InferError, InferredModule, infer_function_signatures, infer_program,
+    };
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
-    use crate::signature::RsigType;
+    use crate::signature::{ImportedSignatures, RsigType};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -449,6 +568,16 @@ mod tests {
         })
     }
 
+    fn infer(program: &AstProgram) -> Result<InferredModule, InferError> {
+        infer_program(program, &ImportedSignatures::new())
+    }
+
+    fn signatures(
+        program: &AstProgram,
+    ) -> Result<std::collections::BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
+        infer_function_signatures(program, &ImportedSignatures::new())
+    }
+
     #[test]
     fn scans_module_declarations_top_to_bottom() {
         let program = AstProgram {
@@ -463,19 +592,19 @@ mod tests {
             ],
         };
 
-        let inferred = infer_program(&program).unwrap();
+        let inferred = infer(&program).unwrap();
         let exports = inferred.env.exported_values();
 
         assert_eq!(exports.len(), 2);
         assert_eq!(exports[0].0, "one");
         assert_eq!(
             exports[0].1,
-            TypeScheme::monomorphic(Type::Function(Vec::new(), Box::new(Type::I64)))
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::I64))
         );
         assert_eq!(exports[1].0, "two");
         assert_eq!(
             exports[1].1,
-            TypeScheme::monomorphic(Type::Function(Vec::new(), Box::new(Type::I64)))
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::I64))
         );
     }
 
@@ -485,7 +614,7 @@ mod tests {
             decls: vec![function("two", vec![], Vec::new(), call("one", Vec::new()))],
         };
 
-        let err = infer_program(&program).unwrap_err();
+        let err = infer(&program).unwrap_err();
 
         assert_eq!(
             crate::infer::module::InferError::UnknownValue("one".to_owned()),
@@ -519,12 +648,12 @@ mod tests {
             )],
         };
 
-        let inferred = infer_program(&program).unwrap();
+        let inferred = infer(&program).unwrap();
         let exports = inferred.env.exported_values();
 
         assert_eq!(
             exports[0].1,
-            TypeScheme::monomorphic(Type::Function(Vec::new(), Box::new(Type::Bool)))
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::Bool))
         );
     }
 
@@ -534,7 +663,7 @@ mod tests {
             decls: vec![function("id", vec!["x"], Vec::new(), path("x"))],
         };
 
-        let inferred = infer_program(&program).unwrap();
+        let inferred = infer(&program).unwrap();
         let exports = inferred.env.exported_values();
         let var = exports[0].1.quantifiers[0];
 
@@ -544,7 +673,7 @@ mod tests {
             exports[0].1,
             TypeScheme {
                 quantifiers: vec![var],
-                body: Type::Function(vec![Type::Var(var)], Box::new(Type::Var(var))),
+                body: Type::arrow(Type::Var(var), Type::Var(var)),
             }
         );
     }
@@ -560,14 +689,14 @@ mod tests {
             )],
         };
 
-        let inferred = infer_program(&program).unwrap();
+        let inferred = infer(&program).unwrap();
         let exports = inferred.env.exported_values();
 
         assert_eq!(exports.len(), 1);
         assert_eq!(exports[0].0, "main");
         assert_eq!(
             exports[0].1,
-            TypeScheme::monomorphic(Type::Function(Vec::new(), Box::new(Type::Unit)))
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::Unit))
         );
     }
 
@@ -582,7 +711,7 @@ mod tests {
             )],
         };
 
-        let signatures = infer_function_signatures(&program).unwrap();
+        let signatures = signatures(&program).unwrap();
 
         assert_eq!(
             signatures.get("add"),

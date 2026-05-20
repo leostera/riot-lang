@@ -23,19 +23,36 @@ pub(crate) enum Type {
     Unit,
     Var(TypeVar),
     ActorId(Box<Type>),
-    Function(Vec<Type>, Box<Type>),
+    Arrow {
+        parameter: Box<Type>,
+        result: Box<Type>,
+    },
     List(Box<Type>),
     Record(String),
     Tuple(Vec<Type>),
 }
 
 impl Type {
+    pub(crate) fn arrow(parameter: Type, result: Type) -> Self {
+        Type::Arrow {
+            parameter: Box::new(parameter),
+            result: Box::new(result),
+        }
+    }
+
+    pub(crate) fn arrows(params: Vec<Type>, result: Type) -> Self {
+        params
+            .into_iter()
+            .rev()
+            .fold(result, |result, parameter| Type::arrow(parameter, result))
+    }
+
     pub(crate) fn contains_var(&self, target: TypeVar) -> bool {
         match self {
             Type::Var(var) => *var == target,
             Type::ActorId(message) | Type::List(message) => message.contains_var(target),
-            Type::Function(params, result) => {
-                params.iter().any(|param| param.contains_var(target)) || result.contains_var(target)
+            Type::Arrow { parameter, result } => {
+                parameter.contains_var(target) || result.contains_var(target)
             }
             Type::Tuple(items) => items.iter().any(|item| item.contains_var(target)),
             Type::Bool
@@ -60,10 +77,8 @@ impl Type {
                 vars.insert(*var);
             }
             Type::ActorId(message) | Type::List(message) => message.collect_free_vars(vars),
-            Type::Function(params, result) => {
-                for param in params {
-                    param.collect_free_vars(vars);
-                }
+            Type::Arrow { parameter, result } => {
+                parameter.collect_free_vars(vars);
                 result.collect_free_vars(vars);
             }
             Type::Tuple(items) => {

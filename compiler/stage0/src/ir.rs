@@ -22,7 +22,7 @@ pub(crate) fn typed_program_from_ast(
     ast: AstProgram,
     imports: &ImportedSignatures,
 ) -> TypedProgram {
-    let inferred_function_types = infer_function_signatures(&ast).ok();
+    let inferred_function_types = infer_function_signatures(&ast, imports).ok();
     let mut uses = Vec::new();
     let mut externals = Vec::new();
     let mut ast_functions = Vec::new();
