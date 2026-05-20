@@ -142,7 +142,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
 
 pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
     let mut context = LowerContext::default();
-    RirProgram {
+    let lowered = RirProgram {
         module_name: program.module_name,
         uses: program.uses.into_iter().map(|use_| use_.name).collect(),
         externals: program
@@ -179,7 +179,15 @@ pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
                 }
             })
             .collect(),
+    };
+    closure_convert_rir(lowered)
+}
+
+pub(crate) fn closure_convert_rir(mut program: RirProgram) -> RirProgram {
+    for function in &mut program.functions {
+        closure_convert_block(&mut function.body);
     }
+    program
 }
 
 pub(crate) fn lower_rir_to_actor_ir(
@@ -1672,6 +1680,86 @@ fn collect_free_block(
     }
 }
 
+fn closure_convert_block(block: &mut RirBlock) {
+    for stmt in &mut block.statements {
+        match stmt {
+            RirStmt::Let { value, .. } | RirStmt::Expr(value) => closure_convert_expr(value),
+        }
+    }
+    if let Some(tail) = &mut block.tail {
+        closure_convert_expr(tail);
+    }
+}
+
+fn closure_convert_expr(expr: &mut RirExpr) {
+    match expr {
+        RirExpr::Add(lhs, rhs)
+        | RirExpr::Sub(lhs, rhs)
+        | RirExpr::Mul(lhs, rhs)
+        | RirExpr::Div(lhs, rhs)
+        | RirExpr::Mod(lhs, rhs)
+        | RirExpr::Eq(lhs, rhs)
+        | RirExpr::Lt(lhs, rhs)
+        | RirExpr::And(lhs, rhs)
+        | RirExpr::Or(lhs, rhs) => {
+            closure_convert_expr(lhs);
+            closure_convert_expr(rhs);
+        }
+        RirExpr::Neg(value) | RirExpr::Not(value) => closure_convert_expr(value),
+        RirExpr::If {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            closure_convert_expr(condition);
+            closure_convert_expr(then_branch);
+            closure_convert_expr(else_branch);
+        }
+        RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
+            for arg in args {
+                closure_convert_expr(arg);
+            }
+        }
+        RirExpr::Apply { callee, args, .. } => {
+            closure_convert_expr(callee);
+            for arg in args {
+                closure_convert_expr(arg);
+            }
+        }
+        RirExpr::Lambda {
+            params,
+            captures,
+            body,
+        } => {
+            closure_convert_block(body);
+            let bound = params
+                .iter()
+                .map(|param| param.as_str().to_owned())
+                .collect::<BTreeSet<_>>();
+            let mut free = BTreeSet::new();
+            collect_free_block(body, &bound, &mut free);
+            *captures = free.into_iter().map(Capture::new).collect();
+        }
+        RirExpr::Record { fields, .. } => {
+            for (_, value) in fields {
+                closure_convert_expr(value);
+            }
+        }
+        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
+            closure_convert_expr(base);
+        }
+        RirExpr::Spawn { body, .. } => closure_convert_block(body),
+        RirExpr::Receive { body, .. } => closure_convert_expr(body),
+        RirExpr::Bool(_)
+        | RirExpr::Unit
+        | RirExpr::Char(_)
+        | RirExpr::Float(_)
+        | RirExpr::Int(_)
+        | RirExpr::Path(_)
+        | RirExpr::String(_) => {}
+    }
+}
+
 fn infer_actor_slot_type(
     expr: &RirExpr,
     locals: &BTreeMap<String, Option<ActorSlotType>>,
@@ -1843,15 +1931,9 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .collect::<Vec<_>>();
             let body = lower_block(*body, context);
             context.pop_scope();
-            let bound = params
-                .iter()
-                .map(|param| param.as_str().to_owned())
-                .collect::<BTreeSet<_>>();
-            let mut free = BTreeSet::new();
-            collect_free_block(&body, &bound, &mut free);
             RirExpr::Lambda {
                 params,
-                captures: free.into_iter().map(Capture::new).collect(),
+                captures: Vec::new(),
                 body: Box::new(body),
             }
         }
