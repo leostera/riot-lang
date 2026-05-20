@@ -45,9 +45,11 @@ impl ActorSlotType {
             RsigType::I64 => Some(ActorSlotType::I64),
             RsigType::Bool => Some(ActorSlotType::Bool),
             RsigType::ActorId(_) => Some(ActorSlotType::ActorId),
-            RsigType::String | RsigType::Tuple(_) | RsigType::List(_) | RsigType::Record(_) => {
-                Some(ActorSlotType::Value)
-            }
+            RsigType::String
+            | RsigType::Tuple(_)
+            | RsigType::List(_)
+            | RsigType::Record(_)
+            | RsigType::Arrow { .. } => Some(ActorSlotType::Value),
             _ => None,
         }
     }

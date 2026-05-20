@@ -5,7 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 1;
+const VERSION: u16 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
@@ -48,6 +48,10 @@ pub(crate) enum RsigType {
     String,
     Unit,
     Var(String),
+    Arrow {
+        parameter: Box<RsigType>,
+        result: Box<RsigType>,
+    },
     Tuple(Vec<RsigType>),
     List(Box<RsigType>),
     Record(String),
@@ -162,6 +166,9 @@ impl RsigType {
             RsigType::String => "string".to_owned(),
             RsigType::Unit => "unit".to_owned(),
             RsigType::Var(name) => name.clone(),
+            RsigType::Arrow { parameter, result } => {
+                format!("({} -> {})", parameter.canonical(), result.canonical())
+            }
             RsigType::Tuple(items) => format!("({})", render_types(items)),
             RsigType::List(item) => format!("{} list", item.canonical()),
             RsigType::Record(name) => name.clone(),
@@ -241,6 +248,22 @@ pub(crate) fn parse_type_signature(text: &str) -> (Vec<RsigType>, RsigType) {
 
 pub(crate) fn parse_type(text: &str) -> RsigType {
     let text = text.trim();
+    if let Some(inner) = strip_wrapping_parens(text)
+        && split_top_level_arrows(inner).len() > 1
+    {
+        return parse_type(inner);
+    }
+    let mut arrow_parts = split_top_level_arrows(text);
+    if arrow_parts.len() > 1 {
+        let result = parse_type(arrow_parts.pop().unwrap_or("_"));
+        return arrow_parts
+            .into_iter()
+            .rev()
+            .fold(result, |result, parameter| RsigType::Arrow {
+                parameter: Box::new(parse_type(parameter)),
+                result: Box::new(result),
+            });
+    }
     if let Some(item) = text.strip_suffix(" list") {
         return RsigType::List(Box::new(parse_type(item)));
     }
@@ -270,6 +293,24 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
     }
 }
 
+fn strip_wrapping_parens(text: &str) -> Option<&str> {
+    let inner = text.strip_prefix('(')?.strip_suffix(')')?;
+    let mut depth = 0_i32;
+    for (index, ch) in text.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 && index + ch.len_utf8() < text.len() {
+                    return None;
+                }
+            }
+            _ => {}
+        }
+    }
+    Some(inner)
+}
+
 pub(crate) fn stable_hash(text: &str) -> u64 {
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
@@ -290,7 +331,8 @@ fn split_top_level_arrows(text: &str) -> Vec<&str> {
     while index < bytes.len() {
         match bytes[index] {
             b'(' | b'<' => depth += 1,
-            b')' | b'>' => depth -= 1,
+            b')' => depth -= 1,
+            b'>' if index == 0 || bytes[index - 1] != b'-' => depth -= 1,
             b'-' if depth == 0 && bytes.get(index + 1) == Some(&b'>') => {
                 parts.push(text[start..index].trim());
                 index += 2;
@@ -434,6 +476,11 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
             bytes.push(7);
             put_string(bytes, name);
         }
+        RsigType::Arrow { parameter, result } => {
+            bytes.push(12);
+            put_type(bytes, parameter);
+            put_type(bytes, result);
+        }
         RsigType::Tuple(items) => {
             bytes.push(8);
             put_types(bytes, items);
@@ -466,6 +513,10 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
         9 => RsigType::List(Box::new(get_type(cursor)?)),
         10 => RsigType::Record(get_string(cursor)?),
         11 => RsigType::Unknown,
+        12 => RsigType::Arrow {
+            parameter: Box::new(get_type(cursor)?),
+            result: Box::new(get_type(cursor)?),
+        },
         tag => bail!("unknown type tag {tag}"),
     })
 }
@@ -513,3 +564,52 @@ fn get_u64(cursor: &mut Cursor<&[u8]>) -> miette::Result<u64> {
 }
 
 pub(crate) type ImportedSignatures = BTreeMap<String, Rsig>;
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Rsig, RsigExport, RsigFunction, RsigType, decode_rsig, encode_rsig, parse_type_signature,
+    };
+
+    #[test]
+    fn parses_parenthesized_arrow_parameter_types() {
+        let (params, result) = parse_type_signature("(i64 -> i64) -> i64 -> i64");
+
+        assert_eq!(
+            params,
+            vec![
+                RsigType::Arrow {
+                    parameter: Box::new(RsigType::I64),
+                    result: Box::new(RsigType::I64),
+                },
+                RsigType::I64,
+            ]
+        );
+        assert_eq!(result, RsigType::I64);
+    }
+
+    #[test]
+    fn binary_rsig_roundtrips_arrow_types() {
+        let rsig = Rsig::new(
+            "Apply".to_owned(),
+            vec![RsigExport::Function(RsigFunction {
+                name: "apply_i64".to_owned(),
+                params: vec![
+                    RsigType::Arrow {
+                        parameter: Box::new(RsigType::I64),
+                        result: Box::new(RsigType::I64),
+                    },
+                    RsigType::I64,
+                ],
+                result: RsigType::I64,
+                symbol: "riot_mod_Apply_apply_i64".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded, rsig);
+        assert!(decoded.canonical_text().contains("(i64 -> i64)"));
+    }
+}

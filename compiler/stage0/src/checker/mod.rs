@@ -1091,6 +1091,7 @@ fn validate_function_abi_annotation(
             | RsigType::Tuple(_)
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::Arrow { .. }
     ) {
         return Ok(());
     }
@@ -1297,19 +1298,31 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
 fn export_has_unknown_abi(export: &RsigExport) -> bool {
     match export {
         RsigExport::Function(function) => {
-            matches!(function.result, RsigType::Unknown | RsigType::Var(_))
-                || function
-                    .params
-                    .iter()
-                    .any(|param| matches!(param, RsigType::Unknown | RsigType::Var(_)))
+            rsig_type_has_unknown_abi(&function.result)
+                || function.params.iter().any(rsig_type_has_unknown_abi)
         }
         RsigExport::External(external) => {
-            external.result == RsigType::Unknown
-                || external
-                    .params
-                    .iter()
-                    .any(|param| matches!(param, RsigType::Unknown | RsigType::Var(_)))
+            rsig_type_has_unknown_abi(&external.result)
+                || external.params.iter().any(rsig_type_has_unknown_abi)
         }
+    }
+}
+
+fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
+    match type_ {
+        RsigType::Unknown | RsigType::Var(_) => true,
+        RsigType::ActorId(message) | RsigType::List(message) => rsig_type_has_unknown_abi(message),
+        RsigType::Arrow { parameter, result } => {
+            rsig_type_has_unknown_abi(parameter) || rsig_type_has_unknown_abi(result)
+        }
+        RsigType::Tuple(items) => items.iter().any(rsig_type_has_unknown_abi),
+        RsigType::Bool
+        | RsigType::Char
+        | RsigType::F64
+        | RsigType::I64
+        | RsigType::String
+        | RsigType::Unit
+        | RsigType::Record(_) => false,
     }
 }
 

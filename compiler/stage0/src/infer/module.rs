@@ -521,6 +521,10 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
         RsigType::ActorId(message) => {
             Type::ActorId(Box::new(rsig_type_to_infer_type(message, state)))
         }
+        RsigType::Arrow { parameter, result } => Type::arrow(
+            rsig_type_to_infer_type(parameter, state),
+            rsig_type_to_infer_type(result, state),
+        ),
         RsigType::Bool => Type::Bool,
         RsigType::Char => Type::Char,
         RsigType::F64 => Type::F64,
@@ -545,7 +549,10 @@ fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
         Type::Bool => RsigType::Bool,
         Type::Char => RsigType::Char,
         Type::F64 => RsigType::F64,
-        Type::Arrow { .. } => RsigType::Unknown,
+        Type::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(infer_type_to_rsig_type(parameter)),
+            result: Box::new(infer_type_to_rsig_type(result)),
+        },
         Type::I64 => RsigType::I64,
         Type::List(element) => RsigType::List(Box::new(infer_type_to_rsig_type(element))),
         Type::Record(name) => RsigType::Record(name.clone()),
@@ -864,6 +871,34 @@ mod tests {
         assert_eq!(
             signatures.get("add"),
             Some(&(vec![RsigType::I64, RsigType::I64], RsigType::I64))
+        );
+    }
+
+    #[test]
+    fn function_signatures_project_arrow_parameter_types() {
+        let program = AstProgram {
+            decls: vec![function(
+                "apply_i64",
+                vec!["f", "x"],
+                Vec::new(),
+                add(call("f", vec![add(path("x"), int(0))]), int(1)),
+            )],
+        };
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("apply_i64"),
+            Some(&(
+                vec![
+                    RsigType::Arrow {
+                        parameter: Box::new(RsigType::I64),
+                        result: Box::new(RsigType::I64),
+                    },
+                    RsigType::I64,
+                ],
+                RsigType::I64,
+            ))
         );
     }
 }

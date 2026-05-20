@@ -27,9 +27,11 @@ impl AbiType {
             RsigType::I64 => AbiType::I64,
             RsigType::ActorId(_) => AbiType::ActorId,
             RsigType::Unit => AbiType::Unit,
-            RsigType::String | RsigType::Tuple(_) | RsigType::List(_) | RsigType::Record(_) => {
-                AbiType::Value
-            }
+            RsigType::String
+            | RsigType::Tuple(_)
+            | RsigType::List(_)
+            | RsigType::Record(_)
+            | RsigType::Arrow { .. } => AbiType::Value,
             _ => AbiType::Unknown,
         }
     }
