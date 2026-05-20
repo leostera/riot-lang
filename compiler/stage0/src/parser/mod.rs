@@ -2,8 +2,8 @@ use camino::Utf8Path;
 
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstMatchArm, AstPath, AstPattern,
-    AstProgram, AstStmt, AstTypeAnnotation, AstTypeDecl, AstUseDecl, AstVariantConstructor,
-    TextSpan,
+    AstProgram, AstRecordTypeField, AstStmt, AstTypeAnnotation, AstTypeBody, AstTypeDecl,
+    AstUseDecl, AstVariantConstructor, TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
@@ -150,6 +150,10 @@ impl<'src> Parser<'src> {
         let (name, name_span) = self.expect_lower_ident()?;
         self.expect(TokenKind::Eq, "expected `=` after type name")?;
 
+        if self.at(TokenKind::LBrace) {
+            return self.parse_record_type_decl(start.span, name, name_span);
+        }
+
         let mut constructors = Vec::new();
         loop {
             let (constructor, constructor_span) = self.expect_upper_ident()?;
@@ -177,8 +181,53 @@ impl<'src> Parser<'src> {
         Ok(AstTypeDecl {
             name,
             name_span,
-            constructors,
+            body: AstTypeBody::Variant { constructors },
             span,
+        })
+    }
+
+    fn parse_record_type_decl(
+        &mut self,
+        start: TextSpan,
+        name: String,
+        name_span: TextSpan,
+    ) -> Result<AstTypeDecl, ParseError> {
+        self.expect(TokenKind::LBrace, "expected `{` in record type")?;
+        let mut fields = Vec::new();
+        while !self.at(TokenKind::RBrace) {
+            let (field, field_span) = self.expect_lower_ident()?;
+            self.expect(TokenKind::Colon, "expected `:` after record field name")?;
+            let type_annotation = self.parse_type_annotation_until(
+                &[TokenKind::Comma, TokenKind::RBrace],
+                "expected `,` or `}` after record field type",
+            )?;
+            fields.push(AstRecordTypeField {
+                name: field,
+                name_span: field_span,
+                type_annotation,
+            });
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+            if self.at(TokenKind::RBrace) {
+                break;
+            }
+        }
+        let end = self.expect(TokenKind::RBrace, "expected `}` after record type fields")?;
+        if fields.is_empty() {
+            return Err(ParseError {
+                span: name_span,
+                message: "record type needs at least one field".to_owned(),
+                help: Some("try: type point = { x: i64, y: i64 }"),
+            });
+        }
+
+        Ok(AstTypeDecl {
+            name,
+            name_span,
+            body: AstTypeBody::Record { fields },
+            span: start.join(end.span),
         })
     }
 
@@ -311,12 +360,20 @@ impl<'src> Parser<'src> {
         missing_message: &str,
     ) -> Result<AstTypeAnnotation, ParseError> {
         let start = self.current().span;
-        while !terminators.iter().any(|kind| self.at(*kind)) {
+        let mut depth = 0_u32;
+        while depth != 0 || !terminators.iter().any(|kind| self.at(*kind)) {
             if self.at(TokenKind::Semicolon)
-                || self.at(TokenKind::RBrace)
+                || (self.at(TokenKind::RBrace)
+                    && depth == 0
+                    && !terminators.contains(&TokenKind::RBrace))
                 || self.at(TokenKind::Eof)
             {
                 return Err(self.error_at_current(missing_message, None));
+            }
+            match self.current().kind {
+                TokenKind::LParen | TokenKind::LBracket | TokenKind::Lt => depth += 1,
+                TokenKind::RParen | TokenKind::RBracket | TokenKind::Gt if depth > 0 => depth -= 1,
+                _ => {}
             }
             self.bump();
         }
@@ -1056,7 +1113,7 @@ fn is_upper_ident(ident: &str) -> bool {
 mod tests {
     use camino::Utf8Path;
 
-    use crate::ast::{AstDecl, AstExpr, AstStmt};
+    use crate::ast::{AstDecl, AstExpr, AstStmt, AstTypeBody};
 
     use super::parse_source;
 
@@ -1096,5 +1153,24 @@ mod tests {
             panic!("expected dbg call");
         };
         assert!(matches!(args.first(), Some(AstExpr::Apply { .. })));
+    }
+
+    #[test]
+    fn parses_record_type_declarations() {
+        let program = parse_source(
+            Utf8Path::new("record_type.ml"),
+            "type point = { coords: (i64, i64), label: string }\nfn main() { dbg(\"ok\") }\n",
+        )
+        .unwrap();
+
+        let AstDecl::Type(type_) = &program.decls[0] else {
+            panic!("expected type declaration");
+        };
+        let AstTypeBody::Record { fields } = &type_.body else {
+            panic!("expected record type declaration");
+        };
+        assert_eq!(fields[0].name, "coords");
+        assert_eq!(fields[0].type_annotation.text, "(i64, i64)");
+        assert_eq!(fields[1].name, "label");
     }
 }

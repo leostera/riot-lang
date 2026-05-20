@@ -8,10 +8,10 @@ use super::state::State;
 use super::types::Type;
 use super::unifier::UnifyError;
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstFnDecl, AstPattern, AstProgram, AstStmt, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstFnDecl, AstPattern, AstProgram, AstStmt, AstTypeBody, TextSpan,
 };
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeScheme, TypeName,
+    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeDeclKind, RsigTypeScheme, TypeName,
     parse_type_signature_with_variants, parse_type_with_variants,
 };
 
@@ -150,17 +150,19 @@ fn declared_variant_names(
     let mut names = BTreeSet::new();
     for decl in &program.decls {
         match decl {
-            AstDecl::Type(type_) => {
+            AstDecl::Type(type_) if matches!(type_.body, AstTypeBody::Variant { .. }) => {
                 names.insert(TypeName::new(type_.name.clone()));
             }
             AstDecl::Use(use_) => {
                 if let Some(rsig) = imports.get(use_.name.as_str()) {
                     for type_ in &rsig.types {
-                        names.insert(imported_type_name(&use_.name, &type_.name));
+                        if matches!(type_.body, RsigTypeDeclKind::Variant { .. }) {
+                            names.insert(imported_type_name(&use_.name, &type_.name));
+                        }
                     }
                 }
             }
-            AstDecl::External(_) | AstDecl::Function(_) => {}
+            AstDecl::Type(_) | AstDecl::External(_) | AstDecl::Function(_) => {}
         }
     }
     names
@@ -243,7 +245,10 @@ fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
     }
     for type_ in &rsig.types {
         let type_name = imported_type_name(module_name, &type_.name);
-        for constructor in &type_.constructors {
+        let RsigTypeDeclKind::Variant { constructors } = &type_.body else {
+            continue;
+        };
+        for constructor in constructors {
             state.add_prelude_value(
                 format!("{module_name}.{}", constructor.name.as_str()),
                 TypeScheme::monomorphic(Type::Variant(type_name.clone())),
@@ -296,11 +301,13 @@ fn infer_decl(
         AstDecl::Use(_) => Ok(()),
         AstDecl::Type(type_) => {
             let type_name = TypeName::new(type_.name.clone());
-            for constructor in &type_.constructors {
-                state.add_value(
-                    constructor.name.clone(),
-                    TypeScheme::monomorphic(Type::Variant(type_name.clone())),
-                );
+            if let AstTypeBody::Variant { constructors } = &type_.body {
+                for constructor in constructors {
+                    state.add_value(
+                        constructor.name.clone(),
+                        TypeScheme::monomorphic(Type::Variant(type_name.clone())),
+                    );
+                }
             }
             Ok(())
         }

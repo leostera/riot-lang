@@ -2,11 +2,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, TextSpan};
+use crate::ast::{
+    AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeBody, TextSpan,
+};
 use crate::signature::{
-    ConstructorName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
-    RsigExternal, RsigFunction, RsigType, RsigTypeDecl, RsigTypeScheme, RsigVariantConstructor,
-    TypeName, parse_type_signature, parse_type_signature_with_variants, parse_type_with_variants,
+    ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
+    RsigExternal, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
+    RsigTypeScheme, RsigVariantConstructor, TypeName, parse_type_signature,
+    parse_type_signature_with_variants, parse_type_with_variants,
 };
 
 mod actor;
@@ -29,6 +32,7 @@ pub(crate) fn typed_program_from_ast(
     let mut raw_externals = Vec::new();
     let mut types = Vec::new();
     let mut ast_functions = Vec::new();
+    let predeclared_variants = declared_variant_names_from_ast(&ast, imports);
 
     for decl in ast.decls {
         match decl {
@@ -48,13 +52,28 @@ pub(crate) fn typed_program_from_ast(
             AstDecl::Type(type_) => {
                 types.push(TypedTypeDecl {
                     name: TypeName::new(type_.name),
-                    constructors: type_
-                        .constructors
-                        .into_iter()
-                        .map(|constructor| TypedVariantConstructor {
-                            name: ConstructorName::new(constructor.name),
-                        })
-                        .collect(),
+                    body: match type_.body {
+                        AstTypeBody::Variant { constructors } => TypedTypeBody::Variant {
+                            constructors: constructors
+                                .into_iter()
+                                .map(|constructor| TypedVariantConstructor {
+                                    name: ConstructorName::new(constructor.name),
+                                })
+                                .collect(),
+                        },
+                        AstTypeBody::Record { fields } => TypedTypeBody::Record {
+                            fields: fields
+                                .into_iter()
+                                .map(|field| TypedRecordField {
+                                    name: FieldName::new(field.name),
+                                    type_: parse_type_with_variants(
+                                        &field.type_annotation.text,
+                                        &predeclared_variants,
+                                    ),
+                                })
+                                .collect(),
+                        },
+                    },
                 });
             }
             AstDecl::Function(function) => ast_functions.push(function),
@@ -151,13 +170,25 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
         .iter()
         .map(|type_| RsigTypeDecl {
             name: type_.name.clone(),
-            constructors: type_
-                .constructors
-                .iter()
-                .map(|constructor| RsigVariantConstructor {
-                    name: constructor.name.clone(),
-                })
-                .collect(),
+            body: match &type_.body {
+                TypedTypeBody::Variant { constructors } => RsigTypeDeclKind::Variant {
+                    constructors: constructors
+                        .iter()
+                        .map(|constructor| RsigVariantConstructor {
+                            name: constructor.name.clone(),
+                        })
+                        .collect(),
+                },
+                TypedTypeBody::Record { fields } => RsigTypeDeclKind::Record {
+                    fields: fields
+                        .iter()
+                        .map(|field| RsigRecordField {
+                            name: field.name.clone(),
+                            type_: field.type_.clone(),
+                        })
+                        .collect(),
+                },
+            },
             fingerprint: 0,
         })
         .collect::<Vec<_>>();
@@ -382,10 +413,13 @@ fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, TypeName> {
     types
         .iter()
         .flat_map(|type_| {
-            type_
-                .constructors
+            let TypedTypeBody::Variant { constructors } = &type_.body else {
+                return Vec::new();
+            };
+            constructors
                 .iter()
                 .map(|constructor| (constructor.name.as_str().to_owned(), type_.name.clone()))
+                .collect::<Vec<_>>()
         })
         .collect()
 }
@@ -397,13 +431,42 @@ fn declared_variant_names(
 ) -> BTreeSet<TypeName> {
     let mut names = BTreeSet::new();
     for type_ in types {
-        names.insert(type_.name.clone());
+        if matches!(type_.body, TypedTypeBody::Variant { .. }) {
+            names.insert(type_.name.clone());
+        }
     }
     for use_ in uses {
         if let Some(rsig) = imports.get(use_.name.as_str()) {
             for type_ in &rsig.types {
-                names.insert(imported_type_name(use_.name.as_str(), &type_.name));
+                if matches!(type_.body, RsigTypeDeclKind::Variant { .. }) {
+                    names.insert(imported_type_name(use_.name.as_str(), &type_.name));
+                }
             }
+        }
+    }
+    names
+}
+
+fn declared_variant_names_from_ast(
+    program: &AstProgram,
+    imports: &ImportedSignatures,
+) -> BTreeSet<TypeName> {
+    let mut names = BTreeSet::new();
+    for decl in &program.decls {
+        match decl {
+            AstDecl::Type(type_) if matches!(type_.body, AstTypeBody::Variant { .. }) => {
+                names.insert(TypeName::new(type_.name.clone()));
+            }
+            AstDecl::Use(use_) => {
+                if let Some(rsig) = imports.get(use_.name.as_str()) {
+                    for type_ in &rsig.types {
+                        if matches!(type_.body, RsigTypeDeclKind::Variant { .. }) {
+                            names.insert(imported_type_name(use_.name.as_str(), &type_.name));
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
     }
     names

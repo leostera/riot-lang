@@ -1,5 +1,5 @@
 use crate::signature::{
-    ConstructorName, ModuleName, Rsig, RsigType, RsigTypeScheme, TypeName,
+    ConstructorName, FieldName, ModuleName, Rsig, RsigType, RsigTypeScheme, TypeName,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -54,12 +54,28 @@ pub(crate) struct TypedExternal {
 #[derive(Debug, Clone)]
 pub(crate) struct TypedTypeDecl {
     pub(crate) name: TypeName,
-    pub(crate) constructors: Vec<TypedVariantConstructor>,
+    pub(crate) body: TypedTypeBody,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum TypedTypeBody {
+    Variant {
+        constructors: Vec<TypedVariantConstructor>,
+    },
+    Record {
+        fields: Vec<TypedRecordField>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedVariantConstructor {
     pub(crate) name: ConstructorName,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TypedRecordField {
+    pub(crate) name: FieldName,
+    pub(crate) type_: RsigType,
 }
 
 #[derive(Debug, Clone)]

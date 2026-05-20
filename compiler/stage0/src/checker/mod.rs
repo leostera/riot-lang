@@ -11,13 +11,15 @@ use span::expr_span;
 use types::parse_primitive_type;
 
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeAnnotation, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeAnnotation, AstTypeBody,
+    TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
 use crate::signature::{
-    ImportedSignatures, ModuleName, RsigExport, RsigType, TypeName, parse_type_with_variants,
+    ImportedSignatures, ModuleName, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
+    parse_type_with_variants,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -180,7 +182,8 @@ fn validate_program(
                 }
             }
             AstDecl::Type(type_) => {
-                if type_.constructors.is_empty() {
+                if matches!(&type_.body, AstTypeBody::Variant { constructors } if constructors.is_empty())
+                {
                     return Err(to_source_diagnostic(
                         source_path,
                         source,
@@ -245,17 +248,19 @@ fn declared_variant_names(
     let mut names = BTreeSet::new();
     for decl in &program.decls {
         match decl {
-            AstDecl::Type(type_) => {
+            AstDecl::Type(type_) if matches!(type_.body, AstTypeBody::Variant { .. }) => {
                 names.insert(TypeName::new(type_.name.clone()));
             }
             AstDecl::Use(use_) => {
                 if let Some(rsig) = imports.get(use_.name.as_str()) {
                     for type_ in &rsig.types {
-                        names.insert(imported_type_name(&use_.name, &type_.name));
+                        if matches!(type_.body, RsigTypeDeclKind::Variant { .. }) {
+                            names.insert(imported_type_name(&use_.name, &type_.name));
+                        }
                     }
                 }
             }
-            AstDecl::External(_) | AstDecl::Function(_) => {}
+            AstDecl::Type(_) | AstDecl::External(_) | AstDecl::Function(_) => {}
         }
     }
     names
@@ -332,12 +337,18 @@ fn constructor_types(program: &AstProgram) -> HashMap<String, RsigType> {
         })
         .flat_map(|type_| {
             let type_name = TypeName::new(type_.name.clone());
-            type_.constructors.iter().map(move |constructor| {
-                (
-                    constructor.name.clone(),
-                    RsigType::Variant(type_name.clone()),
-                )
-            })
+            let AstTypeBody::Variant { constructors } = &type_.body else {
+                return Vec::new();
+            };
+            constructors
+                .iter()
+                .map(move |constructor| {
+                    (
+                        constructor.name.clone(),
+                        RsigType::Variant(type_name.clone()),
+                    )
+                })
+                .collect::<Vec<_>>()
         })
         .collect()
 }
@@ -1578,9 +1589,9 @@ fn infer_annotation_expr_type(
                 .and_then(|item| infer_annotation_expr_type(ctx, item, bindings))
                 .unwrap_or(RsigType::Unknown),
         ))),
-        AstExpr::Record { path, .. } => Some(RsigType::Record(TypeName::new(
-            path.segments.join("."),
-        ))),
+        AstExpr::Record { path, .. } => {
+            Some(RsigType::Record(TypeName::new(path.segments.join("."))))
+        }
         AstExpr::Field { base, field, .. } => {
             infer_annotation_field_type(ctx, base, field, bindings)
         }
@@ -1809,9 +1820,9 @@ fn simple_expr_type(
             .map(|arm| simple_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown))
             .reduce(merge_annotation_types),
         AstExpr::Block { block, .. } => simple_block_type(ctx, block, bindings),
-        AstExpr::Record { path, .. } => Some(RsigType::Record(TypeName::new(
-            path.segments.join("."),
-        ))),
+        AstExpr::Record { path, .. } => {
+            Some(RsigType::Record(TypeName::new(path.segments.join("."))))
+        }
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
         AstExpr::TupleIndex { base, index, .. } => {
             simple_tuple_index_type(ctx, base, *index, bindings)

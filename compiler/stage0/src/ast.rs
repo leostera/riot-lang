@@ -53,14 +53,31 @@ pub(crate) struct AstExternalDecl {
 pub(crate) struct AstTypeDecl {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
-    pub(crate) constructors: Vec<AstVariantConstructor>,
+    pub(crate) body: AstTypeBody,
     pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum AstTypeBody {
+    Variant {
+        constructors: Vec<AstVariantConstructor>,
+    },
+    Record {
+        fields: Vec<AstRecordTypeField>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct AstVariantConstructor {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstRecordTypeField {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
+    pub(crate) type_annotation: AstTypeAnnotation,
 }
 
 #[derive(Debug, Clone)]
