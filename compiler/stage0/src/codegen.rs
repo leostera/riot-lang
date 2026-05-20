@@ -1449,7 +1449,6 @@ impl<'ctx> Codegen<'ctx, '_> {
     ) -> miette::Result<CgValue<'ctx>> {
         match callee {
             [name] if name == "dbg" || name == "println" => self.emit_output(name, args, env),
-            [name] if name == "send" => self.emit_send(args, env),
             [name] if name == "monitor" => {
                 self.emit_actor_id_runtime_call("riot_rt_monitor", args, env)
             }
@@ -1692,44 +1691,6 @@ impl<'ctx> Codegen<'ctx, '_> {
 
         self.builder.position_at_end(cont_block);
         Ok(())
-    }
-
-    fn emit_send(
-        &mut self,
-        args: &[RirExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        if args.len() != 2 {
-            bail!("send expects two arguments");
-        }
-        let actor_id = self.emit_expr(&args[0], env)?;
-        let actor_id = self.value_as_actor_id(actor_id)?;
-        let message = self.emit_expr(&args[1], env)?;
-        match message {
-            CgValue::Value(value) => {
-                self.push_runtime_root(value)?;
-                self.call_void_runtime("riot_rt_send_value", &[actor_id.into(), value.into()])?;
-                self.pop_runtime_roots(1)?;
-            }
-            CgValue::I64(value) => {
-                self.call_void_runtime("riot_rt_send_i64", &[actor_id.into(), value.into()])?;
-            }
-            CgValue::ActorId(value) => {
-                self.call_void_runtime("riot_rt_send_actor_id", &[actor_id.into(), value.into()])?;
-            }
-            CgValue::Static(value) => {
-                let rendered = value.to_print_string();
-                let (ptr, len) = self.string_literal(&rendered)?;
-                self.call_void_runtime("riot_rt_send", &[actor_id.into(), ptr.into(), len.into()])?;
-            }
-            CgValue::Bool(value) => {
-                self.call_void_runtime("riot_rt_send_bool", &[actor_id.into(), value.into()])?;
-            }
-            CgValue::Unit => {
-                self.call_void_runtime("riot_rt_send_unit", &[actor_id.into()])?;
-            }
-        }
-        Ok(CgValue::Unit)
     }
 
     fn emit_actor_id_runtime_call(

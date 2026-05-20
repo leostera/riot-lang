@@ -754,7 +754,7 @@ fn emit_llvm_contains_real_function_and_actor_symbols() -> FixtureResult {
 }
 
 #[test]
-fn emit_llvm_uses_typed_actor_message_senders() -> FixtureResult {
+fn emit_llvm_uses_std_send_value_external() -> FixtureResult {
     let fixture = manifest_dir().join("tests/fixtures/programs/actors/send_bool_payload.ml");
     let emit = Command::new(cargo_bin("stage0"))
         .current_dir(manifest_dir())
@@ -769,9 +769,9 @@ fn emit_llvm_uses_typed_actor_message_senders() -> FixtureResult {
         ));
     }
     let stdout = String::from_utf8_lossy(&emit.stdout);
-    if !stdout.contains("riot_rt_send_bool") {
+    if !stdout.contains("riot_rt_send_value") {
         return fail(format!(
-            "llvm output did not contain typed bool sender:\n{stdout}"
+            "llvm output did not contain std send external:\n{stdout}"
         ));
     }
 
