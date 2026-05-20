@@ -2617,7 +2617,11 @@ impl<'ctx> Codegen<'ctx, '_> {
     }
 
     fn output_string_symbol(&self, name: &str) -> &str {
-        if let Some(external) = self.externals.get(name) {
+        if let Some(external) = self
+            .externals
+            .get(name)
+            .filter(|external| matches!(external.params.as_slice(), [RsigType::String]))
+        {
             return &external.abi;
         }
         match name {
