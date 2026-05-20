@@ -529,6 +529,10 @@ fn validate_expr(
             }
             Ok(ExprCategory::Other)
         }
+        AstExpr::Field { base, .. } => {
+            validate_expr(ctx, base, bindings, in_actor)?;
+            Ok(ExprCategory::Other)
+        }
         AstExpr::Path { path, span } => {
             if let Some(head) = path.segments.first()
                 && !bindings.contains_key(head)
@@ -909,6 +913,7 @@ fn infer_annotation_expr_type(
                 .unwrap_or(RsigType::Unknown),
         ))),
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
+        AstExpr::Field { base, field, .. } => infer_annotation_field_type(ctx, base, field, bindings),
         AstExpr::Char { .. } => Some(RsigType::Char),
         AstExpr::Float { .. } => Some(RsigType::F64),
         AstExpr::Path { path, .. } => path
@@ -920,6 +925,22 @@ fn infer_annotation_expr_type(
         AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } => Some(RsigType::Unit),
     }
+}
+
+fn infer_annotation_field_type(
+    ctx: &ValidationContext<'_>,
+    base: &AstExpr,
+    field: &str,
+    bindings: &HashMap<String, RsigType>,
+) -> Option<RsigType> {
+    if let AstExpr::Record { fields, .. } = base {
+        return fields.iter().find_map(|(name, value)| {
+            (name == field).then(|| {
+                infer_annotation_expr_type(ctx, value, bindings).unwrap_or(RsigType::Unknown)
+            })
+        });
+    }
+    None
 }
 
 fn merge_annotation_types(lhs: RsigType, rhs: RsigType) -> RsigType {
@@ -1043,9 +1064,24 @@ fn simple_expr_type(
             type_matches(&then_type, &else_type).then_some(then_type)
         }
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
+        AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
         AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
     }
+}
+
+fn simple_field_type(
+    ctx: &ValidationContext<'_>,
+    base: &AstExpr,
+    field: &str,
+    bindings: &HashMap<String, BindingKind>,
+) -> Option<RsigType> {
+    if let AstExpr::Record { fields, .. } = base {
+        return fields.iter().find_map(|(name, value)| {
+            (name == field).then(|| simple_expr_type(ctx, value, bindings).unwrap_or(RsigType::Unknown))
+        });
+    }
+    None
 }
 
 fn call_arity_error(

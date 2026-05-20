@@ -707,6 +707,34 @@ pub unsafe extern "C" fn riot_rt_value_record_set(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_record_get(
+    record: RtValue,
+    name_ptr: *const u8,
+    name_len: usize,
+) -> RtValue {
+    let Some(name) = (unsafe { bytes_from_raw(name_ptr, name_len) }) else {
+        return VALUE_NULL;
+    };
+    let name = String::from_utf8_lossy(name);
+    with_runtime_mut(|runtime| {
+        let Some(heap_index) = heap_index(record) else {
+            return VALUE_NULL;
+        };
+        let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
+            return VALUE_NULL;
+        };
+        match &object.kind {
+            HeapObjectKind::Record { fields, .. } => fields
+                .iter()
+                .find_map(|(field_name, value)| (field_name == name.as_ref()).then_some(*value))
+                .unwrap_or(VALUE_NULL),
+            _ => VALUE_NULL,
+        }
+    })
+    .unwrap_or(VALUE_NULL)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_bytes_ptr(value: RtValue) -> *const u8 {
     with_runtime_mut(|runtime| {
         runtime
@@ -1189,5 +1217,10 @@ mod tests {
             with_runtime_mut(|runtime| runtime.render_value(record)).unwrap(),
             "Point { x: 10, y: 20 }"
         );
+
+        let x = unsafe { riot_rt_value_record_get(record, b"x".as_ptr(), 1) };
+        assert!(riot_rt_value_eq(x, riot_rt_value_i64(10)));
+        let missing = unsafe { riot_rt_value_record_get(record, b"z".as_ptr(), 1) };
+        assert_eq!(missing, VALUE_NULL);
     }
 }

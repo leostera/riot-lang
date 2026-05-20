@@ -413,6 +413,7 @@ fn infer_ast_expr_type(
             }
             RsigType::Record(path.segments.join("."))
         }
+        AstExpr::Field { base, field, .. } => infer_ast_field_type(base, field, locals, functions),
         AstExpr::Char { .. } => RsigType::Char,
         AstExpr::Float { .. } => RsigType::F64,
         AstExpr::Int { .. } => RsigType::I64,
@@ -424,6 +425,23 @@ fn infer_ast_expr_type(
             .unwrap_or(RsigType::Unknown),
         AstExpr::String { .. } => RsigType::String,
     }
+}
+
+fn infer_ast_field_type(
+    base: &AstExpr,
+    field: &str,
+    locals: &BTreeMap<String, RsigType>,
+    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
+) -> RsigType {
+    if let AstExpr::Record { fields, .. } = base {
+        return fields
+            .iter()
+            .find_map(|(name, value)| {
+                (name == field).then(|| infer_ast_expr_type(value, locals, functions))
+            })
+            .unwrap_or(RsigType::Unknown);
+    }
+    RsigType::Unknown
 }
 
 fn mark_ast_constraints(
@@ -474,6 +492,9 @@ fn mark_ast_constraints(
             for (_, value) in fields {
                 mark_ast_constraints(value, params, locals, param_types, functions);
             }
+        }
+        AstExpr::Field { base, .. } => {
+            mark_ast_constraints(base, params, locals, param_types, functions);
         }
         AstExpr::Receive { body, .. } => {
             mark_ast_constraints(body, params, locals, param_types, functions);
@@ -696,6 +717,17 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 },
             }
         }
+        AstExpr::Field { base, field, .. } => {
+            let base = type_expr(*base, context);
+            let type_ = typed_field_type(&base, &field);
+            TypedExpr {
+                type_,
+                kind: TypedExprKind::Field {
+                    base: Box::new(base),
+                    field,
+                },
+            }
+        }
         AstExpr::Char { value, .. } => TypedExpr {
             type_: RsigType::Char,
             kind: TypedExprKind::Char(value),
@@ -717,6 +749,16 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             kind: TypedExprKind::String(value),
         },
     }
+}
+
+fn typed_field_type(base: &TypedExpr, field: &str) -> RsigType {
+    if let TypedExprKind::Record { fields, .. } = &base.kind {
+        return fields
+            .iter()
+            .find_map(|(name, value)| (name == field).then(|| value.type_.clone()))
+            .unwrap_or(RsigType::Unknown);
+    }
+    RsigType::Unknown
 }
 
 fn typed_binary_i64(
@@ -903,6 +945,9 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(owner, value, locals, context, actors);
             }
         }
+        RirExpr::Field { base, .. } => {
+            collect_actors_from_expr(owner, base, locals, context, actors);
+        }
         RirExpr::Receive { binder, body } => {
             let previous = locals.insert(binder.clone(), None);
             collect_actors_from_expr(owner, body, locals, context, actors);
@@ -1078,6 +1123,7 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(value, bound, free);
             }
         }
+        RirExpr::Field { base, .. } => collect_free_expr(base, bound, free),
         RirExpr::Spawn { body, .. } => collect_free_block(body, bound, free),
         RirExpr::Receive { binder, body } => {
             let mut nested = bound.clone();
@@ -1169,6 +1215,7 @@ fn infer_actor_slot_type(
         | RirExpr::Tuple(_)
         | RirExpr::List(_)
         | RirExpr::Record { .. }
+        | RirExpr::Field { .. }
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::String(_) => None,
@@ -1287,6 +1334,10 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .into_iter()
                 .map(|(name, value)| (name, lower_expr(value, context)))
                 .collect(),
+        },
+        TypedExprKind::Field { base, field } => RirExpr::Field {
+            base: Box::new(lower_expr(*base, context)),
+            field,
         },
         TypedExprKind::Char(value) => RirExpr::Char(value),
         TypedExprKind::Float(value) => RirExpr::Float(value),

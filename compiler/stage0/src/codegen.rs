@@ -484,6 +484,15 @@ impl<'ctx> Codegen<'ctx, '_> {
             RirExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
             RirExpr::List(items) => self.emit_value_sequence("riot_rt_value_list", items, env),
             RirExpr::Record { path, fields } => self.emit_record_value(path, fields, env),
+            RirExpr::Field { base, field } => {
+                let base = self.emit_expr(base, env)?;
+                let base = self.value_as_runtime(base)?;
+                let (field_ptr, field_len) = self.string_literal(field)?;
+                Ok(CgValue::Value(self.call_runtime_value(
+                    "riot_rt_value_record_get",
+                    &[base.into(), field_ptr.into(), field_len.into()],
+                )?))
+            }
             RirExpr::Char(_) | RirExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
                 .map(|value| self.emit_static_value(value))
@@ -1693,6 +1702,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                 ],
                 false,
             ),
+            "riot_rt_value_record_get" => {
+                i64_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
+            }
             "riot_rt_value_bytes_ptr" => ptr_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_len" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_eq" | "riot_rt_value_lt" => {
@@ -2009,9 +2021,11 @@ fn infer_expr_abi(
             .and_then(|name| locals.get(name))
             .copied()
             .unwrap_or(AbiType::Unknown),
-        RirExpr::Tuple(_) | RirExpr::List(_) | RirExpr::Record { .. } | RirExpr::String(_) => {
-            AbiType::Value
-        }
+        RirExpr::Tuple(_)
+        | RirExpr::List(_)
+        | RirExpr::Record { .. }
+        | RirExpr::Field { .. }
+        | RirExpr::String(_) => AbiType::Value,
         RirExpr::Spawn { .. } => AbiType::Pid,
         RirExpr::Receive { .. }
         | RirExpr::Char(_)
@@ -2060,6 +2074,9 @@ fn mark_expr_constraints(
             for (_, value) in fields {
                 mark_expr_constraints(value, params, locals, param_types, functions);
             }
+        }
+        RirExpr::Field { base, .. } => {
+            mark_expr_constraints(base, params, locals, param_types, functions);
         }
         RirExpr::And(lhs, rhs) | RirExpr::Or(lhs, rhs) | RirExpr::Eq(lhs, rhs) => {
             mark_expr_constraints(lhs, params, locals, param_types, functions);

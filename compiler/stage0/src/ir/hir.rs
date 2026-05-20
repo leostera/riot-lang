@@ -92,6 +92,10 @@ pub(crate) enum TypedExprKind {
         path: Vec<String>,
         fields: Vec<(String, TypedExpr)>,
     },
+    Field {
+        base: Box<TypedExpr>,
+        field: String,
+    },
     Char(char),
     Float(String),
     Int(i64),

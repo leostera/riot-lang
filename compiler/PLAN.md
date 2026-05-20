@@ -167,6 +167,8 @@ shape.
   projected field; `emit ir` contains field access rather than a precomputed
   value.
 
+<!-- autoresearch:step-4:done -->
+
 ### 5. Add Tuple Projection Support
 
 - **Commit:** `feat(stage0): add tuple projection support`

@@ -180,6 +180,11 @@ pub(crate) enum AstExpr {
         fields: Vec<(String, AstExpr)>,
         span: TextSpan,
     },
+    Field {
+        base: Box<AstExpr>,
+        field: String,
+        span: TextSpan,
+    },
     Char {
         value: char,
         span: TextSpan,

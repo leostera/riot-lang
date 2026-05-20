@@ -174,6 +174,7 @@ pub(crate) fn eval_expr(
                 path: path.join("."),
                 fields,
             }),
+        RirExpr::Field { .. } => None,
         RirExpr::Char(value) => Some(StaticValue::Char(*value)),
         RirExpr::Float(value) => Some(StaticValue::Float(value.clone())),
         RirExpr::Int(value) => Some(StaticValue::Int(*value)),

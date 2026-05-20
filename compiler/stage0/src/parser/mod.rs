@@ -441,20 +441,49 @@ impl<'src> Parser<'src> {
     fn parse_postfix(&mut self) -> Result<AstExpr, ParseError> {
         let mut expr = self.parse_primary()?;
 
-        while self.at(TokenKind::LParen) {
-            let AstExpr::Path { path, span } = expr else {
-                return Err(self.error_at_current(
-                    "stage0 only supports calling named functions",
-                    Some("try: dbg(\"hello world\")"),
-                ));
-            };
-            let args = self.parse_arg_list()?;
-            let end = self.previous_span();
-            expr = AstExpr::Call {
-                callee: path,
-                args,
-                span: span.join(end),
-            };
+        loop {
+            if self.at(TokenKind::Dot) {
+                self.bump();
+                let (field, field_span) = self.expect_ident()?;
+                let span = expr_span(&expr).join(field_span);
+                expr = match expr {
+                    AstExpr::Path { mut path, span: _ }
+                        if path
+                            .segments
+                            .first()
+                            .and_then(|segment| segment.chars().next())
+                            .is_some_and(|ch| ch.is_ascii_uppercase()) =>
+                    {
+                        path.segments.push(field);
+                        AstExpr::Path { path, span }
+                    }
+                    base => AstExpr::Field {
+                        base: Box::new(base),
+                        field,
+                        span,
+                    },
+                };
+                continue;
+            }
+
+            if self.at(TokenKind::LParen) {
+                let AstExpr::Path { path, span } = expr else {
+                    return Err(self.error_at_current(
+                        "stage0 only supports calling named functions",
+                        Some("try: dbg(\"hello world\")"),
+                    ));
+                };
+                let args = self.parse_arg_list()?;
+                let end = self.previous_span();
+                expr = AstExpr::Call {
+                    callee: path,
+                    args,
+                    span: span.join(end),
+                };
+                continue;
+            }
+
+            break;
         }
 
         Ok(expr)
@@ -477,7 +506,10 @@ impl<'src> Parser<'src> {
             TokenKind::Spawn => self.parse_spawn(),
             TokenKind::Receive => self.parse_receive(),
             TokenKind::Ident => {
-                let (path, span) = self.parse_path()?;
+                let (head, span) = self.expect_ident()?;
+                let path = AstPath {
+                    segments: vec![head],
+                };
                 let is_record_path = path
                     .segments
                     .first()
@@ -674,20 +706,6 @@ impl<'src> Parser<'src> {
             fields,
             span: path_span.join(end.span),
         })
-    }
-
-    fn parse_path(&mut self) -> Result<(AstPath, TextSpan), ParseError> {
-        let (head, start) = self.expect_ident()?;
-        let mut segments = vec![head];
-        let mut span = start;
-
-        while self.match_kind(TokenKind::Dot).is_some() {
-            let (segment, segment_span) = self.expect_ident()?;
-            span = span.join(segment_span);
-            segments.push(segment);
-        }
-
-        Ok((AstPath { segments }, span))
     }
 
     fn parse_string(&mut self) -> Result<AstExpr, ParseError> {

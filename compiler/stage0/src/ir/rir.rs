@@ -68,6 +68,10 @@ pub(crate) enum RirExpr {
         path: Vec<String>,
         fields: Vec<(String, RirExpr)>,
     },
+    Field {
+        base: Box<RirExpr>,
+        field: String,
+    },
     Char(char),
     Float(String),
     Int(i64),

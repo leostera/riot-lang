@@ -251,6 +251,12 @@ pub(super) fn resolve_const_value(
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
         AstExpr::Path { path, span: _ } => resolve_path_value(path.segments.as_slice(), bindings),
+        AstExpr::Field { base, field, .. } => match resolve_const_value(base, bindings, functions)? {
+            ConstValue::Record { fields, .. } => fields
+                .into_iter()
+                .find_map(|(name, value)| (name == *field).then_some(value)),
+            _ => None,
+        },
         AstExpr::Call {
             callee,
             args,
