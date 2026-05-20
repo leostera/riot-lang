@@ -12,6 +12,7 @@ mod linker;
 mod parser;
 mod runtime;
 mod signature;
+mod stdlib;
 
 pub fn run_cli() -> miette::Result<()> {
     use clap::Parser as _;

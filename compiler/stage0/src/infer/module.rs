@@ -169,56 +169,8 @@ fn declared_variant_names(
 }
 
 fn install_prelude(state: &mut State) {
-    let dbg_message = state.fresh_var();
-    state.add_prelude_value(
-        "dbg",
-        state.generalize(Type::arrow(dbg_message, Type::Unit)),
-    );
-    state.add_prelude_value(
-        "println",
-        TypeScheme::monomorphic(Type::arrow(Type::String, Type::Unit)),
-    );
-
-    let send_message = state.fresh_var();
-    state.add_prelude_value(
-        "send",
-        state.generalize(Type::arrows(
-            vec![Type::ActorId(Box::new(send_message.clone())), send_message],
-            Type::Unit,
-        )),
-    );
-
-    let actor_message = state.fresh_var();
-    let actor_action = state.generalize(Type::arrow(
-        Type::ActorId(Box::new(actor_message)),
-        Type::Unit,
-    ));
-    state.add_prelude_value("monitor", actor_action.clone());
-    state.add_prelude_value("link", actor_action);
-
-    let list_item = state.fresh_var();
-    state.add_prelude_value(
-        "list_len",
-        state.generalize(Type::arrow(Type::List(Box::new(list_item)), Type::I64)),
-    );
-
-    let list_get_item = state.fresh_var();
-    state.add_prelude_value(
-        "list_get",
-        state.generalize(Type::arrows(
-            vec![Type::List(Box::new(list_get_item.clone())), Type::I64],
-            list_get_item,
-        )),
-    );
-
-    state.add_prelude_value(
-        "string_len",
-        TypeScheme::monomorphic(Type::arrow(Type::String, Type::I64)),
-    );
-    state.add_prelude_value(
-        "string_concat",
-        TypeScheme::monomorphic(Type::arrows(vec![Type::String, Type::String], Type::String)),
-    );
+    let rsig = crate::stdlib::prelude_signature().expect("compiler/std/prelude.ml must parse");
+    install_unqualified_signature(state, &rsig);
 }
 
 fn install_imports(state: &mut State, program: &AstProgram, imports: &ImportedSignatures) {
@@ -260,6 +212,17 @@ fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
                 TypeScheme::monomorphic(type_),
             );
         }
+    }
+}
+
+fn install_unqualified_signature(state: &mut State, rsig: &Rsig) {
+    for export in &rsig.exports {
+        let scheme = match export {
+            RsigExport::Function(function) => &function.scheme,
+            RsigExport::External(external) => &external.scheme,
+        };
+        let scheme = rsig_scheme_to_infer_scheme(scheme, state);
+        state.add_prelude_value(export.name(), scheme);
     }
 }
 
