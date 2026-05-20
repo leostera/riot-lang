@@ -799,7 +799,7 @@ fn infer_expr_kind(
             state.pop_scope();
             Ok(Type::ActorId(Box::new(state.fresh_var())))
         }
-        AstExpr::Record { path, .. } => Ok(Type::Record(path.segments.join("."))),
+        AstExpr::Record { path, .. } => Ok(Type::Record(TypeName::new(path.segments.join(".")))),
         AstExpr::TupleIndex { base, index, .. } => {
             let inferred_base = infer_expr(
                 state,

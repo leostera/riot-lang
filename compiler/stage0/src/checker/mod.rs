@@ -1578,7 +1578,9 @@ fn infer_annotation_expr_type(
                 .and_then(|item| infer_annotation_expr_type(ctx, item, bindings))
                 .unwrap_or(RsigType::Unknown),
         ))),
-        AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
+        AstExpr::Record { path, .. } => Some(RsigType::Record(TypeName::new(
+            path.segments.join("."),
+        ))),
         AstExpr::Field { base, field, .. } => {
             infer_annotation_field_type(ctx, base, field, bindings)
         }
@@ -1674,7 +1676,7 @@ fn const_value_type(value: &ConstValue) -> RsigType {
                 .map(const_value_type)
                 .unwrap_or(RsigType::Unknown),
         )),
-        ConstValue::Record { path, fields: _ } => RsigType::Record(path.clone()),
+        ConstValue::Record { path, fields: _ } => RsigType::Record(TypeName::new(path.clone())),
     }
 }
 
@@ -1807,7 +1809,9 @@ fn simple_expr_type(
             .map(|arm| simple_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown))
             .reduce(merge_annotation_types),
         AstExpr::Block { block, .. } => simple_block_type(ctx, block, bindings),
-        AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
+        AstExpr::Record { path, .. } => Some(RsigType::Record(TypeName::new(
+            path.segments.join("."),
+        ))),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
         AstExpr::TupleIndex { base, index, .. } => {
             simple_tuple_index_type(ctx, base, *index, bindings)

@@ -640,7 +640,7 @@ fn infer_ast_expr_type(
             for (_, value) in fields {
                 infer_ast_expr_type(value, locals, functions);
             }
-            RsigType::Record(path.segments.join("."))
+            RsigType::Record(TypeName::new(path.segments.join(".")))
         }
         AstExpr::Field { base, field, .. } => infer_ast_field_type(base, field, locals, functions),
         AstExpr::TupleIndex { base, index, .. } => {
@@ -1106,7 +1106,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 .map(|(name, value)| (name, type_expr(value, context)))
                 .collect::<Vec<_>>();
             TypedExpr {
-                type_: RsigType::Record(path.segments.join(".")),
+                type_: RsigType::Record(TypeName::new(path.segments.join("."))),
                 kind: TypedExprKind::Record {
                     path: path.segments,
                     fields,

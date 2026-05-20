@@ -201,7 +201,7 @@ pub(crate) enum RsigType {
     },
     Tuple(Vec<RsigType>),
     List(Box<RsigType>),
-    Record(String),
+    Record(TypeName),
     Variant(TypeName),
     Unknown,
 }
@@ -548,7 +548,7 @@ impl RsigType {
             }
             RsigType::Tuple(items) => format!("({})", render_types(items)),
             RsigType::List(item) => format!("{} list", item.canonical()),
-            RsigType::Record(name) => name.clone(),
+            RsigType::Record(name) => name.to_string(),
             RsigType::Variant(name) => name.to_string(),
             RsigType::Unknown => "_".to_owned(),
         }
@@ -681,7 +681,7 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
                     .collect(),
             )
         }
-        _ => RsigType::Record(text.to_owned()),
+        _ => RsigType::Record(TypeName::new(text)),
     }
 }
 
@@ -708,9 +708,8 @@ fn resolve_declared_variants(type_: RsigType, variants: &BTreeSet<TypeName>) -> 
                 .collect(),
         ),
         RsigType::Record(name) => {
-            let type_name = TypeName::new(name.clone());
-            if variants.contains(&type_name) {
-                RsigType::Variant(type_name)
+            if variants.contains(&name) {
+                RsigType::Variant(name)
             } else {
                 RsigType::Record(name)
             }
@@ -965,7 +964,7 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
         RsigType::Unit => bytes.push(6),
         RsigType::Var(name) => {
             bytes.push(7);
-            put_string(bytes, name);
+            put_string(bytes, name.as_str());
         }
         RsigType::Arrow { parameter, result } => {
             bytes.push(12);
@@ -982,7 +981,7 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
         }
         RsigType::Record(name) => {
             bytes.push(10);
-            put_string(bytes, name);
+            put_string(bytes, name.as_str());
         }
         RsigType::Variant(name) => {
             bytes.push(13);
@@ -1006,7 +1005,7 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
         7 => RsigType::Var(get_string(cursor)?),
         8 => RsigType::Tuple(get_types(cursor)?),
         9 => RsigType::List(Box::new(get_type(cursor)?)),
-        10 => RsigType::Record(get_string(cursor)?),
+        10 => RsigType::Record(TypeName::new(get_string(cursor)?)),
         11 => RsigType::Unknown,
         12 => RsigType::Arrow {
             parameter: Box::new(get_type(cursor)?),
@@ -1198,6 +1197,29 @@ mod tests {
                 .canonical_text()
                 .contains("depends Math 00000000feedf00d")
         );
+    }
+
+    #[test]
+    fn binary_rsig_roundtrips_record_type_names() {
+        let point = RsigType::Record(TypeName::new("point"));
+        let rsig = Rsig::with_dependencies(
+            "Geometry".to_owned(),
+            Vec::new(),
+            Vec::new(),
+            vec![RsigExport::Function(RsigFunction {
+                name: "origin".to_owned(),
+                params: Vec::new(),
+                result: point.clone(),
+                scheme: RsigTypeScheme::from_signature(&[], &point),
+                symbol: "riot_mod_Geometry_origin".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded, rsig);
+        assert!(decoded.canonical_text().contains("fn origin() -> point"));
     }
 
     #[test]

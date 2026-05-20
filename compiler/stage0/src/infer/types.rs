@@ -30,7 +30,7 @@ pub(crate) enum Type {
         result: Box<Type>,
     },
     List(Box<Type>),
-    Record(String),
+    Record(TypeName),
     Variant(TypeName),
     Tuple(Vec<Type>),
 }
