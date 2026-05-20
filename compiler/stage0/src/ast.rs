@@ -28,6 +28,7 @@ pub(crate) struct AstProgram {
 pub(crate) enum AstDecl {
     Use(AstUseDecl),
     External(AstExternalDecl),
+    Type(AstTypeDecl),
     Function(AstFnDecl),
 }
 
@@ -46,6 +47,20 @@ pub(crate) struct AstExternalDecl {
     pub(crate) type_span: TextSpan,
     pub(crate) abi: String,
     pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstTypeDecl {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
+    pub(crate) constructors: Vec<AstVariantConstructor>,
+    pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstVariantConstructor {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
 }
 
 #[derive(Debug, Clone)]
@@ -76,6 +91,7 @@ pub(crate) struct AstMatchArm {
 pub(crate) enum AstPattern {
     Wildcard { span: TextSpan },
     Bind { name: String, span: TextSpan },
+    Constructor { path: AstPath, span: TextSpan },
     Unit { span: TextSpan },
     Bool { value: bool, span: TextSpan },
     Int { value: i64, span: TextSpan },

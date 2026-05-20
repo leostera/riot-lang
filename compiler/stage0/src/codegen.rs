@@ -557,6 +557,23 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(1)?;
                 Ok(CgValue::Value(value))
             }
+            RirExpr::Variant {
+                type_name,
+                constructor,
+            } => {
+                let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+                let (constructor_ptr, constructor_len) =
+                    self.string_literal(constructor.as_str())?;
+                Ok(CgValue::Value(self.call_runtime_value(
+                    "riot_rt_value_variant",
+                    &[
+                        type_ptr.into(),
+                        type_len.into(),
+                        constructor_ptr.into(),
+                        constructor_len.into(),
+                    ],
+                )?))
+            }
             RirExpr::Char(_) | RirExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
                 .map(|value| self.emit_static_value(value))
@@ -798,6 +815,29 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(1)?;
                 Ok(result)
             }
+            RirPattern::Constructor {
+                type_name,
+                constructor,
+            } => {
+                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
+                let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+                let (constructor_ptr, constructor_len) =
+                    self.string_literal(constructor.as_str())?;
+                let pattern = self.call_runtime_value(
+                    "riot_rt_value_variant",
+                    &[
+                        type_ptr.into(),
+                        type_len.into(),
+                        constructor_ptr.into(),
+                        constructor_len.into(),
+                    ],
+                )?;
+                self.push_runtime_root(pattern)?;
+                let result = self
+                    .call_runtime_value("riot_rt_value_eq", &[scrutinee.into(), pattern.into()])?;
+                self.pop_runtime_roots(1)?;
+                Ok(result)
+            }
         }
     }
 
@@ -894,6 +934,23 @@ impl<'ctx> Codegen<'ctx, '_> {
             StaticValue::Tuple(items) => self.emit_static_sequence("riot_rt_value_tuple", items),
             StaticValue::List(items) => self.emit_static_sequence("riot_rt_value_list", items),
             StaticValue::Record { path, fields } => self.emit_static_record(&path, fields),
+            StaticValue::Variant {
+                type_name,
+                constructor,
+            } => {
+                let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+                let (constructor_ptr, constructor_len) =
+                    self.string_literal(constructor.as_str())?;
+                Ok(CgValue::Value(self.call_runtime_value(
+                    "riot_rt_value_variant",
+                    &[
+                        type_ptr.into(),
+                        type_len.into(),
+                        constructor_ptr.into(),
+                        constructor_len.into(),
+                    ],
+                )?))
+            }
         }
     }
 
@@ -2304,6 +2361,15 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             "riot_rt_value_bool" => i64_type.fn_type(&[bool_type.into()], false),
             "riot_rt_value_string" => i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false),
+            "riot_rt_value_variant" => i64_type.fn_type(
+                &[
+                    ptr_type.into(),
+                    i64_type.into(),
+                    ptr_type.into(),
+                    i64_type.into(),
+                ],
+                false,
+            ),
             "riot_rt_value_tuple" | "riot_rt_value_list" => {
                 i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
             }
@@ -2679,6 +2745,7 @@ fn infer_expr_abi(
         RirExpr::Tuple(_)
         | RirExpr::List(_)
         | RirExpr::Record { .. }
+        | RirExpr::Variant { .. }
         | RirExpr::Field { .. }
         | RirExpr::TupleIndex { .. }
         | RirExpr::String(_) => AbiType::Value,
@@ -2779,6 +2846,7 @@ fn mark_expr_constraints(
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
+        | RirExpr::Variant { .. }
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }

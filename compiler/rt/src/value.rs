@@ -30,6 +30,10 @@ pub(crate) enum HeapObjectKind {
         path: String,
         fields: Vec<(String, RtValue)>,
     },
+    Variant {
+        type_name: String,
+        constructor: String,
+    },
 }
 
 pub(crate) struct HeapObject {
@@ -46,7 +50,7 @@ impl HeapObject {
             HeapObjectKind::Record { fields, .. } => {
                 fields.iter().map(|(_, value)| *value).collect()
             }
-            HeapObjectKind::String(_) => Vec::new(),
+            HeapObjectKind::String(_) | HeapObjectKind::Variant { .. } => Vec::new(),
         }
     }
 }

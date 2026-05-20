@@ -300,6 +300,7 @@ impl SchedulerLocal {
                     .join(", ");
                 format!("{path} {{ {rendered} }}")
             }
+            HeapObjectKind::Variant { constructor, .. } => constructor.clone(),
         }
     }
 
@@ -361,6 +362,16 @@ impl SchedulerLocal {
                         },
                     )
             }
+            (
+                HeapObjectKind::Variant {
+                    type_name: lhs_type,
+                    constructor: lhs_constructor,
+                },
+                HeapObjectKind::Variant {
+                    type_name: rhs_type,
+                    constructor: rhs_constructor,
+                },
+            ) => lhs_type == rhs_type && lhs_constructor == rhs_constructor,
             _ => false,
         }
     }

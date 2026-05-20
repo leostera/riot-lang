@@ -4,8 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigDependency, RsigExport, RsigExternal, RsigFunction, RsigType,
-    RsigTypeScheme, parse_type_signature,
+    ConstructorName, ImportedSignatures, Rsig, RsigDependency, RsigExport, RsigExternal,
+    RsigFunction, RsigType, RsigTypeDecl, RsigTypeScheme, RsigVariantConstructor, TypeName,
+    parse_type_signature,
 };
 
 mod actor;
@@ -26,6 +27,7 @@ pub(crate) fn typed_program_from_ast(
 ) -> TypedProgram {
     let mut uses = Vec::new();
     let mut externals = Vec::new();
+    let mut types = Vec::new();
     let mut ast_functions = Vec::new();
 
     for decl in ast.decls {
@@ -50,9 +52,22 @@ pub(crate) fn typed_program_from_ast(
                     abi: external.abi,
                 });
             }
+            AstDecl::Type(type_) => {
+                types.push(TypedTypeDecl {
+                    name: TypeName::new(type_.name),
+                    constructors: type_
+                        .constructors
+                        .into_iter()
+                        .map(|constructor| TypedVariantConstructor {
+                            name: ConstructorName::new(constructor.name),
+                        })
+                        .collect(),
+                });
+            }
             AstDecl::Function(function) => ast_functions.push(function),
         }
     }
+    let constructors = constructor_type_map(&types);
 
     let external_types = externals
         .iter()
@@ -83,6 +98,7 @@ pub(crate) fn typed_program_from_ast(
             function_types,
             &external_types,
             imports,
+            &constructors,
             expression_types,
             binding_schemes,
         );
@@ -115,11 +131,27 @@ pub(crate) fn typed_program_from_ast(
         module_name,
         uses,
         externals,
+        types,
         functions,
     }
 }
 
 pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
+    let types = program
+        .types
+        .iter()
+        .map(|type_| RsigTypeDecl {
+            name: type_.name.clone(),
+            constructors: type_
+                .constructors
+                .iter()
+                .map(|constructor| RsigVariantConstructor {
+                    name: constructor.name.clone(),
+                })
+                .collect(),
+            fingerprint: 0,
+        })
+        .collect::<Vec<_>>();
     let mut exports = Vec::new();
     for function in &program.functions {
         if function.name == "main" {
@@ -163,7 +195,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
             fingerprint: use_.fingerprint,
         })
         .collect();
-    Rsig::with_dependencies(program.module_name.clone(), dependencies, exports)
+    Rsig::with_dependencies(program.module_name.clone(), dependencies, types, exports)
 }
 
 pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
@@ -263,6 +295,7 @@ struct TypeContext<'a> {
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
+    constructors: &'a BTreeMap<String, TypeName>,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
     binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
 }
@@ -272,6 +305,7 @@ impl<'a> TypeContext<'a> {
         functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         imports: &'a ImportedSignatures,
+        constructors: &'a BTreeMap<String, TypeName>,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
         binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
     ) -> Self {
@@ -281,6 +315,7 @@ impl<'a> TypeContext<'a> {
             functions,
             externals,
             imports,
+            constructors,
             expression_types,
             binding_schemes,
         }
@@ -329,6 +364,18 @@ impl<'a> TypeContext<'a> {
             .cloned()
             .unwrap_or_else(|| RsigTypeScheme::monomorphic(fallback))
     }
+}
+
+fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, TypeName> {
+    types
+        .iter()
+        .flat_map(|type_| {
+            type_
+                .constructors
+                .iter()
+                .map(|constructor| (constructor.name.as_str().to_owned(), type_.name.clone()))
+        })
+        .collect()
 }
 
 fn infer_ast_function_types(
@@ -1058,9 +1105,33 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     if let Some((params, result)) = call_signature(&path, context) {
         return partial_call_lambda(path, Vec::new(), params, result, context);
     }
+    if let Some((type_name, constructor)) = value_constructor_type(&path, context) {
+        return TypedExpr {
+            type_: RsigType::Variant(type_name.clone()),
+            kind: TypedExprKind::Variant {
+                type_name,
+                constructor,
+            },
+        };
+    }
     TypedExpr {
         type_,
         kind: TypedExprKind::Path(path),
+    }
+}
+
+fn value_constructor_type(
+    path: &[String],
+    context: &TypeContext<'_>,
+) -> Option<(TypeName, ConstructorName)> {
+    match path {
+        [constructor] => {
+            let type_name = context.constructors.get(constructor)?.clone();
+            Some((type_name, ConstructorName::new(constructor.clone())))
+        }
+        [_module, constructor] => imported_constructor_type(path, context)
+            .map(|type_name| (type_name, ConstructorName::new(constructor.clone()))),
+        _ => None,
     }
 }
 
@@ -1208,10 +1279,33 @@ fn type_pattern(
             binding: context.bind(&name, scrutinee_type.clone()),
             type_: scrutinee_type.clone(),
         },
+        AstPattern::Constructor { path, .. } => {
+            let (type_name, constructor) = pattern_constructor_type(path.segments, context)
+                .unwrap_or_else(|| (TypeName::new("_"), ConstructorName::new("_")));
+            TypedPattern::Constructor {
+                type_name,
+                constructor,
+            }
+        }
         AstPattern::Unit { .. } => TypedPattern::Unit,
         AstPattern::Bool { value, .. } => TypedPattern::Bool(value),
         AstPattern::Int { value, .. } => TypedPattern::Int(value),
         AstPattern::String { value, .. } => TypedPattern::String(value),
+    }
+}
+
+fn pattern_constructor_type(
+    path: Vec<String>,
+    context: &TypeContext<'_>,
+) -> Option<(TypeName, ConstructorName)> {
+    match path.as_slice() {
+        [constructor] => {
+            let type_name = context.constructors.get(constructor)?.clone();
+            Some((type_name, ConstructorName::new(constructor.clone())))
+        }
+        [_module, constructor] => imported_constructor_type(&path, context)
+            .map(|type_name| (type_name, ConstructorName::new(constructor.clone()))),
+        _ => None,
     }
 }
 
@@ -1257,6 +1351,17 @@ fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
             .is_some(),
         _ => false,
     }
+}
+
+fn imported_constructor_type(path: &[String], context: &TypeContext<'_>) -> Option<TypeName> {
+    let [module, constructor] = path else {
+        return None;
+    };
+    context
+        .imports
+        .get(module)
+        .and_then(|rsig| rsig.find_constructor(constructor))
+        .map(|type_| TypeName::new(format!("{module}.{}", type_.name.as_str())))
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
@@ -1339,7 +1444,15 @@ fn path_type(path: &[String], context: &TypeContext<'_>) -> RsigType {
         context
             .resolve(head)
             .map(|binding| binding.type_.clone())
+            .or_else(|| {
+                context
+                    .constructors
+                    .get(head)
+                    .map(|name| RsigType::Variant(name.clone()))
+            })
             .unwrap_or(RsigType::Unknown)
+    } else if let Some(type_name) = imported_constructor_type(path, context) {
+        RsigType::Variant(type_name)
     } else {
         RsigType::Unknown
     }
@@ -1562,6 +1675,7 @@ fn collect_actors_from_expr(
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
+        | RirExpr::Variant { .. }
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }
@@ -1758,6 +1872,7 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
+        | RirExpr::Variant { .. }
         | RirExpr::String(_) => {}
     }
 }
@@ -1869,6 +1984,7 @@ fn closure_convert_expr(expr: &mut RirExpr) {
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
+        | RirExpr::Variant { .. }
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }
@@ -1935,6 +2051,7 @@ fn infer_actor_slot_type(
         | RirExpr::List(_)
         | RirExpr::Lambda { .. }
         | RirExpr::Record { .. }
+        | RirExpr::Variant { .. }
         | RirExpr::Field { .. }
         | RirExpr::TupleIndex { .. }
         | RirExpr::String(_) => Some(ActorSlotType::Value),
@@ -2114,6 +2231,13 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             base: Box::new(lower_expr(*base, context)),
             index,
         },
+        TypedExprKind::Variant {
+            type_name,
+            constructor,
+        } => RirExpr::Variant {
+            type_name,
+            constructor,
+        },
         TypedExprKind::Char(value) => RirExpr::Char(value),
         TypedExprKind::Float(value) => RirExpr::Float(value),
         TypedExprKind::Int(value) => RirExpr::Int(value),
@@ -2134,6 +2258,13 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
     match pattern {
         TypedPattern::Wildcard => RirPattern::Wildcard,
         TypedPattern::Bind { binding, .. } => RirPattern::Bind(context.bind_existing(&binding)),
+        TypedPattern::Constructor {
+            type_name,
+            constructor,
+        } => RirPattern::Constructor {
+            type_name,
+            constructor,
+        },
         TypedPattern::Unit => RirPattern::Unit,
         TypedPattern::Bool(value) => RirPattern::Bool(value),
         TypedPattern::Int(value) => RirPattern::Int(value),

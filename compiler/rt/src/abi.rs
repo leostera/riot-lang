@@ -91,6 +91,32 @@ pub unsafe extern "C" fn riot_rt_value_string(ptr: *const u8, len: usize) -> RtV
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_variant(
+    type_ptr: *const u8,
+    type_len: usize,
+    constructor_ptr: *const u8,
+    constructor_len: usize,
+) -> RtValue {
+    let Some(type_name) = (unsafe { bytes_from_raw(type_ptr, type_len) }) else {
+        runtime_abort("variant value received an invalid type pointer/length pair");
+    };
+    let Some(constructor) = (unsafe { bytes_from_raw(constructor_ptr, constructor_len) }) else {
+        runtime_abort("variant value received an invalid constructor pointer/length pair");
+    };
+    let type_name = String::from_utf8_lossy(type_name).into_owned();
+    let constructor = String::from_utf8_lossy(constructor).into_owned();
+    with_scheduler_mut(|scheduler| {
+        scheduler.alloc_value(
+            HeapObjectKind::Variant {
+                type_name,
+                constructor,
+            },
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn riot_rt_value_tuple(values: *const RtValue, len: usize) -> RtValue {
     let Some(values) = (unsafe { values_from_raw(values, len) }) else {
         runtime_abort("tuple value received an invalid pointer/length pair");

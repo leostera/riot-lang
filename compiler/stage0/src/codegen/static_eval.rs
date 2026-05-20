@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ir::{RirBlock, RirExpr, RirFunction, RirPattern, RirStmt};
+use crate::signature::{ConstructorName, TypeName};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum StaticValue {
@@ -12,6 +13,10 @@ pub(crate) enum StaticValue {
     Record {
         path: String,
         fields: Vec<(String, StaticValue)>,
+    },
+    Variant {
+        type_name: TypeName,
+        constructor: ConstructorName,
     },
     String(String),
     Tuple(Vec<StaticValue>),
@@ -42,6 +47,7 @@ impl StaticValue {
                     .join(", ");
                 format!("{path} {{ {rendered} }}")
             }
+            StaticValue::Variant { constructor, .. } => constructor.to_string(),
             StaticValue::String(value) => value.clone(),
             StaticValue::Tuple(items) => {
                 let rendered = items
@@ -187,6 +193,13 @@ pub(crate) fn eval_expr(
                 path: path.join("."),
                 fields,
             }),
+        RirExpr::Variant {
+            type_name,
+            constructor,
+        } => Some(StaticValue::Variant {
+            type_name: type_name.clone(),
+            constructor: constructor.clone(),
+        }),
         RirExpr::Field { .. } | RirExpr::TupleIndex { .. } => None,
         RirExpr::Char(value) => Some(StaticValue::Char(*value)),
         RirExpr::Float(value) => Some(StaticValue::Float(value.clone())),
@@ -212,6 +225,18 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
         }
         RirPattern::String(expected) => {
             matches!(value, StaticValue::String(actual) if actual == expected)
+        }
+        RirPattern::Constructor {
+            type_name,
+            constructor,
+        } => {
+            matches!(
+                value,
+                StaticValue::Variant {
+                    type_name: actual_type,
+                    constructor: actual_constructor,
+                } if actual_type == type_name && actual_constructor == constructor
+            )
         }
     }
 }

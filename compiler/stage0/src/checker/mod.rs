@@ -16,7 +16,7 @@ use crate::ast::{
 use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
-use crate::signature::{ImportedSignatures, RsigExport, RsigType, parse_type};
+use crate::signature::{ImportedSignatures, RsigExport, RsigType, TypeName, parse_type};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CheckMode {
@@ -81,6 +81,7 @@ struct ValidationContext<'a> {
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
     external_names: HashSet<String>,
+    constructor_types: HashMap<String, RsigType>,
     imports: &'a ImportedSignatures,
 }
 
@@ -96,6 +97,7 @@ fn validate_program(
     let function_results = function_results(program);
     let declared_external_names = declared_external_names(program);
     let external_names = external_names(program);
+    let constructor_types = constructor_types(program);
     let ctx = ValidationContext {
         source_path,
         source,
@@ -104,6 +106,7 @@ fn validate_program(
         function_results,
         declared_external_names,
         external_names,
+        constructor_types,
         imports,
     };
 
@@ -167,6 +170,19 @@ fn validate_program(
                         "empty external type",
                         "external declarations need a source-level type",
                         Some("try: external println : string -> unit = \"riot_prim_println\""),
+                    )
+                    .into());
+                }
+            }
+            AstDecl::Type(type_) => {
+                if type_.constructors.is_empty() {
+                    return Err(to_source_diagnostic(
+                        source_path,
+                        source,
+                        type_.name_span,
+                        "empty variant type",
+                        "variant types need at least one constructor",
+                        Some("try: type color = Red | Green | Blue"),
                     )
                     .into());
                 }
@@ -264,8 +280,29 @@ fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
     program.decls.first().map(|decl| match decl {
         AstDecl::Use(use_) => use_.span,
         AstDecl::External(external) => external.span,
+        AstDecl::Type(type_) => type_.span,
         AstDecl::Function(function) => function.span,
     })
+}
+
+fn constructor_types(program: &AstProgram) -> HashMap<String, RsigType> {
+    program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::Type(type_) => Some(type_),
+            _ => None,
+        })
+        .flat_map(|type_| {
+            let type_name = TypeName::new(type_.name.clone());
+            type_.constructors.iter().map(move |constructor| {
+                (
+                    constructor.name.clone(),
+                    RsigType::Variant(type_name.clone()),
+                )
+            })
+        })
+        .collect()
 }
 
 fn validate_block(
@@ -809,7 +846,8 @@ fn validate_expr(
                 [name]
                     if bindings.contains_key(name)
                         || ctx.function_names.contains(name)
-                        || ctx.external_names.contains(name) => {}
+                        || ctx.external_names.contains(name)
+                        || ctx.constructor_types.contains_key(name) => {}
                 [module, name] => {
                     let Some(rsig) = ctx.imports.get(module) else {
                         return Err(to_source_diagnostic(
@@ -825,6 +863,9 @@ fn validate_expr(
                         .into());
                     };
                     let Some(export) = rsig.find(name) else {
+                        if rsig.find_constructor(name).is_some() {
+                            return Ok(ExprCategory::Other);
+                        }
                         return Err(to_source_diagnostic(
                             ctx.source_path,
                             ctx.source,
@@ -885,7 +926,20 @@ fn validate_pattern(
     pattern: &AstPattern,
     scrutinee_type: Option<&RsigType>,
 ) -> miette::Result<()> {
-    let Some(expected) = pattern_type(pattern) else {
+    if let AstPattern::Constructor { path, span } = pattern
+        && pattern_constructor_type(ctx, path).is_none()
+    {
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            *span,
+            "unknown variant constructor",
+            format!("`{}` is not a known constructor", path.segments.join(".")),
+            Some("declare the constructor with a top-level `type` declaration"),
+        )
+        .into());
+    }
+    let Some(expected) = pattern_type(ctx, pattern) else {
         return Ok(());
     };
     let Some(actual) = scrutinee_type else {
@@ -919,13 +973,31 @@ fn bind_pattern(
     }
 }
 
-fn pattern_type(pattern: &AstPattern) -> Option<RsigType> {
+fn pattern_type(ctx: &ValidationContext<'_>, pattern: &AstPattern) -> Option<RsigType> {
     match pattern {
         AstPattern::Unit { .. } => Some(RsigType::Unit),
         AstPattern::Bool { .. } => Some(RsigType::Bool),
         AstPattern::Int { .. } => Some(RsigType::I64),
         AstPattern::String { .. } => Some(RsigType::String),
+        AstPattern::Constructor { path, .. } => pattern_constructor_type(ctx, path),
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
+    }
+}
+
+fn pattern_constructor_type(
+    ctx: &ValidationContext<'_>,
+    path: &crate::ast::AstPath,
+) -> Option<RsigType> {
+    match path.segments.as_slice() {
+        [name] => ctx.constructor_types.get(name).cloned(),
+        [module, constructor] => ctx
+            .imports
+            .get(module)
+            .and_then(|rsig| rsig.find_constructor(constructor))
+            .map(|type_| {
+                RsigType::Variant(TypeName::new(format!("{module}.{}", type_.name.as_str())))
+            }),
+        _ => None,
     }
 }
 
@@ -933,6 +1005,7 @@ fn pattern_span(pattern: &AstPattern) -> TextSpan {
     match pattern {
         AstPattern::Wildcard { span }
         | AstPattern::Bind { span, .. }
+        | AstPattern::Constructor { span, .. }
         | AstPattern::Unit { span }
         | AstPattern::Bool { span, .. }
         | AstPattern::Int { span, .. }
@@ -1390,8 +1463,26 @@ fn infer_annotation_expr_type(
         AstExpr::Path { path, .. } => path
             .segments
             .first()
-            .and_then(|name| bindings.get(name))
-            .cloned(),
+            .and_then(|name| {
+                bindings
+                    .get(name)
+                    .or_else(|| ctx.constructor_types.get(name))
+            })
+            .cloned()
+            .or_else(|| {
+                let [module, constructor] = path.segments.as_slice() else {
+                    return None;
+                };
+                ctx.imports
+                    .get(module)
+                    .and_then(|rsig| rsig.find_constructor(constructor))
+                    .map(|type_| {
+                        RsigType::Variant(TypeName::new(format!(
+                            "{module}.{}",
+                            type_.name.as_str()
+                        )))
+                    })
+            }),
         AstExpr::Lambda { .. } => Some(RsigType::Unknown),
         AstExpr::String { .. } => Some(RsigType::String),
         AstExpr::Spawn { .. } => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
@@ -1494,6 +1585,7 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
         | RsigType::String
         | RsigType::Unit
         | RsigType::Record(_) => false,
+        RsigType::Variant(_) => false,
     }
 }
 
@@ -1537,8 +1629,19 @@ fn simple_expr_type(
                 Some(BindingKind::Actor) => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
                 Some(BindingKind::Value(type_)) => type_.clone(),
                 Some(BindingKind::Message) => None,
-                None => None,
+                None => ctx.constructor_types.get(&path.segments[0]).cloned(),
             }
+        }
+        AstExpr::Path { path, .. } if path.segments.len() == 2 => {
+            let [module, constructor] = path.segments.as_slice() else {
+                unreachable!();
+            };
+            ctx.imports
+                .get(module)
+                .and_then(|rsig| rsig.find_constructor(constructor))
+                .map(|type_| {
+                    RsigType::Variant(TypeName::new(format!("{module}.{}", type_.name.as_str())))
+                })
         }
         AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),

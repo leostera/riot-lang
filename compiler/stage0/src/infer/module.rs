@@ -11,7 +11,7 @@ use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstFnDecl, AstPattern, AstProgram, AstStmt, TextSpan,
 };
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeScheme, parse_type,
+    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeScheme, TypeName, parse_type,
     parse_type_signature,
 };
 
@@ -212,8 +212,18 @@ fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
             RsigExport::Function(function) => (&function.name, &function.scheme),
             RsigExport::External(external) => (&external.name, &external.scheme),
         };
-        let scheme = rsig_scheme_to_infer_scheme(scheme, state);
+        let scheme = qualify_imported_scheme(module_name, scheme);
+        let scheme = rsig_scheme_to_infer_scheme(&scheme, state);
         state.add_prelude_value(format!("{module_name}.{name}"), scheme);
+    }
+    for type_ in &rsig.types {
+        let type_name = imported_type_name(module_name, &type_.name);
+        for constructor in &type_.constructors {
+            state.add_prelude_value(
+                format!("{module_name}.{}", constructor.name.as_str()),
+                TypeScheme::monomorphic(Type::Variant(type_name.clone())),
+            );
+        }
     }
 }
 
@@ -258,6 +268,16 @@ fn infer_decl(
 ) -> Result<(), InferError> {
     match decl {
         AstDecl::Use(_) => Ok(()),
+        AstDecl::Type(type_) => {
+            let type_name = TypeName::new(type_.name.clone());
+            for constructor in &type_.constructors {
+                state.add_value(
+                    constructor.name.clone(),
+                    TypeScheme::monomorphic(Type::Variant(type_name.clone())),
+                );
+            }
+            Ok(())
+        }
         AstDecl::External(external) => {
             let (params, result) = parse_type_signature(&external.type_text);
             let type_ = rsig_signature_to_infer_type(&params, &result, state);
@@ -641,6 +661,16 @@ fn infer_pattern(
             );
             Ok(())
         }
+        AstPattern::Constructor { path, .. } => {
+            let name = path.segments.join(".");
+            let scheme = state
+                .get_value(&name)
+                .cloned()
+                .ok_or_else(|| InferError::UnknownValue(name.clone()))?;
+            let constructor_type = state.instantiate(&scheme);
+            state.unify(&constructor_type, scrutinee_type)?;
+            Ok(())
+        }
         AstPattern::Unit { .. } => state.unify(&Type::Unit, scrutinee_type).map_err(Into::into),
         AstPattern::Bool { .. } => state.unify(&Type::Bool, scrutinee_type).map_err(Into::into),
         AstPattern::Int { .. } => state.unify(&Type::I64, scrutinee_type).map_err(Into::into),
@@ -710,6 +740,7 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
         RsigType::I64 => Type::I64,
         RsigType::List(element) => Type::List(Box::new(rsig_type_to_infer_type(element, state))),
         RsigType::Record(name) => Type::Record(name.clone()),
+        RsigType::Variant(name) => Type::Variant(name.clone()),
         RsigType::String => Type::String,
         RsigType::Tuple(items) => Type::Tuple(
             items
@@ -759,6 +790,7 @@ fn rsig_type_to_infer_type_with_vars(
             element, state, vars,
         ))),
         RsigType::Record(name) => Type::Record(name.clone()),
+        RsigType::Variant(name) => Type::Variant(name.clone()),
         RsigType::String => Type::String,
         RsigType::Tuple(items) => Type::Tuple(
             items
@@ -788,11 +820,46 @@ fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
         Type::I64 => RsigType::I64,
         Type::List(element) => RsigType::List(Box::new(infer_type_to_rsig_type(element))),
         Type::Record(name) => RsigType::Record(name.clone()),
+        Type::Variant(name) => RsigType::Variant(name.clone()),
         Type::String => RsigType::String,
         Type::Tuple(items) => RsigType::Tuple(items.iter().map(infer_type_to_rsig_type).collect()),
         Type::Unit => RsigType::Unit,
         Type::Var(var) => RsigType::Var(format!("'t{}", var.index())),
     }
+}
+
+fn qualify_imported_scheme(module_name: &str, scheme: &RsigTypeScheme) -> RsigTypeScheme {
+    RsigTypeScheme {
+        quantifiers: scheme.quantifiers.clone(),
+        body: qualify_imported_type(module_name, &scheme.body),
+    }
+}
+
+fn qualify_imported_type(module_name: &str, type_: &RsigType) -> RsigType {
+    match type_ {
+        RsigType::ActorId(message) => {
+            RsigType::ActorId(Box::new(qualify_imported_type(module_name, message)))
+        }
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(qualify_imported_type(module_name, parameter)),
+            result: Box::new(qualify_imported_type(module_name, result)),
+        },
+        RsigType::List(element) => {
+            RsigType::List(Box::new(qualify_imported_type(module_name, element)))
+        }
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| qualify_imported_type(module_name, item))
+                .collect(),
+        ),
+        RsigType::Variant(name) => RsigType::Variant(imported_type_name(module_name, name)),
+        other => other.clone(),
+    }
+}
+
+fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
+    TypeName::new(format!("{module_name}.{}", type_name.as_str()))
 }
 
 fn infer_scheme_to_rsig_scheme(scheme: &TypeScheme) -> RsigTypeScheme {

@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 729
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/syntax/old-let-main.ml
@@ -15,6 +16,6 @@ Error: stage0::source
    ╭─[tests/fixtures/diagnostics/syntax/old-let-main.ml:1:1]
  1 │ let main () = println "hello world"
    · ─┬─
-   ·  ╰── expected top-level `use`, `external`, or `fn` declaration
+   ·  ╰── expected top-level `use`, `external`, `type`, or `fn` declaration
    ╰────
   help: try: fn main() { println("hello world") }

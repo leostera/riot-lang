@@ -21,6 +21,8 @@ pub(crate) enum TokenKind {
     Use,
     #[token("external")]
     External,
+    #[token("type")]
+    Type,
     #[token("spawn")]
     Spawn,
     #[token("receive")]
@@ -42,6 +44,8 @@ pub(crate) enum TokenKind {
     AndAnd,
     #[token("||")]
     OrOr,
+    #[token("|")]
+    Pipe,
     #[token("->")]
     Arrow,
 

@@ -31,6 +31,7 @@ impl AbiType {
             | RsigType::Tuple(_)
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::Variant(_)
             | RsigType::Arrow { .. } => AbiType::Value,
             _ => AbiType::Unknown,
         }

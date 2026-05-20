@@ -11,7 +11,7 @@ use crate::abi::{
     riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
     riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
     riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
-    riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_value_tuple_get, riot_rt_value_unit, riot_rt_value_variant,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -348,6 +348,12 @@ fn value_equality_handles_nested_runtime_values() {
     }
     assert!(riot_rt_value_eq(lhs_record, rhs_record));
     assert!(!riot_rt_value_eq(lhs_record, lhs_list));
+
+    let lhs_variant = unsafe { riot_rt_value_variant(b"color".as_ptr(), 5, b"Red".as_ptr(), 3) };
+    let rhs_variant = unsafe { riot_rt_value_variant(b"color".as_ptr(), 5, b"Red".as_ptr(), 3) };
+    let other_variant = unsafe { riot_rt_value_variant(b"color".as_ptr(), 5, b"Blue".as_ptr(), 4) };
+    assert!(riot_rt_value_eq(lhs_variant, rhs_variant));
+    assert!(!riot_rt_value_eq(lhs_variant, other_variant));
 }
 
 #[test]
@@ -422,5 +428,11 @@ fn value_rendering_handles_compound_values() {
     assert_eq!(
         with_scheduler_mut(|scheduler| scheduler.render_value(concatenated)),
         "riot lang"
+    );
+
+    let variant = unsafe { riot_rt_value_variant(b"color".as_ptr(), 5, b"Green".as_ptr(), 5) };
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(variant)),
+        "Green"
     );
 }

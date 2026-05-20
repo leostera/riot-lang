@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 
+use crate::signature::TypeName;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct TypeVar(u32);
 
@@ -29,6 +31,7 @@ pub(crate) enum Type {
     },
     List(Box<Type>),
     Record(String),
+    Variant(TypeName),
     Tuple(Vec<Type>),
 }
 
@@ -61,7 +64,8 @@ impl Type {
             | Type::I64
             | Type::String
             | Type::Unit
-            | Type::Record(_) => false,
+            | Type::Record(_)
+            | Type::Variant(_) => false,
         }
     }
 
@@ -92,7 +96,8 @@ impl Type {
             | Type::I64
             | Type::String
             | Type::Unit
-            | Type::Record(_) => {}
+            | Type::Record(_)
+            | Type::Variant(_) => {}
         }
     }
 }

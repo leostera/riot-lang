@@ -104,6 +104,7 @@ fn instantiate_type(ty: &Type, replacements: &BTreeMap<TypeVar, Type>) -> Type {
         | Type::I64
         | Type::String
         | Type::Unit
-        | Type::Record(_) => ty.clone(),
+        | Type::Record(_)
+        | Type::Variant(_) => ty.clone(),
     }
 }

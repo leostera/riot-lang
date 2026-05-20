@@ -1,4 +1,4 @@
-use crate::signature::{Rsig, RsigType, RsigTypeScheme};
+use crate::signature::{ConstructorName, Rsig, RsigType, RsigTypeScheme, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct HirBinding {
@@ -30,6 +30,7 @@ pub(crate) struct TypedProgram {
     pub(crate) module_name: String,
     pub(crate) uses: Vec<TypedUse>,
     pub(crate) externals: Vec<TypedExternal>,
+    pub(crate) types: Vec<TypedTypeDecl>,
     pub(crate) functions: Vec<TypedFunction>,
 }
 
@@ -46,6 +47,17 @@ pub(crate) struct TypedExternal {
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) abi: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TypedTypeDecl {
+    pub(crate) name: TypeName,
+    pub(crate) constructors: Vec<TypedVariantConstructor>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TypedVariantConstructor {
+    pub(crate) name: ConstructorName,
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +111,10 @@ pub(crate) enum TypedPattern {
     Bind {
         binding: HirBinding,
         type_: RsigType,
+    },
+    Constructor {
+        type_name: TypeName,
+        constructor: ConstructorName,
     },
     Unit,
     Bool(bool),
@@ -155,6 +171,10 @@ pub(crate) enum TypedExprKind {
     TupleIndex {
         base: Box<TypedExpr>,
         index: usize,
+    },
+    Variant {
+        type_name: TypeName,
+        constructor: ConstructorName,
     },
     Char(char),
     Float(String),

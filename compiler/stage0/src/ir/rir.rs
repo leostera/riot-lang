@@ -1,4 +1,4 @@
-use crate::signature::RsigType;
+use crate::signature::{ConstructorName, RsigType, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct BindingKey(String);
@@ -103,6 +103,10 @@ pub(crate) struct RirMatchArm {
 pub(crate) enum RirPattern {
     Wildcard,
     Bind(BindingKey),
+    Constructor {
+        type_name: TypeName,
+        constructor: ConstructorName,
+    },
     Unit,
     Bool(bool),
     Int(i64),
@@ -160,6 +164,10 @@ pub(crate) enum RirExpr {
     TupleIndex {
         base: Box<RirExpr>,
         index: usize,
+    },
+    Variant {
+        type_name: TypeName,
+        constructor: ConstructorName,
     },
     Char(char),
     Float(String),

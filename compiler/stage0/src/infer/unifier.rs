@@ -31,7 +31,8 @@ impl Substitution {
             | Type::I64
             | Type::String
             | Type::Unit
-            | Type::Record(_) => ty.clone(),
+            | Type::Record(_)
+            | Type::Variant(_) => ty.clone(),
         }
     }
 
@@ -48,6 +49,7 @@ impl Substitution {
             | (Type::String, Type::String)
             | (Type::Unit, Type::Unit) => Ok(()),
             (Type::Record(lhs), Type::Record(rhs)) if lhs == rhs => Ok(()),
+            (Type::Variant(lhs), Type::Variant(rhs)) if lhs == rhs => Ok(()),
             (Type::ActorId(lhs), Type::ActorId(rhs)) | (Type::List(lhs), Type::List(rhs)) => {
                 self.unify(&lhs, &rhs)
             }

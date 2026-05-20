@@ -6,12 +6,13 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 4;
+const VERSION: u16 = 5;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
     pub(crate) module: ModuleName,
     pub(crate) dependencies: Vec<RsigDependency>,
+    pub(crate) types: Vec<RsigTypeDecl>,
     pub(crate) exports: Vec<RsigExport>,
     pub(crate) module_fingerprint: u64,
 }
@@ -54,9 +55,95 @@ impl fmt::Display for ModuleName {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TypeName(String);
+
+impl TypeName {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for TypeName {
+    fn from(value: String) -> Self {
+        TypeName::new(value)
+    }
+}
+
+impl From<&str> for TypeName {
+    fn from(value: &str) -> Self {
+        TypeName::new(value)
+    }
+}
+
+impl AsRef<str> for TypeName {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for TypeName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConstructorName(String);
+
+impl ConstructorName {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for ConstructorName {
+    fn from(value: String) -> Self {
+        ConstructorName::new(value)
+    }
+}
+
+impl From<&str> for ConstructorName {
+    fn from(value: &str) -> Self {
+        ConstructorName::new(value)
+    }
+}
+
+impl AsRef<str> for ConstructorName {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for ConstructorName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RsigDependency {
     pub(crate) module: ModuleName,
     pub(crate) fingerprint: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RsigTypeDecl {
+    pub(crate) name: TypeName,
+    pub(crate) constructors: Vec<RsigVariantConstructor>,
+    pub(crate) fingerprint: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RsigVariantConstructor {
+    pub(crate) name: ConstructorName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +189,7 @@ pub(crate) enum RsigType {
     Tuple(Vec<RsigType>),
     List(Box<RsigType>),
     Record(String),
+    Variant(TypeName),
     Unknown,
 }
 
@@ -175,6 +263,7 @@ fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
         | RsigType::F64
         | RsigType::I64
         | RsigType::Record(_)
+        | RsigType::Variant(_)
         | RsigType::String
         | RsigType::Unit
         | RsigType::Unknown => {}
@@ -185,10 +274,15 @@ impl Rsig {
     pub(crate) fn with_dependencies(
         module: impl Into<ModuleName>,
         mut dependencies: Vec<RsigDependency>,
+        mut types: Vec<RsigTypeDecl>,
         mut exports: Vec<RsigExport>,
     ) -> Self {
         let module = module.into();
         dependencies.sort_by(|lhs, rhs| lhs.module.cmp(&rhs.module));
+        types.sort_by(|lhs, rhs| lhs.name.as_str().cmp(rhs.name.as_str()));
+        for type_ in &mut types {
+            type_.fingerprint = stable_hash(&type_.canonical_without_fingerprint());
+        }
         for export in &mut exports {
             export.canonicalize_type_vars();
         }
@@ -206,16 +300,26 @@ impl Rsig {
             .map(RsigExport::canonical_with_fingerprint)
             .collect::<Vec<_>>()
             .join("\n");
+        let type_text = types
+            .iter()
+            .map(RsigTypeDecl::canonical_with_fingerprint)
+            .collect::<Vec<_>>()
+            .join("\n");
         let module_fingerprint = stable_hash(
-            &[dependency_text.as_str(), export_text.as_str()]
-                .into_iter()
-                .filter(|part| !part.is_empty())
-                .collect::<Vec<_>>()
-                .join("\n"),
+            &[
+                dependency_text.as_str(),
+                type_text.as_str(),
+                export_text.as_str(),
+            ]
+            .into_iter()
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n"),
         );
         Self {
             module,
             dependencies,
+            types,
             exports,
             module_fingerprint,
         }
@@ -229,6 +333,10 @@ impl Rsig {
             text.push_str(&dependency.canonical());
             text.push('\n');
         }
+        for type_ in &self.types {
+            text.push_str(&type_.canonical_with_fingerprint());
+            text.push('\n');
+        }
         for export in &self.exports {
             text.push_str(&export.canonical_with_fingerprint());
             text.push('\n');
@@ -239,11 +347,40 @@ impl Rsig {
     pub(crate) fn find(&self, name: &str) -> Option<&RsigExport> {
         self.exports.iter().find(|export| export.name() == name)
     }
+
+    pub(crate) fn find_constructor(&self, name: &str) -> Option<&RsigTypeDecl> {
+        self.types.iter().find(|type_| {
+            type_
+                .constructors
+                .iter()
+                .any(|constructor| constructor.name.as_str() == name)
+        })
+    }
 }
 
 impl RsigDependency {
     fn canonical(&self) -> String {
         format!("depends {} {:016x}", self.module, self.fingerprint)
+    }
+}
+
+impl RsigTypeDecl {
+    fn canonical_without_fingerprint(&self) -> String {
+        let constructors = self
+            .constructors
+            .iter()
+            .map(|constructor| constructor.name.as_str())
+            .collect::<Vec<_>>()
+            .join(" | ");
+        format!("type {} = {}", self.name, constructors)
+    }
+
+    fn canonical_with_fingerprint(&self) -> String {
+        format!(
+            "{:016x} {}",
+            self.fingerprint,
+            self.canonical_without_fingerprint()
+        )
     }
 }
 
@@ -365,6 +502,7 @@ impl TypeVarCanonicalizer {
             | RsigType::F64
             | RsigType::I64
             | RsigType::Record(_)
+            | RsigType::Variant(_)
             | RsigType::String
             | RsigType::Unit
             | RsigType::Unknown => {}
@@ -398,6 +536,7 @@ impl RsigType {
             RsigType::Tuple(items) => format!("({})", render_types(items)),
             RsigType::List(item) => format!("{} list", item.canonical()),
             RsigType::Record(name) => name.clone(),
+            RsigType::Variant(name) => name.to_string(),
             RsigType::Unknown => "_".to_owned(),
         }
     }
@@ -603,6 +742,15 @@ fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
         put_string(&mut bytes, dependency.module.as_str());
         put_u64(&mut bytes, dependency.fingerprint);
     }
+    put_u32(&mut bytes, rsig.types.len() as u32);
+    for type_ in &rsig.types {
+        put_string(&mut bytes, type_.name.as_str());
+        put_u32(&mut bytes, type_.constructors.len() as u32);
+        for constructor in &type_.constructors {
+            put_string(&mut bytes, constructor.name.as_str());
+        }
+        put_u64(&mut bytes, type_.fingerprint);
+    }
     put_u32(&mut bytes, rsig.exports.len() as u32);
     for export in &rsig.exports {
         match export {
@@ -650,6 +798,24 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
             fingerprint: get_u64(&mut cursor)?,
         });
     }
+    let type_count = get_u32(&mut cursor)?;
+    let mut types = Vec::new();
+    for _ in 0..type_count {
+        let name = TypeName::new(get_string(&mut cursor)?);
+        let constructor_count = get_u32(&mut cursor)?;
+        let mut constructors = Vec::new();
+        for _ in 0..constructor_count {
+            constructors.push(RsigVariantConstructor {
+                name: ConstructorName::new(get_string(&mut cursor)?),
+            });
+        }
+        let fingerprint = get_u64(&mut cursor)?;
+        types.push(RsigTypeDecl {
+            name,
+            constructors,
+            fingerprint,
+        });
+    }
     let count = get_u32(&mut cursor)?;
     let mut exports = Vec::new();
     for _ in 0..count {
@@ -684,6 +850,7 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
     Ok(Rsig {
         module,
         dependencies,
+        types,
         exports,
         module_fingerprint,
     })
@@ -756,6 +923,10 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
             bytes.push(10);
             put_string(bytes, name);
         }
+        RsigType::Variant(name) => {
+            bytes.push(13);
+            put_string(bytes, name.as_str());
+        }
         RsigType::Unknown => bytes.push(11),
     }
 }
@@ -780,6 +951,7 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
             parameter: Box::new(get_type(cursor)?),
             result: Box::new(get_type(cursor)?),
         },
+        13 => RsigType::Variant(TypeName::new(get_string(cursor)?)),
         tag => bail!("unknown type tag {tag}"),
     })
 }
@@ -831,8 +1003,9 @@ pub(crate) type ImportedSignatures = BTreeMap<String, Rsig>;
 #[cfg(test)]
 mod tests {
     use super::{
-        Rsig, RsigDependency, RsigExport, RsigFunction, RsigType, RsigTypeScheme, decode_rsig,
-        encode_rsig, parse_type_signature,
+        ConstructorName, Rsig, RsigDependency, RsigExport, RsigFunction, RsigType, RsigTypeDecl,
+        RsigTypeScheme, RsigVariantConstructor, TypeName, decode_rsig, encode_rsig,
+        parse_type_signature,
     };
 
     #[test]
@@ -856,6 +1029,7 @@ mod tests {
     fn binary_rsig_roundtrips_arrow_types() {
         let rsig = Rsig::with_dependencies(
             "Apply".to_owned(),
+            Vec::new(),
             Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "apply_i64".to_owned(),
@@ -893,6 +1067,7 @@ mod tests {
         let first = Rsig::with_dependencies(
             "Id".to_owned(),
             Vec::new(),
+            Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "id".to_owned(),
                 params: vec![RsigType::Var("'t17".to_owned())],
@@ -907,6 +1082,7 @@ mod tests {
         );
         let second = Rsig::with_dependencies(
             "Id".to_owned(),
+            Vec::new(),
             Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "id".to_owned(),
@@ -935,6 +1111,7 @@ mod tests {
                 fingerprint: 0xfeed_f00d,
             }],
             Vec::new(),
+            Vec::new(),
         );
 
         let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
@@ -945,5 +1122,36 @@ mod tests {
                 .canonical_text()
                 .contains("depends Math 00000000feedf00d")
         );
+    }
+
+    #[test]
+    fn binary_rsig_roundtrips_variant_type_declarations() {
+        let rsig = Rsig::with_dependencies(
+            "Colors".to_owned(),
+            Vec::new(),
+            vec![RsigTypeDecl {
+                name: TypeName::new("color"),
+                constructors: vec![
+                    RsigVariantConstructor {
+                        name: ConstructorName::new("Red"),
+                    },
+                    RsigVariantConstructor {
+                        name: ConstructorName::new("Green"),
+                    },
+                ],
+                fingerprint: 0,
+            }],
+            Vec::new(),
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded, rsig);
+        assert!(
+            decoded
+                .canonical_text()
+                .contains("type color = Red | Green")
+        );
+        assert!(decoded.find_constructor("Red").is_some());
     }
 }

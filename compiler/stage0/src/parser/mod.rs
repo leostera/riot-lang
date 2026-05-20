@@ -2,7 +2,8 @@ use camino::Utf8Path;
 
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstMatchArm, AstPath, AstPattern,
-    AstProgram, AstStmt, AstTypeAnnotation, AstUseDecl, TextSpan,
+    AstProgram, AstStmt, AstTypeAnnotation, AstTypeDecl, AstUseDecl, AstVariantConstructor,
+    TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
@@ -71,9 +72,10 @@ impl<'src> Parser<'src> {
         match self.current().kind {
             TokenKind::Use => self.parse_use_decl().map(AstDecl::Use),
             TokenKind::External => self.parse_external_decl().map(AstDecl::External),
+            TokenKind::Type => self.parse_type_decl().map(AstDecl::Type),
             TokenKind::Fn => self.parse_fn_decl().map(AstDecl::Function),
             _ => Err(self.error_at_current(
-                "expected top-level `use`, `external`, or `fn` declaration",
+                "expected top-level `use`, `external`, `type`, or `fn` declaration",
                 Some("try: fn main() { println(\"hello world\") }"),
             )),
         }
@@ -140,6 +142,43 @@ impl<'src> Parser<'src> {
             type_span,
             abi,
             span: start.span.join(abi_token.span),
+        })
+    }
+
+    fn parse_type_decl(&mut self) -> Result<AstTypeDecl, ParseError> {
+        let start = self.expect(TokenKind::Type, "expected type declaration")?;
+        let (name, name_span) = self.expect_lower_ident()?;
+        self.expect(TokenKind::Eq, "expected `=` after type name")?;
+
+        let mut constructors = Vec::new();
+        loop {
+            let (constructor, constructor_span) = self.expect_upper_ident()?;
+            constructors.push(AstVariantConstructor {
+                name: constructor,
+                name_span: constructor_span,
+            });
+
+            if self.match_kind(TokenKind::Pipe).is_none() {
+                break;
+            }
+        }
+
+        if constructors.is_empty() {
+            return Err(ParseError {
+                span: name_span,
+                message: "variant type needs at least one constructor".to_owned(),
+                help: Some("try: type color = Red | Green | Blue"),
+            });
+        }
+
+        let span = start
+            .span
+            .join(constructors.last().expect("constructor exists").name_span);
+        Ok(AstTypeDecl {
+            name,
+            name_span,
+            constructors,
+            span,
         })
     }
 
@@ -608,11 +647,29 @@ impl<'src> Parser<'src> {
 
         match self.current().kind {
             TokenKind::Ident => {
-                let (name, span) = self.expect_lower_ident()?;
+                let (name, mut span) = self.expect_ident()?;
                 if name == "_" {
                     Ok(AstPattern::Wildcard { span })
-                } else {
+                } else if is_upper_ident(&name) {
+                    let mut path = AstPath {
+                        segments: vec![name],
+                    };
+                    while self.match_kind(TokenKind::Dot).is_some() {
+                        let (segment, segment_span) = self.expect_ident()?;
+                        span = span.join(segment_span);
+                        path.segments.push(segment);
+                    }
+                    Ok(AstPattern::Constructor { path, span })
+                } else if is_lower_ident(&name) {
                     Ok(AstPattern::Bind { name, span })
+                } else {
+                    Err(ParseError {
+                        span,
+                        message: format!("expected pattern identifier, found `{name}`"),
+                        help: Some(
+                            "stage0 patterns currently support literals, constructors, `_`, and binders",
+                        ),
+                    })
                 }
             }
             TokenKind::Int => {
@@ -650,7 +707,7 @@ impl<'src> Parser<'src> {
             }
             _ => Err(self.error_at_current(
                 "expected match pattern",
-                Some("stage0 patterns currently support literals, `_`, and binders"),
+                Some("stage0 patterns currently support literals, constructors, `_`, and binders"),
             )),
         }
     }
@@ -893,18 +950,28 @@ impl<'src> Parser<'src> {
 
     fn expect_lower_ident(&mut self) -> Result<(String, TextSpan), ParseError> {
         let (ident, span) = self.expect_ident()?;
-        let is_lower = ident
-            .chars()
-            .next()
-            .is_some_and(|ch| ch == '_' || ch.is_ascii_lowercase());
 
-        if is_lower {
+        if is_lower_ident(&ident) {
             Ok((ident, span))
         } else {
             Err(ParseError {
                 span,
                 message: format!("expected lowercase identifier, found `{ident}`"),
                 help: None,
+            })
+        }
+    }
+
+    fn expect_upper_ident(&mut self) -> Result<(String, TextSpan), ParseError> {
+        let (ident, span) = self.expect_ident()?;
+
+        if is_upper_ident(&ident) {
+            Ok((ident, span))
+        } else {
+            Err(ParseError {
+                span,
+                message: format!("expected uppercase variant constructor, found `{ident}`"),
+                help: Some("variant constructors are ClassCase, for example `Some` or `None`"),
             })
         }
     }
@@ -968,6 +1035,20 @@ impl<'src> Parser<'src> {
             help,
         }
     }
+}
+
+fn is_lower_ident(ident: &str) -> bool {
+    ident
+        .chars()
+        .next()
+        .is_some_and(|ch| ch == '_' || ch.is_ascii_lowercase())
+}
+
+fn is_upper_ident(ident: &str) -> bool {
+    ident
+        .chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_uppercase())
 }
 
 #[cfg(test)]

@@ -320,6 +320,7 @@ fn resolve_path_value(
 fn const_pattern_matches(pattern: &AstPattern, value: &ConstValue) -> bool {
     match pattern {
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => true,
+        AstPattern::Constructor { .. } => false,
         AstPattern::Unit { .. } => matches!(value, ConstValue::Unit),
         AstPattern::Bool {
             value: expected, ..
