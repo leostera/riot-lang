@@ -114,8 +114,12 @@ impl Mailbox {
         self.messages().front().cloned()
     }
 
-    pub(crate) fn pop_front(&self) {
-        self.messages().pop_front();
+    pub(crate) fn snapshot(&self) -> Vec<RuntimeMessage> {
+        self.messages().iter().cloned().collect()
+    }
+
+    pub(crate) fn remove(&self, index: usize) {
+        self.messages().remove(index);
     }
 
     pub(crate) fn clear(&self) {
@@ -224,9 +228,13 @@ impl ActorSlot {
         self.mailbox.front()
     }
 
-    pub(crate) fn consume_current_message(&self) {
+    pub(crate) fn current_messages(&self) -> Vec<RuntimeMessage> {
+        self.mailbox.snapshot()
+    }
+
+    pub(crate) fn consume_message(&self, index: usize) {
         if !self.mailbox.is_empty() {
-            self.mailbox.pop_front();
+            self.mailbox.remove(index);
         }
     }
 

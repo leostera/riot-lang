@@ -450,40 +450,69 @@ impl SchedulerLocal {
                     continue;
                 }
 
-                let (actor_id, frame, resume, current_message) = {
+                let (actor_id, frame, resume, current_messages) = {
                     let actor = &self.actors[index];
                     (
                         actor.actor_id(),
                         actor.frame_ptr(),
                         actor.resume(),
-                        actor.current_message(),
+                        actor.current_messages(),
                     )
                 };
-                let message = current_message.as_ref().map(RuntimeMessage::as_rt_message);
-                let message_ptr = message
-                    .as_ref()
-                    .map_or(ptr::null(), |message| message as *const RtMessage);
-
-                let result = ACTIVE_SCHEDULER.with(|active| {
-                    let previous = active.replace(self as *mut SchedulerLocal);
-                    let previous_actor_id =
-                        ACTIVE_ACTOR_ID.with(|active_actor_id| active_actor_id.replace(actor_id));
-                    let result = unsafe { resume(frame, actor_id, message_ptr) };
-                    ACTIVE_ACTOR_ID.with(|active_actor_id| active_actor_id.set(previous_actor_id));
-                    active.set(previous);
-                    result
-                });
-
-                made_progress |= result & (POLL_PROGRESS | POLL_YIELD) != 0;
-
+                let mut consumed = None;
                 let mut terminate = false;
-                if let Some(actor) = self.actors.get(index) {
-                    if result & POLL_CONSUMED != 0 {
-                        actor.consume_current_message();
+
+                if current_messages.is_empty() {
+                    let result = ACTIVE_SCHEDULER.with(|active| {
+                        let previous = active.replace(self as *mut SchedulerLocal);
+                        let previous_actor_id = ACTIVE_ACTOR_ID
+                            .with(|active_actor_id| active_actor_id.replace(actor_id));
+                        let result = unsafe { resume(frame, actor_id, ptr::null()) };
+                        ACTIVE_ACTOR_ID
+                            .with(|active_actor_id| active_actor_id.set(previous_actor_id));
+                        active.set(previous);
+                        result
+                    });
+                    made_progress |= result & (POLL_PROGRESS | POLL_YIELD) != 0;
+                    terminate = result & POLL_DONE != 0;
+                } else {
+                    for (message_index, current_message) in current_messages.iter().enumerate() {
+                        let message = current_message.as_rt_message();
+                        let message_ptr = &message as *const RtMessage;
+                        let result = ACTIVE_SCHEDULER.with(|active| {
+                            let previous = active.replace(self as *mut SchedulerLocal);
+                            let previous_actor_id = ACTIVE_ACTOR_ID
+                                .with(|active_actor_id| active_actor_id.replace(actor_id));
+                            let result = unsafe { resume(frame, actor_id, message_ptr) };
+                            ACTIVE_ACTOR_ID
+                                .with(|active_actor_id| active_actor_id.set(previous_actor_id));
+                            active.set(previous);
+                            result
+                        });
+
+                        made_progress |= result & (POLL_PROGRESS | POLL_YIELD) != 0;
+
+                        if result & POLL_CONSUMED != 0 {
+                            consumed = Some(message_index);
+                        }
+                        if result & POLL_DONE != 0 {
+                            terminate = true;
+                        }
+                        if consumed.is_some()
+                            || terminate
+                            || result & (POLL_PROGRESS | POLL_YIELD) != 0
+                            || result & POLL_WAITING == 0
+                        {
+                            break;
+                        }
                     }
-                    if result & POLL_DONE != 0 {
-                        terminate = true;
-                    } else if result & POLL_WAITING != 0 {
+                }
+
+                if let Some(actor) = self.actors.get(index) {
+                    if let Some(message_index) = consumed {
+                        actor.consume_message(message_index);
+                    }
+                    if !terminate && consumed.is_none() {
                         continue;
                     }
                 }
