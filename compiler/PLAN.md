@@ -1,0 +1,779 @@
+# Riot Stage0 Vertical Roadmap
+
+This is the implementation ledger for taking `compiler/stage0` and
+`compiler/rt` from an advanced bootstrap proof-of-concept to a compiler/runtime
+that can support real Riot programs and, eventually, the self-hosted compiler.
+
+The core working style is vertical: every useful language feature should travel
+through the whole compiler shape in one small, reviewable commit:
+
+source syntax -> AST -> typed HIR/.rsig -> RIR -> Actor IR where relevant ->
+LLVM/codegen -> runtime ABI where relevant -> fixtures/snapshots.
+
+Commit every value-adding slice with a conventional commit. If a slice exposes
+a better name while implementing it, keep the message conventional and keep the
+scope narrow.
+
+## Current Baseline
+
+Stage0 currently has:
+
+- A handwritten lexer/parser for a small Riot ML surface.
+- `use Module` resolution through binary `.rsig` files.
+- A typed HIR boundary, RIR boundary, Actor IR boundary, LLVM text/object
+  emission, and native linking.
+- A runtime value ABI (`RtValue`) for scalars, pids, strings, tuples, lists, and
+  records.
+- Native actor state-machine lowering with heap-owned actor frames.
+- A single-threaded runtime scheduler, FIFO mailboxes, monitor/link stubs, and a
+  mark/sweep GC scaffold.
+- Snapshot-driven fixture coverage for parser/typed/RIR/Actor IR/LLVM/object
+  and runtime output.
+
+The most important missing capability is not one isolated feature. It is the
+ability to add a source feature and prove it end-to-end through frontend,
+interfaces, backend, runtime, and tests.
+
+## Validation Loop
+
+Use the focused command while implementing a slice, then the full loop before
+committing unless the slice is documentation-only.
+
+```sh
+env LLVM_SYS_221_PREFIX=/opt/homebrew/opt/llvm cargo check --manifest-path compiler/stage0/Cargo.toml
+cargo test --manifest-path compiler/rt/Cargo.toml
+env LLVM_SYS_221_PREFIX=/opt/homebrew/opt/llvm cargo test --manifest-path compiler/stage0/Cargo.toml
+```
+
+Snapshot updates are intentional only:
+
+```sh
+env LLVM_SYS_221_PREFIX=/opt/homebrew/opt/llvm INSTA_UPDATE=always cargo test --manifest-path compiler/stage0/Cargo.toml --test fixtures
+```
+
+## Roadmap Rules
+
+- Keep `.rsig` binary. Add human-readable output only as an inspection aid.
+- Keep source-level runtime facilities as declarations or prelude declarations,
+  not compiler primitive enum variants.
+- Keep `spawn` and `receive` as source/compiler constructs that lower through
+  RIR and Actor IR.
+- Keep `use`, not `import`.
+- Preserve the file-to-module rule: `hello.ml -> Hello`,
+  `hello_world.ml -> HelloWorld`, and mixed-case source file stems are invalid.
+- Every implementation commit should add a positive fixture, a diagnostic
+  fixture, or a runtime unit test.
+- Do not broaden a slice because neighboring code looks tempting. Add the next
+  slice as the next commit.
+
+## Entry Template
+
+Each entry below names the intended commit and the exact vertical acceptance
+shape.
+
+- **Commit:** conventional commit subject.
+- **Intent:** why this matters for self-hosting or actor-backed programs.
+- **Frontend:** lexer/parser/AST/checker/typed HIR work.
+- **Lowering/backend/runtime:** RIR/Actor IR/codegen/runtime ABI work.
+- **Fixtures/tests:** expected test additions.
+- **Done when:** acceptance criteria.
+
+## Wave 1: Runtime Value + GC Foundation
+
+### 1. Allow Sequenced Main Actions
+
+- **Commit:** `feat(stage0): allow sequenced main actions`
+- **Intent:** Real programs need to perform more than one effect. The current
+  one-output-expression main rule forces fixture-shaped programs instead of
+  ordinary program-shaped code.
+- **Frontend:** Relax `main` validation so a main block may contain any number
+  of statements and a tail expression. Keep the requirement that executable
+  `main` must either produce output, perform actor actions, or eventually return
+  `unit`.
+- **Lowering/backend/runtime:** Preserve existing block statement order in RIR
+  and LLVM. No runtime ABI change should be required.
+- **Fixtures/tests:** Add a basic fixture with several `dbg`/`println` calls and
+  a final unit tail. Update diagnostics that mention the old one-output
+  restriction.
+- **Done when:** The fixture binary prints all lines in source order, existing
+  actor fixtures still run, and the old diagnostic wording is gone.
+
+### 2. Add Structural RtValue Equality
+
+- **Commit:** `feat(rt): add structural RtValue equality`
+- **Intent:** Pattern matching, maps, sets, compiler data structures, and test
+  assertions all need equality that is not based on rendered strings.
+- **Frontend:** Keep `==` syntax unchanged. In typed HIR, allow equality between
+  matching scalar types and matching boxed value types. Reject obviously mixed
+  types such as `string == i64` unless both sides are unknown.
+- **Lowering/backend/runtime:** Add `riot_rt_value_eq(lhs, rhs) -> bool`.
+  Implement structural equality for `unit`, bools, i64s, pids, strings, tuples,
+  lists, records with same path/field order, and future-proof unsupported heap
+  tags as false. Lower boxed equality through this ABI; keep scalar LLVM equality
+  for unboxed scalars.
+- **Fixtures/tests:** Add fixtures for string equality, tuple equality, list
+  equality, record equality, and mixed-type diagnostics. Add direct runtime unit
+  tests for nested structures.
+- **Done when:** No equality path uses `to_print_string` or rendered output as
+  semantic equality.
+
+### 3. Add RtValue Ordering for I64 and Strings
+
+- **Commit:** `feat(rt): add RtValue ordering for i64 and strings`
+- **Intent:** Compiler code needs comparisons for indexes, lengths, names, and
+  simple ordering decisions.
+- **Frontend:** Keep `<` syntax. Permit `<` for i64 and string operands. Reject
+  boxed tuples/lists/records with a source-backed diagnostic.
+- **Lowering/backend/runtime:** Add `riot_rt_value_lt(lhs, rhs) -> bool` for
+  boxed i64 and string values. Lower boxed `<` through the runtime; keep direct
+  LLVM comparison for unboxed i64.
+- **Fixtures/tests:** Add positive string/i64 comparison fixtures and negative
+  tuple/list/record comparison diagnostics.
+- **Done when:** Boxed string comparison works at runtime and unsupported boxed
+  ordering fails in checking, not during codegen.
+
+### 4. Lower Record Field Access for Runtime Values
+
+- **Commit:** `feat(stage0): lower record field access for runtime values`
+- **Intent:** Records are essential for compiler ASTs and runtime messages. They
+  must be usable after construction, not just printable.
+- **Frontend:** Parse postfix field access as a real expression node rather than
+  overloading dotted paths. Resolve `Module.value` separately from
+  `record.field`.
+- **Lowering/backend/runtime:** Add RIR field access and lower runtime record
+  access through `riot_rt_value_record_get(record, name_ptr, name_len) ->
+  RtValue`. Add a checked failure path for missing runtime fields.
+- **Fixtures/tests:** Add fixtures for `Point { x: 1, y: 2 }.x`, binding a
+  record then reading fields, and a diagnostic for unknown declared fields once
+  declared records exist.
+- **Done when:** Runtime record projection works without static evaluation.
+
+### 5. Add Tuple Projection Support
+
+- **Commit:** `feat(stage0): add tuple projection support`
+- **Intent:** The compiler will use tuples for small intermediate structures
+  long before full ADTs are ergonomic.
+- **Frontend:** Choose explicit syntax for stage0, for example `tuple.0`, and
+  parse it as tuple projection only when the suffix is numeric.
+- **Lowering/backend/runtime:** Add `riot_rt_value_tuple_get(tuple, index) ->
+  RtValue` and optionally `riot_rt_value_tuple_len(tuple) -> usize`. Lower
+  projection through runtime for boxed tuples.
+- **Fixtures/tests:** Add tuple projection fixtures for literals, local
+  bindings, function returns, and nested tuples. Add an out-of-bounds diagnostic
+  when the tuple length is statically known.
+- **Done when:** A function can return a tuple and callers can project fields
+  from the returned runtime value.
+
+### 6. Add List Length and Nth Operations
+
+- **Commit:** `feat(rt): add list length and nth operations`
+- **Intent:** Compiler passes need basic sequence operations before a richer
+  standard library exists.
+- **Frontend:** Expose operations as source-level declarations or injected
+  prelude externals, for example `list_len(xs)` and `list_get(xs, i)`, not as
+  bespoke compiler primitives.
+- **Lowering/backend/runtime:** Add runtime ABI for list length and index. Return
+  an `RtValue` from `list_get`, and decide out-of-bounds behavior as a runtime
+  trap/diagnostic for now.
+- **Fixtures/tests:** Add fixtures for empty length, non-empty length, indexing
+  scalar elements, and indexing boxed elements.
+- **Done when:** Generated code can index a list built at runtime and print the
+  selected value.
+
+### 7. Add String Length and Concat Operations
+
+- **Commit:** `feat(rt): add string length and concat operations`
+- **Intent:** Self-hosted compiler diagnostics and interface rendering need
+  basic string manipulation.
+- **Frontend:** Expose `string_len(s)` and `string_concat(a, b)` via prelude
+  declarations or fixture-level extern declarations. Type them as
+  `string -> i64` and `string -> string -> string`.
+- **Lowering/backend/runtime:** Add runtime ABI for string length and concat.
+  Concat allocates a new runtime string and returns `RtValue`.
+- **Fixtures/tests:** Add literal concat, variable concat, nested concat, and
+  string length fixtures.
+- **Done when:** A runtime-computed string can be concatenated and printed
+  without going through static evaluation.
+
+### 8. Root Live RtValues Across Runtime Calls
+
+- **Commit:** `feat(stage0): root live RtValues across runtime calls`
+- **Intent:** GC cannot become reliable until generated code protects live heap
+  values across allocations and runtime calls.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Teach codegen to push runtime roots for live
+  `RtValue` temporaries around calls that can allocate or collect. Keep the
+  initial implementation conservative; extra root pushes are acceptable.
+- **Fixtures/tests:** Add a fixture that builds nested values across many
+  allocations and prints an early value after later allocations. Add runtime GC
+  unit coverage for root push/pop around nested children.
+- **Done when:** Enabling allocation-pressure GC does not invalidate live
+  generated-code values.
+
+### 9. Store RtValues in Actor Frames
+
+- **Commit:** `feat(stage0): store RtValues in actor frames`
+- **Intent:** Actor-based compiler services will need to preserve boxed state
+  across `receive` suspension.
+- **Frontend:** Permit boxed values in actor local bindings and captures where
+  validation currently permits only scalar slot types.
+- **Lowering/backend/runtime:** Add `Value` to Actor IR slot types, frame layout,
+  load/store logic, and root scanning metadata. Ensure actor frame `RtValue`
+  slots are treated as GC roots while the actor is alive.
+- **Fixtures/tests:** Add an actor fixture that captures a tuple/list/record,
+  receives a message, and prints the captured value after suspension.
+- **Done when:** Actor frames can safely hold boxed values across receive without
+  freeing them during GC.
+
+### 10. Trigger GC From Heap Allocation Pressure
+
+- **Commit:** `feat(rt): trigger GC from heap allocation pressure`
+- **Intent:** The GC scaffold should begin behaving like a runtime service
+  instead of only a test hook.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Add an allocation counter/threshold. Before
+  growing the heap beyond the threshold, collect roots from explicit root stack,
+  mailboxes, and actor frames. Keep the threshold deterministic for tests.
+- **Fixtures/tests:** Add runtime unit tests for threshold-triggered collection
+  and a stage0 fixture that allocates enough values to trigger collection.
+- **Done when:** Runtime collection occurs automatically under allocation
+  pressure without breaking existing fixtures.
+
+## Wave 2: Blocks, Locals, and Name Resolution
+
+### 11. Make Block Expressions First-Class
+
+- **Commit:** `feat(stage0): make block expressions first-class`
+- **Intent:** Compiler code needs scoped helper bindings inside expressions,
+  especially in branches and future match arms.
+- **Frontend:** Parse `{ ... }` as an expression in expression positions. Type a
+  block by its tail expression or `unit` when no tail exists.
+- **Lowering/backend/runtime:** Add HIR/RIR block expression nodes or lower them
+  into scoped statement sequences. Codegen must preserve evaluation order and
+  local scope.
+- **Fixtures/tests:** Add nested block fixtures in `let`, `if`, function return,
+  and output positions.
+- **Done when:** A function can return a value computed in a nested block with
+  local bindings.
+
+### 12. Add Assignment-Free Shadowing Diagnostics
+
+- **Commit:** `feat(stage0): add assignment-free shadowing diagnostics`
+- **Intent:** The language needs one clear local-binding policy before the
+  resolver grows more complex.
+- **Frontend:** Decide for stage0 that duplicate names in the same block are
+  rejected, while nested blocks may shadow outer names. Apply the same rule to
+  actor blocks.
+- **Lowering/backend/runtime:** Ensure HIR/RIR scopes distinguish shadowed names
+  without accidental capture.
+- **Fixtures/tests:** Add diagnostics for same-block duplicates and positives
+  for nested-block shadowing.
+- **Done when:** Normal and actor blocks report duplicate bindings consistently.
+
+### 13. Implement Resolver Symbol Tables
+
+- **Commit:** `feat(stage0): implement resolver symbol tables`
+- **Intent:** Self-hosting needs predictable name resolution independent of
+  backend fallback behavior.
+- **Frontend:** Add a resolver pass before typing. Build symbol tables for
+  locals, params, functions, externals, and imported module exports. Resolve
+  paths into explicit HIR references.
+- **Lowering/backend/runtime:** RIR and codegen should consume resolved names or
+  symbols rather than re-deciding path meaning.
+- **Fixtures/tests:** Add unknown local, unknown function, unknown module member,
+  and local-shadowing-module diagnostics.
+- **Done when:** Unknown identifiers cannot reach codegen.
+
+### 14. Check Function Call Arity in Resolver
+
+- **Commit:** `feat(stage0): check function call arity in resolver`
+- **Intent:** Bad calls should fail at the semantic boundary with source spans.
+- **Frontend:** Validate argument counts for local functions, externals, prelude
+  declarations, and imported `.rsig` exports.
+- **Lowering/backend/runtime:** Remove backend arity checks that are now
+  unreachable or keep them as defensive errors only.
+- **Fixtures/tests:** Add wrong-arity diagnostics for local, external, imported,
+  and prelude calls.
+- **Done when:** Wrong arity fails before RIR/codegen.
+
+### 15. Check Function Argument Types
+
+- **Commit:** `feat(stage0): check function argument types`
+- **Intent:** The typed interface model only becomes useful once calls are
+  checked against it.
+- **Frontend:** Validate call arguments against local annotations, inferred
+  function types, extern declarations, and imported `.rsig` types.
+- **Lowering/backend/runtime:** Preserve checked argument types into RIR so
+  codegen does not infer ABI from expression shape alone.
+- **Fixtures/tests:** Add diagnostics for scalar mismatch, boxed mismatch,
+  imported mismatch, and external mismatch.
+- **Done when:** Calling `fn inc(x: i64)` with a string fails in type checking.
+
+### 16. Infer Unannotated Local Binding Types
+
+- **Commit:** `feat(stage0): infer unannotated local binding types`
+- **Intent:** Compiler code should not need annotations on every local binding.
+- **Frontend:** Infer local `let` binding types for literals, calls, tuples,
+  lists, records, `if`, `spawn`, and `receive` where currently supported.
+- **Lowering/backend/runtime:** Store inferred types in HIR and carry them into
+  RIR locals for ABI decisions.
+- **Fixtures/tests:** Add typed snapshot fixtures showing inferred local types.
+- **Done when:** `emit typed` displays concrete local types for ordinary
+  unannotated bindings.
+
+### 17. Infer Unannotated Function Result Types
+
+- **Commit:** `feat(stage0): infer unannotated function result types`
+- **Intent:** Small compiler helpers should not all require return annotations.
+- **Frontend:** Infer function result types from typed bodies when all returns
+  are concrete. Keep explicit annotations authoritative and checked.
+- **Lowering/backend/runtime:** Emit inferred results into `.rsig` for exported
+  functions.
+- **Fixtures/tests:** Add `.rsig` snapshots for unannotated scalar and boxed
+  function results.
+- **Done when:** `fn answer() { 42 }` exports `i64`, not `_`.
+
+### 18. Reject Unsupported Mixed Branch Types
+
+- **Commit:** `feat(stage0): reject unsupported mixed branch types`
+- **Intent:** Unknown ABI fallback hides real type errors and weakens generated
+  interfaces.
+- **Frontend:** Type `if` by unifying branch types. Reject incompatible concrete
+  branch types with a source-backed diagnostic.
+- **Lowering/backend/runtime:** Remove codegen fallback paths that static-eval
+  mixed branches to avoid typing.
+- **Fixtures/tests:** Add diagnostics for `if cond { 1 } else { "x" }` and
+  positives for matching boxed branch types.
+- **Done when:** Mixed concrete branches fail before codegen.
+
+### 19. Snapshot Resolved Typed HIR
+
+- **Commit:** `feat(stage0): snapshot resolved typed HIR`
+- **Intent:** Typed HIR should be a reliable compiler boundary, not a debug dump.
+- **Frontend:** Make `emit typed` show resolved local/function/external/import
+  references, types, and symbols in a stable format.
+- **Lowering/backend/runtime:** No runtime change. Keep RIR lowering consuming
+  the same HIR values.
+- **Fixtures/tests:** Update focused typed snapshots and avoid noisy formatting
+  churn.
+- **Done when:** A reviewer can inspect `emit typed` and understand what each
+  name resolved to.
+
+### 20. Preserve Spans Through Typed HIR
+
+- **Commit:** `feat(stage0): preserve spans through typed HIR`
+- **Intent:** Later errors from match lowering, type checking, or codegen should
+  still point at source expressions.
+- **Frontend:** Add spans to typed expressions, statements, params, and relevant
+  type nodes.
+- **Lowering/backend/runtime:** Carry spans into RIR where diagnostics can still
+  happen after lowering.
+- **Fixtures/tests:** Add a diagnostic that is detected after HIR construction
+  and verifies the reported span.
+- **Done when:** Semantic errors from post-parse passes no longer need to use
+  broad block spans.
+
+## Wave 3: Data Types and Pattern Matching
+
+### 21. Parse Record Type Declarations
+
+- **Commit:** `feat(stage0): parse record type declarations`
+- **Intent:** Compiler ASTs and IRs need named records with known fields.
+- **Frontend:** Add top-level record type declarations such as
+  `type point = { x: i64, y: i64 }`. Store declared type names and fields in
+  AST/HIR.
+- **Lowering/backend/runtime:** Add record type entries to `.rsig`; no codegen
+  change is required until construction checking uses declarations.
+- **Fixtures/tests:** Add CST, typed, and `.rsig` snapshots for exported record
+  types.
+- **Done when:** `emit rsig` includes declared record shape information.
+
+### 22. Construct Declared Record Values
+
+- **Commit:** `feat(stage0): construct declared record values`
+- **Intent:** Named records should be checked data, not just arbitrary runtime
+  maps.
+- **Frontend:** Resolve record literal paths to declared record types where
+  possible. Assign the declared record type to the expression.
+- **Lowering/backend/runtime:** Continue lowering to RtValue records, but use
+  declared field order for stable layout/rendering.
+- **Fixtures/tests:** Add fixtures constructing declared records locally and
+  across module boundaries.
+- **Done when:** Declared record construction type-checks and exports/imports
+  through `.rsig`.
+
+### 23. Validate Record Field Shapes
+
+- **Commit:** `feat(stage0): validate record field shapes`
+- **Intent:** Record mistakes should be caught before runtime.
+- **Frontend:** Diagnose missing fields, duplicate fields, unknown fields, and
+  field type mismatches for declared records.
+- **Lowering/backend/runtime:** No runtime change unless field order metadata is
+  needed for stable lowering.
+- **Fixtures/tests:** Add diagnostics for each invalid record shape.
+- **Done when:** Bad declared record literals fail in checking with field spans.
+
+### 24. Parse Variant Type Declarations
+
+- **Commit:** `feat(stage0): parse variant type declarations`
+- **Intent:** Variants are required for ASTs, options/results, compiler errors,
+  and actor messages.
+- **Frontend:** Add top-level variant declarations with nullary constructors,
+  for example `type color = Red | Green | Blue`.
+- **Lowering/backend/runtime:** Add variant type and constructor metadata to
+  `.rsig`.
+- **Fixtures/tests:** Add CST, typed, and `.rsig` snapshots for simple variants.
+- **Done when:** Imported modules can expose variant constructor names through
+  `.rsig`.
+
+### 25. Represent Variants as RtValues
+
+- **Commit:** `feat(rt): represent variants as RtValues`
+- **Intent:** Variants need a runtime representation before match and messages
+  can use them.
+- **Frontend:** Type nullary constructors as values of their declared variant
+  type.
+- **Lowering/backend/runtime:** Add runtime variant heap objects with type path,
+  constructor tag/name, and optional payload placeholder. Lower nullary
+  constructors through a new runtime ABI.
+- **Fixtures/tests:** Add fixtures constructing and printing nullary variants.
+- **Done when:** A nullary variant can be returned from a function and printed.
+
+### 26. Add Variant Constructors With Payloads
+
+- **Commit:** `feat(stage0): add variant constructors with payloads`
+- **Intent:** Real compiler data needs payload-bearing variants.
+- **Frontend:** Parse constructors with single or tuple payload types. Type
+  constructor calls against the declared payload.
+- **Lowering/backend/runtime:** Extend runtime variant allocation to store a
+  payload `RtValue`, using `unit` for nullary constructors.
+- **Fixtures/tests:** Add fixtures for `Some(1)`, error-like variants, nested
+  payloads, and payload type mismatch diagnostics.
+- **Done when:** Payload variants flow through functions and `.rsig`.
+
+### 27. Parse Match Expressions
+
+- **Commit:** `feat(stage0): parse match expressions`
+- **Intent:** Match is the central control-flow feature for compiler code.
+- **Frontend:** Add `match expr { pattern -> expr, ... }` syntax, AST patterns,
+  typed HIR match nodes, and basic branch result typing.
+- **Lowering/backend/runtime:** Add RIR match nodes or lower simple matches to
+  nested conditionals in RIR.
+- **Fixtures/tests:** Add CST/typed/RIR snapshots for match on ints, bools, and
+  variants.
+- **Done when:** `emit typed` and `emit ir` preserve match structure clearly.
+
+### 28. Lower Literal Match Patterns
+
+- **Commit:** `feat(stage0): lower literal match patterns`
+- **Intent:** Literal matching is the smallest executable match slice.
+- **Frontend:** Type-check literal patterns against the scrutinee type and bind
+  no names.
+- **Lowering/backend/runtime:** Lower scalar literals to LLVM comparisons and
+  string literals to runtime equality.
+- **Fixtures/tests:** Add runtime fixtures for int, bool, string, and unit
+  matches, plus a no-arm-matched diagnostic or runtime trap policy.
+- **Done when:** Literal `match` executes in native generated code.
+
+### 29. Lower Tuple and Record Patterns
+
+- **Commit:** `feat(stage0): lower tuple and record patterns`
+- **Intent:** Destructuring is needed to make tuples/records practical in
+  compiler passes.
+- **Frontend:** Add tuple and record patterns with binder names. Check tuple
+  arity and record field names/types.
+- **Lowering/backend/runtime:** Lower destructuring through runtime tuple/record
+  projection and bind extracted values in the arm scope.
+- **Fixtures/tests:** Add fixtures destructuring function returns and nested
+  values.
+- **Done when:** A match arm can bind fields and use them in its body.
+
+### 30. Lower Variant Constructor Patterns
+
+- **Commit:** `feat(stage0): lower variant constructor patterns`
+- **Intent:** Variants become useful only when matches can inspect them.
+- **Frontend:** Resolve constructor patterns to declared constructors. Check
+  payload pattern shape.
+- **Lowering/backend/runtime:** Add runtime ABI for variant tag test and payload
+  extraction. Lower constructor patterns through those operations.
+- **Fixtures/tests:** Add fixtures for `Some(x)`, error/result-style matches,
+  and wrong-constructor diagnostics.
+- **Done when:** Constructor matches bind payloads and execute in native code.
+
+## Wave 4: Actor Runtime Semantics
+
+### 31. Support Multi-Arm Receive
+
+- **Commit:** `feat(stage0): support multi-arm receive`
+- **Intent:** Actors need to react to more than one message shape.
+- **Frontend:** Parse `receive { p1 -> e1, p2 -> e2 }`. Represent receive arms
+  with patterns in AST/HIR/RIR.
+- **Lowering/backend/runtime:** Extend Actor IR receive states to include ordered
+  arm tests. Keep the first implementation matching only against the current
+  mailbox candidate.
+- **Fixtures/tests:** Add actor fixtures for two literal arms and typed snapshots
+  for receive arm structure.
+- **Done when:** An actor can receive different messages and choose different
+  branches.
+
+### 32. Add Mailbox Cursor Receive Scanning
+
+- **Commit:** `feat(rt): add mailbox cursor receive scanning`
+- **Intent:** Selective receive must not drop or block forever on unmatched
+  earlier messages.
+- **Frontend:** No syntax change beyond multi-arm receive.
+- **Lowering/backend/runtime:** Change runtime mailbox handling to let generated
+  code accept or skip a candidate. Preserve unmatched messages and consume only
+  the selected one.
+- **Fixtures/tests:** Add actor fixture sending unmatched then matched messages
+  and verifying the unmatched message remains available.
+- **Done when:** Selective receive semantics are observable and deterministic.
+
+### 33. Lower Receive Literal Patterns
+
+- **Commit:** `feat(stage0): lower receive literal patterns`
+- **Intent:** Actors need typed message dispatch for simple protocols.
+- **Frontend:** Type receive literal patterns against the actor message value.
+- **Lowering/backend/runtime:** Lower literal tests using scalar comparison or
+  runtime value equality against the candidate message.
+- **Fixtures/tests:** Add receive fixtures for int, bool, string, and unit
+  messages.
+- **Done when:** Literal receive arms execute through Actor IR, not checker
+  simulation.
+
+### 34. Lower Receive Tuple and Variant Patterns
+
+- **Commit:** `feat(stage0): lower receive tuple and variant patterns`
+- **Intent:** Compiler actors will pass structured work items, not only strings.
+- **Frontend:** Allow tuple and variant patterns in receive arms. Bind payload
+  names in arm bodies.
+- **Lowering/backend/runtime:** Reuse runtime tuple/variant projection and tag
+  tests inside actor resume functions.
+- **Fixtures/tests:** Add actor fixtures for tuple work items and result/error
+  variants.
+- **Done when:** Actors can destructure structured messages after suspension.
+
+### 35. Send Structured Down Messages for Monitors
+
+- **Commit:** `feat(rt): send structured down messages for monitors`
+- **Intent:** Monitors must be actor semantics, not stdout side effects.
+- **Frontend:** Keep `monitor(pid)` surface unchanged for now.
+- **Lowering/backend/runtime:** Track watcher pid relationships. On target
+  termination, enqueue a structured down message to watchers instead of printing
+  `down {pid}`.
+- **Fixtures/tests:** Update monitor fixtures so watcher actors receive and print
+  down messages explicitly.
+- **Done when:** Runtime shutdown no longer prints monitor notifications itself.
+
+### 36. Implement Link Failure Propagation
+
+- **Commit:** `feat(rt): implement link failure propagation`
+- **Intent:** Linked actors need predictable failure behavior before supervisors
+  can be written.
+- **Frontend:** Keep `link(pid)` surface unchanged.
+- **Lowering/backend/runtime:** Track bidirectional links. Define stage0 link
+  semantics as linked termination propagation using structured exit messages or
+  direct termination, and document the choice in `compiler/rt/AGENTS.md` if it
+  becomes runtime contract.
+- **Fixtures/tests:** Add linked actor termination fixture and direct runtime
+  unit tests.
+- **Done when:** Link behavior is deterministic and no longer a boolean stub.
+
+### 37. Add Scheduler Run Budget
+
+- **Commit:** `feat(rt): add scheduler run budget`
+- **Intent:** The compiler actor runtime should not let one actor monopolize the
+  scheduler.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Add a per-schedule-pass budget or per-actor poll
+  budget. Treat `POLL_YIELD` as progress that rotates scheduling.
+- **Fixtures/tests:** Add deterministic actor fixture showing interleaving under
+  repeated sends or local progress states.
+- **Done when:** Round-robin behavior is enforced by runtime policy, not only by
+  fixture shape.
+
+### 38. Insert Loop Safepoints
+
+- **Commit:** `feat(stage0): insert loop safepoints`
+- **Intent:** Once loops exist, actors and long-running functions need compiler
+  safepoints to keep scheduling honest.
+- **Frontend:** Depends on loop syntax. No standalone syntax change.
+- **Lowering/backend/runtime:** Emit runtime poll calls or Actor IR yield states
+  on loop backedges. In non-actor functions, make the safepoint cheap and
+  deterministic.
+- **Fixtures/tests:** Add a long-loop actor fixture that still lets another
+  actor run.
+- **Done when:** Long loops cannot starve the single-threaded scheduler.
+
+### 39. Add Timer Messages for Receive Timeouts
+
+- **Commit:** `feat(rt): add timer messages for receive timeouts`
+- **Intent:** Compiler services often need request timeouts and watchdogs.
+- **Frontend:** Add minimal receive timeout syntax only if the grammar decision
+  is already clear; otherwise expose a runtime `send_after(pid, ms, msg)` helper
+  first.
+- **Lowering/backend/runtime:** Add timer queue support to the scheduler and
+  enqueue timeout messages deterministically.
+- **Fixtures/tests:** Add an actor fixture that receives a timer message after no
+  normal message arrives.
+- **Done when:** Timeout behavior is tested without relying on flaky wall-clock
+  sleeps.
+
+### 40. Expose Actor Message Types in Rsig
+
+- **Commit:** `feat(stage0): expose actor message types in rsig`
+- **Intent:** Imported actor APIs need typed message contracts.
+- **Frontend:** Track actor-returning functions and message payload types where
+  annotations make them knowable.
+- **Lowering/backend/runtime:** Extend `.rsig` with actor/message summaries and
+  bump the binary format version.
+- **Fixtures/tests:** Add `.rsig` roundtrip tests and import diagnostics for
+  sending the wrong message type to an imported actor pid.
+- **Done when:** A downstream module can type-check sends to imported actors.
+
+## Wave 5: Control Flow and Self-Hosting Structure
+
+### 41. Parse While Loops
+
+- **Commit:** `feat(stage0): parse while loops`
+- **Intent:** Self-hosted compiler code will need straightforward iterative
+  loops before all recursion and higher-order helpers are mature.
+- **Frontend:** Add `while condition { ... }` as an expression or statement with
+  `unit` type. Check condition is bool.
+- **Lowering/backend/runtime:** Lower to RIR loop blocks and LLVM branches. Add
+  safepoints on backedges when the safepoint ABI exists.
+- **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
+- **Done when:** A native binary can run a while loop and print the accumulated
+  result.
+
+### 42. Support Recursive Functions
+
+- **Commit:** `feat(stage0): support recursive functions`
+- **Intent:** Recursion is essential for parsers, tree walks, and list
+  processing.
+- **Frontend:** Resolve a function name inside its own body. Require explicit
+  result annotations initially if inference is ambiguous.
+- **Lowering/backend/runtime:** Ensure function declarations are emitted before
+  bodies and recursive calls lower to the declared symbol.
+- **Fixtures/tests:** Add factorial/fibonacci/list-length recursion fixtures.
+- **Done when:** A recursive function compiles to native code without relying on
+  static evaluation.
+
+### 43. Support Mutual Recursion Groups
+
+- **Commit:** `feat(stage0): support mutual recursion groups`
+- **Intent:** Real compiler modules often use mutually recursive helpers.
+- **Frontend:** Resolve all top-level function declarations before checking any
+  body. Detect cycles that lack enough annotation to type-check.
+- **Lowering/backend/runtime:** Declare all local LLVM functions before defining
+  them, preserving existing object export behavior.
+- **Fixtures/tests:** Add even/odd mutual recursion fixture and arity/type
+  diagnostics across the group.
+- **Done when:** Mutually recursive top-level functions compile and run.
+
+### 44. Add Non-Capturing Lambdas
+
+- **Commit:** `feat(stage0): add non-capturing lambdas`
+- **Intent:** Higher-order compiler utilities can start with the simplest lambda
+  shape.
+- **Frontend:** Parse `fn (x: T) { expr }` or the agreed lambda syntax. Reject
+  captures in this first slice with a clear diagnostic.
+- **Lowering/backend/runtime:** Lower non-capturing lambdas to private functions
+  or function-value handles, whichever fits current call lowering best.
+- **Fixtures/tests:** Add passing lambda-as-argument fixture and capture
+  rejection diagnostic.
+- **Done when:** A non-capturing lambda can be passed to a known higher-order
+  helper or called directly if direct-call syntax is implemented.
+
+### 45. Add Captured Closures
+
+- **Commit:** `feat(stage0): add captured closures`
+- **Intent:** Compiler code needs callbacks and local helpers that close over
+  context.
+- **Frontend:** Permit lambda captures, compute capture sets, and type closure
+  values.
+- **Lowering/backend/runtime:** Represent closures as RtValues containing a
+  function pointer plus environment tuple/record. Add runtime/codegen support for
+  indirect closure calls.
+- **Fixtures/tests:** Add closure fixtures for captured scalars, captured boxed
+  values, and closure returned from a function.
+- **Done when:** Captured closures survive allocation and call correctly.
+
+### 46. Add Typed Multi-Module Linking Fixtures
+
+- **Commit:** `feat(stage0): add typed multi-module linking fixtures`
+- **Intent:** Interface-first compilation is central to self-hosting.
+- **Frontend:** No new syntax. Strengthen use/import validation across several
+  modules.
+- **Lowering/backend/runtime:** Expand `compile-lib` and executable linking
+  fixtures to compile multiple module objects and link them explicitly.
+- **Fixtures/tests:** Add a three-module fixture: shared types, helper
+  functions, executable main.
+- **Done when:** A binary can call through two imported modules with typed
+  `.rsig` interfaces and object files.
+
+### 47. Add Per-Export Rsig Fingerprints
+
+- **Commit:** `feat(stage0): add per-export rsig fingerprints`
+- **Intent:** Fine-grained dependency invalidation needs stable export identity.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Store fingerprints per exported function,
+  external, type, constructor, and actor summary. Bump `.rsig` if the binary
+  shape changes.
+- **Fixtures/tests:** Add roundtrip tests proving stable fingerprints under
+  reorder and changed fingerprints under type changes.
+- **Done when:** `emit all` or canonical signature text shows per-export
+  fingerprints deterministically.
+
+### 48. Add Dependency Metadata to Rsig
+
+- **Commit:** `feat(stage0): add dependency metadata to rsig`
+- **Intent:** Build planning needs to know which interfaces a module was checked
+  against.
+- **Frontend:** Record `use`d modules during checking, including resolved
+  signature paths and module fingerprints.
+- **Lowering/backend/runtime:** Encode dependency metadata in `.rsig` and expose
+  it in canonical text.
+- **Fixtures/tests:** Add fixtures for one and multiple dependencies, plus a
+  binary roundtrip test.
+- **Done when:** A module `.rsig` says which imported module fingerprints it
+  depended on.
+
+### 49. Emit Deterministic Interface Text
+
+- **Commit:** `feat(stage0): emit deterministic interface text`
+- **Intent:** Binary `.rsig` should stay primary, but humans and tests need a
+  stable textual view.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Make `emit all` include deterministic interface
+  text for module name, dependencies, exports, types, fingerprints, and actor
+  summaries.
+- **Fixtures/tests:** Add snapshot coverage for the text form and ensure it is
+  stable across repeated runs.
+- **Done when:** Reviewers can inspect interface changes without decoding binary
+  manually.
+
+### 50. Add Compiler-Shaped Smoke Fixture
+
+- **Commit:** `feat(stage0): add compiler-shaped smoke fixture`
+- **Intent:** The roadmap needs a capstone proving Stage0 can express a small
+  compiler-like program.
+- **Frontend:** Use only features implemented by prior slices: modules, records,
+  variants, match, functions, loops/recursion, actor send/receive, and runtime
+  values.
+- **Lowering/backend/runtime:** Compile the fixture through normal native
+  codegen and actor runtime. Do not special-case it.
+- **Fixtures/tests:** Add a multi-module fixture that tokenizes or classifies a
+  small hardcoded source string, sends work to an actor, receives a structured
+  result, and prints a deterministic summary.
+- **Done when:** The fixture passes as a normal stage0 integration test and acts
+  as the first “can write compiler-shaped code” milestone.
+
+## Documentation Slice Acceptance
+
+This document itself is a documentation-only slice.
+
+- **Commit:** `docs(compiler): add stage0 vertical roadmap`
+- **Validation:** Run `git diff --check -- compiler/PLAN.md`.
+- **Commit scope:** Stage only `compiler/PLAN.md`; leave unrelated dirty work
+  untouched.
