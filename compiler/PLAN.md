@@ -126,6 +126,8 @@ shape.
   fixtures prove boxed equality emits calls to `riot_rt_value_eq` in LLVM and
   produces expected stdout.
 
+<!-- autoresearch:step-2:done -->
+
 ### 3. Add RtValue Ordering for I64 and Strings
 
 - **Commit:** `feat(rt): add RtValue ordering for i64 and strings`

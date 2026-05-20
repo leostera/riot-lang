@@ -416,10 +416,14 @@ impl<'ctx> Codegen<'ctx, '_> {
                             .build_int_compare(IntPredicate::EQ, lhs, rhs, "eqtmp")
                             .map_err(|error| miette::miette!("failed to emit equality: {error}"))?,
                     )),
-                    _ => self
-                        .static_eval(expr, &env.statics)
-                        .map(CgValue::Static)
-                        .ok_or_else(|| miette::miette!("unsupported equality expression")),
+                    (lhs, rhs) => {
+                        let lhs = self.value_as_runtime(lhs)?;
+                        let rhs = self.value_as_runtime(rhs)?;
+                        Ok(CgValue::Bool(self.call_runtime_value(
+                            "riot_rt_value_eq",
+                            &[lhs.into(), rhs.into()],
+                        )?))
+                    }
                 }
             }
             RirExpr::Lt(lhs, rhs) => {
@@ -1524,11 +1528,10 @@ impl<'ctx> Codegen<'ctx, '_> {
             CgValue::Pid(value) => {
                 self.call_runtime_value("riot_rt_value_pid", &[value.into()])
             }
-            CgValue::Static(value) => {
-                let rendered = value.to_print_string();
-                let (ptr, len) = self.string_literal(&rendered)?;
-                self.call_runtime_value("riot_rt_value_string", &[ptr.into(), len.into()])
-            }
+            CgValue::Static(value) => match self.emit_static_value(value)? {
+                CgValue::Value(value) => Ok(value),
+                other => self.value_as_runtime(other),
+            },
             CgValue::Unit => self.call_runtime_value("riot_rt_value_unit", &[]),
             CgValue::Message(_) => bail!("actor message cannot be converted to RtValue directly"),
         }
@@ -1682,6 +1685,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             ),
             "riot_rt_value_bytes_ptr" => ptr_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_len" => i64_type.fn_type(&[i64_type.into()], false),
+            "riot_rt_value_eq" => bool_type.fn_type(&[i64_type.into(), i64_type.into()], false),
             "riot_rt_send" => {
                 void_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }

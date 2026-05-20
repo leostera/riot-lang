@@ -32,3 +32,4 @@ Implement every vertical slice in `compiler/PLAN.md` in order, working on `main`
 ## What's Been Tried
 - Session initialized on `main`; branch creation was undone by switching back to `main` before implementation.
 - Step 1 implemented: removed the one-output-expression restriction for `main`, moved the old two-statement diagnostic into a positive `programs/basic/sequenced_main.ml` fixture with ordered stdout, and validated the fixture suite. Runtime tests can be order-sensitive under parallel execution because of global runtime state; prefer `-- --test-threads=1` for harness checks.
+- Step 2 implemented: added `riot_rt_value_eq` structural equality for scalars, strings, tuples, lists, and records; codegen now lowers non-scalar equality through the runtime ABI and preserves scalar LLVM equality. Added nested runtime unit coverage plus stage0 fixtures for string/tuple/list/record equality and a string-vs-i64 diagnostic.

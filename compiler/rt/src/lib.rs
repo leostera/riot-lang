@@ -416,6 +416,63 @@ impl Runtime {
         }
     }
 
+    fn values_equal(&self, lhs: RtValue, rhs: RtValue) -> bool {
+        match (value_tag(lhs), value_tag(rhs)) {
+            (VALUE_I64_TAG, VALUE_I64_TAG) => value_i64_payload(lhs) == value_i64_payload(rhs),
+            (VALUE_BOOL_FALSE, VALUE_BOOL_FALSE) | (VALUE_BOOL_TRUE, VALUE_BOOL_TRUE) => true,
+            (VALUE_UNIT, VALUE_UNIT) => true,
+            (VALUE_PID_TAG, VALUE_PID_TAG) => value_pid_payload(lhs) == value_pid_payload(rhs),
+            (VALUE_HEAP_TAG, VALUE_HEAP_TAG) => self.heap_values_equal(lhs, rhs),
+            _ => false,
+        }
+    }
+
+    fn heap_values_equal(&self, lhs: RtValue, rhs: RtValue) -> bool {
+        let Some(lhs_index) = heap_index(lhs) else {
+            return false;
+        };
+        let Some(rhs_index) = heap_index(rhs) else {
+            return false;
+        };
+        let Some(lhs_object) = self.heap.get(lhs_index).and_then(Option::as_ref) else {
+            return false;
+        };
+        let Some(rhs_object) = self.heap.get(rhs_index).and_then(Option::as_ref) else {
+            return false;
+        };
+
+        match (&lhs_object.kind, &rhs_object.kind) {
+            (HeapObjectKind::String(lhs), HeapObjectKind::String(rhs)) => lhs == rhs,
+            (HeapObjectKind::Tuple(lhs), HeapObjectKind::Tuple(rhs))
+            | (HeapObjectKind::List(lhs), HeapObjectKind::List(rhs)) => {
+                lhs.len() == rhs.len()
+                    && lhs
+                        .iter()
+                        .zip(rhs.iter())
+                        .all(|(lhs, rhs)| self.values_equal(*lhs, *rhs))
+            }
+            (
+                HeapObjectKind::Record {
+                    path: lhs_path,
+                    fields: lhs_fields,
+                },
+                HeapObjectKind::Record {
+                    path: rhs_path,
+                    fields: rhs_fields,
+                },
+            ) => {
+                lhs_path == rhs_path
+                    && lhs_fields.len() == rhs_fields.len()
+                    && lhs_fields.iter().zip(rhs_fields.iter()).all(
+                        |((lhs_name, lhs_value), (rhs_name, rhs_value))| {
+                            lhs_name == rhs_name && self.values_equal(*lhs_value, *rhs_value)
+                        },
+                    )
+            }
+            _ => false,
+        }
+    }
+
     fn schedule_until_quiescent(&mut self) {
         loop {
             let mut made_progress = false;
@@ -647,6 +704,11 @@ pub extern "C" fn riot_rt_value_bytes_ptr(value: RtValue) -> *const u8 {
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_bytes_len(value: RtValue) -> usize {
     with_runtime_mut(|runtime| runtime.value_bytes(value).map_or(0, <[u8]>::len)).unwrap_or(0)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_eq(lhs: RtValue, rhs: RtValue) -> bool {
+    with_runtime_mut(|runtime| runtime.values_equal(lhs, rhs)).unwrap_or(false)
 }
 
 #[unsafe(no_mangle)]
@@ -1024,6 +1086,49 @@ mod tests {
         riot_rt_root_pop(1);
         assert_eq!(riot_rt_gc_collect(), 1);
         assert_eq!(riot_rt_gc_heap_len(), 0);
+    }
+
+    #[test]
+    fn value_equality_handles_nested_runtime_values() {
+        riot_rt_init();
+
+        assert!(riot_rt_value_eq(riot_rt_value_unit(), riot_rt_value_unit()));
+        assert!(riot_rt_value_eq(riot_rt_value_bool(true), riot_rt_value_bool(true)));
+        assert!(!riot_rt_value_eq(riot_rt_value_bool(true), riot_rt_value_bool(false)));
+        assert!(riot_rt_value_eq(riot_rt_value_i64(42), riot_rt_value_i64(42)));
+        assert!(!riot_rt_value_eq(riot_rt_value_i64(42), riot_rt_value_i64(7)));
+
+        let lhs_label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
+        let rhs_label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
+        let other_label = unsafe { riot_rt_value_string(b"stage0".as_ptr(), 6) };
+        assert!(riot_rt_value_eq(lhs_label, rhs_label));
+        assert!(!riot_rt_value_eq(lhs_label, other_label));
+
+        let lhs_items = [lhs_label, riot_rt_value_i64(1)];
+        let rhs_items = [rhs_label, riot_rt_value_i64(1)];
+        let other_items = [rhs_label, riot_rt_value_i64(2)];
+        let lhs_tuple = unsafe { riot_rt_value_tuple(lhs_items.as_ptr(), lhs_items.len()) };
+        let rhs_tuple = unsafe { riot_rt_value_tuple(rhs_items.as_ptr(), rhs_items.len()) };
+        let other_tuple = unsafe { riot_rt_value_tuple(other_items.as_ptr(), other_items.len()) };
+        assert!(riot_rt_value_eq(lhs_tuple, rhs_tuple));
+        assert!(!riot_rt_value_eq(lhs_tuple, other_tuple));
+
+        let lhs_list_items = [lhs_tuple, riot_rt_value_bool(false)];
+        let rhs_list_items = [rhs_tuple, riot_rt_value_bool(false)];
+        let lhs_list = unsafe { riot_rt_value_list(lhs_list_items.as_ptr(), lhs_list_items.len()) };
+        let rhs_list = unsafe { riot_rt_value_list(rhs_list_items.as_ptr(), rhs_list_items.len()) };
+        assert!(riot_rt_value_eq(lhs_list, rhs_list));
+
+        let lhs_record = unsafe { riot_rt_value_record_begin(b"Box".as_ptr(), 3, 2) };
+        let rhs_record = unsafe { riot_rt_value_record_begin(b"Box".as_ptr(), 3, 2) };
+        unsafe {
+            riot_rt_value_record_set(lhs_record, 0, b"items".as_ptr(), 5, lhs_list);
+            riot_rt_value_record_set(lhs_record, 1, b"ok".as_ptr(), 2, riot_rt_value_bool(true));
+            riot_rt_value_record_set(rhs_record, 0, b"items".as_ptr(), 5, rhs_list);
+            riot_rt_value_record_set(rhs_record, 1, b"ok".as_ptr(), 2, riot_rt_value_bool(true));
+        }
+        assert!(riot_rt_value_eq(lhs_record, rhs_record));
+        assert!(!riot_rt_value_eq(lhs_record, lhs_list));
     }
 
     #[test]
