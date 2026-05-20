@@ -5,6 +5,7 @@ mod codegen;
 mod command;
 mod diagnostic;
 mod driver;
+mod infer;
 mod ir;
 mod lexer;
 mod linker;
