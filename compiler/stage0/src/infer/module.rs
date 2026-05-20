@@ -204,30 +204,35 @@ fn infer_decl(state: &mut State, decl: &AstDecl) -> Result<(), InferError> {
 }
 
 fn infer_function(state: &mut State, function: &AstFnDecl) -> Result<Type, InferError> {
-    state.push_scope();
     let params = function
         .params
         .iter()
         .enumerate()
-        .map(|(index, param)| {
+        .map(|(index, _param)| {
             let type_ = function
                 .param_types
                 .get(index)
                 .and_then(|annotation| annotation.as_ref())
                 .map(|annotation| rsig_type_to_infer_type(&parse_type(&annotation.text), state))
                 .unwrap_or_else(|| state.fresh_var());
-            state.add_value(param.clone(), state.monomorphic(type_.clone()));
             type_
         })
         .collect::<Vec<_>>();
+    let result_constraint = function
+        .return_type
+        .as_ref()
+        .map(|annotation| rsig_type_to_infer_type(&parse_type(&annotation.text), state))
+        .unwrap_or_else(|| state.fresh_var());
+    let self_type = source_function_type(params.clone(), result_constraint.clone());
+
+    state.push_scope();
+    state.add_value(function.name.clone(), state.monomorphic(self_type));
+    for (param, type_) in function.params.iter().zip(&params) {
+        state.add_value(param.clone(), state.monomorphic(type_.clone()));
+    }
     let result = infer_block(state, &function.body)?;
-    let result = if let Some(annotation) = &function.return_type {
-        let expected = rsig_type_to_infer_type(&parse_type(&annotation.text), state);
-        state.unify(&expected, &result)?;
-        expected
-    } else {
-        result
-    };
+    state.unify(&result_constraint, &result)?;
+    let result = state.resolve(&result_constraint);
     state.pop_scope();
     Ok(source_function_type(params, state.resolve(&result)))
 }
@@ -293,8 +298,19 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
         }
         AstExpr::Neg { expr, .. } => {
             let actual = infer_expr(state, expr)?;
-            state.unify(&Type::I64, &actual)?;
-            Ok(Type::I64)
+            match state.resolve(&actual) {
+                Type::I64 => Ok(Type::I64),
+                Type::F64 => Ok(Type::F64),
+                Type::Var(_) => {
+                    state.unify(&Type::I64, &actual)?;
+                    Ok(Type::I64)
+                }
+                actual => Err(UnifyError::TypeMismatch {
+                    lhs: Type::I64,
+                    rhs: actual,
+                }
+                .into()),
+            }
         }
         AstExpr::Eq { lhs, rhs, .. } => {
             let lhs = infer_expr(state, lhs)?;
@@ -305,9 +321,15 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
         AstExpr::Lt { lhs, rhs, .. } => {
             let lhs = infer_expr(state, lhs)?;
             let rhs = infer_expr(state, rhs)?;
-            state.unify(&Type::I64, &lhs)?;
-            state.unify(&Type::I64, &rhs)?;
-            Ok(Type::Bool)
+            state.unify(&lhs, &rhs)?;
+            match state.resolve(&lhs) {
+                Type::I64 | Type::String | Type::Var(_) => Ok(Type::Bool),
+                actual => Err(UnifyError::TypeMismatch {
+                    lhs: Type::I64,
+                    rhs: actual,
+                }
+                .into()),
+            }
         }
         AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {
             let lhs = infer_expr(state, lhs)?;

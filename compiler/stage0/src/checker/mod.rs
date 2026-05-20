@@ -12,6 +12,7 @@ use types::parse_primitive_type;
 
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstProgram, AstStmt, AstTypeAnnotation, TextSpan};
 use crate::diagnostic::to_source_diagnostic;
+use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
 use crate::signature::{ImportedSignatures, RsigExport, RsigType, parse_type};
 
@@ -30,6 +31,16 @@ pub(crate) fn typecheck(
     mode: CheckMode,
 ) -> miette::Result<CheckedProgram> {
     validate_program(source_path, source, &program, imports, mode)?;
+    infer_program(&program, imports).map_err(|error| {
+        to_source_diagnostic(
+            source_path,
+            source,
+            first_decl_span(&program).unwrap_or_else(|| TextSpan::new(0, source.len().min(1))),
+            "type inference failed",
+            error.to_string(),
+            Some("fix the type error before lowering"),
+        )
+    })?;
     let typed_tree = typed_program_from_ast(module_name, program, imports);
     let signature = signature_for(&typed_tree);
     Ok(CheckedProgram {
