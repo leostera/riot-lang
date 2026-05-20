@@ -946,9 +946,7 @@ fn merge_receive_message_type(
     message_type: &mut Option<RsigType>,
 ) -> Option<()> {
     for arm in arms {
-        let Some(arm_type) = pattern_message_type(state, &arm.pattern) else {
-            continue;
-        };
+        let arm_type = pattern_message_type(state, &arm.pattern)?;
         *message_type = Some(match message_type.take() {
             Some(current) => merge_message_type(current, arm_type)?,
             None => arm_type,
