@@ -779,6 +779,31 @@ fn emit_llvm_uses_typed_actor_message_senders() -> FixtureResult {
 }
 
 #[test]
+fn emit_llvm_contains_recursive_self_call() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/recursive_factorial.ml");
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("llvm")
+        .arg(&fixture)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected llvm emission to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    if !stdout.contains("call i64 @riot_mod_RecursiveFactorial_fact") {
+        return fail(format!(
+            "llvm output did not contain recursive fact call:\n{stdout}"
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_all_preserves_pipeline_phase_order() -> FixtureResult {
     let fixture = manifest_dir().join("tests/fixtures/programs/actors/fibonacci_worker.ml");
     let emit = Command::new(cargo_bin("stage0"))
