@@ -1346,6 +1346,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             .basic()
             .ok_or_else(|| miette::miette!("actor spawn returned void"))?
             .into_int_value();
+        self.emit_actor_frame_roots(actor_id, &actor.root_offsets)?;
         Ok(CgValue::ActorId(actor_id))
     }
 
@@ -1367,6 +1368,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_actor_{}_{}_resume",
             self.program.module_name, actor_id
         );
+        let root_offsets = actor_frame_root_offsets(&shape);
         if let Some(resume) = self.module.get_function(&name) {
             return Ok(ActorDef {
                 resume,
@@ -1374,6 +1376,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 captures: shape.captures,
                 size_bytes: shape.size_bytes,
                 align: shape.align,
+                root_offsets,
             });
         }
         let resume = self.module.add_function(&name, fn_type, None);
@@ -1482,7 +1485,49 @@ impl<'ctx> Codegen<'ctx, '_> {
             captures: shape.captures,
             size_bytes: shape.size_bytes,
             align: shape.align,
+            root_offsets,
         })
+    }
+
+    fn emit_actor_frame_roots(
+        &mut self,
+        actor_id: IntValue<'ctx>,
+        offsets: &[usize],
+    ) -> miette::Result<()> {
+        if offsets.is_empty() {
+            return Ok(());
+        }
+        let i64_type = self.context.i64_type();
+        let len = i64_type.const_int(offsets.len() as u64, false);
+        let ptr = self
+            .builder
+            .build_array_alloca(i64_type, len, "actor_frame_root_offsets")
+            .map_err(|error| {
+                miette::miette!("failed to allocate actor frame root offsets: {error}")
+            })?;
+        for (index, offset) in offsets.iter().enumerate() {
+            let slot = unsafe {
+                self.builder
+                    .build_in_bounds_gep(
+                        i64_type,
+                        ptr,
+                        &[i64_type.const_int(index as u64, false)],
+                        "actor_frame_root_offset",
+                    )
+                    .map_err(|error| {
+                        miette::miette!("failed to address actor frame root offset: {error}")
+                    })?
+            };
+            self.builder
+                .build_store(slot, i64_type.const_int(*offset as u64, false))
+                .map_err(|error| {
+                    miette::miette!("failed to store actor frame root offset: {error}")
+                })?;
+        }
+        self.call_void_runtime(
+            "riot_rt_actor_frame_roots",
+            &[actor_id.into(), ptr.into(), len.into()],
+        )
     }
 
     fn load_actor_env(
@@ -1516,7 +1561,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     }
 
     fn store_frame_value(
-        &self,
+        &mut self,
         frame_type: StructType<'ctx>,
         frame: PointerValue<'ctx>,
         slot: &FrameSlot,
@@ -1526,7 +1571,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             (AbiType::I64, CgValue::I64(value)) | (AbiType::ActorId, CgValue::ActorId(value)) => {
                 value
             }
-            (AbiType::Value, CgValue::Value(value)) => value,
+            (AbiType::Value, value) => self.value_as_runtime(value)?,
             (AbiType::Bool, CgValue::Bool(value)) => self
                 .builder
                 .build_int_z_extend(value, self.context.i64_type(), "bool_to_i64")
@@ -1876,6 +1921,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_root_push" | "riot_rt_root_pop" => {
                 void_type.fn_type(&[i64_type.into()], false)
             }
+            "riot_rt_actor_frame_roots" => {
+                void_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
+            }
             "riot_rt_dbg" | "riot_rt_println" | "riot_prim_println" => {
                 void_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
             }
@@ -2071,6 +2119,7 @@ struct ActorDef<'ctx> {
     captures: Vec<FrameSlot>,
     size_bytes: usize,
     align: usize,
+    root_offsets: Vec<usize>,
 }
 
 fn actor_shape_from_ir(actor: &ActorIrActor) -> ActorShape {
@@ -2099,6 +2148,15 @@ fn frame_slot_from_actor_ir(slot: &crate::ir::ActorFrameSlot) -> FrameSlot {
         abi: AbiType::from_actor_slot(slot.type_),
         field_index: slot.field_index,
     }
+}
+
+fn actor_frame_root_offsets(shape: &ActorShape) -> Vec<usize> {
+    shape
+        .slots
+        .iter()
+        .filter(|slot| slot.abi == AbiType::Value)
+        .map(|slot| slot.field_index as usize * 8)
+        .collect()
 }
 
 fn progress_flags(next_index: usize, len: usize) -> u32 {

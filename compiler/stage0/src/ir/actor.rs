@@ -36,6 +36,7 @@ pub(crate) enum ActorSlotType {
     I64,
     Bool,
     ActorId,
+    Value,
 }
 
 impl ActorSlotType {
@@ -44,6 +45,9 @@ impl ActorSlotType {
             RsigType::I64 => Some(ActorSlotType::I64),
             RsigType::Bool => Some(ActorSlotType::Bool),
             RsigType::ActorId(_) => Some(ActorSlotType::ActorId),
+            RsigType::String | RsigType::Tuple(_) | RsigType::List(_) | RsigType::Record(_) => {
+                Some(ActorSlotType::Value)
+            }
             _ => None,
         }
     }

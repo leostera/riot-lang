@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::mem::size_of;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
@@ -144,6 +145,7 @@ pub(crate) struct ActorSlot {
     layout: RtFrameLayout,
     resume: ActorResumeFn,
     mailbox: Mailbox,
+    frame_root_offsets: Mutex<Vec<usize>>,
     monitors: Mutex<Vec<ActorId>>,
     links: Mutex<Vec<ActorId>>,
     terminated: AtomicBool,
@@ -165,6 +167,7 @@ impl ActorSlot {
             layout,
             resume,
             mailbox: Mailbox::new(),
+            frame_root_offsets: Mutex::new(Vec::new()),
             monitors: Mutex::new(Vec::new()),
             links: Mutex::new(Vec::new()),
             terminated: AtomicBool::new(false),
@@ -224,7 +227,13 @@ impl ActorSlot {
     }
 
     pub(crate) fn root_values(&self) -> Vec<RtValue> {
-        self.mailbox.root_values()
+        let mut roots = self.mailbox.root_values();
+        roots.extend(self.frame_root_values());
+        roots
+    }
+
+    pub(crate) fn set_frame_root_offsets(&self, offsets: &[usize]) {
+        *self.frame_root_offsets() = offsets.to_vec();
     }
 
     pub(crate) fn push_monitor(&self, watcher: ActorId) {
@@ -261,6 +270,29 @@ impl ActorSlot {
         self.links
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn frame_root_offsets(&self) -> MutexGuard<'_, Vec<usize>> {
+        self.frame_root_offsets
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn frame_root_values(&self) -> Vec<RtValue> {
+        let frame = self.frame_ptr();
+        if frame.is_null() {
+            return Vec::new();
+        }
+
+        self.frame_root_offsets()
+            .iter()
+            .filter_map(|offset| {
+                if offset.saturating_add(size_of::<RtValue>()) > self.layout.size {
+                    return None;
+                }
+                Some(unsafe { ptr::read_unaligned(frame.add(*offset) as *const RtValue) })
+            })
+            .collect()
     }
 }
 

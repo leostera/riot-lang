@@ -27,6 +27,18 @@ pub(crate) unsafe fn values_from_raw<'a>(ptr: *const RtValue, len: usize) -> Opt
     Some(unsafe { slice::from_raw_parts(ptr, len) })
 }
 
+pub(crate) unsafe fn usize_from_raw<'a>(ptr: *const usize, len: usize) -> Option<&'a [usize]> {
+    if len == 0 {
+        return Some(&[]);
+    }
+
+    if ptr.is_null() && len != 0 {
+        return None;
+    }
+
+    Some(unsafe { slice::from_raw_parts(ptr, len) })
+}
+
 pub(crate) unsafe fn write_stdout_line(ptr: *const u8, len: usize) {
     let Some(bytes) = (unsafe { bytes_from_raw(ptr, len) }) else {
         return;

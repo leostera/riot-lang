@@ -1,7 +1,9 @@
 use crate::actor::{ActorResumeFn, RtMessage, RuntimeMessage, runtime_message_from_raw};
 use crate::actor_id::ActorId;
 use crate::frame::{ActorDropFn, RtFrameLayout, alloc_frame, free_frame};
-use crate::io::{bytes_from_raw, values_from_raw, write_bytes_line, write_stdout_line};
+use crate::io::{
+    bytes_from_raw, usize_from_raw, values_from_raw, write_bytes_line, write_stdout_line,
+};
 use crate::scheduler::{
     SchedulerLocal, current_actor_id, render_message, runtime_abort, with_scheduler_mut,
 };
@@ -377,6 +379,18 @@ pub unsafe extern "C" fn riot_rt_spawn_actor_v2(
     with_scheduler_mut(|scheduler| {
         scheduler.spawn(frame, resume, RtFrameLayout::new(size, align, drop_fn))
     })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_actor_frame_roots(
+    actor_id: ActorId,
+    offsets: *const usize,
+    len: usize,
+) {
+    let Some(offsets) = (unsafe { usize_from_raw(offsets, len) }) else {
+        runtime_abort("actor frame roots received an invalid pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| scheduler.register_frame_roots(actor_id, offsets));
 }
 
 #[unsafe(no_mangle)]

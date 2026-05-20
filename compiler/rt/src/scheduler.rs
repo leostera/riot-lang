@@ -92,6 +92,12 @@ impl SchedulerLocal {
         actor.send(message);
     }
 
+    pub(crate) fn register_frame_roots(&mut self, actor_id: ActorId, offsets: &[usize]) {
+        if let Some(actor) = unsafe { actor_from_id(actor_id) } {
+            actor.set_frame_root_offsets(offsets);
+        }
+    }
+
     pub(crate) fn monitor(&mut self, actor_id: ActorId) {
         if let Some(actor) = unsafe { actor_from_id(actor_id) } {
             actor.push_monitor(current_actor_id());

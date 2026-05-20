@@ -3,16 +3,16 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use crate::abi::{
-    riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect, riot_rt_gc_heap_len,
-    riot_rt_init, riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64,
-    riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_bool, riot_rt_value_eq,
-    riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len,
-    riot_rt_value_record_begin, riot_rt_value_record_get, riot_rt_value_record_set,
-    riot_rt_value_string, riot_rt_value_string_concat, riot_rt_value_string_len,
-    riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
+    riot_rt_gc_heap_len, riot_rt_init, riot_rt_root_pop, riot_rt_root_push, riot_rt_send,
+    riot_rt_send_i64, riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_bool,
+    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get,
+    riot_rt_value_list_len, riot_rt_value_record_begin, riot_rt_value_record_get,
+    riot_rt_value_record_set, riot_rt_value_string, riot_rt_value_string_concat,
+    riot_rt_value_string_len, riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
-    runtime_message_from_raw, RtMessage, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING,
+    POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, runtime_message_from_raw,
 };
 use crate::actor_id::ActorId;
 use crate::scheduler::{render_message, with_scheduler_mut};
@@ -54,6 +54,14 @@ unsafe extern "C" fn record_resume(
         flags |= POLL_DONE;
     }
     flags
+}
+
+unsafe extern "C" fn idle_resume(
+    _frame: *mut u8,
+    _actor_id: ActorId,
+    _message: *const RtMessage,
+) -> u32 {
+    POLL_WAITING
 }
 
 #[test]
@@ -129,6 +137,28 @@ fn value_roots_preserve_nested_children() {
 
     riot_rt_root_pop(1);
     assert_eq!(riot_rt_gc_collect(), 2);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn gc_traces_actor_frame_value_roots() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let label = unsafe { riot_rt_value_string(b"frame-root".as_ptr(), 10) };
+    let frame = riot_rt_alloc_frame_v2(16, 8, None);
+    assert!(!frame.is_null());
+    unsafe {
+        ptr::write(frame.add(8) as *mut u64, label);
+    }
+    let actor_id = unsafe { riot_rt_spawn_actor_v2(frame, Some(idle_resume), 16, 8, None) };
+    let offsets = [8usize];
+    unsafe { riot_rt_actor_frame_roots(actor_id, offsets.as_ptr(), offsets.len()) };
+
+    assert_eq!(riot_rt_gc_collect(), 0);
+    assert_eq!(riot_rt_gc_heap_len(), 1);
+
+    riot_rt_shutdown();
     assert_eq!(riot_rt_gc_heap_len(), 0);
 }
 

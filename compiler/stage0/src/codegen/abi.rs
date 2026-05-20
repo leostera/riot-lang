@@ -17,6 +17,7 @@ impl AbiType {
             ActorSlotType::I64 => AbiType::I64,
             ActorSlotType::Bool => AbiType::Bool,
             ActorSlotType::ActorId => AbiType::ActorId,
+            ActorSlotType::Value => AbiType::Value,
         }
     }
 
