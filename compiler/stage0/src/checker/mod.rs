@@ -1271,6 +1271,16 @@ fn validate_pattern(
                 "use a binder or `_` for tuple items in this slice",
             )?;
         }
+    } else if let AstPattern::Tuple { items, .. } = pattern {
+        for item in items {
+            validate_simple_payload_pattern(
+                ctx,
+                item,
+                &RsigType::Unknown,
+                "tuple item",
+                "use a binder or `_` for tuple items in this slice",
+            )?;
+        }
     }
     if let AstPattern::Record { path, fields, span } = pattern {
         let Some(shape) = record_shape_for_pattern(ctx, path) else {

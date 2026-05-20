@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/receive_tuple_pattern_nested.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × unsupported tuple item pattern
+   ╭─[tests/fixtures/diagnostics/types/receive_tuple_pattern_nested.ml:4:8]
+ 3 │     receive {
+ 4 │       (1, value) -> dbg(value)
+   ·        ┬
+   ·        ╰── stage0 can bind tuple items of type `_`, but cannot destructure nested tuple item patterns yet
+ 5 │     }
+   ╰────
+  help: use a binder or `_` for tuple items in this slice
