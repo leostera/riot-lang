@@ -305,17 +305,12 @@ fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
 }
 
 fn external_names(program: &AstProgram) -> HashSet<String> {
-    let mut names = HashSet::from([
-        "dbg".to_owned(),
-        "println".to_owned(),
-        "send".to_owned(),
-        "monitor".to_owned(),
-        "link".to_owned(),
-        "list_len".to_owned(),
-        "list_get".to_owned(),
-        "string_len".to_owned(),
-        "string_concat".to_owned(),
-    ]);
+    let mut names = crate::stdlib::prelude_signature()
+        .expect("compiler/std/prelude.ml must parse")
+        .exports
+        .iter()
+        .map(|export| export.name().to_owned())
+        .collect::<HashSet<_>>();
     for decl in &program.decls {
         if let AstDecl::External(external) = decl {
             names.insert(external.name.clone());
