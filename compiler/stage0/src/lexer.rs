@@ -17,6 +17,14 @@ pub(crate) enum TokenKind {
     Fn,
     #[token("let")]
     Let,
+    #[token("use")]
+    Use,
+    #[token("external")]
+    External,
+    #[token("spawn")]
+    Spawn,
+    #[token("receive")]
+    Receive,
     #[token("if")]
     If,
     #[token("else")]
@@ -32,6 +40,8 @@ pub(crate) enum TokenKind {
     AndAnd,
     #[token("||")]
     OrOr,
+    #[token("->")]
+    Arrow,
 
     #[token("(")]
     LParen,
@@ -69,6 +79,8 @@ pub(crate) enum TokenKind {
     Bang,
     #[token("<")]
     Lt,
+    #[token(">")]
+    Gt,
 
     #[regex(r"[0-9][0-9_]*\.[0-9][0-9_]*([eE][+-]?[0-9][0-9_]*)?")]
     #[regex(r"[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*")]
@@ -81,6 +93,7 @@ pub(crate) enum TokenKind {
     String,
     #[regex(r#"'([^'\\]|\\.)'"#)]
     Char,
+    #[regex(r"'[A-Za-z_][A-Za-z0-9_']*")]
     #[regex(r"[A-Za-z_][A-Za-z0-9_']*")]
     Ident,
 

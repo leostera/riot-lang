@@ -59,6 +59,13 @@ pub(super) fn expr_span(expr: &AstExpr) -> TextSpan {
             callee: _,
             args: _,
             span,
+        }
+        | AstExpr::Spawn { body: _, span }
+        | AstExpr::Receive {
+            binder: _,
+            binder_span: _,
+            body: _,
+            span,
         } => *span,
         AstExpr::Bool { value: _, span }
         | AstExpr::Char { value: _, span }

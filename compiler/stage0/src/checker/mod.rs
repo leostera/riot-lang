@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use camino::Utf8Path;
 
@@ -10,50 +10,88 @@ use const_eval::{ConstFunction, ConstValue, resolve_const_value};
 use span::expr_span;
 use types::parse_primitive_type;
 
-use crate::ast::{AstBlock, AstExpr, AstProgram, AstReceivePattern, AstStmt, TextSpan};
+use crate::ast::{AstBlock, AstDecl, AstExpr, AstProgram, AstStmt, AstTypeAnnotation, TextSpan};
 use crate::diagnostic::to_source_diagnostic;
-use crate::ir::{TypedAction, TypedExpr, TypedFunction, TypedProgram};
+use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
+use crate::signature::{ImportedSignatures, RsigExport, RsigType, parse_type};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CheckMode {
+    Executable,
+    Interface,
+}
 
 pub(crate) fn typecheck(
     source_path: &Utf8Path,
     source: &str,
+    module_name: String,
     program: AstProgram,
-) -> miette::Result<TypedProgram> {
-    let Some(decl) = program.decls.iter().find(|decl| decl.name == "main") else {
-        let span = program
-            .decls
-            .first()
-            .map(|decl| decl.span)
-            .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            span,
-            "missing main function",
-            "stage0 requires one entrypoint named main",
-            Some("add: fn main() { dbg(\"hello world\") }"),
-        )
-        .into());
+    imports: &ImportedSignatures,
+    mode: CheckMode,
+) -> miette::Result<CheckedProgram> {
+    validate_program(source_path, source, &program, imports, mode)?;
+    let typed_tree = typed_program_from_ast(module_name, program, imports);
+    let signature = signature_for(&typed_tree);
+    Ok(CheckedProgram {
+        typed_tree,
+        signature,
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BindingKind {
+    Actor,
+    Value,
+    Message,
+}
+
+#[derive(Debug)]
+struct ValidationContext<'a> {
+    source_path: &'a Utf8Path,
+    source: &'a str,
+    functions: HashMap<String, ConstFunction>,
+    function_names: HashSet<String>,
+    function_results: HashMap<String, RsigType>,
+    external_names: HashSet<String>,
+    imports: &'a ImportedSignatures,
+}
+
+fn validate_program(
+    source_path: &Utf8Path,
+    source: &str,
+    program: &AstProgram,
+    imports: &ImportedSignatures,
+    mode: CheckMode,
+) -> miette::Result<()> {
+    let functions = const_functions(program);
+    let function_names = functions.keys().cloned().collect::<HashSet<_>>();
+    let function_results = function_results(program);
+    let external_names = external_names(program);
+    let ctx = ValidationContext {
+        source_path,
+        source,
+        functions,
+        function_names,
+        function_results,
+        external_names,
+        imports,
     };
 
-    if decl.params.len() != 0 {
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            decl.name_span,
-            "main function cannot have parameters",
-            "stage0 requires main to have no parameters",
-            Some("try: fn main() { dbg(\"hello world\") }"),
-        )
-        .into());
-    }
+    let main_decls = program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::Function(function) if function.name == "main" => Some(function),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
 
-    let duplicate_main = program.decls.iter().filter(|decl| decl.name == "main").nth(1);
-    if let Some(duplicate_main) = duplicate_main {
+    if main_decls.len() > 1 {
+        let duplicate = main_decls[1];
         return Err(to_source_diagnostic(
             source_path,
             source,
-            duplicate_main.span,
+            duplicate.span,
             "duplicate main function",
             "stage0 requires a single main function per file",
             Some("keep only one `fn main() { ... }`"),
@@ -61,95 +99,155 @@ pub(crate) fn typecheck(
         .into());
     }
 
-    if decl.name != "main" {
+    if mode == CheckMode::Executable && main_decls.is_empty() {
+        let span =
+            first_decl_span(program).unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
         return Err(to_source_diagnostic(
             source_path,
             source,
-            decl.name_span,
+            span,
             "missing main function",
-            "this function must be named main",
-            Some("stage0 requires one entrypoint: fn main() { dbg(\"hello world\") }"),
+            "stage0 compile requires one entrypoint named main",
+            Some("add: fn main() { dbg(\"hello world\") }"),
         )
         .into());
     }
 
-    let functions = const_functions(&program);
-    let body = resolve_main_body(source_path, source, &decl.body, &functions)?;
+    for decl in &program.decls {
+        match decl {
+            AstDecl::Use(use_) => {
+                if !imports.contains_key(&use_.name) {
+                    return Err(to_source_diagnostic(
+                        source_path,
+                        source,
+                        use_.name_span,
+                        "missing imported signature",
+                        format!("`use {}` did not resolve to a signature", use_.name),
+                        Some("pass --sig-dir with the directory containing the .rsig file"),
+                    )
+                    .into());
+                }
+            }
+            AstDecl::External(external) => {
+                if external.type_text.trim().is_empty() {
+                    return Err(to_source_diagnostic(
+                        source_path,
+                        source,
+                        external.type_span,
+                        "empty external type",
+                        "external declarations need a source-level type",
+                        Some("try: external println : string -> unit = \"riot_prim_println\""),
+                    )
+                    .into());
+                }
+            }
+            AstDecl::Function(function) => {
+                validate_function_annotations(&ctx, function)?;
+                if function.name == "main" && !function.params.is_empty() {
+                    return Err(to_source_diagnostic(
+                        source_path,
+                        source,
+                        function.name_span,
+                        "main function cannot have parameters",
+                        "stage0 requires main to have no parameters",
+                        Some("try: fn main() { dbg(\"hello world\") }"),
+                    )
+                    .into());
+                }
+                validate_block(
+                    &ctx,
+                    &function.body,
+                    function.name == "main",
+                    &function.params,
+                )?;
+            }
+        }
+    }
 
-    Ok(TypedProgram {
-        main: TypedFunction { body },
-    })
+    Ok(())
+}
+
+fn function_results(program: &AstProgram) -> HashMap<String, RsigType> {
+    program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::Function(function) => function
+                .return_type
+                .as_ref()
+                .map(|annotation| (function.name.clone(), parse_type(&annotation.text))),
+            _ => None,
+        })
+        .collect()
 }
 
 fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
     program
         .decls
         .iter()
-        .filter(|decl| decl.name != "main")
-        .map(|decl| {
-            (
-                decl.name.clone(),
+        .filter_map(|decl| match decl {
+            AstDecl::Function(function) if function.name != "main" => Some((
+                function.name.clone(),
                 ConstFunction {
-                    params: decl.params.clone(),
-                    body: decl.body.clone(),
+                    params: function.params.clone(),
+                    body: function.body.clone(),
                 },
-            )
+            )),
+            _ => None,
         })
         .collect()
 }
 
-#[derive(Debug, Clone)]
-enum Binding {
-    Const(ConstValue),
-    Actor,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ActorShape {
-    Debug {
-        receive_count: u64,
-    },
-    ForwardDbg {
-        receive_count: u64,
-        forward_hops: u64,
-    },
-}
-
-impl ActorShape {
-    fn receive_count(self) -> u64 {
-        match self {
-            ActorShape::Debug { receive_count }
-            | ActorShape::ForwardDbg {
-                receive_count,
-                forward_hops: _,
-            } => receive_count,
+fn external_names(program: &AstProgram) -> HashSet<String> {
+    let mut names = HashSet::from([
+        "dbg".to_owned(),
+        "println".to_owned(),
+        "send".to_owned(),
+        "monitor".to_owned(),
+        "link".to_owned(),
+    ]);
+    for decl in &program.decls {
+        if let AstDecl::External(external) = decl {
+            names.insert(external.name.clone());
         }
     }
+    names
 }
 
-fn resolve_main_body(
-    source_path: &Utf8Path,
-    source: &str,
-    block: &AstBlock,
-    functions: &HashMap<String, ConstFunction>,
-) -> miette::Result<TypedExpr> {
-    let mut bindings = HashMap::<String, Binding>::new();
-    let mut actions = Vec::<TypedAction>::new();
-    let mut final_expr = None;
+fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
+    program.decls.first().map(|decl| match decl {
+        AstDecl::Use(use_) => use_.span,
+        AstDecl::External(external) => external.span,
+        AstDecl::Function(function) => function.span,
+    })
+}
 
-    for (index, stmt) in block.statements.iter().enumerate() {
+fn validate_block(
+    ctx: &ValidationContext<'_>,
+    block: &AstBlock,
+    is_main: bool,
+    params: &[String],
+) -> miette::Result<()> {
+    let mut bindings = params
+        .iter()
+        .map(|param| (param.clone(), BindingKind::Value))
+        .collect::<HashMap<_, _>>();
+    let mut output_actions = 0_usize;
+    let mut actor_actions = 0_usize;
+
+    for stmt in &block.statements {
         match stmt {
             AstStmt::Let {
                 name,
                 name_span,
                 type_annotation,
                 value,
-                span,
+                span: _,
             } => {
                 if bindings.contains_key(name) {
                     return Err(to_source_diagnostic(
-                        source_path,
-                        source,
+                        ctx.source_path,
+                        ctx.source,
                         *name_span,
                         "duplicate local binding",
                         format!("`{name}` is already bound in this block"),
@@ -157,206 +255,798 @@ fn resolve_main_body(
                     )
                     .into());
                 }
-
-                if let AstExpr::Spawn { body, span: _ } = value {
-                    if let Some(type_annotation) = type_annotation {
-                        return Err(to_source_diagnostic(
-                            source_path,
-                            source,
-                            type_annotation.span,
-                            "unsupported actor type annotation",
-                            "stage0 does not have an actor pid type annotation yet",
-                            Some("omit the annotation for now"),
-                        )
-                        .into());
+                if let Some(annotation) = type_annotation {
+                    validate_type_annotation(ctx, annotation, value, &bindings)?;
+                }
+                let kind = match value {
+                    AstExpr::Spawn { body, span: _ } => {
+                        validate_actor_block(ctx, body, &bindings)?;
+                        actor_actions += 1;
+                        BindingKind::Actor
                     }
-
-                    let shape = analyze_actor_body(source_path, source, body)?;
-                    actions.push(spawn_action(name.clone(), shape));
-                    bindings.insert(name.clone(), Binding::Actor);
-                    continue;
-                }
-
-                let consts = const_bindings(&bindings);
-                let value = resolve_const_value(value, &consts, functions).ok_or_else(|| {
-                    to_source_diagnostic(
-                        source_path,
-                        source,
-                        *span,
-                        "unsupported local binding",
-                        "stage0 currently supports literal local bindings",
-                        Some("try: let name = \"Alice\";"),
-                    )
-                })?;
-                if let Some(type_annotation) = type_annotation {
-                    validate_type_annotation(source_path, source, type_annotation, &value)?;
-                }
-                bindings.insert(name.clone(), Binding::Const(value));
+                    _ => {
+                        validate_expr(ctx, value, &bindings, false)?;
+                        BindingKind::Value
+                    }
+                };
+                bindings.insert(name.clone(), kind);
             }
             AstStmt::Expr(expr) => {
-                if let Some(action) =
-                    action_expr(source_path, source, expr, &bindings, functions)?
-                {
-                    actions.push(action);
-                    continue;
+                let category = validate_expr(ctx, expr, &bindings, false)?;
+                match category {
+                    ExprCategory::Output => output_actions += 1,
+                    ExprCategory::Actor => actor_actions += 1,
+                    ExprCategory::Other => {}
                 }
-
-                if block.tail.is_some() || index + 1 != block.statements.len() {
-                    return Err(to_source_diagnostic(
-                        source_path,
-                        source,
-                        expr_span(expr),
-                        "unsupported main body",
-                        "stage0 currently allows local lets followed by one dbg expression",
-                        Some("try: fn main() { let name = \"Alice\"; dbg(name) }"),
-                    )
-                    .into());
-                }
-
-                if !actions.is_empty() {
-                    return Err(unsupported_actor_expr(source_path, source, expr).into());
-                }
-
-                final_expr = Some(expr);
             }
         }
     }
 
     if let Some(tail) = &block.tail {
-        if let Some(action) = action_expr(source_path, source, tail, &bindings, functions)? {
-            actions.push(action);
-        } else if actions.is_empty() {
-            final_expr = Some(tail);
-        } else {
-            return Err(unsupported_actor_expr(source_path, source, tail).into());
+        let category = validate_expr(ctx, tail, &bindings, false)?;
+        match category {
+            ExprCategory::Output => output_actions += 1,
+            ExprCategory::Actor => actor_actions += 1,
+            ExprCategory::Other => {}
         }
     }
 
-    if !actions.is_empty() {
-        return Ok(TypedExpr::Sequence { actions });
-    }
-
-    let Some(expr) = final_expr else {
+    if is_main && output_actions == 0 && actor_actions == 0 {
         return Err(to_source_diagnostic(
-            source_path,
-            source,
+            ctx.source_path,
+            ctx.source,
             block.span,
             "unsupported main body",
-            "stage0 currently expects main to call dbg with one constant value",
+            "stage0 expects main to produce output or actor actions",
             Some("try: fn main() { dbg(\"hello world\") }"),
         )
         .into());
-    };
+    }
 
-    output_expr(expr, &bindings, functions).ok_or_else(|| {
-        to_source_diagnostic(
-            source_path,
-            source,
-            expr_span(expr),
+    if is_main && actor_actions == 0 && output_actions > 1 {
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            block.span,
             "unsupported main body",
-            "stage0 currently expects main to call dbg with one constant value",
-            Some("try: fn main() { let name = \"Alice\"; dbg(name) }"),
+            "stage0 currently allows one direct output expression unless actor actions are present",
+            Some("use a single dbg/println expression"),
         )
-        .into()
-    })
+        .into());
+    }
+
+    Ok(())
 }
 
-fn const_bindings(bindings: &HashMap<String, Binding>) -> HashMap<String, ConstValue> {
-    bindings
-        .iter()
-        .filter_map(|(name, binding)| match binding {
-            Binding::Const(value) => Some((name.clone(), value.clone())),
-            Binding::Actor => None,
-        })
-        .collect()
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExprCategory {
+    Output,
+    Actor,
+    Other,
 }
 
-fn spawn_action(binding: String, shape: ActorShape) -> TypedAction {
-    match shape {
-        ActorShape::Debug { receive_count } => TypedAction::SpawnDbgActor {
-            binding,
-            receive_count,
-        },
-        ActorShape::ForwardDbg {
-            receive_count,
-            forward_hops,
-        } => TypedAction::SpawnForwardDbgActor {
-            binding,
-            receive_count,
-            forward_hops,
-        },
+fn validate_expr(
+    ctx: &ValidationContext<'_>,
+    expr: &AstExpr,
+    bindings: &HashMap<String, BindingKind>,
+    in_actor: bool,
+) -> miette::Result<ExprCategory> {
+    match expr {
+        AstExpr::Call { callee, args, span } => {
+            if let [module, name] = callee.segments.as_slice() {
+                let Some(rsig) = ctx.imports.get(module) else {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        *span,
+                        "unknown imported module",
+                        format!("`{module}` has not been brought into scope with `use {module}`"),
+                        Some("add a top-level `use` declaration and pass --sig-dir"),
+                    )
+                    .into());
+                };
+                let Some(export) = rsig.find(name) else {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        *span,
+                        "unknown imported value",
+                        format!("module `{module}` does not export `{name}`"),
+                        Some("check the producer .rsig"),
+                    )
+                    .into());
+                };
+                if export_has_unknown_abi(export) {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        *span,
+                        "imported value has unknown ABI",
+                        format!(
+                            "module `{module}` exports `{name}`, but its .rsig type is not concrete enough to call"
+                        ),
+                        Some("add enough type information for the exported function"),
+                    )
+                    .into());
+                }
+                for arg in args {
+                    validate_expr(ctx, arg, bindings, in_actor)?;
+                }
+                return Ok(ExprCategory::Other);
+            }
+
+            let [name] = callee.segments.as_slice() else {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "unsupported path call",
+                    "stage0 only supports local calls and qualified module calls",
+                    Some("try: Module.value(...)"),
+                )
+                .into());
+            };
+
+            match name.as_str() {
+                "dbg" => {
+                    if args.len() != 1 {
+                        return Err(call_arity_error(ctx, *span, "dbg", 1, args.len()).into());
+                    }
+                    validate_expr(ctx, &args[0], bindings, in_actor)?;
+                    Ok(ExprCategory::Output)
+                }
+                "println" => {
+                    if args.len() != 1 {
+                        return Err(call_arity_error(ctx, *span, "println", 1, args.len()).into());
+                    }
+                    validate_expr(ctx, &args[0], bindings, in_actor)?;
+                    Ok(ExprCategory::Output)
+                }
+                "send" => {
+                    if args.len() != 2 {
+                        return Err(call_arity_error(ctx, *span, "send", 2, args.len()).into());
+                    }
+                    validate_actor_target(ctx, &args[0], bindings, *span, "send")?;
+                    validate_expr(ctx, &args[1], bindings, in_actor)?;
+                    Ok(ExprCategory::Actor)
+                }
+                "monitor" | "link" => {
+                    if args.len() != 1 {
+                        return Err(call_arity_error(ctx, *span, name, 1, args.len()).into());
+                    }
+                    validate_actor_target(ctx, &args[0], bindings, *span, name)?;
+                    Ok(ExprCategory::Actor)
+                }
+                _ if ctx.function_names.contains(name) || ctx.external_names.contains(name) => {
+                    for arg in args {
+                        validate_expr(ctx, arg, bindings, in_actor)?;
+                    }
+                    Ok(ExprCategory::Other)
+                }
+                _ => Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "unsupported function call",
+                    format!("stage0 does not know `{name}`"),
+                    Some("try: dbg(\"hello world\")"),
+                )
+                .into()),
+            }
+        }
+        AstExpr::Spawn { body, span: _ } => {
+            validate_actor_block(ctx, body, bindings)?;
+            Ok(ExprCategory::Actor)
+        }
+        AstExpr::Receive { span, .. } if !in_actor => Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            *span,
+            "receive outside spawn",
+            "`receive` is only valid inside an actor body",
+            Some("wrap the receive in `spawn { ... }`"),
+        )
+        .into()),
+        AstExpr::Receive { body, .. } => {
+            validate_expr(ctx, body, bindings, true)?;
+            Ok(ExprCategory::Actor)
+        }
+        AstExpr::Eq { lhs, rhs, span } => {
+            validate_expr(ctx, lhs, bindings, in_actor)?;
+            validate_expr(ctx, rhs, bindings, in_actor)?;
+            let lhs_type = simple_expr_type(ctx, lhs, bindings);
+            let rhs_type = simple_expr_type(ctx, rhs, bindings);
+            if let (Some(lhs_type), Some(rhs_type)) = (lhs_type, rhs_type)
+                && !type_matches(&lhs_type, &rhs_type)
+            {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "equality operands have different types",
+                    format!(
+                        "left side has type `{}`, but right side has type `{}`",
+                        lhs_type.canonical(),
+                        rhs_type.canonical()
+                    ),
+                    Some("compare values with the same type"),
+                )
+                .into());
+            }
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::Add { lhs, rhs, .. }
+        | AstExpr::Sub { lhs, rhs, .. }
+        | AstExpr::Mul { lhs, rhs, .. }
+        | AstExpr::Div { lhs, rhs, .. }
+        | AstExpr::Mod { lhs, rhs, .. }
+        | AstExpr::Lt { lhs, rhs, .. }
+        | AstExpr::And { lhs, rhs, .. }
+        | AstExpr::Or { lhs, rhs, .. } => {
+            validate_expr(ctx, lhs, bindings, in_actor)?;
+            validate_expr(ctx, rhs, bindings, in_actor)?;
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::Neg { expr, .. } | AstExpr::Not { expr, .. } => {
+            validate_expr(ctx, expr, bindings, in_actor)?;
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::If {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            validate_expr(ctx, condition, bindings, in_actor)?;
+            validate_expr(ctx, then_branch, bindings, in_actor)?;
+            validate_expr(ctx, else_branch, bindings, in_actor)?;
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::Tuple { items, .. } | AstExpr::List { items, .. } => {
+            for item in items {
+                validate_expr(ctx, item, bindings, in_actor)?;
+            }
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::Record { fields, .. } => {
+            for (_, value) in fields {
+                validate_expr(ctx, value, bindings, in_actor)?;
+            }
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::Path { path, span } => {
+            if let Some(head) = path.segments.first()
+                && !bindings.contains_key(head)
+            {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "unknown value",
+                    format!("`{head}` is not bound in this scope"),
+                    Some("bind the value with `let` before using it"),
+                )
+                .into());
+            }
+            Ok(ExprCategory::Other)
+        }
+        AstExpr::Bool { .. }
+        | AstExpr::Char { .. }
+        | AstExpr::Unit { .. }
+        | AstExpr::Float { .. }
+        | AstExpr::Int { .. }
+        | AstExpr::String { .. } => Ok(ExprCategory::Other),
     }
 }
 
-fn validate_type_annotation(
-    source_path: &Utf8Path,
-    source: &str,
-    annotation: &crate::ast::AstTypeAnnotation,
-    value: &ConstValue,
+fn validate_actor_block(
+    ctx: &ValidationContext<'_>,
+    block: &AstBlock,
+    inherited_bindings: &HashMap<String, BindingKind>,
 ) -> miette::Result<()> {
-    let primitive = parse_primitive_type(&annotation.text).map_err(|error| {
-        to_source_diagnostic(
-            source_path,
-            source,
+    let mut bindings = inherited_bindings.clone();
+    let mut has_receive = false;
+
+    for stmt in &block.statements {
+        match stmt {
+            AstStmt::Let {
+                name,
+                name_span,
+                value,
+                type_annotation,
+                ..
+            } => {
+                if bindings.contains_key(name) {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        *name_span,
+                        "duplicate local binding",
+                        format!("`{name}` is already bound in this actor block"),
+                        Some("use a unique local name"),
+                    )
+                    .into());
+                }
+                if type_annotation.is_some() {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        expr_span(value),
+                        "unsupported actor local annotation",
+                        "stage0 actor locals do not support type annotations yet",
+                        Some("omit the annotation"),
+                    )
+                    .into());
+                }
+                if let AstExpr::Spawn { body, .. } = value {
+                    validate_actor_block(ctx, body, &bindings)?;
+                    bindings.insert(name.clone(), BindingKind::Actor);
+                } else {
+                    validate_expr(ctx, value, &bindings, true)?;
+                    bindings.insert(name.clone(), BindingKind::Value);
+                }
+            }
+            AstStmt::Expr(expr) => {
+                if let AstExpr::Receive { binder, body, .. } = expr {
+                    has_receive = true;
+                    let mut receive_bindings = bindings.clone();
+                    receive_bindings.insert(binder.clone(), BindingKind::Message);
+                    validate_expr(ctx, body, &receive_bindings, true)?;
+                } else {
+                    validate_expr(ctx, expr, &bindings, true)?;
+                }
+            }
+        }
+    }
+
+    if let Some(tail) = &block.tail {
+        if let AstExpr::Receive { binder, body, .. } = tail {
+            has_receive = true;
+            let mut receive_bindings = bindings.clone();
+            receive_bindings.insert(binder.clone(), BindingKind::Message);
+            validate_expr(ctx, body, &receive_bindings, true)?;
+        } else {
+            validate_expr(ctx, tail, &bindings, true)?;
+        }
+    }
+
+    if !has_receive {
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            block.span,
+            "actor body never receives",
+            "stage0 actors must contain at least one receive point",
+            Some("try: spawn { receive { msg -> dbg(msg) } }"),
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn validate_actor_target(
+    ctx: &ValidationContext<'_>,
+    expr: &AstExpr,
+    bindings: &HashMap<String, BindingKind>,
+    span: TextSpan,
+    operation: &str,
+) -> miette::Result<()> {
+    if let AstExpr::Path { path, .. } = expr
+        && let [name] = path.segments.as_slice()
+    {
+        match bindings.get(name) {
+            Some(BindingKind::Actor) | Some(BindingKind::Message) => return Ok(()),
+            None => {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    span,
+                    format!("{operation} target is unknown"),
+                    format!("`{name}` is not bound in this scope"),
+                    Some("send to the result of `spawn { ... }`"),
+                )
+                .into());
+            }
+            Some(BindingKind::Value) => {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    span,
+                    format!("{operation} target is not an actor"),
+                    format!("`{name}` is a value, not a pid"),
+                    Some("send to the result of `spawn { ... }`"),
+                )
+                .into());
+            }
+        }
+    }
+    validate_expr(ctx, expr, bindings, false)?;
+    Ok(())
+}
+
+fn validate_type_annotation(
+    ctx: &ValidationContext<'_>,
+    annotation: &AstTypeAnnotation,
+    value: &AstExpr,
+    _bindings: &HashMap<String, BindingKind>,
+) -> miette::Result<()> {
+    if annotation.text == "int" || annotation.text == "float" {
+        let error = parse_primitive_type(&annotation.text).unwrap_err();
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
             annotation.span,
             "unsupported type annotation",
             error.message,
             error.help,
         )
-    })?;
+        .into());
+    }
 
-    if value.matches_primitive(primitive) {
+    if parse_primitive_type(&annotation.text).is_err()
+        && !annotation.text.starts_with('(')
+        && !annotation.text.ends_with(" list")
+    {
+        return Ok(());
+    }
+
+    let value_type = resolve_const_value(value, &HashMap::new(), &ctx.functions)
+        .map(|value| const_value_type(&value));
+    if let Some(value_type) = value_type {
+        let expected = parse_type(&annotation.text);
+        if type_matches(&expected, &value_type) {
+            return Ok(());
+        }
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            annotation.span,
+            "type annotation does not match value",
+            format!(
+                "expected `{}`, but this binding has type `{}`",
+                expected.canonical(),
+                value_type.canonical()
+            ),
+            Some("change the annotation or the value"),
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn validate_function_annotations(
+    ctx: &ValidationContext<'_>,
+    function: &crate::ast::AstFnDecl,
+) -> miette::Result<()> {
+    let mut bindings = HashMap::new();
+    for (index, annotation) in function.param_types.iter().enumerate() {
+        let Some(annotation) = annotation else {
+            continue;
+        };
+        validate_function_abi_annotation(ctx, annotation)?;
+        if let Some(param) = function.params.get(index) {
+            bindings.insert(param.clone(), parse_type(&annotation.text));
+        }
+    }
+
+    let Some(return_annotation) = &function.return_type else {
+        return Ok(());
+    };
+    validate_function_abi_annotation(ctx, return_annotation)?;
+
+    let expected = parse_type(&return_annotation.text);
+    let actual = infer_annotation_block_type(ctx, &function.body, &mut bindings);
+    if let Some(actual) = actual
+        && !type_matches(&expected, &actual)
+    {
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            return_annotation.span,
+            "function return type does not match body",
+            format!(
+                "expected `{}`, but this function body has type `{}`",
+                expected.canonical(),
+                actual.canonical()
+            ),
+            Some("change the return annotation or the function body"),
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn validate_function_abi_annotation(
+    ctx: &ValidationContext<'_>,
+    annotation: &AstTypeAnnotation,
+) -> miette::Result<()> {
+    if annotation.text == "int" || annotation.text == "float" {
+        let error = parse_primitive_type(&annotation.text).unwrap_err();
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            annotation.span,
+            "unsupported function ABI annotation",
+            error.message,
+            error.help,
+        )
+        .into());
+    }
+
+    let type_ = parse_type(&annotation.text);
+    if matches!(
+        type_,
+        RsigType::I64
+            | RsigType::Bool
+            | RsigType::Unit
+            | RsigType::Pid(_)
+            | RsigType::String
+            | RsigType::Tuple(_)
+            | RsigType::List(_)
+            | RsigType::Record(_)
+    ) {
         return Ok(());
     }
 
     Err(to_source_diagnostic(
-        source_path,
-        source,
+        ctx.source_path,
+        ctx.source,
         annotation.span,
-        "type annotation does not match value",
+        "unsupported function ABI annotation",
         format!(
-            "expected `{}`, but this binding has type `{}`",
-            primitive.name(),
-            value.type_name()
+            "`{}` is not supported for native Riot function parameters or returns yet",
+            annotation.text
         ),
-        Some("change the annotation or the value"),
+        Some("use a scalar type or a boxed value type such as `string`, a tuple, a list, or a record"),
     )
     .into())
 }
 
-fn output_expr(
-    expr: &AstExpr,
-    bindings: &HashMap<String, ConstValue>,
-    functions: &HashMap<String, ConstFunction>,
-) -> Option<TypedExpr> {
-    let AstExpr::Call {
-        callee,
-        args,
-        span: _,
-    } = expr
-    else {
-        return None;
-    };
-    let callee = match callee.segments.as_slice() {
-        [segment] => segment.as_str(),
-        _ => return None,
-    };
-
-    let value = match args.as_slice() {
-        [arg] => resolve_const_value(arg, bindings, functions)?,
-        _ => return None,
-    };
-
-    match callee {
-        "dbg" => Some(TypedExpr::Dbg {
-            message: value.to_print_string(),
-        }),
-        "println" => {
-            let ConstValue::String(message) = value else {
-                return None;
-            };
-            Some(TypedExpr::Println { message })
+fn infer_annotation_block_type(
+    ctx: &ValidationContext<'_>,
+    block: &AstBlock,
+    bindings: &mut HashMap<String, RsigType>,
+) -> Option<RsigType> {
+    for stmt in &block.statements {
+        match stmt {
+            AstStmt::Let {
+                name,
+                type_annotation,
+                value,
+                ..
+            } => {
+                let type_ = type_annotation
+                    .as_ref()
+                    .map(|annotation| parse_type(&annotation.text))
+                    .or_else(|| infer_annotation_expr_type(ctx, value, bindings))
+                    .unwrap_or(RsigType::Unknown);
+                bindings.insert(name.clone(), type_);
+            }
+            AstStmt::Expr(expr) => {
+                infer_annotation_expr_type(ctx, expr, bindings);
+            }
         }
-        _ => None,
     }
+    if let Some(tail) = &block.tail {
+        infer_annotation_expr_type(ctx, tail, bindings)
+    } else {
+        Some(RsigType::Unit)
+    }
+}
+
+fn infer_annotation_expr_type(
+    ctx: &ValidationContext<'_>,
+    expr: &AstExpr,
+    bindings: &HashMap<String, RsigType>,
+) -> Option<RsigType> {
+    match expr {
+        AstExpr::Add { .. }
+        | AstExpr::Sub { .. }
+        | AstExpr::Mul { .. }
+        | AstExpr::Div { .. }
+        | AstExpr::Mod { .. }
+        | AstExpr::Neg { .. }
+        | AstExpr::Int { .. } => Some(RsigType::I64),
+        AstExpr::Eq { .. }
+        | AstExpr::Lt { .. }
+        | AstExpr::And { .. }
+        | AstExpr::Or { .. }
+        | AstExpr::Not { .. }
+        | AstExpr::Bool { .. } => Some(RsigType::Bool),
+        AstExpr::If {
+            then_branch,
+            else_branch,
+            ..
+        } => Some(merge_annotation_types(
+            infer_annotation_expr_type(ctx, then_branch, bindings).unwrap_or(RsigType::Unknown),
+            infer_annotation_expr_type(ctx, else_branch, bindings).unwrap_or(RsigType::Unknown),
+        )),
+        AstExpr::Call { callee, .. } => match callee.segments.as_slice() {
+            [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
+            [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
+            [name] => ctx.function_results.get(name).cloned(),
+            [module, name] => ctx
+                .imports
+                .get(module)
+                .and_then(|rsig| rsig.find(name))
+                .map(|export| match export {
+                    RsigExport::Function(function) => function.result.clone(),
+                    RsigExport::External(external) => external.result.clone(),
+                }),
+            _ => None,
+        },
+        AstExpr::Unit { .. } => Some(RsigType::Unit),
+        AstExpr::Tuple { items, .. } => Some(RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| {
+                    infer_annotation_expr_type(ctx, item, bindings).unwrap_or(RsigType::Unknown)
+                })
+                .collect(),
+        )),
+        AstExpr::List { items, .. } => Some(RsigType::List(Box::new(
+            items
+                .first()
+                .and_then(|item| infer_annotation_expr_type(ctx, item, bindings))
+                .unwrap_or(RsigType::Unknown),
+        ))),
+        AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
+        AstExpr::Char { .. } => Some(RsigType::Char),
+        AstExpr::Float { .. } => Some(RsigType::F64),
+        AstExpr::Path { path, .. } => path
+            .segments
+            .first()
+            .and_then(|name| bindings.get(name))
+            .cloned(),
+        AstExpr::String { .. } => Some(RsigType::String),
+        AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
+        AstExpr::Receive { .. } => Some(RsigType::Unit),
+    }
+}
+
+fn merge_annotation_types(lhs: RsigType, rhs: RsigType) -> RsigType {
+    if lhs == rhs {
+        lhs
+    } else if matches!(lhs, RsigType::Unknown) {
+        rhs
+    } else if matches!(rhs, RsigType::Unknown) {
+        lhs
+    } else {
+        RsigType::Unknown
+    }
+}
+
+fn const_value_type(value: &ConstValue) -> RsigType {
+    match value {
+        ConstValue::Bool(_) => RsigType::Bool,
+        ConstValue::Char(_) => RsigType::Char,
+        ConstValue::Float(_) => RsigType::F64,
+        ConstValue::Int(_) => RsigType::I64,
+        ConstValue::String(_) => RsigType::String,
+        ConstValue::Unit => RsigType::Unit,
+        ConstValue::Tuple(items) => RsigType::Tuple(items.iter().map(const_value_type).collect()),
+        ConstValue::List(items) => RsigType::List(Box::new(
+            items
+                .first()
+                .map(const_value_type)
+                .unwrap_or(RsigType::Unknown),
+        )),
+        ConstValue::Record { path, fields: _ } => RsigType::Record(path.clone()),
+    }
+}
+
+fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
+    expected == actual
+        || matches!(expected, RsigType::Unknown)
+        || matches!(actual, RsigType::Unknown)
+}
+
+fn export_has_unknown_abi(export: &RsigExport) -> bool {
+    match export {
+        RsigExport::Function(function) => {
+            function.result == RsigType::Unknown
+                || function
+                    .params
+                    .iter()
+                    .any(|param| matches!(param, RsigType::Unknown))
+        }
+        RsigExport::External(external) => {
+            external.result == RsigType::Unknown
+                || external
+                    .params
+                    .iter()
+                    .any(|param| matches!(param, RsigType::Unknown | RsigType::Var(_)))
+        }
+    }
+}
+
+fn simple_expr_type(
+    ctx: &ValidationContext<'_>,
+    expr: &AstExpr,
+    bindings: &HashMap<String, BindingKind>,
+) -> Option<RsigType> {
+    match expr {
+        AstExpr::Add { .. }
+        | AstExpr::Sub { .. }
+        | AstExpr::Mul { .. }
+        | AstExpr::Div { .. }
+        | AstExpr::Mod { .. }
+        | AstExpr::Neg { .. }
+        | AstExpr::Int { .. } => Some(RsigType::I64),
+        AstExpr::Eq { .. }
+        | AstExpr::Lt { .. }
+        | AstExpr::And { .. }
+        | AstExpr::Or { .. }
+        | AstExpr::Not { .. }
+        | AstExpr::Bool { .. } => Some(RsigType::Bool),
+        AstExpr::Char { .. } => Some(RsigType::Char),
+        AstExpr::Float { .. } => Some(RsigType::F64),
+        AstExpr::String { .. } => Some(RsigType::String),
+        AstExpr::Unit { .. } => Some(RsigType::Unit),
+        AstExpr::Tuple { items, .. } => Some(RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| simple_expr_type(ctx, item, bindings).unwrap_or(RsigType::Unknown))
+                .collect(),
+        )),
+        AstExpr::List { items, .. } => Some(RsigType::List(Box::new(
+            items
+                .first()
+                .and_then(|item| simple_expr_type(ctx, item, bindings))
+                .unwrap_or(RsigType::Unknown),
+        ))),
+        AstExpr::Path { path, .. } if path.segments.len() == 1 => {
+            match bindings.get(&path.segments[0]) {
+                Some(BindingKind::Actor) => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
+                Some(BindingKind::Message) | Some(BindingKind::Value) => None,
+                None => None,
+            }
+        }
+        AstExpr::Call { callee, .. } => match callee.segments.as_slice() {
+            [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
+            [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
+            [module, name] => ctx
+                .imports
+                .get(module)
+                .and_then(|rsig| rsig.find(name))
+                .map(|export| match export {
+                    RsigExport::Function(function) => function.result.clone(),
+                    RsigExport::External(external) => external.result.clone(),
+                }),
+            _ => None,
+        },
+        AstExpr::If {
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            let then_type = simple_expr_type(ctx, then_branch, bindings)?;
+            let else_type = simple_expr_type(ctx, else_branch, bindings)?;
+            type_matches(&then_type, &else_type).then_some(then_type)
+        }
+        AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
+        AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
+        AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
+    }
+}
+
+fn call_arity_error(
+    ctx: &ValidationContext<'_>,
+    span: TextSpan,
+    name: &str,
+    expected: usize,
+    actual: usize,
+) -> miette::Report {
+    to_source_diagnostic(
+        ctx.source_path,
+        ctx.source,
+        span,
+        format!("{name} expects {expected} argument(s)"),
+        format!("found {actual} argument(s)"),
+        Some("check the call arity"),
+    )
+    .into()
 }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use crate::ast::{AstBlock, AstExpr};
@@ -234,7 +236,12 @@ pub(super) fn resolve_const_value(
             span: _,
         } => fields
             .iter()
-            .map(|(name, value)| Some((name.clone(), resolve_const_value(value, bindings, functions)?)))
+            .map(|(name, value)| {
+                Some((
+                    name.clone(),
+                    resolve_const_value(value, bindings, functions)?,
+                ))
+            })
             .collect::<Option<Vec<_>>>()
             .map(|fields| ConstValue::Record {
                 path: path.segments.join("."),
@@ -248,7 +255,13 @@ pub(super) fn resolve_const_value(
             callee,
             args,
             span: _,
-        } => resolve_call_value(callee.segments.as_slice(), args.as_slice(), bindings, functions),
+        } => resolve_call_value(
+            callee.segments.as_slice(),
+            args.as_slice(),
+            bindings,
+            functions,
+        ),
+        AstExpr::Spawn { .. } | AstExpr::Receive { .. } => None,
     }
 }
 

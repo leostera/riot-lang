@@ -1,0 +1,21 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/programs/actors/monitor_multiple_watchers.ml
+
+compile:
+status: success
+stdout:
+<empty>
+stderr:
+<empty>
+
+run:
+status: success
+stdout:
+watched twice
+down 1
+down 1
+stderr:
+<empty>

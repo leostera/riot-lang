@@ -7,6 +7,7 @@ use crate::command::run_command;
 
 pub(crate) fn link_executable(
     object_path: &Utf8Path,
+    imported_objects: &[camino::Utf8PathBuf],
     runtime_lib: &Utf8Path,
     output: &Utf8Path,
 ) -> miette::Result<()> {
@@ -16,8 +17,11 @@ pub(crate) fn link_executable(
         .wrap_err("failed to find clang or cc in PATH")?;
 
     let mut command = Command::new(linker);
+    command.arg(object_path.as_std_path());
+    for object in imported_objects {
+        command.arg(object.as_std_path());
+    }
     command
-        .arg(object_path.as_std_path())
         .arg(runtime_lib.as_std_path())
         .arg("-o")
         .arg(output.as_std_path());

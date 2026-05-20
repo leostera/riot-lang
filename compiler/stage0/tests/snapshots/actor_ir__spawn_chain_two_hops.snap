@@ -1,0 +1,220 @@
+---
+source: tests/fixtures.rs
+expression: contents
+---
+ActorIrProgram {
+    module_name: "SpawnChainTwoHops",
+    actors: [
+        ActorIrActor {
+            id: 0,
+            owner: "main",
+            frame: ActorFrameLayout {
+                size_bytes: 16,
+                align: 8,
+                slots: [
+                    ActorFrameSlot {
+                        name: "middle",
+                        type_: Pid,
+                        field_index: 1,
+                    },
+                ],
+                captures: [],
+            },
+            states: [
+                ActorFrameState {
+                    index: 0,
+                    op: Let {
+                        name: "middle",
+                        value: Spawn {
+                            actor_id: 1,
+                            body: RirBlock {
+                                statements: [
+                                    Let {
+                                        name: "leaf",
+                                        value: Spawn {
+                                            actor_id: 2,
+                                            body: RirBlock {
+                                                statements: [],
+                                                tail: Some(
+                                                    Receive {
+                                                        binder: "msg",
+                                                        body: Call {
+                                                            callee: [
+                                                                "dbg",
+                                                            ],
+                                                            args: [
+                                                                Path(
+                                                                    [
+                                                                        "msg",
+                                                                    ],
+                                                                ),
+                                                            ],
+                                                        },
+                                                    },
+                                                ),
+                                            },
+                                        },
+                                    },
+                                ],
+                                tail: Some(
+                                    Receive {
+                                        binder: "msg",
+                                        body: Call {
+                                            callee: [
+                                                "send",
+                                            ],
+                                            args: [
+                                                Path(
+                                                    [
+                                                        "leaf",
+                                                    ],
+                                                ),
+                                                Path(
+                                                    [
+                                                        "msg",
+                                                    ],
+                                                ),
+                                            ],
+                                        },
+                                    },
+                                ),
+                            },
+                        },
+                    },
+                    next: State(
+                        1,
+                    ),
+                },
+                ActorFrameState {
+                    index: 1,
+                    op: Receive {
+                        binder: "msg",
+                        body: Call {
+                            callee: [
+                                "send",
+                            ],
+                            args: [
+                                Path(
+                                    [
+                                        "middle",
+                                    ],
+                                ),
+                                Path(
+                                    [
+                                        "msg",
+                                    ],
+                                ),
+                            ],
+                        },
+                    },
+                    next: Done,
+                },
+            ],
+        },
+        ActorIrActor {
+            id: 1,
+            owner: "main",
+            frame: ActorFrameLayout {
+                size_bytes: 16,
+                align: 8,
+                slots: [
+                    ActorFrameSlot {
+                        name: "leaf",
+                        type_: Pid,
+                        field_index: 1,
+                    },
+                ],
+                captures: [],
+            },
+            states: [
+                ActorFrameState {
+                    index: 0,
+                    op: Let {
+                        name: "leaf",
+                        value: Spawn {
+                            actor_id: 2,
+                            body: RirBlock {
+                                statements: [],
+                                tail: Some(
+                                    Receive {
+                                        binder: "msg",
+                                        body: Call {
+                                            callee: [
+                                                "dbg",
+                                            ],
+                                            args: [
+                                                Path(
+                                                    [
+                                                        "msg",
+                                                    ],
+                                                ),
+                                            ],
+                                        },
+                                    },
+                                ),
+                            },
+                        },
+                    },
+                    next: State(
+                        1,
+                    ),
+                },
+                ActorFrameState {
+                    index: 1,
+                    op: Receive {
+                        binder: "msg",
+                        body: Call {
+                            callee: [
+                                "send",
+                            ],
+                            args: [
+                                Path(
+                                    [
+                                        "leaf",
+                                    ],
+                                ),
+                                Path(
+                                    [
+                                        "msg",
+                                    ],
+                                ),
+                            ],
+                        },
+                    },
+                    next: Done,
+                },
+            ],
+        },
+        ActorIrActor {
+            id: 2,
+            owner: "main",
+            frame: ActorFrameLayout {
+                size_bytes: 8,
+                align: 8,
+                slots: [],
+                captures: [],
+            },
+            states: [
+                ActorFrameState {
+                    index: 0,
+                    op: Receive {
+                        binder: "msg",
+                        body: Call {
+                            callee: [
+                                "dbg",
+                            ],
+                            args: [
+                                Path(
+                                    [
+                                        "msg",
+                                    ],
+                                ),
+                            ],
+                        },
+                    },
+                    next: Done,
+                },
+            ],
+        },
+    ],
+}

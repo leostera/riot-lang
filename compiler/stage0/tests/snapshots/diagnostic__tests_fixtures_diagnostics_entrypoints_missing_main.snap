@@ -16,6 +16,6 @@ Error: stage0::source
  1 │ ╭─▶ fn start() {
  2 │ │     println("hello world")
  3 │ ├─▶ }
-   · ╰──── stage0 requires one entrypoint named main
+   · ╰──── stage0 compile requires one entrypoint named main
    ╰────
   help: add: fn main() { dbg("hello world") }

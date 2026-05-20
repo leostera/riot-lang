@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct TextSpan {
     pub(crate) start: usize,
@@ -19,7 +21,31 @@ impl TextSpan {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AstProgram {
-    pub(crate) decls: Vec<AstFnDecl>,
+    pub(crate) decls: Vec<AstDecl>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum AstDecl {
+    Use(AstUseDecl),
+    External(AstExternalDecl),
+    Function(AstFnDecl),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstUseDecl {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
+    pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstExternalDecl {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
+    pub(crate) type_text: String,
+    pub(crate) type_span: TextSpan,
+    pub(crate) abi: String,
+    pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +53,8 @@ pub(crate) struct AstFnDecl {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
     pub(crate) params: Vec<String>,
+    pub(crate) param_types: Vec<Option<AstTypeAnnotation>>,
+    pub(crate) return_type: Option<AstTypeAnnotation>,
     pub(crate) body: AstBlock,
     pub(crate) span: TextSpan,
 }
@@ -124,6 +152,16 @@ pub(crate) enum AstExpr {
     Call {
         callee: AstPath,
         args: Vec<AstExpr>,
+        span: TextSpan,
+    },
+    Spawn {
+        body: Box<AstBlock>,
+        span: TextSpan,
+    },
+    Receive {
+        binder: String,
+        binder_span: TextSpan,
+        body: Box<AstExpr>,
         span: TextSpan,
     },
     Unit {

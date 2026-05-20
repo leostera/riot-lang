@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 127
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/body/non-println-call.ml
@@ -12,12 +11,12 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × unsupported main body
+  × unsupported function call
    ╭─[tests/fixtures/diagnostics/body/non-println-call.ml:2:3]
  1 │ fn main() {
  2 │   log("hello world")
    ·   ─────────┬────────
-   ·            ╰── stage0 currently expects main to call dbg with one constant value
+   ·            ╰── stage0 does not know `log`
  3 │ }
    ╰────
-  help: try: fn main() { let name = "Alice"; dbg(name) }
+  help: try: dbg("hello world")

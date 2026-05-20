@@ -1,0 +1,515 @@
+use std::collections::BTreeMap;
+use std::io::{Cursor, Read};
+
+use camino::{Utf8Path, Utf8PathBuf};
+use miette::{IntoDiagnostic, WrapErr, bail};
+
+const MAGIC: &[u8; 8] = b"RIOTRSIG";
+const VERSION: u16 = 1;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Rsig {
+    pub(crate) module: String,
+    pub(crate) exports: Vec<RsigExport>,
+    pub(crate) module_fingerprint: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum RsigExport {
+    Function(RsigFunction),
+    External(RsigExternal),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RsigFunction {
+    pub(crate) name: String,
+    pub(crate) params: Vec<RsigType>,
+    pub(crate) result: RsigType,
+    pub(crate) symbol: String,
+    pub(crate) fingerprint: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RsigExternal {
+    pub(crate) name: String,
+    pub(crate) params: Vec<RsigType>,
+    pub(crate) result: RsigType,
+    pub(crate) abi: String,
+    pub(crate) fingerprint: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum RsigType {
+    Bool,
+    Char,
+    F64,
+    I64,
+    Pid(Box<RsigType>),
+    String,
+    Unit,
+    Var(String),
+    Tuple(Vec<RsigType>),
+    List(Box<RsigType>),
+    Record(String),
+    Unknown,
+}
+
+impl Rsig {
+    pub(crate) fn new(module: String, mut exports: Vec<RsigExport>) -> Self {
+        exports.sort_by(|lhs, rhs| lhs.name().cmp(rhs.name()).then(lhs.kind().cmp(rhs.kind())));
+        for export in &mut exports {
+            export.set_fingerprint(stable_hash(&export.canonical_without_fingerprint()));
+        }
+        let module_fingerprint = stable_hash(
+            &exports
+                .iter()
+                .map(RsigExport::canonical_with_fingerprint)
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
+        Self {
+            module,
+            exports,
+            module_fingerprint,
+        }
+    }
+
+    pub(crate) fn canonical_text(&self) -> String {
+        let mut text = String::new();
+        text.push_str(&format!("module {}\n", self.module));
+        text.push_str(&format!("fingerprint {:016x}\n", self.module_fingerprint));
+        for export in &self.exports {
+            text.push_str(&export.canonical_with_fingerprint());
+            text.push('\n');
+        }
+        text
+    }
+
+    pub(crate) fn find(&self, name: &str) -> Option<&RsigExport> {
+        self.exports.iter().find(|export| export.name() == name)
+    }
+}
+
+impl RsigExport {
+    pub(crate) fn name(&self) -> &str {
+        match self {
+            RsigExport::Function(function) => &function.name,
+            RsigExport::External(external) => &external.name,
+        }
+    }
+
+    fn kind(&self) -> &'static str {
+        match self {
+            RsigExport::Function(_) => "fn",
+            RsigExport::External(_) => "external",
+        }
+    }
+
+    fn canonical_without_fingerprint(&self) -> String {
+        match self {
+            RsigExport::Function(function) => format!(
+                "fn {}({}) -> {} = {}",
+                function.name,
+                render_types(&function.params),
+                function.result.canonical(),
+                function.symbol
+            ),
+            RsigExport::External(external) => format!(
+                "external {}({}) -> {} = {}",
+                external.name,
+                render_types(&external.params),
+                external.result.canonical(),
+                external.abi
+            ),
+        }
+    }
+
+    fn canonical_with_fingerprint(&self) -> String {
+        match self {
+            RsigExport::Function(function) => {
+                format!(
+                    "{:016x} {}",
+                    function.fingerprint,
+                    self.canonical_without_fingerprint()
+                )
+            }
+            RsigExport::External(external) => {
+                format!(
+                    "{:016x} {}",
+                    external.fingerprint,
+                    self.canonical_without_fingerprint()
+                )
+            }
+        }
+    }
+
+    fn set_fingerprint(&mut self, fingerprint: u64) {
+        match self {
+            RsigExport::Function(function) => function.fingerprint = fingerprint,
+            RsigExport::External(external) => external.fingerprint = fingerprint,
+        }
+    }
+}
+
+impl RsigType {
+    pub(crate) fn canonical(&self) -> String {
+        match self {
+            RsigType::Bool => "bool".to_owned(),
+            RsigType::Char => "char".to_owned(),
+            RsigType::F64 => "f64".to_owned(),
+            RsigType::I64 => "i64".to_owned(),
+            RsigType::Pid(message) => format!("pid<{}>", message.canonical()),
+            RsigType::String => "string".to_owned(),
+            RsigType::Unit => "unit".to_owned(),
+            RsigType::Var(name) => name.clone(),
+            RsigType::Tuple(items) => format!("({})", render_types(items)),
+            RsigType::List(item) => format!("{} list", item.canonical()),
+            RsigType::Record(name) => name.clone(),
+            RsigType::Unknown => "_".to_owned(),
+        }
+    }
+}
+
+fn render_types(types: &[RsigType]) -> String {
+    types
+        .iter()
+        .map(RsigType::canonical)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+pub(crate) fn write_rsig(path: &Utf8Path, rsig: &Rsig) -> miette::Result<()> {
+    std::fs::write(path.as_std_path(), encode_rsig(rsig))
+        .into_diagnostic()
+        .wrap_err_with(|| format!("failed to write {}", path))
+}
+
+pub(crate) fn read_rsig(path: &Utf8Path) -> miette::Result<Rsig> {
+    let bytes = std::fs::read(path.as_std_path())
+        .into_diagnostic()
+        .wrap_err_with(|| format!("failed to read {}", path))?;
+    decode_rsig(&bytes).wrap_err_with(|| format!("failed to decode {}", path))
+}
+
+pub(crate) fn resolve_rsig(
+    module: &str,
+    source_dir: Option<&Utf8Path>,
+    sig_dirs: &[Utf8PathBuf],
+) -> miette::Result<(Utf8PathBuf, Rsig)> {
+    let filename = format!("{module}.rsig");
+    let mut candidates = Vec::new();
+    if let Some(source_dir) = source_dir {
+        candidates.push(source_dir.join(&filename));
+    }
+    candidates.extend(sig_dirs.iter().map(|dir| dir.join(&filename)));
+
+    for candidate in &candidates {
+        if candidate.exists() {
+            let rsig = read_rsig(candidate)?;
+            if rsig.module != module {
+                bail!(
+                    "signature {} declares module {}, but `use {}` requested {}",
+                    candidate,
+                    rsig.module,
+                    module,
+                    module
+                );
+            }
+            return Ok((candidate.clone(), rsig));
+        }
+    }
+
+    bail!(
+        "missing signature for module {module}\nsearched:\n{}",
+        candidates
+            .iter()
+            .map(|path| format!("  - {path}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    )
+}
+
+pub(crate) fn parse_type_signature(text: &str) -> (Vec<RsigType>, RsigType) {
+    let mut parts = split_top_level_arrows(text);
+    if parts.len() < 2 {
+        return (Vec::new(), parse_type(text));
+    }
+    let result = parse_type(parts.pop().unwrap_or("_"));
+    let params = parts.into_iter().map(parse_type).collect();
+    (params, result)
+}
+
+pub(crate) fn parse_type(text: &str) -> RsigType {
+    let text = text.trim();
+    if let Some(item) = text.strip_suffix(" list") {
+        return RsigType::List(Box::new(parse_type(item)));
+    }
+    match text {
+        "bool" => RsigType::Bool,
+        "char" => RsigType::Char,
+        "f64" | "float" => RsigType::F64,
+        "i64" | "int" => RsigType::I64,
+        "string" => RsigType::String,
+        "unit" => RsigType::Unit,
+        "_" | "" => RsigType::Unknown,
+        _ if text.starts_with('\'') => RsigType::Var(text.to_owned()),
+        _ if text.starts_with("pid<") && text.ends_with('>') => {
+            let inner = &text[4..text.len() - 1];
+            RsigType::Pid(Box::new(parse_type(inner)))
+        }
+        _ if text.starts_with('(') && text.ends_with(')') && text.contains(',') => {
+            let inner = &text[1..text.len() - 1];
+            RsigType::Tuple(
+                split_top_level_commas(inner)
+                    .into_iter()
+                    .map(parse_type)
+                    .collect(),
+            )
+        }
+        _ => RsigType::Record(text.to_owned()),
+    }
+}
+
+pub(crate) fn stable_hash(text: &str) -> u64 {
+    const OFFSET: u64 = 0xcbf29ce484222325;
+    const PRIME: u64 = 0x100000001b3;
+    let mut hash = OFFSET;
+    for byte in text.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(PRIME);
+    }
+    hash
+}
+
+fn split_top_level_arrows(text: &str) -> Vec<&str> {
+    let bytes = text.as_bytes();
+    let mut depth = 0_i32;
+    let mut start = 0;
+    let mut parts = Vec::new();
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'(' | b'<' => depth += 1,
+            b')' | b'>' => depth -= 1,
+            b'-' if depth == 0 && bytes.get(index + 1) == Some(&b'>') => {
+                parts.push(text[start..index].trim());
+                index += 2;
+                start = index;
+                continue;
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    parts.push(text[start..].trim());
+    parts
+}
+
+fn split_top_level_commas(text: &str) -> Vec<&str> {
+    let mut depth = 0_i32;
+    let mut start = 0;
+    let mut parts = Vec::new();
+    for (index, ch) in text.char_indices() {
+        match ch {
+            '(' | '<' => depth += 1,
+            ')' | '>' => depth -= 1,
+            ',' if depth == 0 => {
+                parts.push(text[start..index].trim());
+                start = index + ch.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    parts.push(text[start..].trim());
+    parts
+}
+
+fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(MAGIC);
+    put_u16(&mut bytes, VERSION);
+    put_string(&mut bytes, &rsig.module);
+    put_u64(&mut bytes, rsig.module_fingerprint);
+    put_u32(&mut bytes, rsig.exports.len() as u32);
+    for export in &rsig.exports {
+        match export {
+            RsigExport::Function(function) => {
+                bytes.push(0);
+                put_string(&mut bytes, &function.name);
+                put_types(&mut bytes, &function.params);
+                put_type(&mut bytes, &function.result);
+                put_string(&mut bytes, &function.symbol);
+                put_u64(&mut bytes, function.fingerprint);
+            }
+            RsigExport::External(external) => {
+                bytes.push(1);
+                put_string(&mut bytes, &external.name);
+                put_types(&mut bytes, &external.params);
+                put_type(&mut bytes, &external.result);
+                put_string(&mut bytes, &external.abi);
+                put_u64(&mut bytes, external.fingerprint);
+            }
+        }
+    }
+    bytes
+}
+
+fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
+    let mut cursor = Cursor::new(bytes);
+    let mut magic = [0_u8; 8];
+    cursor.read_exact(&mut magic).into_diagnostic()?;
+    if &magic != MAGIC {
+        bail!("not a Riot signature artifact");
+    }
+    let version = get_u16(&mut cursor)?;
+    if version != VERSION {
+        bail!("unsupported rsig version {version}");
+    }
+    let module = get_string(&mut cursor)?;
+    let module_fingerprint = get_u64(&mut cursor)?;
+    let count = get_u32(&mut cursor)?;
+    let mut exports = Vec::new();
+    for _ in 0..count {
+        let mut tag = [0_u8; 1];
+        cursor.read_exact(&mut tag).into_diagnostic()?;
+        let name = get_string(&mut cursor)?;
+        let params = get_types(&mut cursor)?;
+        let result = get_type(&mut cursor)?;
+        let payload = get_string(&mut cursor)?;
+        let fingerprint = get_u64(&mut cursor)?;
+        match tag[0] {
+            0 => exports.push(RsigExport::Function(RsigFunction {
+                name,
+                params,
+                result,
+                symbol: payload,
+                fingerprint,
+            })),
+            1 => exports.push(RsigExport::External(RsigExternal {
+                name,
+                params,
+                result,
+                abi: payload,
+                fingerprint,
+            })),
+            tag => bail!("unknown rsig export tag {tag}"),
+        }
+    }
+    Ok(Rsig {
+        module,
+        exports,
+        module_fingerprint,
+    })
+}
+
+fn put_types(bytes: &mut Vec<u8>, types: &[RsigType]) {
+    put_u32(bytes, types.len() as u32);
+    for type_ in types {
+        put_type(bytes, type_);
+    }
+}
+
+fn get_types(cursor: &mut Cursor<&[u8]>) -> miette::Result<Vec<RsigType>> {
+    let count = get_u32(cursor)?;
+    let mut types = Vec::new();
+    for _ in 0..count {
+        types.push(get_type(cursor)?);
+    }
+    Ok(types)
+}
+
+fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
+    match type_ {
+        RsigType::Bool => bytes.push(0),
+        RsigType::Char => bytes.push(1),
+        RsigType::F64 => bytes.push(2),
+        RsigType::I64 => bytes.push(3),
+        RsigType::Pid(message) => {
+            bytes.push(4);
+            put_type(bytes, message);
+        }
+        RsigType::String => bytes.push(5),
+        RsigType::Unit => bytes.push(6),
+        RsigType::Var(name) => {
+            bytes.push(7);
+            put_string(bytes, name);
+        }
+        RsigType::Tuple(items) => {
+            bytes.push(8);
+            put_types(bytes, items);
+        }
+        RsigType::List(item) => {
+            bytes.push(9);
+            put_type(bytes, item);
+        }
+        RsigType::Record(name) => {
+            bytes.push(10);
+            put_string(bytes, name);
+        }
+        RsigType::Unknown => bytes.push(11),
+    }
+}
+
+fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
+    let mut tag = [0_u8; 1];
+    cursor.read_exact(&mut tag).into_diagnostic()?;
+    Ok(match tag[0] {
+        0 => RsigType::Bool,
+        1 => RsigType::Char,
+        2 => RsigType::F64,
+        3 => RsigType::I64,
+        4 => RsigType::Pid(Box::new(get_type(cursor)?)),
+        5 => RsigType::String,
+        6 => RsigType::Unit,
+        7 => RsigType::Var(get_string(cursor)?),
+        8 => RsigType::Tuple(get_types(cursor)?),
+        9 => RsigType::List(Box::new(get_type(cursor)?)),
+        10 => RsigType::Record(get_string(cursor)?),
+        11 => RsigType::Unknown,
+        tag => bail!("unknown type tag {tag}"),
+    })
+}
+
+fn put_string(bytes: &mut Vec<u8>, value: &str) {
+    put_u32(bytes, value.len() as u32);
+    bytes.extend_from_slice(value.as_bytes());
+}
+
+fn get_string(cursor: &mut Cursor<&[u8]>) -> miette::Result<String> {
+    let len = get_u32(cursor)? as usize;
+    let mut bytes = vec![0_u8; len];
+    cursor.read_exact(&mut bytes).into_diagnostic()?;
+    String::from_utf8(bytes).into_diagnostic()
+}
+
+fn put_u16(bytes: &mut Vec<u8>, value: u16) {
+    bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn get_u16(cursor: &mut Cursor<&[u8]>) -> miette::Result<u16> {
+    let mut bytes = [0_u8; 2];
+    cursor.read_exact(&mut bytes).into_diagnostic()?;
+    Ok(u16::from_le_bytes(bytes))
+}
+
+fn put_u32(bytes: &mut Vec<u8>, value: u32) {
+    bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn get_u32(cursor: &mut Cursor<&[u8]>) -> miette::Result<u32> {
+    let mut bytes = [0_u8; 4];
+    cursor.read_exact(&mut bytes).into_diagnostic()?;
+    Ok(u32::from_le_bytes(bytes))
+}
+
+fn put_u64(bytes: &mut Vec<u8>, value: u64) {
+    bytes.extend_from_slice(&value.to_le_bytes());
+}
+
+fn get_u64(cursor: &mut Cursor<&[u8]>) -> miette::Result<u64> {
+    let mut bytes = [0_u8; 8];
+    cursor.read_exact(&mut bytes).into_diagnostic()?;
+    Ok(u64::from_le_bytes(bytes))
+}
+
+pub(crate) type ImportedSignatures = BTreeMap<String, Rsig>;

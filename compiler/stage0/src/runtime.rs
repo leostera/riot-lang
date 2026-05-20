@@ -1,5 +1,5 @@
 use std::process::Command;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
@@ -30,6 +30,11 @@ pub(crate) fn build_runtime(repo: &Utf8Path) -> miette::Result<Utf8PathBuf> {
         return Ok(lib);
     }
 
+    let _lock = RuntimeBuildLock::acquire(repo)?;
+    if runtime_library_is_current(repo, &lib)? {
+        return Ok(lib);
+    }
+
     let cargo = which::which("cargo")
         .into_diagnostic()
         .wrap_err("failed to find cargo in PATH")?;
@@ -44,6 +49,44 @@ pub(crate) fn build_runtime(repo: &Utf8Path) -> miette::Result<Utf8PathBuf> {
     }
 
     Ok(lib)
+}
+
+struct RuntimeBuildLock {
+    path: Utf8PathBuf,
+}
+
+impl RuntimeBuildLock {
+    fn acquire(repo: &Utf8Path) -> miette::Result<Self> {
+        let lock_dir = repo.join("compiler/rt/target");
+        std::fs::create_dir_all(lock_dir.as_std_path())
+            .into_diagnostic()
+            .wrap_err_with(|| format!("failed to create {}", lock_dir))?;
+        let path = lock_dir.join(".riot-runtime-build.lock");
+
+        loop {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path.as_std_path())
+            {
+                Ok(_) => return Ok(Self { path }),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                Err(error) => {
+                    return Err(error)
+                        .into_diagnostic()
+                        .wrap_err_with(|| format!("failed to create runtime build lock {}", path));
+                }
+            }
+        }
+    }
+}
+
+impl Drop for RuntimeBuildLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(self.path.as_std_path());
+    }
 }
 
 fn runtime_library_is_current(repo: &Utf8Path, lib: &Utf8Path) -> miette::Result<bool> {

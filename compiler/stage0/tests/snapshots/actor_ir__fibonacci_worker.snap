@@ -1,0 +1,93 @@
+---
+source: tests/fixtures.rs
+expression: contents
+---
+ActorIrProgram {
+    module_name: "FibonacciWorker",
+    actors: [
+        ActorIrActor {
+            id: 0,
+            owner: "main",
+            frame: ActorFrameLayout {
+                size_bytes: 8,
+                align: 8,
+                slots: [],
+                captures: [],
+            },
+            states: [
+                ActorFrameState {
+                    index: 0,
+                    op: Receive {
+                        binder: "msg",
+                        body: Call {
+                            callee: [
+                                "dbg",
+                            ],
+                            args: [
+                                Path(
+                                    [
+                                        "msg",
+                                    ],
+                                ),
+                            ],
+                        },
+                    },
+                    next: Done,
+                },
+            ],
+        },
+        ActorIrActor {
+            id: 1,
+            owner: "main",
+            frame: ActorFrameLayout {
+                size_bytes: 16,
+                align: 8,
+                slots: [
+                    ActorFrameSlot {
+                        name: "out",
+                        type_: Pid,
+                        field_index: 1,
+                    },
+                ],
+                captures: [
+                    ActorFrameSlot {
+                        name: "out",
+                        type_: Pid,
+                        field_index: 1,
+                    },
+                ],
+            },
+            states: [
+                ActorFrameState {
+                    index: 0,
+                    op: Receive {
+                        binder: "start",
+                        body: Call {
+                            callee: [
+                                "send",
+                            ],
+                            args: [
+                                Path(
+                                    [
+                                        "out",
+                                    ],
+                                ),
+                                Call {
+                                    callee: [
+                                        "fib",
+                                    ],
+                                    args: [
+                                        Int(
+                                            6,
+                                        ),
+                                    ],
+                                },
+                            ],
+                        },
+                    },
+                    next: Done,
+                },
+            ],
+        },
+    ],
+}

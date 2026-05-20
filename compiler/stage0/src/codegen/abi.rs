@@ -1,0 +1,52 @@
+use crate::ir::ActorSlotType;
+use crate::signature::RsigType;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AbiType {
+    Unknown,
+    Unit,
+    I64,
+    Bool,
+    Pid,
+    Value,
+}
+
+impl AbiType {
+    pub(crate) fn from_actor_slot(type_: ActorSlotType) -> Self {
+        match type_ {
+            ActorSlotType::I64 => AbiType::I64,
+            ActorSlotType::Bool => AbiType::Bool,
+            ActorSlotType::Pid => AbiType::Pid,
+        }
+    }
+
+    pub(crate) fn from_rsig(type_: &RsigType) -> Self {
+        match type_ {
+            RsigType::Bool => AbiType::Bool,
+            RsigType::I64 => AbiType::I64,
+            RsigType::Pid(_) => AbiType::Pid,
+            RsigType::Unit => AbiType::Unit,
+            RsigType::String
+            | RsigType::Tuple(_)
+            | RsigType::List(_)
+            | RsigType::Record(_) => AbiType::Value,
+            _ => AbiType::Unknown,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FunctionAbi {
+    pub(crate) params: Vec<AbiType>,
+    pub(crate) result: AbiType,
+}
+
+impl FunctionAbi {
+    pub(crate) fn is_supported_local(&self) -> bool {
+        self.result != AbiType::Unknown
+            && self
+                .params
+                .iter()
+                .all(|param| *param != AbiType::Unknown && *param != AbiType::Unit)
+    }
+}

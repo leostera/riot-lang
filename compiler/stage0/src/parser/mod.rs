@@ -1,7 +1,8 @@
 use camino::Utf8Path;
 
 use crate::ast::{
-    AstBlock, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, AstTypeAnnotation, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstPath, AstProgram, AstStmt,
+    AstTypeAnnotation, AstUseDecl, TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
@@ -60,17 +61,101 @@ impl<'src> Parser<'src> {
         let mut decls = Vec::new();
 
         while !self.at(TokenKind::Eof) {
-            decls.push(self.parse_fn_decl()?);
+            decls.push(self.parse_decl()?);
         }
 
         Ok(AstProgram { decls })
+    }
+
+    fn parse_decl(&mut self) -> Result<AstDecl, ParseError> {
+        match self.current().kind {
+            TokenKind::Use => self.parse_use_decl().map(AstDecl::Use),
+            TokenKind::External => self.parse_external_decl().map(AstDecl::External),
+            TokenKind::Fn => self.parse_fn_decl().map(AstDecl::Function),
+            _ => Err(self.error_at_current(
+                "expected top-level `use`, `external`, or `fn` declaration",
+                Some("try: fn main() { println(\"hello world\") }"),
+            )),
+        }
+    }
+
+    fn parse_use_decl(&mut self) -> Result<AstUseDecl, ParseError> {
+        let start = self.expect(TokenKind::Use, "expected `use`")?;
+        let (name, name_span) = self.expect_ident()?;
+        let is_module_name = name
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_uppercase());
+        if !is_module_name {
+            return Err(ParseError {
+                span: name_span,
+                message: format!("expected module name after `use`, found `{name}`"),
+                help: Some("stage0 `use` imports a ClassCase module name, for example `use Math`"),
+            });
+        }
+        if self.at(TokenKind::Dot) {
+            return Err(self.error_at_current(
+                "stage0 `use` only accepts simple module names",
+                Some("try: use Math"),
+            ));
+        }
+        Ok(AstUseDecl {
+            name,
+            name_span,
+            span: start.span.join(name_span),
+        })
+    }
+
+    fn parse_external_decl(&mut self) -> Result<AstExternalDecl, ParseError> {
+        let start = self.expect(TokenKind::External, "expected `external`")?;
+        let (name, name_span) = self.expect_lower_ident()?;
+        self.expect(TokenKind::Colon, "expected `:` after external name")?;
+        let type_start = self.current().span;
+        while !self.at(TokenKind::Eq) {
+            if self.at(TokenKind::Semicolon)
+                || self.at(TokenKind::LBrace)
+                || self.at(TokenKind::RBrace)
+                || self.at(TokenKind::Eof)
+            {
+                return Err(self.error_at_current("expected `=` after external type", None));
+            }
+            self.bump();
+        }
+        let type_end = self.previous_span();
+        if type_start.start >= type_end.end {
+            return Err(self.error_at_current("expected external type after `:`", None));
+        }
+        let type_span = TextSpan::new(type_start.start, type_end.end);
+        self.expect(TokenKind::Eq, "expected `=` after external type")?;
+        let abi_token = self.expect(TokenKind::String, "expected external ABI string")?;
+        let abi = snailquote::unescape(self.text(abi_token.span)).map_err(|error| ParseError {
+            span: abi_token.span,
+            message: format!("invalid external ABI string: {error}"),
+            help: None,
+        })?;
+        Ok(AstExternalDecl {
+            name,
+            name_span,
+            type_text: self.text(type_span).trim().to_owned(),
+            type_span,
+            abi,
+            span: start.span.join(abi_token.span),
+        })
     }
 
     fn parse_fn_decl(&mut self) -> Result<AstFnDecl, ParseError> {
         let start = self.expect(TokenKind::Fn, "expected top-level function declaration")?;
         let (name, name_span) = self.expect_lower_ident()?;
 
-        let params = self.parse_param_list()?;
+        let (params, param_types) = self.parse_param_list()?;
+        let return_type = if self.match_kind(TokenKind::Arrow).is_some() {
+            Some(self.parse_type_annotation_until(
+                &[TokenKind::LBrace],
+                "expected `{` after return type",
+            )?)
+        } else {
+            None
+        };
 
         let body = self.parse_block()?;
         let span = start.span.join(body.span);
@@ -78,22 +163,36 @@ impl<'src> Parser<'src> {
             name,
             name_span,
             params,
+            param_types,
+            return_type,
             body,
             span,
         })
     }
 
-    fn parse_param_list(&mut self) -> Result<Vec<String>, ParseError> {
+    fn parse_param_list(
+        &mut self,
+    ) -> Result<(Vec<String>, Vec<Option<AstTypeAnnotation>>), ParseError> {
         self.expect(TokenKind::LParen, "expected `(` after function name")?;
         let mut params = Vec::new();
+        let mut param_types = Vec::new();
 
         if self.match_kind(TokenKind::RParen).is_some() {
-            return Ok(params);
+            return Ok((params, param_types));
         }
 
         loop {
             let (name, _) = self.expect_lower_ident()?;
             params.push(name);
+            let type_annotation = if self.match_kind(TokenKind::Colon).is_some() {
+                Some(self.parse_type_annotation_until(
+                    &[TokenKind::Comma, TokenKind::RParen],
+                    "expected `,` or `)` after parameter type",
+                )?)
+            } else {
+                None
+            };
+            param_types.push(type_annotation);
 
             if self.match_kind(TokenKind::Comma).is_none() {
                 break;
@@ -105,7 +204,7 @@ impl<'src> Parser<'src> {
         }
 
         self.expect(TokenKind::RParen, "expected `)` after function parameters")?;
-        Ok(params)
+        Ok((params, param_types))
     }
 
     fn parse_block(&mut self) -> Result<AstBlock, ParseError> {
@@ -164,13 +263,21 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_type_annotation(&mut self) -> Result<AstTypeAnnotation, ParseError> {
+        self.parse_type_annotation_until(&[TokenKind::Eq], "expected `=` after type annotation")
+    }
+
+    fn parse_type_annotation_until(
+        &mut self,
+        terminators: &[TokenKind],
+        missing_message: &str,
+    ) -> Result<AstTypeAnnotation, ParseError> {
         let start = self.current().span;
-        while !self.at(TokenKind::Eq) {
+        while !terminators.iter().any(|kind| self.at(*kind)) {
             if self.at(TokenKind::Semicolon)
                 || self.at(TokenKind::RBrace)
                 || self.at(TokenKind::Eof)
             {
-                return Err(self.error_at_current("expected `=` after type annotation", None));
+                return Err(self.error_at_current(missing_message, None));
             }
             self.bump();
         }
@@ -367,6 +474,8 @@ impl<'src> Parser<'src> {
             TokenKind::Char => self.parse_char(),
             TokenKind::Float => self.parse_float(),
             TokenKind::Int => self.parse_int(),
+            TokenKind::Spawn => self.parse_spawn(),
+            TokenKind::Receive => self.parse_receive(),
             TokenKind::Ident => {
                 let (path, span) = self.parse_path()?;
                 let is_record_path = path
@@ -385,6 +494,31 @@ impl<'src> Parser<'src> {
             TokenKind::LBracket => self.parse_list(),
             _ => Err(self.error_at_current("expected expression", None)),
         }
+    }
+
+    fn parse_spawn(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::Spawn, "expected `spawn`")?;
+        let body = self.parse_block()?;
+        let span = start.span.join(body.span);
+        Ok(AstExpr::Spawn {
+            body: Box::new(body),
+            span,
+        })
+    }
+
+    fn parse_receive(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::Receive, "expected `receive`")?;
+        self.expect(TokenKind::LBrace, "expected `{` after `receive`")?;
+        let (binder, binder_span) = self.expect_lower_ident()?;
+        self.expect(TokenKind::Arrow, "expected `->` after receive binder")?;
+        let body = self.parse_expr()?;
+        let end = self.expect(TokenKind::RBrace, "expected `}` after receive body")?;
+        Ok(AstExpr::Receive {
+            binder,
+            binder_span,
+            body: Box::new(body),
+            span: start.span.join(end.span),
+        })
     }
 
     fn parse_if(&mut self) -> Result<AstExpr, ParseError> {

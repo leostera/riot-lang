@@ -15,5 +15,6 @@ Error: stage0::source
    ╭─[tests/fixtures/diagnostics/syntax/old-let-main.ml:1:1]
  1 │ let main () = println "hello world"
    · ─┬─
-   ·  ╰── expected top-level function declaration
+   ·  ╰── expected top-level `use`, `external`, or `fn` declaration
    ╰────
+  help: try: fn main() { println("hello world") }
