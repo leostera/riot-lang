@@ -513,7 +513,11 @@ impl<'ctx> Codegen<'ctx, '_> {
             )),
             RirExpr::Call { callee, args } => self.emit_call(callee, args, env),
             RirExpr::Apply { .. } => bail!("higher-order apply is not lowered to LLVM yet"),
-            RirExpr::Lambda { .. } => bail!("lambda values are not lowered to LLVM yet"),
+            RirExpr::Lambda {
+                params,
+                captures,
+                body,
+            } => self.emit_lambda_value(params, captures, body, env),
             RirExpr::Unit => Ok(CgValue::Unit),
             RirExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
             RirExpr::List(items) => self.emit_value_sequence("riot_rt_value_list", items, env),
@@ -785,11 +789,56 @@ impl<'ctx> Codegen<'ctx, '_> {
         Ok(CgValue::Value(result))
     }
 
+    fn emit_lambda_value(
+        &mut self,
+        _params: &[Param],
+        captures: &[Param],
+        _body: &RirBlock,
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        let apply = self.declare_lambda_apply_stub()?;
+        let mut values = Vec::with_capacity(captures.len());
+        let mut rooted_values = 0;
+        for capture in captures {
+            let Some(value) = env.values.get(capture.as_str()).cloned() else {
+                bail!(
+                    "lambda capture `{}` is not available in the current environment",
+                    capture.as_str()
+                );
+            };
+            let value = self.value_as_runtime(value)?;
+            self.push_runtime_root(value)?;
+            rooted_values += 1;
+            values.push(value);
+        }
+        let captures_ptr = self.build_value_array_ptr(&values)?;
+        let len = self
+            .context
+            .i64_type()
+            .const_int(values.len() as u64, false);
+        let closure = self.call_runtime_value(
+            "riot_rt_value_closure",
+            &[apply.into(), captures_ptr.into(), len.into()],
+        )?;
+        self.pop_runtime_roots(rooted_values)?;
+        Ok(CgValue::Value(closure))
+    }
+
     fn build_value_array_call(
         &mut self,
         symbol: &str,
         values: &[IntValue<'ctx>],
     ) -> miette::Result<IntValue<'ctx>> {
+        let i64_type = self.context.i64_type();
+        let len = i64_type.const_int(values.len() as u64, false);
+        let ptr = self.build_value_array_ptr(values)?;
+        self.call_runtime_value(symbol, &[ptr.into(), len.into()])
+    }
+
+    fn build_value_array_ptr(
+        &mut self,
+        values: &[IntValue<'ctx>],
+    ) -> miette::Result<PointerValue<'ctx>> {
         let i64_type = self.context.i64_type();
         let len = i64_type.const_int(values.len() as u64, false);
         let ptr = if values.is_empty() {
@@ -818,7 +867,33 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             ptr
         };
-        self.call_runtime_value(symbol, &[ptr.into(), len.into()])
+        Ok(ptr)
+    }
+
+    fn declare_lambda_apply_stub(&mut self) -> miette::Result<PointerValue<'ctx>> {
+        let index = self.string_counter;
+        self.string_counter += 1;
+        let name = format!("riot_lambda_apply_stub_{index}");
+        let apply_type = self.context.i64_type().fn_type(
+            &[
+                self.ptr_type().into(),
+                self.context.i64_type().into(),
+                self.context.i64_type().into(),
+            ],
+            false,
+        );
+        let function = self.module.add_function(&name, apply_type, None);
+        let current_block = self.builder.get_insert_block();
+        let entry = self.context.append_basic_block(function, "entry");
+        self.builder.position_at_end(entry);
+        let unit = self.call_runtime_value("riot_rt_value_unit", &[])?;
+        self.builder
+            .build_return(Some(&unit))
+            .map_err(|error| miette::miette!("failed to emit lambda apply stub return: {error}"))?;
+        if let Some(block) = current_block {
+            self.builder.position_at_end(block);
+        }
+        Ok(function.as_global_value().as_pointer_value())
     }
 
     fn emit_record_value(
@@ -1944,6 +2019,10 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_tuple" | "riot_rt_value_list" => {
                 i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
             }
+            "riot_rt_value_closure" => {
+                i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into()], false)
+            }
+            "riot_rt_value_apply" => i64_type.fn_type(&[i64_type.into(), i64_type.into()], false),
             "riot_rt_value_record_begin" => {
                 i64_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false)
             }
@@ -2426,5 +2505,53 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
             AbiType::Value
         }
         _ => AbiType::Unknown,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ir::{Param, RirBlock, RirExpr, RirFunction, RirProgram, RirStmt};
+    use crate::signature::{ImportedSignatures, RsigType};
+
+    use super::{CodegenMode, emit_llvm_text};
+
+    #[test]
+    fn lambda_values_lower_to_runtime_closure_calls() {
+        let program = RirProgram {
+            module_name: "ClosureTest".to_owned(),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![RirFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: RirBlock {
+                    statements: vec![RirStmt::Let {
+                        name: "n".to_owned(),
+                        value: RirExpr::Int(1),
+                    }],
+                    tail: Some(RirExpr::Lambda {
+                        params: vec![Param::new("x")],
+                        captures: vec![Param::new("n")],
+                        body: Box::new(RirBlock {
+                            statements: Vec::new(),
+                            tail: Some(RirExpr::Path(vec!["n".to_owned()])),
+                        }),
+                    }),
+                },
+                symbol: "riot_mod_ClosureTest_main".to_owned(),
+            }],
+        };
+
+        let llvm = emit_llvm_text(
+            &program,
+            &ImportedSignatures::new(),
+            CodegenMode::Executable,
+        )
+        .unwrap();
+
+        assert!(llvm.contains("riot_rt_value_closure"));
+        assert!(llvm.contains("riot_lambda_apply_stub_"));
     }
 }
