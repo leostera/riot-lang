@@ -102,6 +102,8 @@ shape.
   `.stdout`; run the generated fixture test and the full stage0 suite without
   `INSTA_UPDATE`.
 
+<!-- autoresearch:step-1:done -->
+
 ### 2. Add Structural RtValue Equality
 
 - **Commit:** `feat(rt): add structural RtValue equality`

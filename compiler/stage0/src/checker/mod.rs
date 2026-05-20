@@ -303,17 +303,6 @@ fn validate_block(
         .into());
     }
 
-    if is_main && actor_actions == 0 && output_actions > 1 {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            block.span,
-            "unsupported main body",
-            "stage0 currently allows one direct output expression unless actor actions are present",
-            Some("use a single dbg/println expression"),
-        )
-        .into());
-    }
 
     Ok(())
 }

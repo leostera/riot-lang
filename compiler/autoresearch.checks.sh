@@ -6,7 +6,7 @@ env LLVM_SYS_221_PREFIX=/opt/homebrew/opt/llvm cargo check --manifest-path stage
   exit 1
 }
 
-cargo test --manifest-path rt/Cargo.toml >/tmp/rt-test.log 2>&1 || {
+cargo test --manifest-path rt/Cargo.toml -- --test-threads=1 >/tmp/rt-test.log 2>&1 || {
   tail -80 /tmp/rt-test.log >&2
   exit 1
 }
