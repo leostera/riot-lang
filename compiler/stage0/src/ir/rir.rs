@@ -119,6 +119,7 @@ pub(crate) enum RirExpr {
     Apply {
         callee: Box<RirExpr>,
         args: Vec<RirExpr>,
+        result: RsigType,
     },
     Lambda {
         params: Vec<Param>,

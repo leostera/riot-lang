@@ -716,28 +716,32 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     type_: path_type(&callee.segments, context),
                     kind: TypedExprKind::Path(callee.segments),
                 };
+                let args = args
+                    .into_iter()
+                    .map(|arg| type_expr(arg, context))
+                    .collect::<Vec<_>>();
+                let type_ = apply_result_type(&callee.type_, args.len());
                 TypedExpr {
-                    type_: RsigType::Unknown,
+                    type_,
                     kind: TypedExprKind::Apply {
                         callee: Box::new(callee),
-                        args: args
-                            .into_iter()
-                            .map(|arg| type_expr(arg, context))
-                            .collect(),
+                        args,
                     },
                 }
             }
         }
         AstExpr::Apply { callee, args, .. } => {
             let callee = type_expr(*callee, context);
+            let args = args
+                .into_iter()
+                .map(|arg| type_expr(arg, context))
+                .collect::<Vec<_>>();
+            let type_ = apply_result_type(&callee.type_, args.len());
             TypedExpr {
-                type_: RsigType::Unknown,
+                type_,
                 kind: TypedExprKind::Apply {
                     callee: Box::new(callee),
-                    args: args
-                        .into_iter()
-                        .map(|arg| type_expr(arg, context))
-                        .collect(),
+                    args,
                 },
             }
         }
@@ -982,6 +986,17 @@ fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
     }
 }
 
+fn apply_result_type(callee: &RsigType, arity: usize) -> RsigType {
+    let mut current = callee;
+    for _ in 0..arity {
+        let RsigType::Arrow { result, .. } = current else {
+            return RsigType::Unknown;
+        };
+        current = result;
+    }
+    current.clone()
+}
+
 fn path_type(path: &[String], context: &TypeContext<'_>) -> RsigType {
     let Some((head, tail)) = path.split_first() else {
         return RsigType::Unknown;
@@ -1156,7 +1171,7 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(owner, arg, locals, context, actors);
             }
         }
-        RirExpr::Apply { callee, args } => {
+        RirExpr::Apply { callee, args, .. } => {
             collect_actors_from_expr(owner, callee, locals, context, actors);
             for arg in args {
                 collect_actors_from_expr(owner, arg, locals, context, actors);
@@ -1347,7 +1362,7 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(arg, bound, free);
             }
         }
-        RirExpr::Apply { callee, args } => {
+        RirExpr::Apply { callee, args, .. } => {
             collect_free_expr(callee, bound, free);
             for arg in args {
                 collect_free_expr(arg, bound, free);
@@ -1458,12 +1473,12 @@ fn infer_actor_slot_type(
         RirExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
         RirExpr::Tuple(_)
         | RirExpr::List(_)
-        | RirExpr::Apply { .. }
         | RirExpr::Lambda { .. }
         | RirExpr::Record { .. }
         | RirExpr::Field { .. }
         | RirExpr::TupleIndex { .. }
         | RirExpr::String(_) => Some(ActorSlotType::Value),
+        RirExpr::Apply { result, .. } => ActorSlotType::from_rsig(result),
         RirExpr::Unit | RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => None,
     }
 }
@@ -1501,6 +1516,7 @@ fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
 }
 
 fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
+    let expr_type = expr.type_;
     match expr.kind {
         TypedExprKind::Add(lhs, rhs) => RirExpr::Add(
             Box::new(lower_expr(*lhs, context)),
@@ -1563,6 +1579,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .into_iter()
                 .map(|arg| lower_expr(arg, context))
                 .collect(),
+            result: expr_type,
         },
         TypedExprKind::Lambda { params, body } => {
             context.push_scope();
@@ -1646,7 +1663,7 @@ mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
-    use crate::signature::ImportedSignatures;
+    use crate::signature::{ImportedSignatures, RsigType};
 
     use super::{Capture, RirExpr, RirStmt, lower_typed_to_rir, typed_program_from_ast};
 
@@ -1777,6 +1794,57 @@ mod tests {
         };
 
         assert_eq!(captures.as_slice(), &[Capture::new("a$0")]);
+    }
+
+    #[test]
+    fn rir_apply_carries_typed_arrow_result() {
+        let program = AstProgram {
+            decls: vec![AstDecl::Function(AstFnDecl {
+                name: "apply_i64".to_owned(),
+                name_span: span(),
+                params: vec!["f".to_owned(), "x".to_owned()],
+                param_types: Vec::new(),
+                return_type: None,
+                body: AstBlock {
+                    statements: Vec::new(),
+                    tail: Some(AstExpr::Add {
+                        lhs: Box::new(AstExpr::Call {
+                            callee: AstPath {
+                                segments: vec!["f".to_owned()],
+                            },
+                            args: vec![AstExpr::Add {
+                                lhs: Box::new(path("x")),
+                                rhs: Box::new(AstExpr::Int {
+                                    value: 0,
+                                    span: span(),
+                                }),
+                                span: span(),
+                            }],
+                            span: span(),
+                        }),
+                        rhs: Box::new(AstExpr::Int {
+                            value: 1,
+                            span: span(),
+                        }),
+                        span: span(),
+                    }),
+                    span: span(),
+                },
+                span: span(),
+            })],
+        };
+
+        let typed =
+            typed_program_from_ast("ApplyTest".to_owned(), program, &ImportedSignatures::new());
+        let rir = lower_typed_to_rir(typed);
+        let Some(RirExpr::Add(lhs, _)) = &rir.functions[0].body.tail else {
+            panic!("expected add tail");
+        };
+        let RirExpr::Apply { result, .. } = lhs.as_ref() else {
+            panic!("expected typed apply");
+        };
+
+        assert_eq!(result, &RsigType::I64);
     }
 }
 

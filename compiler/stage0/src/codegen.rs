@@ -512,7 +512,11 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
             RirExpr::Call { callee, args } => self.emit_call(callee, args, env),
-            RirExpr::Apply { callee, args } => self.emit_apply(callee, args, env),
+            RirExpr::Apply {
+                callee,
+                args,
+                result,
+            } => self.emit_apply(callee, args, result, env),
             RirExpr::Lambda {
                 params,
                 captures,
@@ -828,6 +832,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         callee: &RirExpr,
         args: &[RirExpr],
+        result_type: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let [arg] = args else {
@@ -842,7 +847,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         let result =
             self.call_runtime_value("riot_rt_value_apply", &[closure.into(), arg.into()])?;
         self.pop_runtime_roots(2)?;
-        Ok(CgValue::Value(result))
+        self.runtime_value_as_type(result, result_type)
     }
 
     fn build_value_array_call(
@@ -1922,6 +1927,25 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
     }
 
+    fn runtime_value_as_type(
+        &self,
+        value: IntValue<'ctx>,
+        type_: &RsigType,
+    ) -> miette::Result<CgValue<'ctx>> {
+        Ok(match AbiType::from_rsig(type_) {
+            AbiType::I64 => CgValue::I64(
+                self.call_runtime_basic("riot_rt_value_as_i64", &[value.into()])?
+                    .into_int_value(),
+            ),
+            AbiType::Bool => CgValue::Bool(
+                self.call_runtime_basic("riot_rt_value_as_bool", &[value.into()])?
+                    .into_int_value(),
+            ),
+            AbiType::Unit => CgValue::Unit,
+            AbiType::Value | AbiType::ActorId | AbiType::Unknown => CgValue::Value(value),
+        })
+    }
+
     fn call_result(
         &self,
         value: Option<BasicValueEnum<'ctx>>,
@@ -2452,7 +2476,7 @@ fn infer_expr_abi(
             _ => AbiType::Unknown,
         },
         RirExpr::Unit => AbiType::Unit,
-        RirExpr::Apply { .. } => AbiType::Unknown,
+        RirExpr::Apply { result, .. } => AbiType::from_rsig(result),
         RirExpr::Lambda { .. } => AbiType::Value,
         RirExpr::Path(path) => path
             .first()
@@ -2502,7 +2526,7 @@ fn mark_expr_constraints(
                 mark_expr_constraints(arg, params, locals, param_types, functions);
             }
         }
-        RirExpr::Apply { callee, args } => {
+        RirExpr::Apply { callee, args, .. } => {
             mark_expr_constraints(callee, params, locals, param_types, functions);
             for arg in args {
                 mark_expr_constraints(arg, params, locals, param_types, functions);
@@ -2664,6 +2688,7 @@ mod tests {
                             }),
                         }),
                         args: vec![RirExpr::Int(41)],
+                        result: RsigType::I64,
                     }),
                 },
                 symbol: "riot_mod_ClosureApplyTest_main".to_owned(),
