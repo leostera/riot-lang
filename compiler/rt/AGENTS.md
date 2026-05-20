@@ -13,6 +13,9 @@
   resume function pointers; it must not interpret source-level actor programs.
 - Actor frames use the v2 ABI: generated code passes size, alignment, and
   optional drop hooks so the runtime owns frame teardown after actor completion.
+- Monitors are actor-visible messages, not runtime stdout. Stage0 monitor
+  notifications are structured runtime values compatible with
+  `type monitor_down = Down(i64)`.
 
 ## Rules
 

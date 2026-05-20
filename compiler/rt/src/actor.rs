@@ -266,21 +266,22 @@ impl ActorSlot {
         self.links().push(peer);
     }
 
-    pub(crate) fn monitor_count(&self) -> usize {
-        self.monitors().len()
+    pub(crate) fn monitor_ids(&self) -> Vec<ActorId> {
+        self.monitors().clone()
     }
 
     pub(crate) fn link_count(&self) -> usize {
         self.links().len()
     }
 
-    pub(crate) fn terminate(&self) {
+    pub(crate) fn terminate(&self) -> bool {
         if self.terminated.swap(true, Ordering::AcqRel) {
-            return;
+            return false;
         }
         let frame = self.frame.swap(0, Ordering::AcqRel) as *mut u8;
         unsafe { free_frame(frame, self.layout) };
         self.mailbox.clear();
+        true
     }
 
     fn monitors(&self) -> MutexGuard<'_, Vec<ActorId>> {

@@ -8,11 +8,10 @@ use crate::actor::{
 };
 use crate::actor_id::ActorId;
 use crate::frame::RtFrameLayout;
-use crate::io::write_bytes_line;
 use crate::value::{
     ClosureApplyFn, HeapObject, HeapObjectKind, HeapOwner, RtValue, VALUE_ACTOR_ID_TAG,
     VALUE_BOOL_FALSE, VALUE_BOOL_TRUE, VALUE_HEAP_TAG, VALUE_I64_TAG, VALUE_UNIT, heap_index,
-    value_actor_id_payload, value_i64_payload, value_tag,
+    value_actor_id_payload, value_i64, value_i64_payload, value_tag,
 };
 
 const PRIMARY_SCHEDULER_ID: u32 = 0;
@@ -107,8 +106,17 @@ impl SchedulerLocal {
     }
 
     pub(crate) fn monitor(&mut self, actor_id: ActorId) {
-        if let Some(actor) = unsafe { actor_from_id(actor_id) } {
-            actor.push_monitor(current_actor_id());
+        let watcher = current_actor_id();
+        if watcher.is_null() {
+            return;
+        }
+        let Some(actor) = (unsafe { actor_from_id(actor_id) }) else {
+            return;
+        };
+        if actor.is_terminated() {
+            self.send_monitor_down(watcher, actor.display_id());
+        } else {
+            actor.push_monitor(watcher);
         }
     }
 
@@ -121,20 +129,43 @@ impl SchedulerLocal {
     pub(crate) fn shutdown(&mut self) {
         self.schedule_until_quiescent();
 
-        for actor in &self.actors {
-            actor.terminate();
+        for index in 0..self.actors.len() {
+            self.terminate_actor_at(index);
+            self.schedule_until_quiescent();
         }
 
-        for actor in &self.actors {
-            let _linked = actor.link_count();
-            for _ in 0..actor.monitor_count() {
-                write_bytes_line(format!("down {}", actor.display_id()).as_bytes());
-            }
-        }
+        self.schedule_until_quiescent();
 
         self.retired_actors.extend(self.actors.drain(..));
         self.roots.clear();
         self.collect_garbage();
+    }
+
+    fn terminate_actor_at(&mut self, index: usize) {
+        let Some(actor) = self.actors.get(index) else {
+            return;
+        };
+        let display_id = actor.display_id();
+        let monitors = actor.monitor_ids();
+        let _linked = actor.link_count();
+        if !actor.terminate() {
+            return;
+        }
+        for watcher in monitors {
+            self.send_monitor_down(watcher, display_id);
+        }
+    }
+
+    fn send_monitor_down(&mut self, watcher: ActorId, display_id: u64) {
+        let value = self.alloc_value(
+            HeapObjectKind::Variant {
+                type_name: "monitor_down".to_owned(),
+                constructor: "Down".to_owned(),
+                payload: value_i64(display_id as i64),
+            },
+            HeapOwner::Shared,
+        );
+        self.send(watcher, RuntimeMessage::Value(value));
     }
 
     pub(crate) fn alloc_value(&mut self, kind: HeapObjectKind, owner: HeapOwner) -> RtValue {
@@ -517,9 +548,7 @@ impl SchedulerLocal {
                     }
                 }
                 if terminate {
-                    if let Some(actor) = self.actors.get(index) {
-                        actor.terminate();
-                    }
+                    self.terminate_actor_at(index);
                     made_progress = true;
                 }
             }
