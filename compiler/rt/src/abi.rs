@@ -1,0 +1,440 @@
+use crate::actor::{ActorResumeFn, RtMessage, RuntimeMessage, runtime_message_from_raw};
+use crate::actor_id::ActorId;
+use crate::frame::{ActorDropFn, RtFrameLayout, alloc_frame, free_frame};
+use crate::io::{bytes_from_raw, values_from_raw, write_bytes_line, write_stdout_line};
+use crate::scheduler::{
+    SchedulerLocal, current_actor_id, render_message, runtime_abort, with_scheduler_mut,
+};
+use crate::value::{
+    HeapObjectKind, HeapOwner, RtValue, VALUE_UNIT, heap_index, value_actor_id, value_bool,
+    value_i64,
+};
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_init() {
+    with_scheduler_mut(SchedulerLocal::reset);
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_shutdown() {
+    with_scheduler_mut(|scheduler| scheduler.shutdown());
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_println(ptr: *const u8, len: usize) {
+    unsafe { write_stdout_line(ptr, len) };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_prim_println(ptr: *const u8, len: usize) {
+    unsafe { riot_rt_println(ptr, len) };
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_println_i64(value: i64) {
+    write_bytes_line(value.to_string().as_bytes());
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_dbg(ptr: *const u8, len: usize) {
+    unsafe { write_stdout_line(ptr, len) };
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_dbg_i64(value: i64) {
+    write_bytes_line(value.to_string().as_bytes());
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_unit() -> RtValue {
+    VALUE_UNIT
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_i64(value: i64) -> RtValue {
+    value_i64(value)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_bool(value: bool) -> RtValue {
+    value_bool(value)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_actor_id(value: ActorId) -> RtValue {
+    value_actor_id(value)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_string(ptr: *const u8, len: usize) -> RtValue {
+    let Some(bytes) = (unsafe { bytes_from_raw(ptr, len) }) else {
+        runtime_abort("string value received an invalid pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| {
+        scheduler.alloc_value(
+            HeapObjectKind::String(bytes.to_vec()),
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_tuple(values: *const RtValue, len: usize) -> RtValue {
+    let Some(values) = (unsafe { values_from_raw(values, len) }) else {
+        runtime_abort("tuple value received an invalid pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| {
+        scheduler.alloc_value(
+            HeapObjectKind::Tuple(values.to_vec()),
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_list(values: *const RtValue, len: usize) -> RtValue {
+    let Some(values) = (unsafe { values_from_raw(values, len) }) else {
+        runtime_abort("list value received an invalid pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| {
+        scheduler.alloc_value(
+            HeapObjectKind::List(values.to_vec()),
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_record_begin(
+    path_ptr: *const u8,
+    path_len: usize,
+    field_count: usize,
+) -> RtValue {
+    let Some(path) = (unsafe { bytes_from_raw(path_ptr, path_len) }) else {
+        runtime_abort("record value received an invalid path pointer/length pair");
+    };
+    let path = String::from_utf8_lossy(path).into_owned();
+    with_scheduler_mut(|scheduler| {
+        scheduler.alloc_value(
+            HeapObjectKind::Record {
+                path,
+                fields: vec![("".to_owned(), VALUE_UNIT); field_count],
+            },
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_record_set(
+    record: RtValue,
+    field_index: usize,
+    name_ptr: *const u8,
+    name_len: usize,
+    value: RtValue,
+) {
+    let Some(name) = (unsafe { bytes_from_raw(name_ptr, name_len) }) else {
+        runtime_abort("record field set received an invalid name pointer/length pair");
+    };
+    let name = String::from_utf8_lossy(name).into_owned();
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(record) else {
+            runtime_abort("record field set expected a record value");
+        };
+        let Some(object) = scheduler.heap.get_mut(heap_index).and_then(Option::as_mut) else {
+            runtime_abort("record field set received a stale record value");
+        };
+        let HeapObjectKind::Record { fields, .. } = &mut object.kind else {
+            runtime_abort("record field set expected a record value");
+        };
+        let Some(field) = fields.get_mut(field_index) else {
+            runtime_abort("record field set index out of bounds");
+        };
+        *field = (name, value);
+    });
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_string_len(string: RtValue) -> i64 {
+    with_scheduler_mut(|scheduler| {
+        scheduler.value_bytes(string).map_or_else(
+            || runtime_abort("string_len expected a string value"),
+            |bytes| bytes.len() as i64,
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_string_concat(lhs: RtValue, rhs: RtValue) -> RtValue {
+    with_scheduler_mut(|scheduler| {
+        let Some(lhs_bytes) = scheduler.value_bytes(lhs) else {
+            runtime_abort("string_concat left argument was not a string value");
+        };
+        let Some(rhs_bytes) = scheduler.value_bytes(rhs) else {
+            runtime_abort("string_concat right argument was not a string value");
+        };
+        let mut bytes = Vec::with_capacity(lhs_bytes.len() + rhs_bytes.len());
+        bytes.extend_from_slice(lhs_bytes);
+        bytes.extend_from_slice(rhs_bytes);
+        scheduler.alloc_value(
+            HeapObjectKind::String(bytes),
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_list_len(list: RtValue) -> i64 {
+    with_scheduler_mut(|scheduler| {
+        let Some(index) = heap_index(list) else {
+            runtime_abort("list_len expected a list value");
+        };
+        let Some(object) = scheduler.heap.get(index).and_then(Option::as_ref) else {
+            runtime_abort("list_len received a stale list value");
+        };
+        match &object.kind {
+            HeapObjectKind::List(items) => items.len() as i64,
+            _ => runtime_abort("list_len expected a list value"),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_list_get(list: RtValue, index: i64) -> RtValue {
+    if index < 0 {
+        runtime_abort("list_get received a negative index");
+    }
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(list) else {
+            runtime_abort("list_get expected a list value");
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            runtime_abort("list_get received a stale list value");
+        };
+        match &object.kind {
+            HeapObjectKind::List(items) => items
+                .get(index as usize)
+                .copied()
+                .unwrap_or_else(|| runtime_abort("list_get index out of bounds")),
+            _ => runtime_abort("list_get expected a list value"),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_tuple_get(tuple: RtValue, index: usize) -> RtValue {
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(tuple) else {
+            runtime_abort("tuple projection expected a tuple value");
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            runtime_abort("tuple projection received a stale tuple value");
+        };
+        match &object.kind {
+            HeapObjectKind::Tuple(items) => items
+                .get(index)
+                .copied()
+                .unwrap_or_else(|| runtime_abort("tuple projection index out of bounds")),
+            _ => runtime_abort("tuple projection expected a tuple value"),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_record_get(
+    record: RtValue,
+    name_ptr: *const u8,
+    name_len: usize,
+) -> RtValue {
+    let Some(name) = (unsafe { bytes_from_raw(name_ptr, name_len) }) else {
+        runtime_abort("record field access received an invalid name pointer/length pair");
+    };
+    let name = String::from_utf8_lossy(name);
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(record) else {
+            runtime_abort("record field access expected a record value");
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            runtime_abort("record field access received a stale record value");
+        };
+        match &object.kind {
+            HeapObjectKind::Record { fields, .. } => fields
+                .iter()
+                .find_map(|(field_name, value)| (field_name == name.as_ref()).then_some(*value))
+                .unwrap_or_else(|| runtime_abort("record field access found no matching field")),
+            _ => runtime_abort("record field access expected a record value"),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_bytes_ptr(value: RtValue) -> *const u8 {
+    with_scheduler_mut(|scheduler| {
+        scheduler.value_bytes(value).map_or_else(
+            || runtime_abort("bytes_ptr expected a string value"),
+            |bytes| bytes.as_ptr(),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_bytes_len(value: RtValue) -> usize {
+    with_scheduler_mut(|scheduler| {
+        scheduler.value_bytes(value).map_or_else(
+            || runtime_abort("bytes_len expected a string value"),
+            <[u8]>::len,
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_eq(lhs: RtValue, rhs: RtValue) -> bool {
+    with_scheduler_mut(|scheduler| scheduler.values_equal(lhs, rhs))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_lt(lhs: RtValue, rhs: RtValue) -> bool {
+    with_scheduler_mut(|scheduler| scheduler.values_less_than(lhs, rhs))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_println_value(value: RtValue) {
+    let rendered = with_scheduler_mut(|scheduler| scheduler.render_value(value));
+    write_bytes_line(rendered.as_bytes());
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_dbg_value(value: RtValue) {
+    riot_rt_println_value(value);
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_gc_collect() -> usize {
+    with_scheduler_mut(SchedulerLocal::collect_garbage)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_gc_heap_len() -> usize {
+    with_scheduler_mut(|scheduler| scheduler.heap_len())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_root_push(value: RtValue) {
+    with_scheduler_mut(|scheduler| scheduler.push_root(value));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_root_pop(count: usize) {
+    with_scheduler_mut(|scheduler| scheduler.pop_roots(count));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_alloc_frame(size: usize) -> *mut u8 {
+    riot_rt_alloc_frame_v2(size, 8, None)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_alloc_frame_v2(
+    size: usize,
+    align: usize,
+    _drop_fn: Option<ActorDropFn>,
+) -> *mut u8 {
+    alloc_frame(size, align)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_free_frame_v2(
+    frame: *mut u8,
+    size: usize,
+    align: usize,
+    drop_fn: Option<ActorDropFn>,
+) {
+    unsafe { free_frame(frame, RtFrameLayout::new(size, align, drop_fn)) };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_spawn_actor(
+    frame: *mut u8,
+    resume: Option<ActorResumeFn>,
+) -> ActorId {
+    let Some(resume) = resume else {
+        return ActorId::NULL;
+    };
+    with_scheduler_mut(|scheduler| scheduler.spawn(frame, resume, RtFrameLayout::legacy()))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_spawn_actor_v2(
+    frame: *mut u8,
+    resume: Option<ActorResumeFn>,
+    size: usize,
+    align: usize,
+    drop_fn: Option<ActorDropFn>,
+) -> ActorId {
+    let Some(resume) = resume else {
+        return ActorId::NULL;
+    };
+    with_scheduler_mut(|scheduler| {
+        scheduler.spawn(frame, resume, RtFrameLayout::new(size, align, drop_fn))
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_send(actor_id: ActorId, ptr: *const u8, len: usize) {
+    let Some(bytes) = (unsafe { bytes_from_raw(ptr, len) }) else {
+        runtime_abort("send received an invalid pointer/length pair");
+    };
+
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::Bytes(bytes.to_vec())));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_send_i64(actor_id: ActorId, value: i64) {
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::I64(value)));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_send_bool(actor_id: ActorId, value: bool) {
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::Bool(value)));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_send_actor_id(actor_id: ActorId, value: ActorId) {
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::ActorId(value)));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_send_value(actor_id: ActorId, value: RtValue) {
+    with_scheduler_mut(|scheduler| {
+        scheduler.promote_shared(value);
+        scheduler.send(actor_id, RuntimeMessage::Value(value));
+    });
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_send_msg(actor_id: ActorId, message: *const RtMessage) {
+    let Some(message) = (unsafe { runtime_message_from_raw(message) }) else {
+        return;
+    };
+
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, message));
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_dbg_msg(message: *const RtMessage) {
+    let Some(message) = (unsafe { runtime_message_from_raw(message) }) else {
+        return;
+    };
+
+    write_bytes_line(render_message(&message).as_bytes());
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_monitor(actor_id: ActorId) {
+    with_scheduler_mut(|scheduler| scheduler.monitor(actor_id));
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_link(actor_id: ActorId) {
+    with_scheduler_mut(|scheduler| scheduler.link(actor_id));
+}

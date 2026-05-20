@@ -35,7 +35,7 @@ pub(crate) struct ActorFrameSlot {
 pub(crate) enum ActorSlotType {
     I64,
     Bool,
-    Pid,
+    ActorId,
 }
 
 impl ActorSlotType {
@@ -43,7 +43,7 @@ impl ActorSlotType {
         match type_ {
             RsigType::I64 => Some(ActorSlotType::I64),
             RsigType::Bool => Some(ActorSlotType::Bool),
-            RsigType::Pid(_) => Some(ActorSlotType::Pid),
+            RsigType::ActorId(_) => Some(ActorSlotType::ActorId),
             _ => None,
         }
     }

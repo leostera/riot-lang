@@ -392,7 +392,7 @@ fn infer_ast_expr_type(
                 _ => RsigType::Unknown,
             }
         }
-        AstExpr::Spawn { .. } => RsigType::Pid(Box::new(RsigType::Unknown)),
+        AstExpr::Spawn { .. } => RsigType::ActorId(Box::new(RsigType::Unknown)),
         AstExpr::Receive { body, .. } => {
             infer_ast_expr_type(body, locals, functions);
             RsigType::Unit
@@ -668,7 +668,7 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             }
         }
         AstExpr::Spawn { body, .. } => TypedExpr {
-            type_: RsigType::Pid(Box::new(RsigType::Unknown)),
+            type_: RsigType::ActorId(Box::new(RsigType::Unknown)),
             kind: {
                 let saved_bindings = context.bindings.clone();
                 let body = type_block(*body, context);
@@ -1260,7 +1260,7 @@ fn infer_actor_slot_type(
             .and_then(|name| locals.get(name))
             .copied()
             .flatten(),
-        RirExpr::Spawn { .. } => Some(ActorSlotType::Pid),
+        RirExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
         RirExpr::Unit
         | RirExpr::Receive { .. }
         | RirExpr::Tuple(_)

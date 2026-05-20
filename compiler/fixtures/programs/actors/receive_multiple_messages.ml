@@ -1,10 +1,10 @@
 fn main() {
-  let pid = spawn {
+  let actor_id = spawn {
     receive { msg -> dbg(msg) };
     receive { msg -> dbg(msg) };
     receive { msg -> dbg(msg) }
   };
-  send(pid, "first");
-  send(pid, "second");
-  send(pid, "third")
+  send(actor_id, "first");
+  send(actor_id, "second");
+  send(actor_id, "third")
 }

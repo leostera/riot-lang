@@ -1,7 +1,7 @@
 fn main() {
-  let pid = spawn {
+  let actor_id = spawn {
     receive { msg -> dbg(msg) }
   };
-  monitor(pid);
-  send(pid, "watched")
+  monitor(actor_id);
+  send(actor_id, "watched")
 }

@@ -1,0 +1,247 @@
+use std::ptr;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, OnceLock};
+
+use crate::abi::{
+    riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect, riot_rt_gc_heap_len,
+    riot_rt_init, riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64,
+    riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_bool, riot_rt_value_eq,
+    riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len,
+    riot_rt_value_record_begin, riot_rt_value_record_get, riot_rt_value_record_set,
+    riot_rt_value_string, riot_rt_value_string_concat, riot_rt_value_string_len,
+    riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
+};
+use crate::actor::{
+    POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, runtime_message_from_raw,
+};
+use crate::actor_id::ActorId;
+use crate::scheduler::{render_message, with_scheduler_mut};
+use crate::value::{VALUE_NULL, VALUE_TAG_MASK};
+
+static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
+static MESSAGES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+static RUNTIME_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+fn runtime_test_guard() -> std::sync::MutexGuard<'static, ()> {
+    RUNTIME_TEST_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap()
+}
+
+unsafe extern "C" fn count_drop(_frame: *mut u8) {
+    DROP_COUNT.fetch_add(1, Ordering::SeqCst);
+}
+
+unsafe extern "C" fn record_resume(
+    frame: *mut u8,
+    _actor_id: ActorId,
+    message: *const RtMessage,
+) -> u32 {
+    if message.is_null() {
+        return POLL_WAITING;
+    }
+    let count = unsafe { &mut *(frame as *mut u64) };
+    let message = unsafe { runtime_message_from_raw(message) }.unwrap();
+    MESSAGES
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap()
+        .push(render_message(&message));
+    *count += 1;
+    let mut flags = POLL_CONSUMED | POLL_PROGRESS;
+    if *count == 2 {
+        flags |= POLL_DONE;
+    }
+    flags
+}
+
+#[test]
+fn frame_alloc_v2_honors_alignment() {
+    let frame = riot_rt_alloc_frame_v2(64, 64, None);
+    assert!(!frame.is_null());
+    assert_eq!((frame as usize) % 64, 0);
+    unsafe { riot_rt_free_frame_v2(frame, 64, 64, None) };
+}
+
+#[test]
+fn frame_free_v2_runs_drop_hook() {
+    DROP_COUNT.store(0, Ordering::SeqCst);
+    let frame = riot_rt_alloc_frame_v2(8, 8, Some(count_drop));
+    assert!(!frame.is_null());
+    unsafe { riot_rt_free_frame_v2(frame, 8, 8, Some(count_drop)) };
+    assert_eq!(DROP_COUNT.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn mailbox_consumes_in_fifo_order_without_front_removal_semantics() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+    MESSAGES
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap()
+        .clear();
+    let frame = riot_rt_alloc_frame_v2(8, 8, None);
+    assert!(!frame.is_null());
+    unsafe { ptr::write(frame as *mut u64, 0) };
+    let actor_id = unsafe { riot_rt_spawn_actor_v2(frame, Some(record_resume), 8, 8, None) };
+    assert_ne!(actor_id, ActorId::NULL);
+    assert_eq!(actor_id.as_raw() & VALUE_TAG_MASK, 0);
+    unsafe { riot_rt_send(actor_id, b"one".as_ptr(), 3) };
+    riot_rt_send_i64(actor_id, 2);
+    riot_rt_shutdown();
+    let messages = MESSAGES.get().unwrap().lock().unwrap().clone();
+    assert_eq!(messages, ["one", "2"]);
+}
+
+#[test]
+fn value_heap_collects_unrooted_values_and_preserves_roots() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let unrooted = unsafe { riot_rt_value_string(b"temporary".as_ptr(), 9) };
+    assert_ne!(unrooted, VALUE_NULL);
+    assert_eq!(riot_rt_gc_heap_len(), 1);
+    assert_eq!(riot_rt_gc_collect(), 1);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+
+    let rooted = unsafe { riot_rt_value_string(b"rooted".as_ptr(), 6) };
+    riot_rt_root_push(rooted);
+    assert_eq!(riot_rt_gc_collect(), 0);
+    assert_eq!(riot_rt_gc_heap_len(), 1);
+    riot_rt_root_pop(1);
+    assert_eq!(riot_rt_gc_collect(), 1);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn value_equality_handles_nested_runtime_values() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    assert!(riot_rt_value_eq(riot_rt_value_unit(), riot_rt_value_unit()));
+    assert!(riot_rt_value_eq(
+        riot_rt_value_bool(true),
+        riot_rt_value_bool(true)
+    ));
+    assert!(!riot_rt_value_eq(
+        riot_rt_value_bool(true),
+        riot_rt_value_bool(false)
+    ));
+    assert!(riot_rt_value_eq(
+        riot_rt_value_i64(42),
+        riot_rt_value_i64(42)
+    ));
+    assert!(!riot_rt_value_eq(
+        riot_rt_value_i64(42),
+        riot_rt_value_i64(7)
+    ));
+
+    let lhs_label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
+    let rhs_label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
+    let other_label = unsafe { riot_rt_value_string(b"stage0".as_ptr(), 6) };
+    assert!(riot_rt_value_eq(lhs_label, rhs_label));
+    assert!(!riot_rt_value_eq(lhs_label, other_label));
+
+    let lhs_items = [lhs_label, riot_rt_value_i64(1)];
+    let rhs_items = [rhs_label, riot_rt_value_i64(1)];
+    let other_items = [rhs_label, riot_rt_value_i64(2)];
+    let lhs_tuple = unsafe { riot_rt_value_tuple(lhs_items.as_ptr(), lhs_items.len()) };
+    let rhs_tuple = unsafe { riot_rt_value_tuple(rhs_items.as_ptr(), rhs_items.len()) };
+    let other_tuple = unsafe { riot_rt_value_tuple(other_items.as_ptr(), other_items.len()) };
+    assert!(riot_rt_value_eq(lhs_tuple, rhs_tuple));
+    assert!(!riot_rt_value_eq(lhs_tuple, other_tuple));
+
+    let lhs_list_items = [lhs_tuple, riot_rt_value_bool(false)];
+    let rhs_list_items = [rhs_tuple, riot_rt_value_bool(false)];
+    let lhs_list = unsafe { riot_rt_value_list(lhs_list_items.as_ptr(), lhs_list_items.len()) };
+    let rhs_list = unsafe { riot_rt_value_list(rhs_list_items.as_ptr(), rhs_list_items.len()) };
+    assert!(riot_rt_value_eq(lhs_list, rhs_list));
+
+    let lhs_record = unsafe { riot_rt_value_record_begin(b"Box".as_ptr(), 3, 2) };
+    let rhs_record = unsafe { riot_rt_value_record_begin(b"Box".as_ptr(), 3, 2) };
+    unsafe {
+        riot_rt_value_record_set(lhs_record, 0, b"items".as_ptr(), 5, lhs_list);
+        riot_rt_value_record_set(lhs_record, 1, b"ok".as_ptr(), 2, riot_rt_value_bool(true));
+        riot_rt_value_record_set(rhs_record, 0, b"items".as_ptr(), 5, rhs_list);
+        riot_rt_value_record_set(rhs_record, 1, b"ok".as_ptr(), 2, riot_rt_value_bool(true));
+    }
+    assert!(riot_rt_value_eq(lhs_record, rhs_record));
+    assert!(!riot_rt_value_eq(lhs_record, lhs_list));
+}
+
+#[test]
+fn value_ordering_handles_i64_and_strings() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    assert!(crate::abi::riot_rt_value_lt(
+        riot_rt_value_i64(1),
+        riot_rt_value_i64(2)
+    ));
+    assert!(!crate::abi::riot_rt_value_lt(
+        riot_rt_value_i64(2),
+        riot_rt_value_i64(1)
+    ));
+
+    let alpha = unsafe { riot_rt_value_string(b"alpha".as_ptr(), 5) };
+    let beta = unsafe { riot_rt_value_string(b"beta".as_ptr(), 4) };
+    assert!(crate::abi::riot_rt_value_lt(alpha, beta));
+    assert!(!crate::abi::riot_rt_value_lt(beta, alpha));
+
+    let tuple_items = [alpha];
+    let tuple = unsafe { riot_rt_value_tuple(tuple_items.as_ptr(), tuple_items.len()) };
+    assert!(!crate::abi::riot_rt_value_lt(tuple, tuple));
+}
+
+#[test]
+fn value_rendering_handles_compound_values() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
+    let values = [label, riot_rt_value_i64(42)];
+    let tuple = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(tuple)),
+        "(riot, 42)"
+    );
+
+    let record = unsafe { riot_rt_value_record_begin(b"Point".as_ptr(), 5, 2) };
+    unsafe {
+        riot_rt_value_record_set(record, 0, b"x".as_ptr(), 1, riot_rt_value_i64(10));
+        riot_rt_value_record_set(record, 1, b"y".as_ptr(), 1, riot_rt_value_i64(20));
+    }
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(record)),
+        "Point { x: 10, y: 20 }"
+    );
+
+    let x = unsafe { riot_rt_value_record_get(record, b"x".as_ptr(), 1) };
+    assert!(riot_rt_value_eq(x, riot_rt_value_i64(10)));
+
+    assert!(riot_rt_value_eq(riot_rt_value_tuple_get(tuple, 0), label));
+    assert!(riot_rt_value_eq(
+        riot_rt_value_tuple_get(tuple, 1),
+        riot_rt_value_i64(42)
+    ));
+
+    let list_items = [label, riot_rt_value_i64(7)];
+    let list = unsafe { riot_rt_value_list(list_items.as_ptr(), list_items.len()) };
+    assert_eq!(riot_rt_value_list_len(list), 2);
+    assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 0), label));
+    assert!(riot_rt_value_eq(
+        riot_rt_value_list_get(list, 1),
+        riot_rt_value_i64(7)
+    ));
+
+    let suffix = unsafe { riot_rt_value_string(b" lang".as_ptr(), 5) };
+    let concatenated = riot_rt_value_string_concat(label, suffix);
+    assert_eq!(riot_rt_value_string_len(label), 4);
+    assert_eq!(riot_rt_value_string_len(concatenated), 9);
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(concatenated)),
+        "riot lang"
+    );
+}

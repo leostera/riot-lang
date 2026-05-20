@@ -195,7 +195,7 @@ enum CgValue<'ctx> {
     Unit,
     I64(IntValue<'ctx>),
     Bool(IntValue<'ctx>),
-    Pid(IntValue<'ctx>),
+    ActorId(IntValue<'ctx>),
     Value(IntValue<'ctx>),
     Message(PointerValue<'ctx>),
     Static(StaticValue),
@@ -276,7 +276,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 let value = match param_abi {
                     AbiType::I64 => CgValue::I64(value.into_int_value()),
                     AbiType::Bool => CgValue::Bool(value.into_int_value()),
-                    AbiType::Pid => CgValue::Pid(value.into_int_value()),
+                    AbiType::ActorId => CgValue::ActorId(value.into_int_value()),
                     AbiType::Value => CgValue::Value(value.into_int_value()),
                     AbiType::Unit | AbiType::Unknown => CgValue::Unit,
                 };
@@ -590,7 +590,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
         self.builder.position_at_end(cont_block);
         match result_abi {
-            AbiType::I64 | AbiType::Pid | AbiType::Value => {
+            AbiType::I64 | AbiType::ActorId | AbiType::Value => {
                 let ty = self.context.i64_type();
                 let phi = self
                     .builder
@@ -608,7 +608,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 };
                 phi.add_incoming(&[(&then_value, then_end), (&else_value, else_end)]);
                 match result_abi {
-                    AbiType::Pid => Ok(CgValue::Pid(phi.as_basic_value().into_int_value())),
+                    AbiType::ActorId => Ok(CgValue::ActorId(phi.as_basic_value().into_int_value())),
                     AbiType::Value => Ok(CgValue::Value(phi.as_basic_value().into_int_value())),
                     _ => Ok(CgValue::I64(phi.as_basic_value().into_int_value())),
                 }
@@ -846,8 +846,10 @@ impl<'ctx> Codegen<'ctx, '_> {
         match callee {
             [name] if name == "dbg" || name == "println" => self.emit_output(name, args, env),
             [name] if name == "send" => self.emit_send(args, env),
-            [name] if name == "monitor" => self.emit_pid_runtime_call("riot_rt_monitor", args, env),
-            [name] if name == "link" => self.emit_pid_runtime_call("riot_rt_link", args, env),
+            [name] if name == "monitor" => {
+                self.emit_actor_id_runtime_call("riot_rt_monitor", args, env)
+            }
+            [name] if name == "link" => self.emit_actor_id_runtime_call("riot_rt_link", args, env),
             [name] if self.externals.contains_key(name.as_str()) => {
                 let external = *self.externals.get(name.as_str()).unwrap();
                 self.emit_external_call(
@@ -1104,13 +1106,13 @@ impl<'ctx> Codegen<'ctx, '_> {
                 let symbol = self.output_string_symbol(name);
                 self.call_void_runtime(symbol, &[ptr.into(), len.into()])?;
             }
-            CgValue::Pid(pid) => {
+            CgValue::ActorId(actor_id) => {
                 let symbol = if name == "println" {
                     "riot_rt_println_i64"
                 } else {
                     "riot_rt_dbg_i64"
                 };
-                self.call_void_runtime(symbol, &[pid.into()])?;
+                self.call_void_runtime(symbol, &[actor_id.into()])?;
             }
             CgValue::Message(_) => bail!("{name} cannot print actor messages directly"),
         }
@@ -1156,39 +1158,39 @@ impl<'ctx> Codegen<'ctx, '_> {
         if args.len() != 2 {
             bail!("send expects two arguments");
         }
-        let pid = self.emit_expr(&args[0], env)?;
-        let pid = self.value_as_i64(pid)?;
+        let actor_id = self.emit_expr(&args[0], env)?;
+        let actor_id = self.value_as_i64(actor_id)?;
         let message = self.emit_expr(&args[1], env)?;
         match message {
             CgValue::Message(message) => {
-                self.call_void_runtime("riot_rt_send_msg", &[pid.into(), message.into()])?;
+                self.call_void_runtime("riot_rt_send_msg", &[actor_id.into(), message.into()])?;
             }
             CgValue::Value(value) => {
-                self.call_void_runtime("riot_rt_send_value", &[pid.into(), value.into()])?;
+                self.call_void_runtime("riot_rt_send_value", &[actor_id.into(), value.into()])?;
             }
             CgValue::I64(value) => {
-                self.call_void_runtime("riot_rt_send_i64", &[pid.into(), value.into()])?;
+                self.call_void_runtime("riot_rt_send_i64", &[actor_id.into(), value.into()])?;
             }
-            CgValue::Pid(value) => {
-                self.call_void_runtime("riot_rt_send_pid", &[pid.into(), value.into()])?;
+            CgValue::ActorId(value) => {
+                self.call_void_runtime("riot_rt_send_actor_id", &[actor_id.into(), value.into()])?;
             }
             CgValue::Static(value) => {
                 let rendered = value.to_print_string();
                 let (ptr, len) = self.string_literal(&rendered)?;
-                self.call_void_runtime("riot_rt_send", &[pid.into(), ptr.into(), len.into()])?;
+                self.call_void_runtime("riot_rt_send", &[actor_id.into(), ptr.into(), len.into()])?;
             }
             CgValue::Bool(value) => {
-                self.call_void_runtime("riot_rt_send_bool", &[pid.into(), value.into()])?;
+                self.call_void_runtime("riot_rt_send_bool", &[actor_id.into(), value.into()])?;
             }
             CgValue::Unit => {
                 let (ptr, len) = self.string_literal("()")?;
-                self.call_void_runtime("riot_rt_send", &[pid.into(), ptr.into(), len.into()])?;
+                self.call_void_runtime("riot_rt_send", &[actor_id.into(), ptr.into(), len.into()])?;
             }
         }
         Ok(CgValue::Unit)
     }
 
-    fn emit_pid_runtime_call(
+    fn emit_actor_id_runtime_call(
         &mut self,
         symbol: &str,
         args: &[RirExpr],
@@ -1197,9 +1199,9 @@ impl<'ctx> Codegen<'ctx, '_> {
         if args.len() != 1 {
             bail!("{symbol} expects one argument");
         }
-        let pid = self.emit_expr(&args[0], env)?;
-        let pid = self.value_as_i64(pid)?;
-        self.call_void_runtime(symbol, &[pid.into()])?;
+        let actor_id = self.emit_expr(&args[0], env)?;
+        let actor_id = self.value_as_i64(actor_id)?;
+        self.call_void_runtime(symbol, &[actor_id.into()])?;
         Ok(CgValue::Unit)
     }
 
@@ -1265,7 +1267,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             ),
         );
         let resume_ptr = actor.resume.as_global_value().as_pointer_value();
-        let pid = self
+        let actor_id = self
             .builder
             .build_call(
                 spawn_fn,
@@ -1276,14 +1278,14 @@ impl<'ctx> Codegen<'ctx, '_> {
                     align.into(),
                     drop_fn.into(),
                 ],
-                "pid",
+                "actor_id",
             )
             .map_err(|error| miette::miette!("failed to emit actor spawn: {error}"))?
             .try_as_basic_value()
             .basic()
             .ok_or_else(|| miette::miette!("actor spawn returned void"))?
             .into_int_value();
-        Ok(CgValue::Pid(pid))
+        Ok(CgValue::ActorId(actor_id))
     }
 
     fn define_actor(&mut self, actor_id: usize) -> miette::Result<ActorDef<'ctx>> {
@@ -1443,7 +1445,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                             })?,
                     )
                 }
-                AbiType::Pid => CgValue::Pid(raw),
+                AbiType::ActorId => CgValue::ActorId(raw),
                 AbiType::Value => CgValue::Value(raw),
                 AbiType::Unit | AbiType::Unknown => CgValue::Unit,
             };
@@ -1460,7 +1462,9 @@ impl<'ctx> Codegen<'ctx, '_> {
         value: CgValue<'ctx>,
     ) -> miette::Result<()> {
         let value = match (slot.abi, value) {
-            (AbiType::I64, CgValue::I64(value)) | (AbiType::Pid, CgValue::Pid(value)) => value,
+            (AbiType::I64, CgValue::I64(value)) | (AbiType::ActorId, CgValue::ActorId(value)) => {
+                value
+            }
             (AbiType::Value, CgValue::Value(value)) => value,
             (AbiType::Bool, CgValue::Bool(value)) => self
                 .builder
@@ -1477,8 +1481,8 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .ok_or_else(|| miette::miette!("actor slot `{}` expects bool", slot.name))?;
                 self.context.i64_type().const_int(u64::from(value), false)
             }
-            (_, CgValue::Pid(value)) if slot.abi == AbiType::I64 => value,
-            (_, CgValue::I64(value)) if slot.abi == AbiType::Pid => value,
+            (_, CgValue::ActorId(value)) if slot.abi == AbiType::I64 => value,
+            (_, CgValue::I64(value)) if slot.abi == AbiType::ActorId => value,
             _ => bail!("unsupported value for actor slot `{}`", slot.name),
         };
         self.store_frame_i64(frame_type, frame, slot.field_index, value)
@@ -1536,7 +1540,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn value_as_i64(&self, value: CgValue<'ctx>) -> miette::Result<IntValue<'ctx>> {
         match value {
-            CgValue::I64(value) | CgValue::Pid(value) => Ok(value),
+            CgValue::I64(value) | CgValue::ActorId(value) => Ok(value),
             CgValue::Bool(value) => self
                 .builder
                 .build_int_z_extend(value, self.context.i64_type(), "bool_i64")
@@ -1568,7 +1572,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     ) -> miette::Result<BasicMetadataValueEnum<'ctx>> {
         let value = self.emit_expr(arg, env)?;
         Ok(match abi {
-            AbiType::I64 | AbiType::Pid => self.value_as_i64(value)?.into(),
+            AbiType::I64 | AbiType::ActorId => self.value_as_i64(value)?.into(),
             AbiType::Bool => self.value_as_bool(value)?.into(),
             AbiType::Value => self.value_as_runtime(value)?.into(),
             AbiType::Unit | AbiType::Unknown => bail!("unsupported function parameter ABI"),
@@ -1597,7 +1601,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_bool(value)?.into());
             }
-            RsigType::Pid(_) => {
+            RsigType::ActorId(_) => {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_i64(value)?.into());
             }
@@ -1636,7 +1640,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             CgValue::Value(value) => Ok(value),
             CgValue::I64(value) => self.call_runtime_value("riot_rt_value_i64", &[value.into()]),
             CgValue::Bool(value) => self.call_runtime_value("riot_rt_value_bool", &[value.into()]),
-            CgValue::Pid(value) => self.call_runtime_value("riot_rt_value_pid", &[value.into()]),
+            CgValue::ActorId(value) => {
+                self.call_runtime_value("riot_rt_value_actor_id", &[value.into()])
+            }
             CgValue::Static(value) => match self.emit_static_value(value)? {
                 CgValue::Value(value) => Ok(value),
                 other => self.value_as_runtime(other),
@@ -1663,7 +1669,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .ok_or_else(|| miette::miette!("call returned void"))?
                     .into_int_value(),
             )),
-            AbiType::Pid => Ok(CgValue::Pid(
+            AbiType::ActorId => Ok(CgValue::ActorId(
                 value
                     .ok_or_else(|| miette::miette!("call returned void"))?
                     .into_int_value(),
@@ -1684,7 +1690,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .build_return(None)
                     .map_err(|error| miette::miette!("failed to emit return: {error}"))?;
             }
-            AbiType::I64 | AbiType::Pid => {
+            AbiType::I64 | AbiType::ActorId => {
                 let value = self.value_as_i64(value)?;
                 self.builder
                     .build_return(Some(&value))
@@ -1768,7 +1774,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 void_type.fn_type(&[i64_type.into()], false)
             }
             "riot_rt_value_unit" => i64_type.fn_type(&[], false),
-            "riot_rt_value_i64" | "riot_rt_value_pid" => {
+            "riot_rt_value_i64" | "riot_rt_value_actor_id" => {
                 i64_type.fn_type(&[i64_type.into()], false)
             }
             "riot_rt_value_bool" => i64_type.fn_type(&[bool_type.into()], false),
@@ -1809,7 +1815,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_send" => {
                 void_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
-            "riot_rt_send_i64" | "riot_rt_send_pid" => {
+            "riot_rt_send_i64" | "riot_rt_send_actor_id" => {
                 void_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
             "riot_rt_send_bool" => void_type.fn_type(&[i64_type.into(), bool_type.into()], false),
@@ -1834,7 +1840,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             .collect::<miette::Result<Vec<BasicMetadataTypeEnum<'ctx>>>>()?;
         Ok(match abi.result {
             AbiType::Unit => self.context.void_type().fn_type(&params, false),
-            AbiType::I64 | AbiType::Pid | AbiType::Bool | AbiType::Value => {
+            AbiType::I64 | AbiType::ActorId | AbiType::Bool | AbiType::Value => {
                 self.basic_type_for_abi(abi.result)?.fn_type(&params, false)
             }
             AbiType::Unknown => bail!("cannot build function type for unknown ABI"),
@@ -1853,7 +1859,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     llvm_params.push(self.ptr_type().into());
                     llvm_params.push(self.context.i64_type().into());
                 }
-                RsigType::I64 | RsigType::Pid(_) => {
+                RsigType::I64 | RsigType::ActorId(_) => {
                     llvm_params.push(self.context.i64_type().into())
                 }
                 RsigType::Bool => llvm_params.push(self.context.bool_type().into()),
@@ -1865,7 +1871,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
         match AbiType::from_rsig(result) {
             AbiType::Unit => Ok(self.context.void_type().fn_type(&llvm_params, false)),
-            AbiType::I64 | AbiType::Pid | AbiType::Bool => Ok(self
+            AbiType::I64 | AbiType::ActorId | AbiType::Bool => Ok(self
                 .basic_type_for_abi(AbiType::from_rsig(result))?
                 .fn_type(&llvm_params, false)),
             AbiType::Value => bail!(
@@ -1878,7 +1884,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn basic_type_for_abi(&self, abi: AbiType) -> miette::Result<BasicTypeEnum<'ctx>> {
         Ok(match abi {
-            AbiType::I64 | AbiType::Pid | AbiType::Value => self.context.i64_type().into(),
+            AbiType::I64 | AbiType::ActorId | AbiType::Value => self.context.i64_type().into(),
             AbiType::Bool => self.context.bool_type().into(),
             AbiType::Unit | AbiType::Unknown => bail!("ABI type does not have a basic LLVM type"),
         })
@@ -2125,7 +2131,7 @@ fn infer_expr_abi(
         | RirExpr::Field { .. }
         | RirExpr::TupleIndex { .. }
         | RirExpr::String(_) => AbiType::Value,
-        RirExpr::Spawn { .. } => AbiType::Pid,
+        RirExpr::Spawn { .. } => AbiType::ActorId,
         RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => AbiType::Unknown,
     }
 }

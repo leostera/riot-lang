@@ -7,7 +7,7 @@ pub(crate) enum AbiType {
     Unit,
     I64,
     Bool,
-    Pid,
+    ActorId,
     Value,
 }
 
@@ -16,7 +16,7 @@ impl AbiType {
         match type_ {
             ActorSlotType::I64 => AbiType::I64,
             ActorSlotType::Bool => AbiType::Bool,
-            ActorSlotType::Pid => AbiType::Pid,
+            ActorSlotType::ActorId => AbiType::ActorId,
         }
     }
 
@@ -24,12 +24,11 @@ impl AbiType {
         match type_ {
             RsigType::Bool => AbiType::Bool,
             RsigType::I64 => AbiType::I64,
-            RsigType::Pid(_) => AbiType::Pid,
+            RsigType::ActorId(_) => AbiType::ActorId,
             RsigType::Unit => AbiType::Unit,
-            RsigType::String
-            | RsigType::Tuple(_)
-            | RsigType::List(_)
-            | RsigType::Record(_) => AbiType::Value,
+            RsigType::String | RsigType::Tuple(_) | RsigType::List(_) | RsigType::Record(_) => {
+                AbiType::Value
+            }
             _ => AbiType::Unknown,
         }
     }

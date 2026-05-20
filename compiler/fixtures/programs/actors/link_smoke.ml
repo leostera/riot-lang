@@ -1,7 +1,7 @@
 fn main() {
-  let pid = spawn {
+  let actor_id = spawn {
     receive { msg -> dbg(msg) }
   };
-  link(pid);
-  send(pid, "linked")
+  link(actor_id);
+  send(actor_id, "linked")
 }

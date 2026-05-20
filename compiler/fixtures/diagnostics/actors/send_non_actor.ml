@@ -1,4 +1,4 @@
 fn main() {
-  let not_pid = "not an actor";
-  send(not_pid, "hello")
+  let not_actor_id = "not an actor";
+  send(not_actor_id, "hello")
 }

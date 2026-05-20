@@ -1,6 +1,6 @@
 fn main() {
-  let pid = spawn {
+  let actor_id = spawn {
     dbg("not a receive loop")
   };
-  send(pid, "hello")
+  send(actor_id, "hello")
 }

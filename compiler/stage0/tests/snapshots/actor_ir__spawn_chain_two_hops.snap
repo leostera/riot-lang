@@ -14,7 +14,7 @@ ActorIrProgram {
                 slots: [
                     ActorFrameSlot {
                         name: "middle",
-                        type_: Pid,
+                        type_: ActorId,
                         field_index: 1,
                     },
                 ],
@@ -120,7 +120,7 @@ ActorIrProgram {
                 slots: [
                     ActorFrameSlot {
                         name: "leaf",
-                        type_: Pid,
+                        type_: ActorId,
                         field_index: 1,
                     },
                 ],

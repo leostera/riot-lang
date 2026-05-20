@@ -1,5 +1,5 @@
 fn main() {
-  let not_pid = "not an actor";
-  monitor(not_pid);
+  let not_actor_id = "not an actor";
+  monitor(not_actor_id);
   dbg("done")
 }

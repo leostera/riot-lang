@@ -45,14 +45,14 @@ ActorIrProgram {
                 slots: [
                     ActorFrameSlot {
                         name: "out",
-                        type_: Pid,
+                        type_: ActorId,
                         field_index: 1,
                     },
                 ],
                 captures: [
                     ActorFrameSlot {
                         name: "out",
-                        type_: Pid,
+                        type_: ActorId,
                         field_index: 1,
                     },
                 ],

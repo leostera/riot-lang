@@ -22,7 +22,7 @@ Stage0 currently has:
 - `use Module` resolution through binary `.rsig` files.
 - A typed HIR boundary, RIR boundary, Actor IR boundary, LLVM text/object
   emission, and native linking.
-- A runtime value ABI (`RtValue`) for scalars, pids, strings, tuples, lists, and
+- A runtime value ABI (`RtValue`) for scalars, actor ids, strings, tuples, lists, and
   records.
 - Native actor state-machine lowering with heap-owned actor frames.
 - A single-threaded runtime scheduler, FIFO mailboxes, monitor/link stubs, and a
@@ -113,7 +113,7 @@ shape.
   matching scalar types and matching boxed value types. Reject obviously mixed
   types such as `string == i64` unless both sides are unknown.
 - **Lowering/backend/runtime:** Add `riot_rt_value_eq(lhs, rhs) -> bool`.
-  Implement structural equality for `unit`, bools, i64s, pids, strings, tuples,
+  Implement structural equality for `unit`, bools, i64s, actor ids, strings, tuples,
   lists, records with same path/field order, and future-proof unsupported heap
   tags as false. Lower boxed equality through this ABI; keep scalar LLVM equality
   for unboxed scalars.
@@ -657,10 +657,10 @@ shape.
 
 - **Commit:** `feat(rt): send structured down messages for monitors`
 - **Intent:** Monitors must be actor semantics, not stdout side effects.
-- **Frontend:** Keep `monitor(pid)` surface unchanged for now.
-- **Lowering/backend/runtime:** Track watcher pid relationships. On target
+- **Frontend:** Keep `monitor(actor_id)` surface unchanged for now.
+- **Lowering/backend/runtime:** Track watcher actor-id relationships. On target
   termination, enqueue a structured down message to watchers instead of printing
-  `down {pid}`.
+  `down {actor_id}`.
 - **Fixtures/tests:** Update monitor fixtures so watcher actors receive and print
   down messages explicitly.
 - **Done when:** Runtime shutdown no longer prints monitor notifications itself.
@@ -673,7 +673,7 @@ shape.
 - **Commit:** `feat(rt): implement link failure propagation`
 - **Intent:** Linked actors need predictable failure behavior before supervisors
   can be written.
-- **Frontend:** Keep `link(pid)` surface unchanged.
+- **Frontend:** Keep `link(actor_id)` surface unchanged.
 - **Lowering/backend/runtime:** Track bidirectional links. Define stage0 link
   semantics as linked termination propagation using structured exit messages or
   direct termination, and document the choice in `compiler/rt/AGENTS.md` if it
@@ -719,7 +719,7 @@ shape.
 - **Commit:** `feat(rt): add timer messages for receive timeouts`
 - **Intent:** Compiler services often need request timeouts and watchdogs.
 - **Frontend:** Add minimal receive timeout syntax only if the grammar decision
-  is already clear; otherwise expose a runtime `send_after(pid, ms, msg)` helper
+  is already clear; otherwise expose a runtime `send_after(actor_id, ms, msg)` helper
   first.
 - **Lowering/backend/runtime:** Add timer queue support to the scheduler and
   enqueue timeout messages deterministically.
@@ -740,7 +740,7 @@ shape.
 - **Lowering/backend/runtime:** Extend `.rsig` with actor/message summaries and
   bump the binary format version.
 - **Fixtures/tests:** Add `.rsig` roundtrip tests and import diagnostics for
-  sending the wrong message type to an imported actor pid.
+  sending the wrong message type to an imported actor id.
 - **Done when:** A downstream module can type-check sends to imported actors.
 - **Validation:** `.rsig` roundtrip preserves actor message summaries; imported
   send fixtures include one accepted message and one rejected wrong-message

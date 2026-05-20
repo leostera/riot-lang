@@ -12,12 +12,12 @@ stderr:
 Error: stage0::source
 
   × actor body never receives
-   ╭─[tests/fixtures/diagnostics/actors/spawn_without_receive.ml:2:19]
+   ╭─[tests/fixtures/diagnostics/actors/spawn_without_receive.ml:2:24]
  1 │     fn main() {
- 2 │ ╭─▶   let pid = spawn {
+ 2 │ ╭─▶   let actor_id = spawn {
  3 │ │       dbg("not a receive loop")
  4 │ ├─▶   };
    · ╰──── stage0 actors must contain at least one receive point
- 5 │       send(pid, "hello")
+ 5 │       send(actor_id, "hello")
    ╰────
   help: try: spawn { receive { msg -> dbg(msg) } }

@@ -890,7 +890,7 @@ fn validate_actor_target(
                     ctx.source,
                     span,
                     format!("{operation} target is not an actor"),
-                    format!("`{name}` is a value, not a pid"),
+                    format!("`{name}` is a value, not an actor id"),
                     Some("send to the result of `spawn { ... }`"),
                 )
                 .into());
@@ -1018,7 +1018,7 @@ fn validate_function_abi_annotation(
         RsigType::I64
             | RsigType::Bool
             | RsigType::Unit
-            | RsigType::Pid(_)
+            | RsigType::ActorId(_)
             | RsigType::String
             | RsigType::Tuple(_)
             | RsigType::List(_)
@@ -1152,7 +1152,7 @@ fn infer_annotation_expr_type(
             .and_then(|name| bindings.get(name))
             .cloned(),
         AstExpr::String { .. } => Some(RsigType::String),
-        AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
+        AstExpr::Spawn { .. } => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } => Some(RsigType::Unit),
     }
 }
@@ -1280,7 +1280,7 @@ fn simple_expr_type(
         ))),
         AstExpr::Path { path, .. } if path.segments.len() == 1 => {
             match bindings.get(&path.segments[0]) {
-                Some(BindingKind::Actor) => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
+                Some(BindingKind::Actor) => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
                 Some(BindingKind::Value(type_)) => type_.clone(),
                 Some(BindingKind::Message) => None,
                 None => None,
@@ -1322,7 +1322,7 @@ fn simple_expr_type(
         AstExpr::TupleIndex { base, index, .. } => {
             simple_tuple_index_type(ctx, base, *index, bindings)
         }
-        AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
+        AstExpr::Spawn { .. } => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
     }
 }

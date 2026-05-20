@@ -44,7 +44,7 @@ pub(crate) enum RsigType {
     Char,
     F64,
     I64,
-    Pid(Box<RsigType>),
+    ActorId(Box<RsigType>),
     String,
     Unit,
     Var(String),
@@ -158,7 +158,7 @@ impl RsigType {
             RsigType::Char => "char".to_owned(),
             RsigType::F64 => "f64".to_owned(),
             RsigType::I64 => "i64".to_owned(),
-            RsigType::Pid(message) => format!("pid<{}>", message.canonical()),
+            RsigType::ActorId(message) => format!("actor_id<{}>", message.canonical()),
             RsigType::String => "string".to_owned(),
             RsigType::Unit => "unit".to_owned(),
             RsigType::Var(name) => name.clone(),
@@ -253,9 +253,9 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
         "unit" => RsigType::Unit,
         "_" | "" => RsigType::Unknown,
         _ if text.starts_with('\'') => RsigType::Var(text.to_owned()),
-        _ if text.starts_with("pid<") && text.ends_with('>') => {
-            let inner = &text[4..text.len() - 1];
-            RsigType::Pid(Box::new(parse_type(inner)))
+        _ if text.starts_with("actor_id<") && text.ends_with('>') => {
+            let inner = &text[9..text.len() - 1];
+            RsigType::ActorId(Box::new(parse_type(inner)))
         }
         _ if text.starts_with('(') && text.ends_with(')') && text.contains(',') => {
             let inner = &text[1..text.len() - 1];
@@ -424,7 +424,7 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
         RsigType::Char => bytes.push(1),
         RsigType::F64 => bytes.push(2),
         RsigType::I64 => bytes.push(3),
-        RsigType::Pid(message) => {
+        RsigType::ActorId(message) => {
             bytes.push(4);
             put_type(bytes, message);
         }
@@ -458,7 +458,7 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
         1 => RsigType::Char,
         2 => RsigType::F64,
         3 => RsigType::I64,
-        4 => RsigType::Pid(Box::new(get_type(cursor)?)),
+        4 => RsigType::ActorId(Box::new(get_type(cursor)?)),
         5 => RsigType::String,
         6 => RsigType::Unit,
         7 => RsigType::Var(get_string(cursor)?),
