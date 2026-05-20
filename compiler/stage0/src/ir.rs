@@ -95,6 +95,7 @@ pub(crate) fn typed_program_from_ast(
         })
         .collect::<Vec<_>>();
     let constructors = constructor_type_map(&types);
+    let records = record_type_map(&types, &uses, imports);
 
     let external_types = externals
         .iter()
@@ -126,6 +127,7 @@ pub(crate) fn typed_program_from_ast(
             &external_types,
             imports,
             &constructors,
+            &records,
             &declared_variants,
             expression_types,
             binding_schemes,
@@ -336,6 +338,7 @@ struct TypeContext<'a> {
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, TypeName>,
+    records: &'a BTreeMap<String, TypeName>,
     declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
     binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
@@ -347,6 +350,7 @@ impl<'a> TypeContext<'a> {
         externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         imports: &'a ImportedSignatures,
         constructors: &'a BTreeMap<String, TypeName>,
+        records: &'a BTreeMap<String, TypeName>,
         declared_variants: &'a BTreeSet<TypeName>,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
         binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
@@ -358,6 +362,7 @@ impl<'a> TypeContext<'a> {
             externals,
             imports,
             constructors,
+            records,
             declared_variants,
             expression_types,
             binding_schemes,
@@ -422,6 +427,69 @@ fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, TypeName> {
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+fn record_type_map(
+    types: &[TypedTypeDecl],
+    uses: &[TypedUse],
+    imports: &ImportedSignatures,
+) -> BTreeMap<String, TypeName> {
+    let mut records = BTreeMap::new();
+    for type_ in types {
+        if matches!(type_.body, TypedTypeBody::Record { .. }) {
+            insert_record_type_aliases(&mut records, None, &type_.name, type_.name.clone());
+        }
+    }
+    for use_ in uses {
+        if let Some(rsig) = imports.get(use_.name.as_str()) {
+            for type_ in &rsig.types {
+                if matches!(type_.body, RsigTypeDeclKind::Record { .. }) {
+                    insert_record_type_aliases(
+                        &mut records,
+                        Some(use_.name.as_str()),
+                        &type_.name,
+                        imported_type_name(use_.name.as_str(), &type_.name),
+                    );
+                }
+            }
+        }
+    }
+    records
+}
+
+fn insert_record_type_aliases(
+    records: &mut BTreeMap<String, TypeName>,
+    module: Option<&str>,
+    source_name: &TypeName,
+    resolved_name: TypeName,
+) {
+    let base = source_name.as_str();
+    records.insert(base.to_owned(), resolved_name.clone());
+    records.insert(type_constructor_name(base), resolved_name.clone());
+    if let Some(module) = module {
+        records.insert(format!("{module}.{base}"), resolved_name.clone());
+        records.insert(
+            format!("{module}.{}", type_constructor_name(base)),
+            resolved_name,
+        );
+    }
+}
+
+fn type_constructor_name(type_name: &str) -> String {
+    let mut output = String::new();
+    let mut capitalize = true;
+    for ch in type_name.chars() {
+        if ch == '_' || ch == '-' || ch == '.' {
+            capitalize = true;
+        } else if capitalize && ch.is_ascii_lowercase() {
+            output.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            output.push(ch);
+            capitalize = false;
+        }
+    }
+    output
 }
 
 fn declared_variant_names(
@@ -1168,8 +1236,9 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 .into_iter()
                 .map(|(name, value)| (name, type_expr(value, context)))
                 .collect::<Vec<_>>();
+            let type_name = record_expr_type(&path.segments, context);
             TypedExpr {
-                type_: RsigType::Record(TypeName::new(path.segments.join("."))),
+                type_: RsigType::Record(type_name),
                 kind: TypedExprKind::Record {
                     path: path.segments,
                     fields,
@@ -1393,6 +1462,15 @@ fn typed_tuple_index_type(base: &TypedExpr, index: usize) -> RsigType {
             .unwrap_or(RsigType::Unknown);
     }
     RsigType::Unknown
+}
+
+fn record_expr_type(path: &[String], context: &TypeContext<'_>) -> TypeName {
+    let key = path.join(".");
+    context
+        .records
+        .get(&key)
+        .cloned()
+        .unwrap_or_else(|| TypeName::new(key))
 }
 
 fn type_pattern(

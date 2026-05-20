@@ -618,6 +618,63 @@ fn imported_variant_annotations_use_rsig() -> FixtureResult {
 }
 
 #[test]
+fn imported_record_construction_uses_rsig() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let geometry = temp_dir.path().join("geometry.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(&geometry, "type point = { x: i64, y: i64 }\n")?;
+    std::fs::write(
+        &main,
+        "use Geometry\nfn main() { let p: Geometry.point = Geometry.point { x: 10, y: 20 }; dbg(p.x); dbg(p.y) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&geometry)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected record compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported record construction compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"10\n20\n" {
+        return fail(format!(
+            "unexpected imported record construction stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_unknown_abi_call_is_rejected() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");

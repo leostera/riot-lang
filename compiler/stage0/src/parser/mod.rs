@@ -600,6 +600,15 @@ impl<'src> Parser<'src> {
                 continue;
             }
 
+            if let AstExpr::Path { path, span } = &expr
+                && self.record_literal_follows(path)
+            {
+                let path = path.clone();
+                let span = *span;
+                expr = self.parse_record(path, span)?;
+                continue;
+            }
+
             break;
         }
 
@@ -629,12 +638,7 @@ impl<'src> Parser<'src> {
                 let path = AstPath {
                     segments: vec![head],
                 };
-                let is_record_path = path
-                    .segments
-                    .first()
-                    .and_then(|segment| segment.chars().next())
-                    .is_some_and(|ch| ch.is_ascii_uppercase());
-                if is_record_path && self.at(TokenKind::LBrace) {
+                if self.record_literal_follows(&path) {
                     self.parse_record(path, span)
                 } else {
                     Ok(AstExpr::Path { path, span })
@@ -950,6 +954,25 @@ impl<'src> Parser<'src> {
         })
     }
 
+    fn record_literal_follows(&self, path: &AstPath) -> bool {
+        if !self.at(TokenKind::LBrace) {
+            return false;
+        }
+
+        let path_allows_empty_record = path.segments.len() > 1
+            || path
+                .segments
+                .first()
+                .and_then(|segment| segment.chars().next())
+                .is_some_and(|ch| ch.is_ascii_uppercase());
+
+        match (self.peek_kind(1), self.peek_kind(2)) {
+            (Some(TokenKind::RBrace), _) => path_allows_empty_record,
+            (Some(TokenKind::Ident), Some(TokenKind::Colon)) => true,
+            _ => false,
+        }
+    }
+
     fn parse_string(&mut self) -> Result<AstExpr, ParseError> {
         let token = self.expect(TokenKind::String, "expected string literal")?;
         let raw = self.text(token.span);
@@ -1063,6 +1086,12 @@ impl<'src> Parser<'src> {
         &self.tokens[self.cursor]
     }
 
+    fn peek_kind(&self, offset: usize) -> Option<TokenKind> {
+        self.tokens
+            .get(self.cursor + offset)
+            .map(|token| token.kind)
+    }
+
     fn bump(&mut self) -> Token {
         let token = self.current().clone();
         if token.kind != TokenKind::Eof {
@@ -1172,5 +1201,28 @@ mod tests {
         assert_eq!(fields[0].name, "coords");
         assert_eq!(fields[0].type_annotation.text, "(i64, i64)");
         assert_eq!(fields[1].name, "label");
+    }
+
+    #[test]
+    fn parses_qualified_record_literals() {
+        let program = parse_source(
+            Utf8Path::new("record_literal.ml"),
+            "fn main() { dbg(Geometry.point { x: 1, y: 2 }.x) }\n",
+        )
+        .unwrap();
+
+        let AstDecl::Function(function) = &program.decls[0] else {
+            panic!("expected function declaration");
+        };
+        let Some(AstExpr::Call { args, .. }) = &function.body.tail else {
+            panic!("expected dbg call");
+        };
+        let Some(AstExpr::Field { base, .. }) = args.first() else {
+            panic!("expected record field projection");
+        };
+        let AstExpr::Record { path, .. } = base.as_ref() else {
+            panic!("expected qualified record literal");
+        };
+        assert_eq!(path.segments, ["Geometry", "point"]);
     }
 }
