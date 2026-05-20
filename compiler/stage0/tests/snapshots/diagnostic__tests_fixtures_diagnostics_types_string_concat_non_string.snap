@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/string_concat_non_string.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × invalid string_concat argument
+   ╭─[tests/fixtures/diagnostics/types/string_concat_non_string.ml:2:29]
+ 1 │ fn main() {
+ 2 │   dbg(string_concat("riot", 0))
+   ·                             ┬
+   ·                             ╰── `string_concat` expects `string`, but this argument has type `i64`
+ 3 │ }
+   ╰────
+  help: pass a value with the expected type

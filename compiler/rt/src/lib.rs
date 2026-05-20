@@ -1,12 +1,12 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::alloc::{Layout, alloc_zeroed, dealloc};
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
 use std::collections::VecDeque;
 use std::io::{self, Write};
 use std::ptr;
 use std::slice;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 
 const POLL_CONSUMED: u32 = 1;
 const POLL_DONE: u32 = 2;
@@ -31,7 +31,28 @@ const VALUE_BOOL_TRUE: RtValue = 0x03;
 const VALUE_UNIT: RtValue = 0x04;
 const VALUE_PID_TAG: RtValue = 0x05;
 
-static RUNTIME: OnceLock<Mutex<Runtime>> = OnceLock::new();
+static RUNTIME: OnceLock<RuntimeCell> = OnceLock::new();
+
+struct RuntimeCell {
+    runtime: UnsafeCell<Runtime>,
+}
+
+// The stage0 runtime is intentionally single-threaded. Generated programs enter
+// it from one scheduler thread, so this cell provides process-global mutability
+// without pretending a mutex is the actor scheduling primitive.
+unsafe impl Sync for RuntimeCell {}
+
+impl RuntimeCell {
+    fn new() -> Self {
+        Self {
+            runtime: UnsafeCell::new(Runtime::default()),
+        }
+    }
+
+    fn with_mut<R>(&self, f: impl FnOnce(&mut Runtime) -> R) -> R {
+        unsafe { f(&mut *self.runtime.get()) }
+    }
+}
 
 thread_local! {
     static ACTIVE_RUNTIME: Cell<*mut Runtime> = const { Cell::new(ptr::null_mut()) };
@@ -626,7 +647,6 @@ pub unsafe extern "C" fn riot_rt_value_string(ptr: *const u8, len: usize) -> RtV
             HeapOwner::Local(current_actor_pid()),
         )
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
@@ -640,7 +660,6 @@ pub unsafe extern "C" fn riot_rt_value_tuple(values: *const RtValue, len: usize)
             HeapOwner::Local(current_actor_pid()),
         )
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
@@ -654,7 +673,6 @@ pub unsafe extern "C" fn riot_rt_value_list(values: *const RtValue, len: usize) 
             HeapOwner::Local(current_actor_pid()),
         )
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
@@ -676,7 +694,6 @@ pub unsafe extern "C" fn riot_rt_value_record_begin(
             HeapOwner::Local(current_actor_pid()),
         )
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
@@ -708,18 +725,22 @@ pub unsafe extern "C" fn riot_rt_value_record_set(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_string_len(string: RtValue) -> i64 {
-    with_runtime_mut(|runtime| runtime.value_bytes(string).map_or(0, |bytes| bytes.len() as i64))
-        .unwrap_or(0)
+    with_runtime_mut(|runtime| {
+        runtime.value_bytes(string).map_or_else(
+            || runtime_abort("string_len expected a string value"),
+            |bytes| bytes.len() as i64,
+        )
+    })
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_string_concat(lhs: RtValue, rhs: RtValue) -> RtValue {
     with_runtime_mut(|runtime| {
         let Some(lhs_bytes) = runtime.value_bytes(lhs) else {
-            return VALUE_NULL;
+            runtime_abort("string_concat left argument was not a string value");
         };
         let Some(rhs_bytes) = runtime.value_bytes(rhs) else {
-            return VALUE_NULL;
+            runtime_abort("string_concat right argument was not a string value");
         };
         let mut bytes = Vec::with_capacity(lhs_bytes.len() + rhs_bytes.len());
         bytes.extend_from_slice(lhs_bytes);
@@ -729,61 +750,63 @@ pub extern "C" fn riot_rt_value_string_concat(lhs: RtValue, rhs: RtValue) -> RtV
             HeapOwner::Local(current_actor_pid()),
         )
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_list_len(list: RtValue) -> i64 {
     with_runtime_mut(|runtime| {
         let Some(heap_index) = heap_index(list) else {
-            return 0;
+            runtime_abort("list_len expected a list value");
         };
         let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
-            return 0;
+            runtime_abort("list_len received a stale list value");
         };
         match &object.kind {
             HeapObjectKind::List(items) => items.len() as i64,
-            _ => 0,
+            _ => runtime_abort("list_len expected a list value"),
         }
     })
-    .unwrap_or(0)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_list_get(list: RtValue, index: i64) -> RtValue {
     if index < 0 {
-        return VALUE_NULL;
+        runtime_abort("list_get received a negative index");
     }
     with_runtime_mut(|runtime| {
         let Some(heap_index) = heap_index(list) else {
-            return VALUE_NULL;
+            runtime_abort("list_get expected a list value");
         };
         let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
-            return VALUE_NULL;
+            runtime_abort("list_get received a stale list value");
         };
         match &object.kind {
-            HeapObjectKind::List(items) => items.get(index as usize).copied().unwrap_or(VALUE_NULL),
-            _ => VALUE_NULL,
+            HeapObjectKind::List(items) => items
+                .get(index as usize)
+                .copied()
+                .unwrap_or_else(|| runtime_abort("list_get index out of bounds")),
+            _ => runtime_abort("list_get expected a list value"),
         }
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_tuple_get(tuple: RtValue, index: usize) -> RtValue {
     with_runtime_mut(|runtime| {
         let Some(heap_index) = heap_index(tuple) else {
-            return VALUE_NULL;
+            runtime_abort("tuple projection expected a tuple value");
         };
         let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
-            return VALUE_NULL;
+            runtime_abort("tuple projection received a stale tuple value");
         };
         match &object.kind {
-            HeapObjectKind::Tuple(items) => items.get(index).copied().unwrap_or(VALUE_NULL),
-            _ => VALUE_NULL,
+            HeapObjectKind::Tuple(items) => items
+                .get(index)
+                .copied()
+                .unwrap_or_else(|| runtime_abort("tuple projection index out of bounds")),
+            _ => runtime_abort("tuple projection expected a tuple value"),
         }
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
@@ -798,20 +821,19 @@ pub unsafe extern "C" fn riot_rt_value_record_get(
     let name = String::from_utf8_lossy(name);
     with_runtime_mut(|runtime| {
         let Some(heap_index) = heap_index(record) else {
-            return VALUE_NULL;
+            runtime_abort("record field access expected a record value");
         };
         let Some(object) = runtime.heap.get(heap_index).and_then(Option::as_ref) else {
-            return VALUE_NULL;
+            runtime_abort("record field access received a stale record value");
         };
         match &object.kind {
             HeapObjectKind::Record { fields, .. } => fields
                 .iter()
                 .find_map(|(field_name, value)| (field_name == name.as_ref()).then_some(*value))
-                .unwrap_or(VALUE_NULL),
-            _ => VALUE_NULL,
+                .unwrap_or_else(|| runtime_abort("record field access found no matching field")),
+            _ => runtime_abort("record field access expected a record value"),
         }
     })
-    .unwrap_or(VALUE_NULL)
 }
 
 #[unsafe(no_mangle)]
@@ -821,29 +843,27 @@ pub extern "C" fn riot_rt_value_bytes_ptr(value: RtValue) -> *const u8 {
             .value_bytes(value)
             .map_or(ptr::null(), |bytes| bytes.as_ptr())
     })
-    .unwrap_or(ptr::null())
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_bytes_len(value: RtValue) -> usize {
-    with_runtime_mut(|runtime| runtime.value_bytes(value).map_or(0, <[u8]>::len)).unwrap_or(0)
+    with_runtime_mut(|runtime| runtime.value_bytes(value).map_or(0, <[u8]>::len))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_eq(lhs: RtValue, rhs: RtValue) -> bool {
-    with_runtime_mut(|runtime| runtime.values_equal(lhs, rhs)).unwrap_or(false)
+    with_runtime_mut(|runtime| runtime.values_equal(lhs, rhs))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_lt(lhs: RtValue, rhs: RtValue) -> bool {
-    with_runtime_mut(|runtime| runtime.values_less_than(lhs, rhs)).unwrap_or(false)
+    with_runtime_mut(|runtime| runtime.values_less_than(lhs, rhs))
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_println_value(value: RtValue) {
-    if let Some(rendered) = with_runtime_mut(|runtime| runtime.render_value(value)) {
-        write_bytes_line(rendered.as_bytes());
-    }
+    let rendered = with_runtime_mut(|runtime| runtime.render_value(value));
+    write_bytes_line(rendered.as_bytes());
 }
 
 #[unsafe(no_mangle)]
@@ -853,13 +873,12 @@ pub extern "C" fn riot_rt_dbg_value(value: RtValue) {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_gc_collect() -> usize {
-    with_runtime_mut(Runtime::collect_garbage).unwrap_or(0)
+    with_runtime_mut(Runtime::collect_garbage)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_gc_heap_len() -> usize {
     with_runtime_mut(|runtime| runtime.heap.iter().filter(|slot| slot.is_some()).count())
-        .unwrap_or(0)
 }
 
 #[unsafe(no_mangle)]
@@ -904,7 +923,7 @@ pub unsafe extern "C" fn riot_rt_spawn_actor(frame: *mut u8, resume: Option<Acto
     let Some(resume) = resume else {
         return 0;
     };
-    with_runtime_mut(|runtime| runtime.spawn(frame, resume, RtFrameLayout::legacy())).unwrap_or(0)
+    with_runtime_mut(|runtime| runtime.spawn(frame, resume, RtFrameLayout::legacy()))
 }
 
 #[unsafe(no_mangle)]
@@ -921,7 +940,6 @@ pub unsafe extern "C" fn riot_rt_spawn_actor_v2(
     with_runtime_mut(|runtime| {
         runtime.spawn(frame, resume, RtFrameLayout::new(size, align, drop_fn))
     })
-    .unwrap_or(0)
 }
 
 #[unsafe(no_mangle)]
@@ -984,17 +1002,22 @@ pub extern "C" fn riot_rt_link(pid: u64) {
     with_runtime_mut(|runtime| runtime.link(pid));
 }
 
-fn with_runtime_mut<R>(f: impl FnOnce(&mut Runtime) -> R) -> Option<R> {
+fn with_runtime_mut<R>(f: impl FnOnce(&mut Runtime) -> R) -> R {
     let active_runtime = ACTIVE_RUNTIME.with(Cell::get);
     if !active_runtime.is_null() {
-        return Some(unsafe { f(&mut *active_runtime) });
+        return unsafe { f(&mut *active_runtime) };
     }
 
-    runtime().lock().ok().map(|mut runtime| f(&mut runtime))
+    runtime().with_mut(f)
 }
 
-fn runtime() -> &'static Mutex<Runtime> {
-    RUNTIME.get_or_init(|| Mutex::new(Runtime::default()))
+fn runtime() -> &'static RuntimeCell {
+    RUNTIME.get_or_init(RuntimeCell::new)
+}
+
+fn runtime_abort(message: &str) -> ! {
+    let _ = writeln!(io::stderr(), "riot runtime fatal: {message}");
+    std::process::abort()
 }
 
 unsafe fn free_frame(frame: *mut u8, layout: RtFrameLayout) {
@@ -1043,9 +1066,7 @@ fn render_message(message: &RuntimeMessage) -> String {
         RuntimeMessage::Bool(true) => "true".to_owned(),
         RuntimeMessage::Bool(false) => "false".to_owned(),
         RuntimeMessage::Pid(value) => value.to_string(),
-        RuntimeMessage::Value(value) => {
-            with_runtime_mut(|runtime| runtime.render_value(*value)).unwrap_or_default()
-        }
+        RuntimeMessage::Value(value) => with_runtime_mut(|runtime| runtime.render_value(*value)),
     }
 }
 
@@ -1132,6 +1153,14 @@ mod tests {
 
     static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
     static MESSAGES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+    static RUNTIME_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+    fn runtime_test_guard() -> std::sync::MutexGuard<'static, ()> {
+        RUNTIME_TEST_LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap()
+    }
 
     unsafe extern "C" fn count_drop(_frame: *mut u8) {
         DROP_COUNT.fetch_add(1, Ordering::SeqCst);
@@ -1179,6 +1208,7 @@ mod tests {
 
     #[test]
     fn mailbox_consumes_in_fifo_order_without_front_removal_semantics() {
+        let _guard = runtime_test_guard();
         riot_rt_init();
         MESSAGES
             .get_or_init(|| Mutex::new(Vec::new()))
@@ -1199,6 +1229,7 @@ mod tests {
 
     #[test]
     fn value_heap_collects_unrooted_values_and_preserves_roots() {
+        let _guard = runtime_test_guard();
         riot_rt_init();
 
         let unrooted = unsafe { riot_rt_value_string(b"temporary".as_ptr(), 9) };
@@ -1218,13 +1249,26 @@ mod tests {
 
     #[test]
     fn value_equality_handles_nested_runtime_values() {
+        let _guard = runtime_test_guard();
         riot_rt_init();
 
         assert!(riot_rt_value_eq(riot_rt_value_unit(), riot_rt_value_unit()));
-        assert!(riot_rt_value_eq(riot_rt_value_bool(true), riot_rt_value_bool(true)));
-        assert!(!riot_rt_value_eq(riot_rt_value_bool(true), riot_rt_value_bool(false)));
-        assert!(riot_rt_value_eq(riot_rt_value_i64(42), riot_rt_value_i64(42)));
-        assert!(!riot_rt_value_eq(riot_rt_value_i64(42), riot_rt_value_i64(7)));
+        assert!(riot_rt_value_eq(
+            riot_rt_value_bool(true),
+            riot_rt_value_bool(true)
+        ));
+        assert!(!riot_rt_value_eq(
+            riot_rt_value_bool(true),
+            riot_rt_value_bool(false)
+        ));
+        assert!(riot_rt_value_eq(
+            riot_rt_value_i64(42),
+            riot_rt_value_i64(42)
+        ));
+        assert!(!riot_rt_value_eq(
+            riot_rt_value_i64(42),
+            riot_rt_value_i64(7)
+        ));
 
         let lhs_label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
         let rhs_label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
@@ -1261,10 +1305,14 @@ mod tests {
 
     #[test]
     fn value_ordering_handles_i64_and_strings() {
+        let _guard = runtime_test_guard();
         riot_rt_init();
 
         assert!(riot_rt_value_lt(riot_rt_value_i64(1), riot_rt_value_i64(2)));
-        assert!(!riot_rt_value_lt(riot_rt_value_i64(2), riot_rt_value_i64(1)));
+        assert!(!riot_rt_value_lt(
+            riot_rt_value_i64(2),
+            riot_rt_value_i64(1)
+        ));
 
         let alpha = unsafe { riot_rt_value_string(b"alpha".as_ptr(), 5) };
         let beta = unsafe { riot_rt_value_string(b"beta".as_ptr(), 4) };
@@ -1278,13 +1326,14 @@ mod tests {
 
     #[test]
     fn value_rendering_handles_compound_values() {
+        let _guard = runtime_test_guard();
         riot_rt_init();
 
         let label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
         let values = [label, riot_rt_value_i64(42)];
         let tuple = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
         assert_eq!(
-            with_runtime_mut(|runtime| runtime.render_value(tuple)).unwrap(),
+            with_runtime_mut(|runtime| runtime.render_value(tuple)),
             "(riot, 42)"
         );
 
@@ -1294,32 +1343,34 @@ mod tests {
             riot_rt_value_record_set(record, 1, b"y".as_ptr(), 1, riot_rt_value_i64(20));
         }
         assert_eq!(
-            with_runtime_mut(|runtime| runtime.render_value(record)).unwrap(),
+            with_runtime_mut(|runtime| runtime.render_value(record)),
             "Point { x: 10, y: 20 }"
         );
 
         let x = unsafe { riot_rt_value_record_get(record, b"x".as_ptr(), 1) };
         assert!(riot_rt_value_eq(x, riot_rt_value_i64(10)));
-        let missing = unsafe { riot_rt_value_record_get(record, b"z".as_ptr(), 1) };
-        assert_eq!(missing, VALUE_NULL);
 
         assert!(riot_rt_value_eq(riot_rt_value_tuple_get(tuple, 0), label));
-        assert!(riot_rt_value_eq(riot_rt_value_tuple_get(tuple, 1), riot_rt_value_i64(42)));
-        assert_eq!(riot_rt_value_tuple_get(tuple, 2), VALUE_NULL);
+        assert!(riot_rt_value_eq(
+            riot_rt_value_tuple_get(tuple, 1),
+            riot_rt_value_i64(42)
+        ));
 
         let list_items = [label, riot_rt_value_i64(7)];
         let list = unsafe { riot_rt_value_list(list_items.as_ptr(), list_items.len()) };
         assert_eq!(riot_rt_value_list_len(list), 2);
         assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 0), label));
-        assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 1), riot_rt_value_i64(7)));
-        assert_eq!(riot_rt_value_list_get(list, 2), VALUE_NULL);
+        assert!(riot_rt_value_eq(
+            riot_rt_value_list_get(list, 1),
+            riot_rt_value_i64(7)
+        ));
 
         let suffix = unsafe { riot_rt_value_string(b" lang".as_ptr(), 5) };
         let concatenated = riot_rt_value_string_concat(label, suffix);
         assert_eq!(riot_rt_value_string_len(label), 4);
         assert_eq!(riot_rt_value_string_len(concatenated), 9);
         assert_eq!(
-            with_runtime_mut(|runtime| runtime.render_value(concatenated)).unwrap(),
+            with_runtime_mut(|runtime| runtime.render_value(concatenated)),
             "riot lang"
         );
     }

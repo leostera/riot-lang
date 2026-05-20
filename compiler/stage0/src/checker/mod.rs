@@ -38,10 +38,10 @@ pub(crate) fn typecheck(
     })
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum BindingKind {
     Actor,
-    Value,
+    Value(Option<RsigType>),
     Message,
 }
 
@@ -52,6 +52,7 @@ struct ValidationContext<'a> {
     functions: HashMap<String, ConstFunction>,
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
+    declared_external_names: HashSet<String>,
     external_names: HashSet<String>,
     imports: &'a ImportedSignatures,
 }
@@ -66,6 +67,7 @@ fn validate_program(
     let functions = const_functions(program);
     let function_names = functions.keys().cloned().collect::<HashSet<_>>();
     let function_results = function_results(program);
+    let declared_external_names = declared_external_names(program);
     let external_names = external_names(program);
     let ctx = ValidationContext {
         source_path,
@@ -73,6 +75,7 @@ fn validate_program(
         functions,
         function_names,
         function_results,
+        declared_external_names,
         external_names,
         imports,
     };
@@ -159,6 +162,7 @@ fn validate_program(
                     &function.body,
                     function.name == "main",
                     &function.params,
+                    &function.param_types,
                 )?;
             }
         }
@@ -218,6 +222,17 @@ fn external_names(program: &AstProgram) -> HashSet<String> {
     names
 }
 
+fn declared_external_names(program: &AstProgram) -> HashSet<String> {
+    program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::External(external) => Some(external.name.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
 fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
     program.decls.first().map(|decl| match decl {
         AstDecl::Use(use_) => use_.span,
@@ -231,10 +246,18 @@ fn validate_block(
     block: &AstBlock,
     is_main: bool,
     params: &[String],
+    param_types: &[Option<AstTypeAnnotation>],
 ) -> miette::Result<()> {
     let mut bindings = params
         .iter()
-        .map(|param| (param.clone(), BindingKind::Value))
+        .enumerate()
+        .map(|(index, param)| {
+            let type_ = param_types
+                .get(index)
+                .and_then(|annotation| annotation.as_ref())
+                .map(|annotation| parse_type(&annotation.text));
+            (param.clone(), BindingKind::Value(type_))
+        })
         .collect::<HashMap<_, _>>();
     let mut output_actions = 0_usize;
     let mut actor_actions = 0_usize;
@@ -270,7 +293,11 @@ fn validate_block(
                     }
                     _ => {
                         validate_expr(ctx, value, &bindings, false)?;
-                        BindingKind::Value
+                        let type_ = type_annotation
+                            .as_ref()
+                            .map(|annotation| parse_type(&annotation.text))
+                            .or_else(|| simple_expr_type(ctx, value, &bindings));
+                        BindingKind::Value(type_)
                     }
                 };
                 bindings.insert(name.clone(), kind);
@@ -306,7 +333,6 @@ fn validate_block(
         )
         .into());
     }
-
 
     Ok(())
 }
@@ -410,34 +436,93 @@ fn validate_expr(
                     validate_actor_target(ctx, &args[0], bindings, *span, name)?;
                     Ok(ExprCategory::Actor)
                 }
-                "list_len" => {
+                "list_len" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 1 {
                         return Err(call_arity_error(ctx, *span, "list_len", 1, args.len()).into());
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
+                    validate_call_arg_type(
+                        ctx,
+                        *span,
+                        "list_len",
+                        &args[0],
+                        bindings,
+                        "list",
+                        |type_| matches!(type_, RsigType::List(_)),
+                    )?;
                     Ok(ExprCategory::Other)
                 }
-                "list_get" => {
+                "list_get" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 2 {
                         return Err(call_arity_error(ctx, *span, "list_get", 2, args.len()).into());
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     validate_expr(ctx, &args[1], bindings, in_actor)?;
+                    validate_call_arg_type(
+                        ctx,
+                        *span,
+                        "list_get",
+                        &args[0],
+                        bindings,
+                        "list",
+                        |type_| matches!(type_, RsigType::List(_)),
+                    )?;
+                    validate_call_arg_type(
+                        ctx,
+                        *span,
+                        "list_get",
+                        &args[1],
+                        bindings,
+                        "i64",
+                        |type_| matches!(type_, RsigType::I64),
+                    )?;
+                    validate_static_list_index(ctx, *span, "list_get", &args[0], &args[1])?;
                     Ok(ExprCategory::Other)
                 }
-                "string_len" => {
+                "string_len" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "string_len", 1, args.len()).into());
+                        return Err(
+                            call_arity_error(ctx, *span, "string_len", 1, args.len()).into()
+                        );
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
+                    validate_call_arg_type(
+                        ctx,
+                        *span,
+                        "string_len",
+                        &args[0],
+                        bindings,
+                        "string",
+                        |type_| matches!(type_, RsigType::String),
+                    )?;
                     Ok(ExprCategory::Other)
                 }
-                "string_concat" => {
+                "string_concat" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 2 {
-                        return Err(call_arity_error(ctx, *span, "string_concat", 2, args.len()).into());
+                        return Err(
+                            call_arity_error(ctx, *span, "string_concat", 2, args.len()).into()
+                        );
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     validate_expr(ctx, &args[1], bindings, in_actor)?;
+                    validate_call_arg_type(
+                        ctx,
+                        *span,
+                        "string_concat",
+                        &args[0],
+                        bindings,
+                        "string",
+                        |type_| matches!(type_, RsigType::String),
+                    )?;
+                    validate_call_arg_type(
+                        ctx,
+                        *span,
+                        "string_concat",
+                        &args[1],
+                        bindings,
+                        "string",
+                        |type_| matches!(type_, RsigType::String),
+                    )?;
                     Ok(ExprCategory::Other)
                 }
                 _ if ctx.function_names.contains(name) || ctx.external_names.contains(name) => {
@@ -577,7 +662,10 @@ fn validate_expr(
                     ctx.source,
                     *span,
                     "tuple projection is out of bounds",
-                    format!("tuple has {} item(s), but projection requested index {index}", items.len()),
+                    format!(
+                        "tuple has {} item(s), but projection requested index {index}",
+                        items.len()
+                    ),
                     Some("use a tuple projection index that exists"),
                 )
                 .into());
@@ -606,6 +694,83 @@ fn validate_expr(
         | AstExpr::Float { .. }
         | AstExpr::Int { .. }
         | AstExpr::String { .. } => Ok(ExprCategory::Other),
+    }
+}
+
+fn validate_call_arg_type(
+    ctx: &ValidationContext<'_>,
+    _function_span: TextSpan,
+    function_name: &str,
+    arg: &AstExpr,
+    bindings: &HashMap<String, BindingKind>,
+    expected: &str,
+    accepts: impl Fn(&RsigType) -> bool,
+) -> miette::Result<()> {
+    let Some(actual) = simple_expr_type(ctx, arg, bindings) else {
+        return Ok(());
+    };
+    if accepts(&actual) {
+        return Ok(());
+    }
+    Err(to_source_diagnostic(
+        ctx.source_path,
+        ctx.source,
+        expr_span(arg),
+        format!("invalid {function_name} argument"),
+        format!(
+            "`{function_name}` expects `{expected}`, but this argument has type `{}`",
+            actual.canonical()
+        ),
+        Some("pass a value with the expected type"),
+    )
+    .into())
+}
+
+fn validate_static_list_index(
+    ctx: &ValidationContext<'_>,
+    span: TextSpan,
+    function_name: &str,
+    list: &AstExpr,
+    index: &AstExpr,
+) -> miette::Result<()> {
+    let Some(index_value) = static_i64_expr(index) else {
+        return Ok(());
+    };
+    if index_value < 0 {
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            expr_span(index),
+            format!("{function_name} index is negative"),
+            "`list_get` indexes start at 0",
+            Some("use a non-negative index"),
+        )
+        .into());
+    }
+    if let AstExpr::List { items, .. } = list
+        && index_value as usize >= items.len()
+    {
+        return Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            span,
+            format!("{function_name} index out of bounds"),
+            format!(
+                "`list_get` index {index_value} is outside this list of length {}",
+                items.len()
+            ),
+            Some("use an index that exists in the list"),
+        )
+        .into());
+    }
+    Ok(())
+}
+
+fn static_i64_expr(expr: &AstExpr) -> Option<i64> {
+    match expr {
+        AstExpr::Int { value, .. } => Some(*value),
+        AstExpr::Neg { expr, .. } => static_i64_expr(expr).and_then(i64::checked_neg),
+        _ => None,
     }
 }
 
@@ -653,7 +818,8 @@ fn validate_actor_block(
                     bindings.insert(name.clone(), BindingKind::Actor);
                 } else {
                     validate_expr(ctx, value, &bindings, true)?;
-                    bindings.insert(name.clone(), BindingKind::Value);
+                    let type_ = simple_expr_type(ctx, value, &bindings);
+                    bindings.insert(name.clone(), BindingKind::Value(type_));
                 }
             }
             AstStmt::Expr(expr) => {
@@ -718,7 +884,7 @@ fn validate_actor_target(
                 )
                 .into());
             }
-            Some(BindingKind::Value) => {
+            Some(BindingKind::Value(_)) => {
                 return Err(to_source_diagnostic(
                     ctx.source_path,
                     ctx.source,
@@ -934,12 +1100,17 @@ fn infer_annotation_expr_type(
             infer_annotation_expr_type(ctx, then_branch, bindings).unwrap_or(RsigType::Unknown),
             infer_annotation_expr_type(ctx, else_branch, bindings).unwrap_or(RsigType::Unknown),
         )),
-        AstExpr::Call { callee, .. } => match callee.segments.as_slice() {
+        AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
             [name] if name == "list_len" || name == "string_len" => Some(RsigType::I64),
             [name] if name == "string_concat" => Some(RsigType::String),
-            [name] if name == "list_get" => Some(RsigType::Unknown),
+            [name] if name == "list_get" => args.first().and_then(|list| {
+                match infer_annotation_expr_type(ctx, list, bindings) {
+                    Some(RsigType::List(item)) => Some(*item),
+                    _ => Some(RsigType::Unknown),
+                }
+            }),
             [name] => ctx.function_results.get(name).cloned(),
             [module, name] => ctx
                 .imports
@@ -967,8 +1138,12 @@ fn infer_annotation_expr_type(
                 .unwrap_or(RsigType::Unknown),
         ))),
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
-        AstExpr::Field { base, field, .. } => infer_annotation_field_type(ctx, base, field, bindings),
-        AstExpr::TupleIndex { base, index, .. } => infer_annotation_tuple_index_type(ctx, base, *index, bindings),
+        AstExpr::Field { base, field, .. } => {
+            infer_annotation_field_type(ctx, base, field, bindings)
+        }
+        AstExpr::TupleIndex { base, index, .. } => {
+            infer_annotation_tuple_index_type(ctx, base, *index, bindings)
+        }
         AstExpr::Char { .. } => Some(RsigType::Char),
         AstExpr::Float { .. } => Some(RsigType::F64),
         AstExpr::Path { path, .. } => path
@@ -1106,16 +1281,23 @@ fn simple_expr_type(
         AstExpr::Path { path, .. } if path.segments.len() == 1 => {
             match bindings.get(&path.segments[0]) {
                 Some(BindingKind::Actor) => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
-                Some(BindingKind::Message) | Some(BindingKind::Value) => None,
+                Some(BindingKind::Value(type_)) => type_.clone(),
+                Some(BindingKind::Message) => None,
                 None => None,
             }
         }
-        AstExpr::Call { callee, .. } => match callee.segments.as_slice() {
+        AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
             [name] if name == "list_len" || name == "string_len" => Some(RsigType::I64),
             [name] if name == "string_concat" => Some(RsigType::String),
-            [name] if name == "list_get" => Some(RsigType::Unknown),
+            [name] if name == "list_get" => {
+                args.first()
+                    .and_then(|list| match simple_expr_type(ctx, list, bindings) {
+                        Some(RsigType::List(item)) => Some(*item),
+                        _ => Some(RsigType::Unknown),
+                    })
+            }
             [module, name] => ctx
                 .imports
                 .get(module)
@@ -1137,7 +1319,9 @@ fn simple_expr_type(
         }
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
-        AstExpr::TupleIndex { base, index, .. } => simple_tuple_index_type(ctx, base, *index, bindings),
+        AstExpr::TupleIndex { base, index, .. } => {
+            simple_tuple_index_type(ctx, base, *index, bindings)
+        }
         AstExpr::Spawn { .. } => Some(RsigType::Pid(Box::new(RsigType::Unknown))),
         AstExpr::Receive { .. } | AstExpr::Path { .. } => None,
     }
@@ -1151,7 +1335,8 @@ fn simple_field_type(
 ) -> Option<RsigType> {
     if let AstExpr::Record { fields, .. } = base {
         return fields.iter().find_map(|(name, value)| {
-            (name == field).then(|| simple_expr_type(ctx, value, bindings).unwrap_or(RsigType::Unknown))
+            (name == field)
+                .then(|| simple_expr_type(ctx, value, bindings).unwrap_or(RsigType::Unknown))
         });
     }
     None

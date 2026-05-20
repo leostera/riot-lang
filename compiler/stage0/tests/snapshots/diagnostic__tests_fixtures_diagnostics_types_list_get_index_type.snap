@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/list_get_index_type.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × invalid list_get argument
+   ╭─[tests/fixtures/diagnostics/types/list_get_index_type.ml:2:24]
+ 1 │ fn main() {
+ 2 │   dbg(list_get([1, 2], "zero"))
+   ·                        ───┬──
+   ·                           ╰── `list_get` expects `i64`, but this argument has type `string`
+ 3 │ }
+   ╰────
+  help: pass a value with the expected type

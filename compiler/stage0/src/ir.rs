@@ -417,7 +417,9 @@ fn infer_ast_expr_type(
             RsigType::Record(path.segments.join("."))
         }
         AstExpr::Field { base, field, .. } => infer_ast_field_type(base, field, locals, functions),
-        AstExpr::TupleIndex { base, index, .. } => infer_ast_tuple_index_type(base, *index, locals, functions),
+        AstExpr::TupleIndex { base, index, .. } => {
+            infer_ast_tuple_index_type(base, *index, locals, functions)
+        }
         AstExpr::Char { .. } => RsigType::Char,
         AstExpr::Float { .. } => RsigType::F64,
         AstExpr::Int { .. } => RsigType::I64,
@@ -820,15 +822,17 @@ fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
     match callee {
         [name] if name == "dbg" || name == "println" => RsigType::Unit,
         [name] if name == "send" || name == "monitor" || name == "link" => RsigType::Unit,
-        [name] if name == "list_len" || name == "string_len" => RsigType::I64,
-        [name] if name == "string_concat" => RsigType::String,
-        [name] if name == "list_get" => RsigType::Unknown,
         [name] => context
             .externals
             .get(name)
             .or_else(|| context.functions.get(name))
             .map(|(_, result)| result.clone())
-            .unwrap_or(RsigType::Unknown),
+            .unwrap_or_else(|| match name.as_str() {
+                "list_len" | "string_len" => RsigType::I64,
+                "string_concat" => RsigType::String,
+                "list_get" => RsigType::Unknown,
+                _ => RsigType::Unknown,
+            }),
         [module, name] => context
             .imports
             .get(module)

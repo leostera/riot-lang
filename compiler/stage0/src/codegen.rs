@@ -433,7 +433,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                     (CgValue::I64(lhs), CgValue::I64(rhs)) => Ok(CgValue::Bool(
                         self.builder
                             .build_int_compare(IntPredicate::SLT, lhs, rhs, "lttmp")
-                            .map_err(|error| miette::miette!("failed to emit comparison: {error}"))?,
+                            .map_err(|error| {
+                                miette::miette!("failed to emit comparison: {error}")
+                            })?,
                     )),
                     (lhs, rhs) => {
                         let lhs = self.value_as_runtime(lhs)?;
@@ -496,10 +498,18 @@ impl<'ctx> Codegen<'ctx, '_> {
             RirExpr::TupleIndex { base, index } => {
                 let base = self.emit_expr(base, env)?;
                 let base = self.value_as_runtime(base)?;
-                Ok(CgValue::Value(self.call_runtime_value(
-                    "riot_rt_value_tuple_get",
-                    &[base.into(), self.context.i64_type().const_int(*index as u64, false).into()],
-                )?))
+                Ok(CgValue::Value(
+                    self.call_runtime_value(
+                        "riot_rt_value_tuple_get",
+                        &[
+                            base.into(),
+                            self.context
+                                .i64_type()
+                                .const_int(*index as u64, false)
+                                .into(),
+                        ],
+                    )?,
+                ))
             }
             RirExpr::Char(_) | RirExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
@@ -621,22 +631,22 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_static_value(&mut self, value: StaticValue) -> miette::Result<CgValue<'ctx>> {
         match value {
-            StaticValue::Int(value) => Ok(CgValue::Value(self.call_runtime_value(
-                "riot_rt_value_i64",
-                &[self.i64_const(value).into()],
-            )?)),
-            StaticValue::Bool(value) => Ok(CgValue::Value(self.call_runtime_value(
-                "riot_rt_value_bool",
-                &[self
-                    .context
-                    .bool_type()
-                    .const_int(u64::from(value), false)
-                    .into()],
-            )?)),
-            StaticValue::Unit => Ok(CgValue::Value(self.call_runtime_value(
-                "riot_rt_value_unit",
-                &[],
-            )?)),
+            StaticValue::Int(value) => Ok(CgValue::Value(
+                self.call_runtime_value("riot_rt_value_i64", &[self.i64_const(value).into()])?,
+            )),
+            StaticValue::Bool(value) => Ok(CgValue::Value(
+                self.call_runtime_value(
+                    "riot_rt_value_bool",
+                    &[self
+                        .context
+                        .bool_type()
+                        .const_int(u64::from(value), false)
+                        .into()],
+                )?,
+            )),
+            StaticValue::Unit => Ok(CgValue::Value(
+                self.call_runtime_value("riot_rt_value_unit", &[])?,
+            )),
             StaticValue::String(value) | StaticValue::Float(value) => {
                 let (ptr, len) = self.string_literal(&value)?;
                 Ok(CgValue::Value(self.call_runtime_value(
@@ -675,7 +685,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                 })
             })
             .collect::<miette::Result<Vec<_>>>()?;
-        Ok(CgValue::Value(self.build_value_array_call(symbol, &values)?))
+        Ok(CgValue::Value(
+            self.build_value_array_call(symbol, &values)?,
+        ))
     }
 
     fn emit_static_record(
@@ -724,9 +736,14 @@ impl<'ctx> Codegen<'ctx, '_> {
     ) -> miette::Result<CgValue<'ctx>> {
         let values = items
             .iter()
-            .map(|item| self.emit_expr(item, env).and_then(|value| self.value_as_runtime(value)))
+            .map(|item| {
+                self.emit_expr(item, env)
+                    .and_then(|value| self.value_as_runtime(value))
+            })
             .collect::<miette::Result<Vec<_>>>()?;
-        Ok(CgValue::Value(self.build_value_array_call(symbol, &values)?))
+        Ok(CgValue::Value(
+            self.build_value_array_call(symbol, &values)?,
+        ))
     }
 
     fn build_value_array_call(
@@ -756,9 +773,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                             miette::miette!("failed to address value array slot: {error}")
                         })?
                 };
-                self.builder
-                    .build_store(element, *value)
-                    .map_err(|error| miette::miette!("failed to store value array slot: {error}"))?;
+                self.builder.build_store(element, *value).map_err(|error| {
+                    miette::miette!("failed to store value array slot: {error}")
+                })?;
             }
             ptr
         };
@@ -831,10 +848,6 @@ impl<'ctx> Codegen<'ctx, '_> {
             [name] if name == "send" => self.emit_send(args, env),
             [name] if name == "monitor" => self.emit_pid_runtime_call("riot_rt_monitor", args, env),
             [name] if name == "link" => self.emit_pid_runtime_call("riot_rt_link", args, env),
-            [name] if name == "list_len" => self.emit_list_len(args, env),
-            [name] if name == "list_get" => self.emit_list_get(args, env),
-            [name] if name == "string_len" => self.emit_string_len(args, env),
-            [name] if name == "string_concat" => self.emit_string_concat(args, env),
             [name] if self.externals.contains_key(name.as_str()) => {
                 let external = *self.externals.get(name.as_str()).unwrap();
                 self.emit_external_call(
@@ -845,6 +858,10 @@ impl<'ctx> Codegen<'ctx, '_> {
                     env,
                 )
             }
+            [name] if name == "list_len" => self.emit_list_len(args, env),
+            [name] if name == "list_get" => self.emit_list_get(args, env),
+            [name] if name == "string_len" => self.emit_string_len(args, env),
+            [name] if name == "string_concat" => self.emit_string_concat(args, env),
             [name] if self.functions.contains_key(name) => self.emit_local_call(name, args, env),
             [name] => {
                 if let Some(static_value) = self.static_eval_call(name, args, &env.statics) {
@@ -1617,15 +1634,9 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn value_as_runtime(&mut self, value: CgValue<'ctx>) -> miette::Result<IntValue<'ctx>> {
         match value {
             CgValue::Value(value) => Ok(value),
-            CgValue::I64(value) => {
-                self.call_runtime_value("riot_rt_value_i64", &[value.into()])
-            }
-            CgValue::Bool(value) => {
-                self.call_runtime_value("riot_rt_value_bool", &[value.into()])
-            }
-            CgValue::Pid(value) => {
-                self.call_runtime_value("riot_rt_value_pid", &[value.into()])
-            }
+            CgValue::I64(value) => self.call_runtime_value("riot_rt_value_i64", &[value.into()]),
+            CgValue::Bool(value) => self.call_runtime_value("riot_rt_value_bool", &[value.into()]),
+            CgValue::Pid(value) => self.call_runtime_value("riot_rt_value_pid", &[value.into()]),
             CgValue::Static(value) => match self.emit_static_value(value)? {
                 CgValue::Value(value) => Ok(value),
                 other => self.value_as_runtime(other),
@@ -1761,16 +1772,13 @@ impl<'ctx> Codegen<'ctx, '_> {
                 i64_type.fn_type(&[i64_type.into()], false)
             }
             "riot_rt_value_bool" => i64_type.fn_type(&[bool_type.into()], false),
-            "riot_rt_value_string" => {
-                i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
-            }
+            "riot_rt_value_string" => i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false),
             "riot_rt_value_tuple" | "riot_rt_value_list" => {
                 i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
             }
-            "riot_rt_value_record_begin" => i64_type.fn_type(
-                &[ptr_type.into(), i64_type.into(), i64_type.into()],
-                false,
-            ),
+            "riot_rt_value_record_begin" => {
+                i64_type.fn_type(&[ptr_type.into(), i64_type.into(), i64_type.into()], false)
+            }
             "riot_rt_value_record_set" => void_type.fn_type(
                 &[
                     i64_type.into(),
@@ -2118,9 +2126,7 @@ fn infer_expr_abi(
         | RirExpr::TupleIndex { .. }
         | RirExpr::String(_) => AbiType::Value,
         RirExpr::Spawn { .. } => AbiType::Pid,
-        RirExpr::Receive { .. }
-        | RirExpr::Char(_)
-        | RirExpr::Float(_) => AbiType::Unknown,
+        RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => AbiType::Unknown,
     }
 }
 
