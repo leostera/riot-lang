@@ -496,22 +496,26 @@ cross-core scheduler queues.
   output positions; `emit typed` shows scoped block types and runtime stdout
   matches source order.
 
-### 12. Add Assignment-Free Shadowing Diagnostics
+### 12. Support Lexical Let Rebinding
 
-- **Commit:** `feat(stage0): add assignment-free shadowing diagnostics`
-- **Intent:** The language needs one clear local-binding policy before the
-  resolver grows more complex.
-- **Frontend:** Decide for stage0 that duplicate names in the same block are
-  rejected, while nested blocks may shadow outer names. Apply the same rule to
-  actor blocks.
+- **Commit:** `feat(stage0): support lexical let rebinding`
+- **Intent:** Riot treats repeated `let` names as new lexical bindings, not as
+  assignment. Resolver and lowering must preserve binding identity so later
+  references use the nearest earlier binding without changing earlier captures.
+- **Frontend:** Accept same-block rebinding such as `let a = 0; let a = true;`
+  and keep nested block shadowing valid. Apply the same policy to actor blocks.
 - **Lowering/backend/runtime:** Ensure HIR/RIR scopes distinguish shadowed names
-  without accidental capture.
-- **Fixtures/tests:** Add diagnostics for same-block duplicates and positives
-  for nested-block shadowing.
-- **Done when:** Normal and actor blocks report duplicate bindings consistently.
-- **Validation:** Diagnostics cover duplicate same-block bindings in normal and
-  actor blocks; positive nested-shadowing fixtures compile and print the inner
-  and outer values as expected.
+  with binding identities, and ensure closure/actor captures use the binding
+  identity they resolved to rather than a raw source name.
+- **Fixtures/tests:** Keep positive fixtures for ordinary rebinding, actor
+  rebinding, and closure capture of a shadowed binding.
+- **Done when:** Normal blocks, actor blocks, and closures resolve rebindings
+  deterministically through HIR/RIR binding identities.
+- **Validation:** Positive fixtures print the inner/latest binding where used,
+  and existing HIR/RIR unit tests prove shadowed captures keep the intended
+  binding identity.
+
+<!-- autoresearch:step-12:done -->
 
 ### 13. Implement Resolver Symbol Tables
 
