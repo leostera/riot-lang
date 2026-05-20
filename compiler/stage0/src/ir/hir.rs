@@ -1,4 +1,6 @@
-use crate::signature::{ConstructorName, Rsig, RsigType, RsigTypeScheme, TypeName};
+use crate::signature::{
+    ConstructorName, ModuleName, Rsig, RsigType, RsigTypeScheme, TypeName,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct HirBinding {
@@ -27,7 +29,7 @@ pub(crate) struct CheckedProgram {
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedProgram {
-    pub(crate) module_name: String,
+    pub(crate) module_name: ModuleName,
     pub(crate) uses: Vec<TypedUse>,
     pub(crate) externals: Vec<TypedExternal>,
     pub(crate) types: Vec<TypedTypeDecl>,
@@ -36,7 +38,7 @@ pub(crate) struct TypedProgram {
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedUse {
-    pub(crate) name: String,
+    pub(crate) name: ModuleName,
     pub(crate) fingerprint: u64,
 }
 

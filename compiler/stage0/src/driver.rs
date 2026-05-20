@@ -188,7 +188,7 @@ fn resolve_imports(
 }
 
 fn resolve_imported_objects(
-    uses: &[String],
+    uses: &[ModuleName],
     mappings: &[ObjectMapping],
     object_dirs: &[Utf8PathBuf],
 ) -> miette::Result<Vec<Utf8PathBuf>> {
@@ -233,7 +233,7 @@ fn write_text(path: Option<&Utf8Path>, text: &str) -> miette::Result<()> {
     }
 }
 
-pub(crate) fn module_name_from_path(path: &Utf8Path) -> miette::Result<String> {
+pub(crate) fn module_name_from_path(path: &Utf8Path) -> miette::Result<ModuleName> {
     let stem = path.file_stem().unwrap_or("Main");
     if !is_lower_module_stem(stem) {
         bail!(
@@ -260,9 +260,9 @@ pub(crate) fn module_name_from_path(path: &Utf8Path) -> miette::Result<String> {
         }
     }
     if output.is_empty() {
-        Ok("Main".to_owned())
+        Ok(ModuleName::new("Main"))
     } else {
-        Ok(output)
+        Ok(ModuleName::new(output))
     }
 }
 

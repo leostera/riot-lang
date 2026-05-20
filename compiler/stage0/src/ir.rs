@@ -4,9 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
-    ConstructorName, ImportedSignatures, Rsig, RsigDependency, RsigExport, RsigExternal,
-    RsigFunction, RsigType, RsigTypeDecl, RsigTypeScheme, RsigVariantConstructor, TypeName,
-    parse_type_signature, parse_type_signature_with_variants, parse_type_with_variants,
+    ConstructorName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
+    RsigExternal, RsigFunction, RsigType, RsigTypeDecl, RsigTypeScheme, RsigVariantConstructor,
+    TypeName, parse_type_signature, parse_type_signature_with_variants, parse_type_with_variants,
 };
 
 mod actor;
@@ -18,7 +18,7 @@ pub(crate) use hir::*;
 pub(crate) use rir::*;
 
 pub(crate) fn typed_program_from_ast(
-    module_name: String,
+    module_name: ModuleName,
     ast: AstProgram,
     imports: &ImportedSignatures,
     function_types: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
@@ -38,7 +38,7 @@ pub(crate) fn typed_program_from_ast(
                     .map(|rsig| rsig.module_fingerprint)
                     .unwrap_or(0);
                 uses.push(TypedUse {
-                    name: use_.name,
+                    name: ModuleName::new(use_.name),
                     fingerprint,
                 });
             }
@@ -200,7 +200,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
         .uses
         .iter()
         .map(|use_| RsigDependency {
-            module: use_.name.as_str().into(),
+            module: use_.name.clone(),
             fingerprint: use_.fingerprint,
         })
         .collect();
@@ -288,7 +288,7 @@ pub(crate) fn lower_rir_to_actor_ir(
     }
 }
 
-pub(crate) fn module_function_symbol(module: &str, name: &str) -> String {
+pub(crate) fn module_function_symbol(module: &ModuleName, name: &str) -> String {
     format!("riot_mod_{module}_{name}")
 }
 
@@ -2378,7 +2378,7 @@ mod tests {
     };
     use crate::infer::module::infer_function_signatures;
     use crate::parser::parse_source;
-    use crate::signature::{ImportedSignatures, RsigType};
+    use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{
         Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
@@ -2402,7 +2402,7 @@ mod tests {
         let imports = ImportedSignatures::new();
         let function_types = infer_function_signatures(&program, &imports).unwrap();
         typed_program_from_ast(
-            module.to_owned(),
+            ModuleName::new(module),
             program,
             &imports,
             &function_types,
@@ -2420,7 +2420,7 @@ mod tests {
         let expression_types = inferred.expression_rsig_types();
         let binding_schemes = inferred.binding_rsig_schemes();
         typed_program_from_ast(
-            module.to_owned(),
+            ModuleName::new(module),
             program,
             &imports,
             &function_types,

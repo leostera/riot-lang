@@ -18,7 +18,7 @@ pub(crate) struct Rsig {
     pub(crate) module_fingerprint: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct ModuleName(String);
 
 impl ModuleName {
@@ -58,6 +58,12 @@ impl Borrow<str> for ModuleName {
 impl fmt::Display for ModuleName {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(self.as_str())
+    }
+}
+
+impl fmt::Debug for ModuleName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(formatter)
     }
 }
 

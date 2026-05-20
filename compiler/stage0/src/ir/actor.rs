@@ -1,10 +1,10 @@
-use crate::signature::RsigType;
+use crate::signature::{ModuleName, RsigType};
 
 use super::RirExpr;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorIrProgram {
-    pub(crate) module_name: String,
+    pub(crate) module_name: ModuleName,
     pub(crate) actors: Vec<ActorIrActor>,
 }
 

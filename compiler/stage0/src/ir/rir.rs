@@ -1,4 +1,4 @@
-use crate::signature::{ConstructorName, RsigType, TypeName};
+use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct BindingKey(String);
@@ -57,8 +57,8 @@ impl Capture {
 
 #[derive(Debug, Clone)]
 pub(crate) struct RirProgram {
-    pub(crate) module_name: String,
-    pub(crate) uses: Vec<String>,
+    pub(crate) module_name: ModuleName,
+    pub(crate) uses: Vec<ModuleName>,
     pub(crate) externals: Vec<RirExternal>,
     pub(crate) functions: Vec<RirFunction>,
 }

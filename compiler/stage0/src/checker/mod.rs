@@ -17,7 +17,7 @@ use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
 use crate::signature::{
-    ImportedSignatures, RsigExport, RsigType, TypeName, parse_type_with_variants,
+    ImportedSignatures, ModuleName, RsigExport, RsigType, TypeName, parse_type_with_variants,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +29,7 @@ pub(crate) enum CheckMode {
 pub(crate) fn typecheck(
     source_path: &Utf8Path,
     source: &str,
-    module_name: String,
+    module_name: ModuleName,
     program: AstProgram,
     imports: &ImportedSignatures,
     mode: CheckMode,

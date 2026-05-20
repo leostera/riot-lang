@@ -147,7 +147,7 @@ fn build_program_module<'ctx>(
     mode: CodegenMode,
 ) -> miette::Result<Module<'ctx>> {
     let triple = TargetMachine::get_default_triple();
-    let module = context.create_module(&program.module_name);
+    let module = context.create_module(program.module_name.as_str());
     module.set_triple(&triple);
     module.set_data_layout(&target_machine.get_target_data().get_data_layout());
 
@@ -2918,14 +2918,14 @@ mod tests {
     use crate::ir::{
         BindingKey, Capture, Param, RirBlock, RirExpr, RirFunction, RirProgram, RirStmt,
     };
-    use crate::signature::{ImportedSignatures, RsigType};
+    use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{CodegenMode, emit_llvm_text};
 
     #[test]
     fn lambda_values_lower_to_runtime_closure_calls() {
         let program = RirProgram {
-            module_name: "ClosureTest".to_owned(),
+            module_name: ModuleName::new("ClosureTest"),
             uses: Vec::new(),
             externals: Vec::new(),
             functions: vec![RirFunction {
@@ -2965,7 +2965,7 @@ mod tests {
     #[test]
     fn lambda_apply_lowers_to_runtime_apply_function() {
         let program = RirProgram {
-            module_name: "ClosureApplyTest".to_owned(),
+            module_name: ModuleName::new("ClosureApplyTest"),
             uses: Vec::new(),
             externals: Vec::new(),
             functions: vec![RirFunction {
