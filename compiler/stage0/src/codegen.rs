@@ -833,6 +833,8 @@ impl<'ctx> Codegen<'ctx, '_> {
             [name] if name == "link" => self.emit_pid_runtime_call("riot_rt_link", args, env),
             [name] if name == "list_len" => self.emit_list_len(args, env),
             [name] if name == "list_get" => self.emit_list_get(args, env),
+            [name] if name == "string_len" => self.emit_string_len(args, env),
+            [name] if name == "string_concat" => self.emit_string_concat(args, env),
             [name] if self.externals.contains_key(name.as_str()) => {
                 let external = *self.externals.get(name.as_str()).unwrap();
                 self.emit_external_call(
@@ -886,6 +888,40 @@ impl<'ctx> Codegen<'ctx, '_> {
         Ok(CgValue::Value(self.call_runtime_value(
             "riot_rt_value_list_get",
             &[list.into(), index.into()],
+        )?))
+    }
+
+    fn emit_string_len(
+        &mut self,
+        args: &[RirExpr],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        if args.len() != 1 {
+            bail!("string_len expects one argument");
+        }
+        let string = self.emit_expr(&args[0], env)?;
+        let string = self.value_as_runtime(string)?;
+        Ok(CgValue::I64(self.call_runtime_value(
+            "riot_rt_value_string_len",
+            &[string.into()],
+        )?))
+    }
+
+    fn emit_string_concat(
+        &mut self,
+        args: &[RirExpr],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        if args.len() != 2 {
+            bail!("string_concat expects two arguments");
+        }
+        let lhs = self.emit_expr(&args[0], env)?;
+        let rhs = self.emit_expr(&args[1], env)?;
+        let lhs = self.value_as_runtime(lhs)?;
+        let rhs = self.value_as_runtime(rhs)?;
+        Ok(CgValue::Value(self.call_runtime_value(
+            "riot_rt_value_string_concat",
+            &[lhs.into(), rhs.into()],
         )?))
     }
 
@@ -1751,7 +1787,12 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_tuple_get" | "riot_rt_value_list_get" => {
                 i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
-            "riot_rt_value_list_len" => i64_type.fn_type(&[i64_type.into()], false),
+            "riot_rt_value_list_len" | "riot_rt_value_string_len" => {
+                i64_type.fn_type(&[i64_type.into()], false)
+            }
+            "riot_rt_value_string_concat" => {
+                i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
+            }
             "riot_rt_value_bytes_ptr" => ptr_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_len" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_eq" | "riot_rt_value_lt" => {
@@ -2056,8 +2097,8 @@ fn infer_expr_abi(
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
-            [name] if name == "list_len" => AbiType::I64,
-            [name] if name == "list_get" => AbiType::Value,
+            [name] if name == "list_len" || name == "string_len" => AbiType::I64,
+            [name] if name == "list_get" || name == "string_concat" => AbiType::Value,
             [name] => functions
                 .get(name)
                 .map(|abi| abi.result)

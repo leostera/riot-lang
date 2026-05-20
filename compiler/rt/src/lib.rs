@@ -707,6 +707,32 @@ pub unsafe extern "C" fn riot_rt_value_record_set(
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_string_len(string: RtValue) -> i64 {
+    with_runtime_mut(|runtime| runtime.value_bytes(string).map_or(0, |bytes| bytes.len() as i64))
+        .unwrap_or(0)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_string_concat(lhs: RtValue, rhs: RtValue) -> RtValue {
+    with_runtime_mut(|runtime| {
+        let Some(lhs_bytes) = runtime.value_bytes(lhs) else {
+            return VALUE_NULL;
+        };
+        let Some(rhs_bytes) = runtime.value_bytes(rhs) else {
+            return VALUE_NULL;
+        };
+        let mut bytes = Vec::with_capacity(lhs_bytes.len() + rhs_bytes.len());
+        bytes.extend_from_slice(lhs_bytes);
+        bytes.extend_from_slice(rhs_bytes);
+        runtime.alloc_value(
+            HeapObjectKind::String(bytes),
+            HeapOwner::Local(current_actor_pid()),
+        )
+    })
+    .unwrap_or(VALUE_NULL)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_list_len(list: RtValue) -> i64 {
     with_runtime_mut(|runtime| {
         let Some(heap_index) = heap_index(list) else {
@@ -1287,5 +1313,14 @@ mod tests {
         assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 0), label));
         assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 1), riot_rt_value_i64(7)));
         assert_eq!(riot_rt_value_list_get(list, 2), VALUE_NULL);
+
+        let suffix = unsafe { riot_rt_value_string(b" lang".as_ptr(), 5) };
+        let concatenated = riot_rt_value_string_concat(label, suffix);
+        assert_eq!(riot_rt_value_string_len(label), 4);
+        assert_eq!(riot_rt_value_string_len(concatenated), 9);
+        assert_eq!(
+            with_runtime_mut(|runtime| runtime.render_value(concatenated)).unwrap(),
+            "riot lang"
+        );
     }
 }

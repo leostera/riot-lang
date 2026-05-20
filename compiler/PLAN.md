@@ -228,6 +228,8 @@ shape.
   the result; LLVM text calls the runtime string concat ABI instead of embedding
   the final string.
 
+<!-- autoresearch:step-7:done -->
+
 ### 8. Root Live RtValues Across Runtime Calls
 
 - **Commit:** `feat(stage0): root live RtValues across runtime calls`
