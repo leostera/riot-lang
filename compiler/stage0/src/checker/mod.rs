@@ -464,12 +464,38 @@ fn validate_expr(
             }
             Ok(ExprCategory::Other)
         }
+        AstExpr::Lt { lhs, rhs, span } => {
+            validate_expr(ctx, lhs, bindings, in_actor)?;
+            validate_expr(ctx, rhs, bindings, in_actor)?;
+            let lhs_type = simple_expr_type(ctx, lhs, bindings);
+            let rhs_type = simple_expr_type(ctx, rhs, bindings);
+            if let (Some(lhs_type), Some(rhs_type)) = (lhs_type, rhs_type) {
+                let comparable = matches!(lhs_type, RsigType::I64 | RsigType::String)
+                    && matches!(rhs_type, RsigType::I64 | RsigType::String)
+                    && type_matches(&lhs_type, &rhs_type);
+                if !comparable {
+                    return Err(to_source_diagnostic(
+                        ctx.source_path,
+                        ctx.source,
+                        *span,
+                        "ordering operands are not comparable",
+                        format!(
+                            "left side has type `{}`, but right side has type `{}`",
+                            lhs_type.canonical(),
+                            rhs_type.canonical()
+                        ),
+                        Some("compare i64 values with i64 values or string values with string values"),
+                    )
+                    .into());
+                }
+            }
+            Ok(ExprCategory::Other)
+        }
         AstExpr::Add { lhs, rhs, .. }
         | AstExpr::Sub { lhs, rhs, .. }
         | AstExpr::Mul { lhs, rhs, .. }
         | AstExpr::Div { lhs, rhs, .. }
         | AstExpr::Mod { lhs, rhs, .. }
-        | AstExpr::Lt { lhs, rhs, .. }
         | AstExpr::And { lhs, rhs, .. }
         | AstExpr::Or { lhs, rhs, .. } => {
             validate_expr(ctx, lhs, bindings, in_actor)?;

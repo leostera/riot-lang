@@ -428,16 +428,7 @@ impl Runtime {
     }
 
     fn heap_values_equal(&self, lhs: RtValue, rhs: RtValue) -> bool {
-        let Some(lhs_index) = heap_index(lhs) else {
-            return false;
-        };
-        let Some(rhs_index) = heap_index(rhs) else {
-            return false;
-        };
-        let Some(lhs_object) = self.heap.get(lhs_index).and_then(Option::as_ref) else {
-            return false;
-        };
-        let Some(rhs_object) = self.heap.get(rhs_index).and_then(Option::as_ref) else {
+        let Some((lhs_object, rhs_object)) = self.heap_pair(lhs, rhs) else {
             return false;
         };
 
@@ -471,6 +462,30 @@ impl Runtime {
             }
             _ => false,
         }
+    }
+
+    fn values_less_than(&self, lhs: RtValue, rhs: RtValue) -> bool {
+        match (value_i64_payload(lhs), value_i64_payload(rhs)) {
+            (Some(lhs), Some(rhs)) => return lhs < rhs,
+            (Some(_), None) | (None, Some(_)) => return false,
+            (None, None) => {}
+        }
+
+        let Some((lhs_object, rhs_object)) = self.heap_pair(lhs, rhs) else {
+            return false;
+        };
+        match (&lhs_object.kind, &rhs_object.kind) {
+            (HeapObjectKind::String(lhs), HeapObjectKind::String(rhs)) => lhs < rhs,
+            _ => false,
+        }
+    }
+
+    fn heap_pair(&self, lhs: RtValue, rhs: RtValue) -> Option<(&HeapObject, &HeapObject)> {
+        let lhs_index = heap_index(lhs)?;
+        let rhs_index = heap_index(rhs)?;
+        let lhs_object = self.heap.get(lhs_index)?.as_ref()?;
+        let rhs_object = self.heap.get(rhs_index)?.as_ref()?;
+        Some((lhs_object, rhs_object))
     }
 
     fn schedule_until_quiescent(&mut self) {
@@ -709,6 +724,11 @@ pub extern "C" fn riot_rt_value_bytes_len(value: RtValue) -> usize {
 #[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_eq(lhs: RtValue, rhs: RtValue) -> bool {
     with_runtime_mut(|runtime| runtime.values_equal(lhs, rhs)).unwrap_or(false)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_lt(lhs: RtValue, rhs: RtValue) -> bool {
+    with_runtime_mut(|runtime| runtime.values_less_than(lhs, rhs)).unwrap_or(false)
 }
 
 #[unsafe(no_mangle)]
@@ -1129,6 +1149,23 @@ mod tests {
         }
         assert!(riot_rt_value_eq(lhs_record, rhs_record));
         assert!(!riot_rt_value_eq(lhs_record, lhs_list));
+    }
+
+    #[test]
+    fn value_ordering_handles_i64_and_strings() {
+        riot_rt_init();
+
+        assert!(riot_rt_value_lt(riot_rt_value_i64(1), riot_rt_value_i64(2)));
+        assert!(!riot_rt_value_lt(riot_rt_value_i64(2), riot_rt_value_i64(1)));
+
+        let alpha = unsafe { riot_rt_value_string(b"alpha".as_ptr(), 5) };
+        let beta = unsafe { riot_rt_value_string(b"beta".as_ptr(), 4) };
+        assert!(riot_rt_value_lt(alpha, beta));
+        assert!(!riot_rt_value_lt(beta, alpha));
+
+        let tuple_items = [alpha];
+        let tuple = unsafe { riot_rt_value_tuple(tuple_items.as_ptr(), tuple_items.len()) };
+        assert!(!riot_rt_value_lt(tuple, tuple));
     }
 
     #[test]

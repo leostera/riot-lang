@@ -427,13 +427,23 @@ impl<'ctx> Codegen<'ctx, '_> {
                 }
             }
             RirExpr::Lt(lhs, rhs) => {
-                let lhs = self.emit_i64(lhs, env)?;
-                let rhs = self.emit_i64(rhs, env)?;
-                Ok(CgValue::Bool(
-                    self.builder
-                        .build_int_compare(IntPredicate::SLT, lhs, rhs, "lttmp")
-                        .map_err(|error| miette::miette!("failed to emit comparison: {error}"))?,
-                ))
+                let lhs_value = self.emit_expr(lhs, env)?;
+                let rhs_value = self.emit_expr(rhs, env)?;
+                match (lhs_value, rhs_value) {
+                    (CgValue::I64(lhs), CgValue::I64(rhs)) => Ok(CgValue::Bool(
+                        self.builder
+                            .build_int_compare(IntPredicate::SLT, lhs, rhs, "lttmp")
+                            .map_err(|error| miette::miette!("failed to emit comparison: {error}"))?,
+                    )),
+                    (lhs, rhs) => {
+                        let lhs = self.value_as_runtime(lhs)?;
+                        let rhs = self.value_as_runtime(rhs)?;
+                        Ok(CgValue::Bool(self.call_runtime_value(
+                            "riot_rt_value_lt",
+                            &[lhs.into(), rhs.into()],
+                        )?))
+                    }
+                }
             }
             RirExpr::And(lhs, rhs) => {
                 let lhs = self.emit_bool(lhs, env)?;
@@ -1685,7 +1695,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             ),
             "riot_rt_value_bytes_ptr" => ptr_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_bytes_len" => i64_type.fn_type(&[i64_type.into()], false),
-            "riot_rt_value_eq" => bool_type.fn_type(&[i64_type.into(), i64_type.into()], false),
+            "riot_rt_value_eq" | "riot_rt_value_lt" => {
+                bool_type.fn_type(&[i64_type.into(), i64_type.into()], false)
+            }
             "riot_rt_send" => {
                 void_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }

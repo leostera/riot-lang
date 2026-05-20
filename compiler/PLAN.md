@@ -146,6 +146,8 @@ shape.
   tuple/list/record ordering fail during checking; LLVM snapshots show boxed
   comparisons call `riot_rt_value_lt`.
 
+<!-- autoresearch:step-3:done -->
+
 ### 4. Lower Record Field Access for Runtime Values
 
 - **Commit:** `feat(stage0): lower record field access for runtime values`
