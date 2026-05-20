@@ -65,29 +65,95 @@ Completed since the initial roadmap:
 
 Current architectural read:
 
-- The next feature work should stay vertical, but GC/rooting is now the
-  critical path. Adding records, variants, match, and richer actor messages
-  before live-value rooting will create examples that pass only accidentally.
+- The next feature work should stay vertical. GC/rooting is no longer the
+  immediate blocker for small examples: generated code now roots live runtime
+  values across runtime calls, actor frames expose boxed-value root slots, and
+  allocation-pressure GC is active enough to catch lifetime mistakes.
 - The runtime is multicore-ready in shape, not multicore-complete. Mailboxes are
-  already independently synchronized, and scheduler state is thread-local, but
-  stale `ActorId` lifetime and actor ownership/migration still need an explicit
-  policy before actors can safely move across cores.
+  already independently synchronized, scheduler state is thread-local, and
+  stale runtime-created `ActorId`s are deterministic tombstones. A stable
+  `ActorId` should be enough to push directly into an actor mailbox from any
+  runtime thread; cross-scheduler work should add wakeup/ready notification, not
+  reroute message ownership through scheduler queues.
 - `ActorId` as an opaque `u64` capability is fine for generated code. The Rust
   runtime should keep the internals idiomatic and make the extern layer do the
   raw pointer/length/handle translation.
 
 Near-term order after this checkpoint:
 
-1. Finish Wave 1 by making `RtValue` rooting reliable across calls, actor
-   frames, and allocation pressure.
-2. Add a small runtime-hardening slice before true multicore scheduling:
-   generation-check or lifetime-protect actor handles so stale `ActorId`s cannot
-   dereference freed actor slots.
-3. Only then move into Wave 2 resolver/type work and Wave 3 records, variants,
-   and pattern matching.
-4. Return to Wave 4 actor semantics once structured values and pattern matching
-   are available enough to make monitor/down and selective receive real
-   language features instead of string-shaped smoke tests.
+1. Build the core inferred typed lambda language: function types, lexical
+   rebinding, lambdas, application, and eventually closures.
+2. Compile that lambda core vertically through RIR, LLVM, and a runtime closure
+   ABI.
+3. Move into records, variants, match, and richer actor messages once
+   higher-order helper code is usable.
+4. Return to multicore scheduling once the direct mailbox-send invariant has a
+   wakeup/ready-queue design beside it.
+
+## Lambda Core Checkpoint
+
+The fastest path to a small usable language is an inference-first typed lambda
+core. Stage0 should not require annotations for ordinary lambdas or helper
+functions. Type annotations remain useful as constraints and interface
+documentation, but inference should do the default work.
+
+Agreed source syntax:
+
+```riot
+let add = fn(n, x) { x + n };
+let make_adder = fn(n) { fn(x) { x + n } };
+```
+
+The old candidate syntax `fn (x: T) -> U { ... }` is not the source shape for
+lambdas. Top-level functions still use `fn name(...) { ... }`.
+
+Near-term lambda-core slices:
+
+1. `docs(stage0): define inferred lambda-core subset`
+   - Document optional annotations, lexical rebinding, function values,
+     application, captures, closure runtime needs, and the no-polymorphism-yet
+     boundary.
+2. `feat(stage0): introduce type variables and substitutions`
+   - Add type variables, substitutions, occurs check, and unification as a
+     tested internal module.
+3. `feat(stage0): infer expression types with unification`
+   - Move literals, paths, arithmetic, bool ops, tuples/lists/records, `if`,
+     and field/projection typing onto unification.
+4. `feat(stage0): infer lexical let rebinding`
+   - Every `let` creates a new lexical binding, even in the same block. Later
+     references resolve to the nearest earlier binding.
+5. `feat(stage0): infer function signatures`
+   - Infer unannotated params/results from bodies and call sites where
+     constraints are concrete, and emit concrete `.rsig` where possible.
+6. `feat(stage0): parse lambda expressions`
+   - Parse `fn(...) { ... }` in expression position. Lambda params may have
+     optional annotations but do not require them.
+7. `feat(stage0): infer lambda and apply types`
+   - Infer lambda parameter/result types and ordinary application of callable
+     expressions. Reject non-callable application in type checking.
+8. `feat(stage0): parse function type annotations`
+   - Support function types in annotations and `.rsig`, using annotations as
+     constraints on inference.
+9. `feat(stage0): lower typed callable values to rir`
+   - Add typed `Lambda`, `Apply`, `FunctionRef`, and capture metadata while
+     preserving direct calls when the callee is statically known.
+10. `feat(rt): add closure value abi`
+    - Represent closures as runtime values containing a code pointer and
+      captured environment. GC must trace closure captures.
+
+Acceptance target:
+
+```riot
+fn main() {
+  let make_adder = fn(n) {
+    fn(x) { x + n }
+  };
+  let add2 = make_adder(2);
+  dbg(add2(40))
+}
+```
+
+This should print `42` without annotations.
 
 ## Validation Loop
 
@@ -305,6 +371,8 @@ shape.
   value and prints the early value correctly; runtime tests assert roots protect
   nested children.
 
+<!-- autoresearch:step-8:done -->
+
 ### 9. Store RtValues in Actor Frames
 
 - **Commit:** `feat(stage0): store RtValues in actor frames`
@@ -322,6 +390,8 @@ shape.
 - **Validation:** Actor fixture captures a boxed tuple/list/record, receives a
   message, triggers allocation/GC, then prints the captured value after resume.
 
+<!-- autoresearch:step-9:done -->
+
 ### 10. Trigger GC From Heap Allocation Pressure
 
 - **Commit:** `feat(rt): trigger GC from heap allocation pressure`
@@ -337,6 +407,8 @@ shape.
   pressure without breaking existing fixtures.
 - **Validation:** Runtime unit tests force threshold collection and assert freed
   counts; full stage0 fixtures pass with a low deterministic test threshold.
+
+<!-- autoresearch:step-10:done -->
 
 ## Runtime Hardening Interlude
 
@@ -365,23 +437,29 @@ cross-core scheduler queues.
   runtime-created actor handle do not crash, resurrect the actor, or enqueue
   messages.
 
-### 10B. Add Cross-Scheduler Send Queue Shape
+<!-- autoresearch:step-10A:done -->
 
-- **Commit:** `feat(rt): add cross-scheduler send queue shape`
+### 10B. Preserve Direct ActorId Mailbox Sends
+
+- **Commit:** `test(rt): assert actor ids send directly to mailboxes`
 - **Intent:** Sending by `ActorId` should remain cheap when actors eventually
-  live on different scheduler workers.
+  live on different scheduler workers. A stable actor id should point to the
+  actor slot/mailbox strongly enough that send can push directly from any
+  runtime thread.
 - **Frontend:** No syntax change.
-- **Lowering/backend/runtime:** Keep the direct `ActorId -> ActorSlot` handle,
-  but use the actor slot's scheduler owner to decide whether to push directly to
-  the local mailbox or enqueue onto a cross-scheduler inbound queue. The first
-  implementation may still have one scheduler, but the branch and data shape
-  should exist.
+- **Lowering/backend/runtime:** Keep the direct `ActorId -> ActorSlot -> mailbox`
+  delivery path. Future multicore scheduling should add wakeup/ready
+  notification beside mailbox push, not a scheduler-owned message forwarding
+  queue.
 - **Fixtures/tests:** Add runtime unit tests that exercise local-send and
-  simulated foreign-scheduler-send paths without starting real worker threads.
-- **Done when:** The mailbox API no longer assumes the sender and receiver live
-  on the same scheduler local.
-- **Validation:** Runtime tests cover both local and simulated foreign sends;
-  existing actor fixtures still pass without changing generated code.
+  simulated foreign-owned actor send paths without starting real worker threads.
+- **Done when:** The mailbox API does not require sender and receiver to live on
+  the same scheduler local.
+- **Validation:** Runtime tests prove a foreign-owned actor slot still receives
+  a message through direct `ActorId` mailbox push; existing actor fixtures still
+  pass without changing generated code.
+
+<!-- autoresearch:step-10B:done -->
 
 ### 10C. Separate Scheduler Ownership From Runtime ABI
 
