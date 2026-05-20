@@ -39,21 +39,27 @@ ActorIrProgram {
                                                 statements: [],
                                                 tail: Some(
                                                     Receive {
-                                                        binder: BindingKey(
-                                                            "msg$0",
-                                                        ),
-                                                        body: Call {
-                                                            callee: [
-                                                                "dbg",
-                                                            ],
-                                                            args: [
-                                                                Path(
-                                                                    [
+                                                        arms: [
+                                                            RirReceiveArm {
+                                                                pattern: Bind(
+                                                                    BindingKey(
                                                                         "msg$0",
-                                                                    ],
+                                                                    ),
                                                                 ),
-                                                            ],
-                                                        },
+                                                                body: Call {
+                                                                    callee: [
+                                                                        "dbg",
+                                                                    ],
+                                                                    args: [
+                                                                        Path(
+                                                                            [
+                                                                                "msg$0",
+                                                                            ],
+                                                                        ),
+                                                                    ],
+                                                                },
+                                                            },
+                                                        ],
                                                     },
                                                 ),
                                             },
@@ -62,26 +68,32 @@ ActorIrProgram {
                                 ],
                                 tail: Some(
                                     Receive {
-                                        binder: BindingKey(
-                                            "msg$2",
-                                        ),
-                                        body: Call {
-                                            callee: [
-                                                "send",
-                                            ],
-                                            args: [
-                                                Path(
-                                                    [
-                                                        "leaf$1",
-                                                    ],
-                                                ),
-                                                Path(
-                                                    [
+                                        arms: [
+                                            RirReceiveArm {
+                                                pattern: Bind(
+                                                    BindingKey(
                                                         "msg$2",
-                                                    ],
+                                                    ),
                                                 ),
-                                            ],
-                                        },
+                                                body: Call {
+                                                    callee: [
+                                                        "send",
+                                                    ],
+                                                    args: [
+                                                        Path(
+                                                            [
+                                                                "leaf$1",
+                                                            ],
+                                                        ),
+                                                        Path(
+                                                            [
+                                                                "msg$2",
+                                                            ],
+                                                        ),
+                                                    ],
+                                                },
+                                            },
+                                        ],
                                     },
                                 ),
                             },
@@ -94,24 +106,32 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 1,
                     op: Receive {
-                        binder: "msg$4",
-                        body: Call {
-                            callee: [
-                                "send",
-                            ],
-                            args: [
-                                Path(
-                                    [
-                                        "middle$3",
-                                    ],
-                                ),
-                                Path(
-                                    [
+                        arms: [
+                            RirReceiveArm {
+                                pattern: Bind(
+                                    BindingKey(
                                         "msg$4",
-                                    ],
+                                    ),
                                 ),
-                            ],
-                        },
+                                body: Call {
+                                    callee: [
+                                        "send",
+                                    ],
+                                    args: [
+                                        Path(
+                                            [
+                                                "middle$3",
+                                            ],
+                                        ),
+                                        Path(
+                                            [
+                                                "msg$4",
+                                            ],
+                                        ),
+                                    ],
+                                },
+                            },
+                        ],
                     },
                     next: Done,
                 },
@@ -143,21 +163,27 @@ ActorIrProgram {
                                 statements: [],
                                 tail: Some(
                                     Receive {
-                                        binder: BindingKey(
-                                            "msg$0",
-                                        ),
-                                        body: Call {
-                                            callee: [
-                                                "dbg",
-                                            ],
-                                            args: [
-                                                Path(
-                                                    [
+                                        arms: [
+                                            RirReceiveArm {
+                                                pattern: Bind(
+                                                    BindingKey(
                                                         "msg$0",
-                                                    ],
+                                                    ),
                                                 ),
-                                            ],
-                                        },
+                                                body: Call {
+                                                    callee: [
+                                                        "dbg",
+                                                    ],
+                                                    args: [
+                                                        Path(
+                                                            [
+                                                                "msg$0",
+                                                            ],
+                                                        ),
+                                                    ],
+                                                },
+                                            },
+                                        ],
                                     },
                                 ),
                             },
@@ -170,24 +196,32 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 1,
                     op: Receive {
-                        binder: "msg$2",
-                        body: Call {
-                            callee: [
-                                "send",
-                            ],
-                            args: [
-                                Path(
-                                    [
-                                        "leaf$1",
-                                    ],
-                                ),
-                                Path(
-                                    [
+                        arms: [
+                            RirReceiveArm {
+                                pattern: Bind(
+                                    BindingKey(
                                         "msg$2",
-                                    ],
+                                    ),
                                 ),
-                            ],
-                        },
+                                body: Call {
+                                    callee: [
+                                        "send",
+                                    ],
+                                    args: [
+                                        Path(
+                                            [
+                                                "leaf$1",
+                                            ],
+                                        ),
+                                        Path(
+                                            [
+                                                "msg$2",
+                                            ],
+                                        ),
+                                    ],
+                                },
+                            },
+                        ],
                     },
                     next: Done,
                 },
@@ -206,19 +240,27 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "msg$0",
-                        body: Call {
-                            callee: [
-                                "dbg",
-                            ],
-                            args: [
-                                Path(
-                                    [
+                        arms: [
+                            RirReceiveArm {
+                                pattern: Bind(
+                                    BindingKey(
                                         "msg$0",
-                                    ],
+                                    ),
                                 ),
-                            ],
-                        },
+                                body: Call {
+                                    callee: [
+                                        "dbg",
+                                    ],
+                                    args: [
+                                        Path(
+                                            [
+                                                "msg$0",
+                                            ],
+                                        ),
+                                    ],
+                                },
+                            },
+                        ],
                     },
                     next: Done,
                 },

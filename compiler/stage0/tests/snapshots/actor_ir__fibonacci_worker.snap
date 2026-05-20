@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 681
 expression: contents
 ---
 ActorIrProgram {
@@ -19,19 +18,27 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "msg$0",
-                        body: Call {
-                            callee: [
-                                "dbg",
-                            ],
-                            args: [
-                                Path(
-                                    [
+                        arms: [
+                            RirReceiveArm {
+                                pattern: Bind(
+                                    BindingKey(
                                         "msg$0",
-                                    ],
+                                    ),
                                 ),
-                            ],
-                        },
+                                body: Call {
+                                    callee: [
+                                        "dbg",
+                                    ],
+                                    args: [
+                                        Path(
+                                            [
+                                                "msg$0",
+                                            ],
+                                        ),
+                                    ],
+                                },
+                            },
+                        ],
                     },
                     next: Done,
                 },
@@ -62,29 +69,37 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "start$2",
-                        body: Call {
-                            callee: [
-                                "send",
-                            ],
-                            args: [
-                                Path(
-                                    [
-                                        "out$1",
-                                    ],
+                        arms: [
+                            RirReceiveArm {
+                                pattern: Bind(
+                                    BindingKey(
+                                        "start$2",
+                                    ),
                                 ),
-                                Call {
+                                body: Call {
                                     callee: [
-                                        "fib",
+                                        "send",
                                     ],
                                     args: [
-                                        Int(
-                                            6,
+                                        Path(
+                                            [
+                                                "out$1",
+                                            ],
                                         ),
+                                        Call {
+                                            callee: [
+                                                "fib",
+                                            ],
+                                            args: [
+                                                Int(
+                                                    6,
+                                                ),
+                                            ],
+                                        },
                                     ],
                                 },
-                            ],
-                        },
+                            },
+                        ],
                     },
                     next: Done,
                 },

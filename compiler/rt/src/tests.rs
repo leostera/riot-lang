@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use crate::abi::{
     riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
     riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold, riot_rt_init,
-    riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown,
+    riot_rt_msg_value, riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown,
     riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_as_bool, riot_rt_value_as_i64,
     riot_rt_value_bool, riot_rt_value_closure, riot_rt_value_eq, riot_rt_value_i64,
     riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
@@ -418,6 +418,11 @@ fn value_rendering_handles_compound_values() {
     riot_rt_init();
 
     let label = unsafe { riot_rt_value_string(b"riot".as_ptr(), 4) };
+    let message = RuntimeMessage::I64(42).as_rt_message();
+    assert!(riot_rt_value_eq(
+        unsafe { riot_rt_msg_value(&message) },
+        riot_rt_value_i64(42)
+    ));
     let values = [label, riot_rt_value_i64(42)];
     let tuple = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
     assert_eq!(

@@ -198,7 +198,6 @@ enum CgValue<'ctx> {
     Bool(IntValue<'ctx>),
     ActorId(IntValue<'ctx>),
     Value(IntValue<'ctx>),
-    Message(PointerValue<'ctx>),
     Static(StaticValue),
 }
 
@@ -1709,9 +1708,6 @@ impl<'ctx> Codegen<'ctx, '_> {
                 }
                 self.pop_runtime_roots(1)?;
             }
-            CgValue::Message(message) if name == "dbg" => {
-                self.call_void_runtime("riot_rt_dbg_msg", &[message.into()])?;
-            }
             CgValue::Static(value) => {
                 let rendered = value.to_print_string();
                 let (ptr, len) = self.string_literal(&rendered)?;
@@ -1731,7 +1727,6 @@ impl<'ctx> Codegen<'ctx, '_> {
                 };
                 self.call_void_runtime(symbol, &[actor_id.into()])?;
             }
-            CgValue::Message(_) => bail!("{name} cannot print actor messages directly"),
         }
         Ok(CgValue::Unit)
     }
@@ -1779,9 +1774,6 @@ impl<'ctx> Codegen<'ctx, '_> {
         let actor_id = self.value_as_i64(actor_id)?;
         let message = self.emit_expr(&args[1], env)?;
         match message {
-            CgValue::Message(message) => {
-                self.call_void_runtime("riot_rt_send_msg", &[actor_id.into(), message.into()])?;
-            }
             CgValue::Value(value) => {
                 self.push_runtime_root(value)?;
                 self.call_void_runtime("riot_rt_send_value", &[actor_id.into(), value.into()])?;
@@ -1999,7 +1991,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     )?;
                     self.return_poll(progress_flags(next_state, shape.states.len()))?;
                 }
-                ActorFrameOp::Receive { binder, body } => {
+                ActorFrameOp::Receive { arms } => {
                     let wait = self.context.append_basic_block(resume, "receive.wait");
                     let consume = self.context.append_basic_block(resume, "receive.consume");
                     let is_null = self
@@ -2018,18 +2010,52 @@ impl<'ctx> Codegen<'ctx, '_> {
                     self.return_poll(POLL_WAITING)?;
 
                     self.builder.position_at_end(consume);
-                    env.values
-                        .insert(binder.as_str().to_owned(), CgValue::Message(message));
-                    self.emit_expr(body, &mut env)?;
-                    self.store_frame_i64(
-                        frame_type,
-                        frame,
-                        0,
-                        i64_type.const_int(next_state as u64, false),
-                    )?;
-                    self.return_poll(
-                        POLL_CONSUMED | progress_flags(next_state, shape.states.len()),
-                    )?;
+                    let message_value =
+                        self.call_runtime_value("riot_rt_msg_value", &[message.into()])?;
+                    self.push_runtime_root(message_value)?;
+
+                    let mut next_arm = consume;
+                    for (arm_index, arm) in arms.iter().enumerate() {
+                        self.builder.position_at_end(next_arm);
+                        let matched =
+                            self.emit_pattern_test(&CgValue::Value(message_value), &arm.pattern)?;
+                        let arm_block = self
+                            .context
+                            .append_basic_block(resume, &format!("receive.arm.{arm_index}"));
+                        let miss_block = self
+                            .context
+                            .append_basic_block(resume, &format!("receive.next.{arm_index}"));
+                        self.builder
+                            .build_conditional_branch(matched, arm_block, miss_block)
+                            .map_err(|error| {
+                                miette::miette!("failed to emit receive pattern branch: {error}")
+                            })?;
+
+                        self.builder.position_at_end(arm_block);
+                        let mut arm_env = env.clone();
+                        self.bind_pattern_env(
+                            &mut arm_env,
+                            &arm.pattern,
+                            &CgValue::Value(message_value),
+                        )?;
+                        self.emit_expr(&arm.body, &mut arm_env)?;
+                        self.store_frame_i64(
+                            frame_type,
+                            frame,
+                            0,
+                            i64_type.const_int(next_state as u64, false),
+                        )?;
+                        self.pop_runtime_roots(1)?;
+                        self.return_poll(
+                            POLL_CONSUMED | progress_flags(next_state, shape.states.len()),
+                        )?;
+
+                        next_arm = miss_block;
+                    }
+
+                    self.builder.position_at_end(next_arm);
+                    self.pop_runtime_roots(1)?;
+                    self.return_poll(POLL_WAITING)?;
                 }
             }
         }
@@ -2327,7 +2353,6 @@ impl<'ctx> Codegen<'ctx, '_> {
                 other => self.value_as_runtime(other),
             },
             CgValue::Unit => self.call_runtime_value("riot_rt_value_unit", &[]),
-            CgValue::Message(_) => bail!("actor message cannot be converted to RtValue directly"),
         }
     }
 
@@ -2549,6 +2574,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 i64_type.fn_type(&[ptr_type.into(), ptr_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_apply" => i64_type.fn_type(&[i64_type.into(), i64_type.into()], false),
+            "riot_rt_msg_value" => i64_type.fn_type(&[ptr_type.into()], false),
             "riot_rt_value_as_i64" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_as_bool" => bool_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_record_begin" => {
@@ -3044,8 +3070,13 @@ fn mark_expr_constraints(
             mark_expr_constraints(lhs, params, locals, param_types, functions);
             mark_expr_constraints(rhs, params, locals, param_types, functions);
         }
-        RirExpr::Not(value) | RirExpr::Receive { body: value, .. } => {
+        RirExpr::Not(value) => {
             mark_expr_constraints(value, params, locals, param_types, functions);
+        }
+        RirExpr::Receive { arms } => {
+            for arm in arms {
+                mark_expr_constraints(&arm.body, params, locals, param_types, functions);
+            }
         }
         RirExpr::Spawn { body, .. } => {
             let mut nested_locals = HashMap::new();

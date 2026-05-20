@@ -628,6 +628,25 @@ pub unsafe extern "C" fn riot_rt_dbg_msg(message: *const RtMessage) {
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_msg_value(message: *const RtMessage) -> RtValue {
+    let Some(message) = (unsafe { runtime_message_from_raw(message) }) else {
+        runtime_abort("message value access received an invalid message pointer");
+    };
+    match message {
+        RuntimeMessage::Bytes(bytes) => with_scheduler_mut(|scheduler| {
+            scheduler.alloc_value(
+                HeapObjectKind::String(bytes),
+                HeapOwner::Local(current_actor_id()),
+            )
+        }),
+        RuntimeMessage::I64(value) => value_i64(value),
+        RuntimeMessage::Bool(value) => value_bool(value),
+        RuntimeMessage::ActorId(value) => value_actor_id(value),
+        RuntimeMessage::Value(value) => value,
+    }
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_monitor(actor_id: ActorId) {
     with_scheduler_mut(|scheduler| scheduler.monitor(actor_id));
 }

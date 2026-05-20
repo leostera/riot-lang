@@ -818,8 +818,10 @@ fn infer_ast_expr_type(
             RsigType::Unknown
         }
         AstExpr::Spawn { .. } => RsigType::ActorId(Box::new(RsigType::Unknown)),
-        AstExpr::Receive { body, .. } => {
-            infer_ast_expr_type(body, locals, functions);
+        AstExpr::Receive { arms, .. } => {
+            for arm in arms {
+                infer_ast_expr_type(&arm.body, locals, functions);
+            }
             RsigType::Unit
         }
         AstExpr::Unit { .. } => RsigType::Unit,
@@ -985,8 +987,10 @@ fn mark_ast_constraints(
         AstExpr::Field { base, .. } | AstExpr::TupleIndex { base, .. } => {
             mark_ast_constraints(base, params, locals, param_types, functions);
         }
-        AstExpr::Receive { body, .. } => {
-            mark_ast_constraints(body, params, locals, param_types, functions);
+        AstExpr::Receive { arms, .. } => {
+            for arm in arms {
+                mark_ast_constraints(&arm.body, params, locals, param_types, functions);
+            }
         }
         AstExpr::Spawn { body, .. } => {
             let mut nested_locals = BTreeMap::new();
@@ -1271,19 +1275,22 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 }
             },
         },
-        AstExpr::Receive { binder, body, .. } => {
-            context.push_scope();
-            let binder = context.bind(&binder, RsigType::Unknown);
-            let body = type_expr(*body, context);
-            context.pop_scope();
-            TypedExpr {
-                type_: RsigType::Unit,
-                kind: TypedExprKind::Receive {
-                    binder,
-                    body: Box::new(body),
-                },
-            }
-        }
+        AstExpr::Receive { arms, .. } => TypedExpr {
+            type_: RsigType::Unit,
+            kind: TypedExprKind::Receive {
+                arms: arms
+                    .into_iter()
+                    .map(|arm| {
+                        context.push_scope();
+                        let pattern_type = receive_pattern_type(&arm.pattern, context);
+                        let pattern = type_pattern(arm.pattern, &pattern_type, context);
+                        let body = type_expr(arm.body, context);
+                        context.pop_scope();
+                        TypedReceiveArm { pattern, body }
+                    })
+                    .collect(),
+            },
+        },
         AstExpr::Unit { .. } => TypedExpr {
             type_: RsigType::Unit,
             kind: TypedExprKind::Unit,
@@ -1570,6 +1577,30 @@ fn record_expr_type(path: &[String], context: &TypeContext<'_>) -> TypeName {
         .get(&key)
         .cloned()
         .unwrap_or_else(|| TypeName::new(key))
+}
+
+fn receive_pattern_type(pattern: &AstPattern, context: &TypeContext<'_>) -> RsigType {
+    match pattern {
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => RsigType::Unknown,
+        AstPattern::Unit { .. } => RsigType::Unit,
+        AstPattern::Bool { .. } => RsigType::Bool,
+        AstPattern::Int { .. } => RsigType::I64,
+        AstPattern::String { .. } => RsigType::String,
+        AstPattern::Constructor { path, .. } => {
+            pattern_constructor_signature(&path.segments, context)
+                .map(|constructor| RsigType::Variant(constructor.type_name))
+                .unwrap_or(RsigType::Unknown)
+        }
+        AstPattern::Tuple { items, .. } => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| receive_pattern_type(item, context))
+                .collect(),
+        ),
+        AstPattern::Record { path, .. } => {
+            RsigType::Record(record_expr_type(&path.segments, context))
+        }
+    }
 }
 
 fn type_pattern(
@@ -2086,13 +2117,15 @@ fn collect_actors_from_expr(
         RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
             collect_actors_from_expr(owner, base, locals, context, actors);
         }
-        RirExpr::Receive { binder, body } => {
-            let previous = locals.insert(binder.as_str().to_owned(), None);
-            collect_actors_from_expr(owner, body, locals, context, actors);
-            if let Some(previous) = previous {
-                locals.insert(binder.as_str().to_owned(), previous);
-            } else {
-                locals.remove(binder.as_str());
+        RirExpr::Receive { arms } => {
+            for arm in arms {
+                let mut arm_locals = locals.clone();
+                bind_pattern_actor_slot_types(
+                    &arm.pattern,
+                    Some(ActorSlotType::Value),
+                    &mut arm_locals,
+                );
+                collect_actors_from_expr(owner, &arm.body, &mut arm_locals, context, actors);
             }
         }
         RirExpr::Variant { payload, .. } => {
@@ -2127,10 +2160,12 @@ fn actor_frame_from_block(
                 bound.insert(name.clone());
             }
             ActorFrameOp::Expr(expr) => collect_free_expr(expr, &bound, &mut free),
-            ActorFrameOp::Receive { binder, body } => {
-                let mut receive_bound = bound.clone();
-                receive_bound.insert(binder.clone());
-                collect_free_expr(body, &receive_bound, &mut free);
+            ActorFrameOp::Receive { arms } => {
+                for arm in arms {
+                    let mut receive_bound = bound.clone();
+                    bind_pattern_names(&arm.pattern, &mut receive_bound);
+                    collect_free_expr(&arm.body, &receive_bound, &mut free);
+                }
             }
         }
     }
@@ -2202,22 +2237,16 @@ fn actor_ops(block: &RirBlock) -> Vec<ActorFrameOp> {
                 name: name.as_str().to_owned(),
                 value: value.clone(),
             }),
-            RirStmt::Expr(RirExpr::Receive { binder, body }) => {
-                ops.push(ActorFrameOp::Receive {
-                    binder: binder.as_str().to_owned(),
-                    body: *body.clone(),
-                });
+            RirStmt::Expr(RirExpr::Receive { arms }) => {
+                ops.push(ActorFrameOp::Receive { arms: arms.clone() });
             }
             RirStmt::Expr(expr) => ops.push(ActorFrameOp::Expr(expr.clone())),
         }
     }
     if let Some(expr) = &block.tail {
         match expr {
-            RirExpr::Receive { binder, body } => {
-                ops.push(ActorFrameOp::Receive {
-                    binder: binder.as_str().to_owned(),
-                    body: *body.clone(),
-                });
+            RirExpr::Receive { arms } => {
+                ops.push(ActorFrameOp::Receive { arms: arms.clone() });
             }
             expr => ops.push(ActorFrameOp::Expr(expr.clone())),
         }
@@ -2292,10 +2321,12 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
             collect_free_expr(base, bound, free)
         }
         RirExpr::Spawn { body, .. } => collect_free_block(body, bound, free),
-        RirExpr::Receive { binder, body } => {
-            let mut nested = bound.clone();
-            nested.insert(binder.as_str().to_owned());
-            collect_free_expr(body, &nested, free);
+        RirExpr::Receive { arms } => {
+            for arm in arms {
+                let mut nested = bound.clone();
+                bind_pattern_names(&arm.pattern, &mut nested);
+                collect_free_expr(&arm.body, &nested, free);
+            }
         }
         RirExpr::Variant { payload, .. } => {
             for value in payload {
@@ -2457,7 +2488,11 @@ fn closure_convert_expr(expr: &mut RirExpr) {
             closure_convert_expr(base);
         }
         RirExpr::Spawn { body, .. } => closure_convert_block(body),
-        RirExpr::Receive { body, .. } => closure_convert_expr(body),
+        RirExpr::Receive { arms } => {
+            for arm in arms {
+                closure_convert_expr(&mut arm.body);
+            }
+        }
         RirExpr::Variant { payload, .. } => {
             for value in payload {
                 closure_convert_expr(value);
@@ -2701,16 +2736,18 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             actor_id: context.next_actor_id(),
             body: Box::new(lower_block(*body, context)),
         },
-        TypedExprKind::Receive { binder, body } => {
-            context.push_scope();
-            let binder = context.bind_existing(&binder);
-            let body = lower_expr(*body, context);
-            context.pop_scope();
-            RirExpr::Receive {
-                binder,
-                body: Box::new(body),
-            }
-        }
+        TypedExprKind::Receive { arms } => RirExpr::Receive {
+            arms: arms
+                .into_iter()
+                .map(|arm| {
+                    context.push_scope();
+                    let pattern = lower_pattern(arm.pattern, context);
+                    let body = lower_expr(arm.body, context);
+                    context.pop_scope();
+                    RirReceiveArm { pattern, body }
+                })
+                .collect(),
+        },
         TypedExprKind::Unit => RirExpr::Unit,
         TypedExprKind::Tuple(items) => RirExpr::Tuple(
             items

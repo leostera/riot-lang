@@ -100,6 +100,12 @@ pub(crate) struct RirMatchArm {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct RirReceiveArm {
+    pub(crate) pattern: RirPattern,
+    pub(crate) body: RirExpr,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum RirPattern {
     Wildcard,
     Bind(BindingKey),
@@ -187,7 +193,6 @@ pub(crate) enum RirExpr {
         body: Box<RirBlock>,
     },
     Receive {
-        binder: BindingKey,
-        body: Box<RirExpr>,
+        arms: Vec<RirReceiveArm>,
     },
 }

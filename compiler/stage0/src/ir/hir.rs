@@ -125,6 +125,12 @@ pub(crate) struct TypedMatchArm {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct TypedReceiveArm {
+    pub(crate) pattern: TypedPattern,
+    pub(crate) body: TypedExpr,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum TypedPattern {
     Wildcard,
     Bind {
@@ -213,7 +219,6 @@ pub(crate) enum TypedExprKind {
         body: Box<TypedBlock>,
     },
     Receive {
-        binder: HirBinding,
-        body: Box<TypedExpr>,
+        arms: Vec<TypedReceiveArm>,
     },
 }

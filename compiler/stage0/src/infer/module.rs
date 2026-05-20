@@ -875,18 +875,20 @@ fn infer_expr_kind(
                 Ok(state.fresh_var())
             }
         }
-        AstExpr::Receive { binder, body, .. } => {
+        AstExpr::Receive { arms, .. } => {
             let message = state.fresh_var();
-            state.push_scope();
-            state.add_value(binder.clone(), state.monomorphic(message));
-            infer_expr(
-                state,
-                body,
-                declared_variants,
-                expression_types,
-                binding_schemes,
-            )?;
-            state.pop_scope();
+            for arm in arms {
+                state.push_scope();
+                infer_pattern(state, &arm.pattern, &message)?;
+                infer_expr(
+                    state,
+                    &arm.body,
+                    declared_variants,
+                    expression_types,
+                    binding_schemes,
+                )?;
+                state.pop_scope();
+            }
             Ok(Type::Unit)
         }
         AstExpr::Call { callee, args, .. } if callee.segments.len() == 2 => {

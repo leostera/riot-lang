@@ -73,7 +73,6 @@ pub(crate) fn typecheck(
 enum BindingKind {
     Actor,
     Value(Option<RsigType>),
-    Message,
 }
 
 #[derive(Debug)]
@@ -882,8 +881,8 @@ fn validate_expr(
             Some("wrap the receive in `spawn { ... }`"),
         )
         .into()),
-        AstExpr::Receive { body, .. } => {
-            validate_expr(ctx, body, bindings, true)?;
+        AstExpr::Receive { arms, .. } => {
+            validate_receive_arms(ctx, arms, bindings)?;
             Ok(ExprCategory::Actor)
         }
         AstExpr::Eq { lhs, rhs, span } => {
@@ -1846,11 +1845,9 @@ fn validate_actor_block(
                 }
             }
             AstStmt::Expr(expr) => {
-                if let AstExpr::Receive { binder, body, .. } = expr {
+                if let AstExpr::Receive { arms, .. } = expr {
                     has_receive = true;
-                    let mut receive_bindings = bindings.clone();
-                    receive_bindings.insert(binder.clone(), BindingKind::Message);
-                    validate_expr(ctx, body, &receive_bindings, true)?;
+                    validate_receive_arms(ctx, arms, &bindings)?;
                 } else {
                     validate_expr(ctx, expr, &bindings, true)?;
                 }
@@ -1859,11 +1856,9 @@ fn validate_actor_block(
     }
 
     if let Some(tail) = &block.tail {
-        if let AstExpr::Receive { binder, body, .. } = tail {
+        if let AstExpr::Receive { arms, .. } = tail {
             has_receive = true;
-            let mut receive_bindings = bindings.clone();
-            receive_bindings.insert(binder.clone(), BindingKind::Message);
-            validate_expr(ctx, body, &receive_bindings, true)?;
+            validate_receive_arms(ctx, arms, &bindings)?;
         } else {
             validate_expr(ctx, tail, &bindings, true)?;
         }
@@ -1884,6 +1879,21 @@ fn validate_actor_block(
     Ok(())
 }
 
+fn validate_receive_arms(
+    ctx: &ValidationContext<'_>,
+    arms: &[crate::ast::AstReceiveArm],
+    bindings: &HashMap<String, BindingKind>,
+) -> miette::Result<()> {
+    for arm in arms {
+        validate_pattern(ctx, &arm.pattern, None)?;
+        let mut receive_bindings = bindings.clone();
+        let pattern_type = pattern_type(ctx, &arm.pattern).unwrap_or(RsigType::Unknown);
+        bind_pattern(ctx, &arm.pattern, Some(pattern_type), &mut receive_bindings);
+        validate_expr(ctx, &arm.body, &receive_bindings, true)?;
+    }
+    Ok(())
+}
+
 fn validate_actor_target(
     ctx: &ValidationContext<'_>,
     expr: &AstExpr,
@@ -1895,7 +1905,7 @@ fn validate_actor_target(
         && let [name] = path.segments.as_slice()
     {
         match bindings.get(name) {
-            Some(BindingKind::Actor) | Some(BindingKind::Message) => return Ok(()),
+            Some(BindingKind::Actor) => return Ok(()),
             None => {
                 return Err(to_source_diagnostic(
                     ctx.source_path,
@@ -2365,7 +2375,6 @@ fn simple_expr_type(
             match bindings.get(&path.segments[0]) {
                 Some(BindingKind::Actor) => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
                 Some(BindingKind::Value(type_)) => type_.clone(),
-                Some(BindingKind::Message) => None,
                 None => ctx
                     .constructor_types
                     .get(&path.segments[0])

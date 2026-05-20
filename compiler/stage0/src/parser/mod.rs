@@ -2,8 +2,8 @@ use camino::Utf8Path;
 
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstMatchArm, AstPath, AstPattern,
-    AstProgram, AstRecordTypeField, AstStmt, AstTypeAnnotation, AstTypeBody, AstTypeDecl,
-    AstUseDecl, AstVariantConstructor, TextSpan,
+    AstProgram, AstReceiveArm, AstRecordTypeField, AstStmt, AstTypeAnnotation, AstTypeBody,
+    AstTypeDecl, AstUseDecl, AstVariantConstructor, TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
@@ -915,14 +915,30 @@ impl<'src> Parser<'src> {
     fn parse_receive(&mut self) -> Result<AstExpr, ParseError> {
         let start = self.expect(TokenKind::Receive, "expected `receive`")?;
         self.expect(TokenKind::LBrace, "expected `{` after `receive`")?;
-        let (binder, binder_span) = self.expect_lower_ident()?;
-        self.expect(TokenKind::Arrow, "expected `->` after receive binder")?;
-        let body = self.parse_expr()?;
+        let mut arms = Vec::new();
+
+        if self.at(TokenKind::RBrace) {
+            return Err(self.error_at_current("receive expression needs at least one arm", None));
+        }
+
+        loop {
+            let pattern = self.parse_pattern()?;
+            self.expect(TokenKind::Arrow, "expected `->` after receive pattern")?;
+            let body = self.parse_expr()?;
+            arms.push(AstReceiveArm { pattern, body });
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RBrace) {
+                break;
+            }
+        }
+
         let end = self.expect(TokenKind::RBrace, "expected `}` after receive body")?;
         Ok(AstExpr::Receive {
-            binder,
-            binder_span,
-            body: Box::new(body),
+            arms,
             span: start.span.join(end.span),
         })
     }

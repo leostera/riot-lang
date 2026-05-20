@@ -106,6 +106,12 @@ pub(crate) struct AstMatchArm {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct AstReceiveArm {
+    pub(crate) pattern: AstPattern,
+    pub(crate) body: AstExpr,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum AstPattern {
     Wildcard {
         span: TextSpan,
@@ -258,9 +264,7 @@ pub(crate) enum AstExpr {
         span: TextSpan,
     },
     Receive {
-        binder: String,
-        binder_span: TextSpan,
-        body: Box<AstExpr>,
+        arms: Vec<AstReceiveArm>,
         span: TextSpan,
     },
     Unit {
