@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 681
 expression: contents
 ---
 ActorIrProgram {
@@ -18,7 +19,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "msg$1",
+                        binder: "msg$0",
                         body: Call {
                             callee: [
                                 "dbg",
@@ -26,7 +27,7 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "msg$1",
+                                        "msg$0",
                                     ],
                                 ),
                             ],
@@ -44,14 +45,14 @@ ActorIrProgram {
                 align: 8,
                 slots: [
                     ActorFrameSlot {
-                        name: "out$2",
+                        name: "out$1",
                         type_: ActorId,
                         field_index: 1,
                     },
                 ],
                 captures: [
                     ActorFrameSlot {
-                        name: "out$2",
+                        name: "out$1",
                         type_: ActorId,
                         field_index: 1,
                     },
@@ -61,7 +62,7 @@ ActorIrProgram {
                 ActorFrameState {
                     index: 0,
                     op: Receive {
-                        binder: "start$3",
+                        binder: "start$2",
                         body: Call {
                             callee: [
                                 "send",
@@ -69,7 +70,7 @@ ActorIrProgram {
                             args: [
                                 Path(
                                     [
-                                        "out$2",
+                                        "out$1",
                                     ],
                                 ),
                                 Call {

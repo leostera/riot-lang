@@ -71,24 +71,19 @@ pub(crate) fn typed_program_from_ast(
             .return_type
             .as_ref()
             .map(|annotation| parse_type_signature(&annotation.text).1);
+        let mut context = TypeContext::new(&function_types, &external_types, imports);
         let params = function
             .params
             .iter()
             .enumerate()
             .map(|(index, name)| TypedParam {
-                name: name.clone(),
+                binding: context.bind(
+                    name,
+                    param_types.get(index).cloned().unwrap_or(RsigType::Unknown),
+                ),
                 type_: param_types.get(index).cloned().unwrap_or(RsigType::Unknown),
             })
             .collect::<Vec<_>>();
-        let mut context = TypeContext {
-            bindings: params
-                .iter()
-                .map(|param| (param.name.clone(), param.type_.clone()))
-                .collect(),
-            functions: &function_types,
-            externals: &external_types,
-            imports,
-        };
         let body = type_block(function.body, &mut context);
         let result =
             annotated_result.unwrap_or_else(|| merge_types(inferred_result, body.type_.clone()));
@@ -162,7 +157,7 @@ pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
                 let mut params = Vec::new();
                 let mut param_types = Vec::new();
                 for param in function.params {
-                    let key = context.bind_fresh(&param.name);
+                    let key = context.bind_existing(&param.binding);
                     params.push(Param::from_key(key));
                     param_types.push(param.type_);
                 }
@@ -216,11 +211,65 @@ pub(crate) fn module_function_symbol(module: &str, name: &str) -> String {
     format!("riot_mod_{module}_{name}")
 }
 
+#[derive(Debug, Clone)]
+struct TypedBindingInfo {
+    binding: HirBinding,
+    type_: RsigType,
+}
+
 struct TypeContext<'a> {
-    bindings: BTreeMap<String, RsigType>,
+    next_binding_id: usize,
+    scopes: Vec<BTreeMap<String, TypedBindingInfo>>,
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
+}
+
+impl<'a> TypeContext<'a> {
+    fn new(
+        functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+        externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+        imports: &'a ImportedSignatures,
+    ) -> Self {
+        Self {
+            next_binding_id: 0,
+            scopes: vec![BTreeMap::new()],
+            functions,
+            externals,
+            imports,
+        }
+    }
+
+    fn push_scope(&mut self) {
+        self.scopes.push(BTreeMap::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn bind(&mut self, name: &str, type_: RsigType) -> HirBinding {
+        if self.scopes.is_empty() {
+            self.push_scope();
+        }
+        let binding = HirBinding::new(name, self.next_binding_id);
+        self.next_binding_id += 1;
+        self.scopes
+            .last_mut()
+            .expect("typed HIR construction always has a lexical scope")
+            .insert(
+                name.to_owned(),
+                TypedBindingInfo {
+                    binding: binding.clone(),
+                    type_,
+                },
+            );
+        binding
+    }
+
+    fn resolve(&self, name: &str) -> Option<&TypedBindingInfo> {
+        self.scopes.iter().rev().find_map(|scope| scope.get(name))
+    }
 }
 
 fn infer_ast_function_types(
@@ -601,6 +650,7 @@ fn mark_ast_expr_as(
 }
 
 fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
+    context.push_scope();
     let mut statements = Vec::new();
     for stmt in block.statements {
         match stmt {
@@ -614,8 +664,8 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
                 if let Some(annotation) = type_annotation {
                     value.type_ = parse_type_signature(&annotation.text).1;
                 }
-                context.bindings.insert(name.clone(), value.type_.clone());
-                statements.push(TypedStmt::Let { name, value });
+                let binding = context.bind(&name, value.type_.clone());
+                statements.push(TypedStmt::Let { binding, value });
             }
             AstStmt::Expr(expr) => statements.push(TypedStmt::Expr(type_expr(expr, context))),
         }
@@ -625,11 +675,13 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
         .as_ref()
         .map(|tail| tail.type_.clone())
         .unwrap_or(RsigType::Unit);
-    TypedBlock {
+    let typed = TypedBlock {
         statements,
         tail,
         type_,
-    }
+    };
+    context.pop_scope();
+    typed
 }
 
 fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
@@ -712,10 +764,7 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     },
                 }
             } else {
-                let callee = TypedExpr {
-                    type_: path_type(&callee.segments, context),
-                    kind: TypedExprKind::Path(callee.segments),
-                };
+                let callee = type_path_expr(callee.segments, context);
                 let args = args
                     .into_iter()
                     .map(|arg| type_expr(arg, context))
@@ -751,7 +800,7 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             body,
             ..
         } => {
-            let saved_bindings = context.bindings.clone();
+            context.push_scope();
             let typed_params = params
                 .iter()
                 .enumerate()
@@ -761,17 +810,21 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         .and_then(|annotation| annotation.as_ref())
                         .map(|annotation| parse_type_signature(&annotation.text).1)
                         .unwrap_or(RsigType::Unknown);
-                    context.bindings.insert(name.clone(), type_.clone());
-                    TypedParam {
-                        name: name.clone(),
-                        type_,
-                    }
+                    let binding = context.bind(name, type_.clone());
+                    TypedParam { binding, type_ }
                 })
                 .collect::<Vec<_>>();
             let body = type_block(*body, context);
-            context.bindings = saved_bindings;
+            context.pop_scope();
+            let type_ = rsig_source_function_type(
+                typed_params
+                    .iter()
+                    .map(|param| param.type_.clone())
+                    .collect(),
+                body.type_.clone(),
+            );
             TypedExpr {
-                type_: RsigType::Unknown,
+                type_,
                 kind: TypedExprKind::Lambda {
                     params: typed_params,
                     body: Box::new(body),
@@ -781,22 +834,17 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
         AstExpr::Spawn { body, .. } => TypedExpr {
             type_: RsigType::ActorId(Box::new(RsigType::Unknown)),
             kind: {
-                let saved_bindings = context.bindings.clone();
                 let body = type_block(*body, context);
-                context.bindings = saved_bindings;
                 TypedExprKind::Spawn {
                     body: Box::new(body),
                 }
             },
         },
         AstExpr::Receive { binder, body, .. } => {
-            let previous = context.bindings.insert(binder.clone(), RsigType::Unknown);
+            context.push_scope();
+            let binder = context.bind(&binder, RsigType::Unknown);
             let body = type_expr(*body, context);
-            if let Some(previous) = previous {
-                context.bindings.insert(binder.clone(), previous);
-            } else {
-                context.bindings.remove(&binder);
-            }
+            context.pop_scope();
             TypedExpr {
                 type_: RsigType::Unit,
                 kind: TypedExprKind::Receive {
@@ -883,14 +931,44 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             type_: RsigType::I64,
             kind: TypedExprKind::Int(value),
         },
-        AstExpr::Path { path, .. } => TypedExpr {
-            type_: path_type(&path.segments, context),
-            kind: TypedExprKind::Path(path.segments),
-        },
+        AstExpr::Path { path, .. } => type_path_expr(path.segments, context),
         AstExpr::String { value, .. } => TypedExpr {
             type_: RsigType::String,
             kind: TypedExprKind::String(value),
         },
+    }
+}
+
+fn type_path_expr(path: Vec<String>, context: &TypeContext<'_>) -> TypedExpr {
+    let type_ = path_type(&path, context);
+    if let [name] = path.as_slice()
+        && let Some(binding) = context.resolve(name)
+    {
+        return TypedExpr {
+            type_,
+            kind: TypedExprKind::Local(binding.binding.clone()),
+        };
+    }
+    TypedExpr {
+        type_,
+        kind: TypedExprKind::Path(path),
+    }
+}
+
+fn rsig_source_function_type(params: Vec<RsigType>, result: RsigType) -> RsigType {
+    if params.is_empty() {
+        RsigType::Arrow {
+            parameter: Box::new(RsigType::Unit),
+            result: Box::new(result),
+        }
+    } else {
+        params
+            .into_iter()
+            .rev()
+            .fold(result, |result, parameter| RsigType::Arrow {
+                parameter: Box::new(parameter),
+                result: Box::new(result),
+            })
     }
 }
 
@@ -931,7 +1009,7 @@ fn typed_binary_i64(
 
 fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
     match callee {
-        [name] if context.bindings.contains_key(name) => false,
+        [name] if context.resolve(name).is_some() => false,
         [name]
             if matches!(
                 name.as_str(),
@@ -1003,9 +1081,8 @@ fn path_type(path: &[String], context: &TypeContext<'_>) -> RsigType {
     };
     if tail.is_empty() {
         context
-            .bindings
-            .get(head)
-            .cloned()
+            .resolve(head)
+            .map(|binding| binding.type_.clone())
             .unwrap_or(RsigType::Unknown)
     } else {
         RsigType::Unknown
@@ -1056,6 +1133,18 @@ impl LowerContext {
             .last_mut()
             .expect("lowering always has a lexical scope")
             .insert(source_name.to_owned(), key.clone());
+        key
+    }
+
+    fn bind_existing(&mut self, binding: &HirBinding) -> BindingKey {
+        if self.scopes.is_empty() {
+            self.push_scope();
+        }
+        let key = BindingKey::new(binding.key_name());
+        self.scopes
+            .last_mut()
+            .expect("lowering always has a lexical scope")
+            .insert(binding.name.clone(), key.clone());
         key
     }
 
@@ -1501,9 +1590,9 @@ fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
             .statements
             .into_iter()
             .map(|stmt| match stmt {
-                TypedStmt::Let { name, value } => {
+                TypedStmt::Let { binding, value } => {
                     let value = lower_expr(value, context);
-                    let name = context.bind_fresh(&name);
+                    let name = context.bind_existing(&binding);
                     RirStmt::Let { name, value }
                 }
                 TypedStmt::Expr(expr) => RirStmt::Expr(lower_expr(expr, context)),
@@ -1585,7 +1674,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             context.push_scope();
             let params = params
                 .into_iter()
-                .map(|param| Param::from_key(context.bind_fresh(&param.name)))
+                .map(|param| Param::from_key(context.bind_existing(&param.binding)))
                 .collect::<Vec<_>>();
             let body = lower_block(*body, context);
             context.pop_scope();
@@ -1607,7 +1696,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         },
         TypedExprKind::Receive { binder, body } => {
             context.push_scope();
-            let binder = context.bind_fresh(&binder);
+            let binder = context.bind_existing(&binder);
             let body = lower_expr(*body, context);
             context.pop_scope();
             RirExpr::Receive {
@@ -1646,6 +1735,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         TypedExprKind::Char(value) => RirExpr::Char(value),
         TypedExprKind::Float(value) => RirExpr::Float(value),
         TypedExprKind::Int(value) => RirExpr::Int(value),
+        TypedExprKind::Local(binding) => RirExpr::Path(vec![binding.key_name()]),
         TypedExprKind::Path(path) => {
             if let [name] = path.as_slice()
                 && let Some(binding) = context.resolve(name)
@@ -1665,7 +1755,10 @@ mod tests {
     };
     use crate::signature::{ImportedSignatures, RsigType};
 
-    use super::{Capture, RirExpr, RirStmt, lower_typed_to_rir, typed_program_from_ast};
+    use super::{
+        Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
+        typed_program_from_ast,
+    };
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -1794,6 +1887,91 @@ mod tests {
         };
 
         assert_eq!(captures.as_slice(), &[Capture::new("a$0")]);
+    }
+
+    #[test]
+    fn typed_hir_paths_resolve_to_shadowed_binding_identity() {
+        let program = AstProgram {
+            decls: vec![AstDecl::Function(AstFnDecl {
+                name: "main".to_owned(),
+                name_span: span(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                return_type: None,
+                body: AstBlock {
+                    statements: vec![
+                        AstStmt::Let {
+                            name: "a".to_owned(),
+                            name_span: span(),
+                            type_annotation: None,
+                            value: AstExpr::Int {
+                                value: 1,
+                                span: span(),
+                            },
+                            span: span(),
+                        },
+                        AstStmt::Let {
+                            name: "f".to_owned(),
+                            name_span: span(),
+                            type_annotation: None,
+                            value: AstExpr::Lambda {
+                                params: vec!["ignored".to_owned()],
+                                param_types: Vec::new(),
+                                body: Box::new(AstBlock {
+                                    statements: Vec::new(),
+                                    tail: Some(path("a")),
+                                    span: span(),
+                                }),
+                                span: span(),
+                            },
+                            span: span(),
+                        },
+                        AstStmt::Let {
+                            name: "a".to_owned(),
+                            name_span: span(),
+                            type_annotation: None,
+                            value: AstExpr::Int {
+                                value: 2,
+                                span: span(),
+                            },
+                            span: span(),
+                        },
+                    ],
+                    tail: Some(path("f")),
+                    span: span(),
+                },
+                span: span(),
+            })],
+        };
+
+        let typed =
+            typed_program_from_ast("ShadowTest".to_owned(), program, &ImportedSignatures::new());
+        let [
+            TypedStmt::Let {
+                binding: first_a, ..
+            },
+            TypedStmt::Let { value: f_value, .. },
+            TypedStmt::Let {
+                binding: second_a, ..
+            },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected three let statements");
+        };
+        let TypedExprKind::Lambda { body, .. } = &f_value.kind else {
+            panic!("expected the second let to bind a lambda");
+        };
+        let Some(tail) = &body.tail else {
+            panic!("expected lambda tail");
+        };
+        let TypedExprKind::Local(captured_a) = &tail.kind else {
+            panic!("expected lambda tail to resolve a local");
+        };
+
+        assert_eq!(first_a.name, "a");
+        assert_eq!(second_a.name, "a");
+        assert_ne!(first_a, second_a);
+        assert_eq!(captured_a, first_a);
     }
 
     #[test]

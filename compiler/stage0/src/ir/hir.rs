@@ -1,5 +1,24 @@
 use crate::signature::{Rsig, RsigType};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct HirBinding {
+    pub(crate) name: String,
+    pub(crate) id: usize,
+}
+
+impl HirBinding {
+    pub(crate) fn new(name: impl Into<String>, id: usize) -> Self {
+        Self {
+            name: name.into(),
+            id,
+        }
+    }
+
+    pub(crate) fn key_name(&self) -> String {
+        format!("{}${}", self.name, self.id)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct CheckedProgram {
     pub(crate) typed_tree: TypedProgram,
@@ -39,7 +58,7 @@ pub(crate) struct TypedFunction {
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedParam {
-    pub(crate) name: String,
+    pub(crate) binding: HirBinding,
     pub(crate) type_: RsigType,
 }
 
@@ -52,7 +71,10 @@ pub(crate) struct TypedBlock {
 
 #[derive(Debug, Clone)]
 pub(crate) enum TypedStmt {
-    Let { name: String, value: TypedExpr },
+    Let {
+        binding: HirBinding,
+        value: TypedExpr,
+    },
     Expr(TypedExpr),
 }
 
@@ -111,13 +133,14 @@ pub(crate) enum TypedExprKind {
     Char(char),
     Float(String),
     Int(i64),
+    Local(HirBinding),
     Path(Vec<String>),
     String(String),
     Spawn {
         body: Box<TypedBlock>,
     },
     Receive {
-        binder: String,
+        binder: HirBinding,
         body: Box<TypedExpr>,
     },
 }
