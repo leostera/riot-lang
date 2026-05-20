@@ -1,5 +1,18 @@
 use crate::signature::RsigType;
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct Param(String);
+
+impl Param {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct RirProgram {
     pub(crate) module_name: String,
@@ -19,7 +32,7 @@ pub(crate) struct RirExternal {
 #[derive(Debug, Clone)]
 pub(crate) struct RirFunction {
     pub(crate) name: String,
-    pub(crate) params: Vec<String>,
+    pub(crate) params: Vec<Param>,
     pub(crate) param_types: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) body: RirBlock,
@@ -66,7 +79,8 @@ pub(crate) enum RirExpr {
         args: Vec<RirExpr>,
     },
     Lambda {
-        params: Vec<String>,
+        params: Vec<Param>,
+        captures: Vec<Param>,
         body: Box<RirBlock>,
     },
     Unit,

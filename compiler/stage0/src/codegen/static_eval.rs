@@ -201,7 +201,7 @@ pub(crate) fn eval_call(
     let mut call_bindings = HashMap::new();
     for (param, arg) in function.params.iter().zip(args) {
         call_bindings.insert(
-            param.clone(),
+            param.as_str().to_owned(),
             eval_expr(arg, bindings, functions, depth + 1)?,
         );
     }

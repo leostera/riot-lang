@@ -15,7 +15,7 @@ use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use miette::bail;
 
 use crate::ir::{
-    ActorFrameOp, ActorIrActor, ActorIrProgram, RirBlock, RirExpr, RirFunction, RirProgram,
+    ActorFrameOp, ActorIrActor, ActorIrProgram, Param, RirBlock, RirExpr, RirFunction, RirProgram,
     RirStmt, lower_rir_to_actor_ir,
 };
 use crate::signature::{ImportedSignatures, RsigExport, RsigType};
@@ -289,7 +289,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     AbiType::Value => CgValue::Value(value.into_int_value()),
                     AbiType::Unit | AbiType::Unknown => CgValue::Unit,
                 };
-                env.values.insert(param.clone(), value);
+                env.values.insert(param.as_str().to_owned(), value);
             }
 
             let result = self.emit_block(&function.body, &mut env)?;
@@ -2197,7 +2197,7 @@ fn infer_function_abis(program: &RirProgram) -> HashMap<String, FunctionAbi> {
                 .map(|abi| abi.params.clone())
                 .unwrap_or_else(|| vec![AbiType::Unknown; function.params.len()]);
             for (name, abi) in function.params.iter().zip(&params) {
-                locals.insert(name.clone(), *abi);
+                locals.insert(name.as_str().to_owned(), *abi);
             }
             let result = infer_block_abi(
                 &function.body,
@@ -2229,7 +2229,7 @@ fn infer_function_abis(program: &RirProgram) -> HashMap<String, FunctionAbi> {
 
 fn infer_block_abi(
     block: &RirBlock,
-    params: &[String],
+    params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
@@ -2312,7 +2312,7 @@ fn infer_expr_abi(
 
 fn mark_expr_constraints(
     expr: &RirExpr,
-    params: &[String],
+    params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
@@ -2351,10 +2351,11 @@ fn mark_expr_constraints(
         RirExpr::Lambda {
             params: lambda_params,
             body,
+            ..
         } => {
             let mut nested_locals = locals.clone();
             for param in lambda_params {
-                nested_locals.insert(param.clone(), AbiType::Unknown);
+                nested_locals.insert(param.as_str().to_owned(), AbiType::Unknown);
             }
             let mut nested_params = vec![AbiType::Unknown; lambda_params.len()];
             infer_block_abi(
@@ -2401,7 +2402,7 @@ fn mark_expr_constraints(
 }
 
 fn mark_expr_as(
-    params: &[String],
+    params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     expr: &RirExpr,
@@ -2411,7 +2412,7 @@ fn mark_expr_as(
         && let [name] = path.as_slice()
     {
         locals.insert(name.clone(), abi);
-        if let Some(index) = params.iter().position(|param| param == name) {
+        if let Some(index) = params.iter().position(|param| param.as_str() == name) {
             param_types[index] = unify_abi(param_types[index], abi);
         }
     }

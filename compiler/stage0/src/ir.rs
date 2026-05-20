@@ -162,7 +162,7 @@ pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
                 params: function
                     .params
                     .iter()
-                    .map(|param| param.name.clone())
+                    .map(|param| Param::new(param.name.clone()))
                     .collect(),
                 param_types: function
                     .params
@@ -192,7 +192,7 @@ pub(crate) fn lower_rir_to_actor_ir(
             .params
             .iter()
             .zip(&function.param_types)
-            .map(|(name, type_)| (name.clone(), ActorSlotType::from_rsig(type_)))
+            .map(|(name, type_)| (name.as_str().to_owned(), ActorSlotType::from_rsig(type_)))
             .collect::<BTreeMap<_, _>>();
         collect_actors_from_block(
             &function.name,
@@ -1125,10 +1125,10 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(owner, arg, locals, context, actors);
             }
         }
-        RirExpr::Lambda { params, body } => {
+        RirExpr::Lambda { params, body, .. } => {
             let mut lambda_locals = locals.clone();
             for param in params {
-                lambda_locals.insert(param.clone(), None);
+                lambda_locals.insert(param.as_str().to_owned(), None);
             }
             collect_actors_from_block(owner, body, &mut lambda_locals, context, actors);
         }
@@ -1316,10 +1316,10 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(arg, bound, free);
             }
         }
-        RirExpr::Lambda { params, body } => {
+        RirExpr::Lambda { params, body, .. } => {
             let mut nested = bound.clone();
             for param in params {
-                nested.insert(param.clone());
+                nested.insert(param.as_str().to_owned());
             }
             collect_free_block(body, &nested, free);
         }
@@ -1523,10 +1523,24 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .map(|arg| lower_expr(arg, context))
                 .collect(),
         },
-        TypedExprKind::Lambda { params, body } => RirExpr::Lambda {
-            params: params.into_iter().map(|param| param.name).collect(),
-            body: Box::new(lower_block(*body, context)),
-        },
+        TypedExprKind::Lambda { params, body } => {
+            let params = params
+                .into_iter()
+                .map(|param| Param::new(param.name))
+                .collect::<Vec<_>>();
+            let body = lower_block(*body, context);
+            let bound = params
+                .iter()
+                .map(|param| param.as_str().to_owned())
+                .collect::<BTreeSet<_>>();
+            let mut free = BTreeSet::new();
+            collect_free_block(&body, &bound, &mut free);
+            RirExpr::Lambda {
+                params,
+                captures: free.into_iter().map(Param::new).collect(),
+                body: Box::new(body),
+            }
+        }
         TypedExprKind::Spawn { body } => RirExpr::Spawn {
             actor_id: context.next_actor_id(),
             body: Box::new(lower_block(*body, context)),
@@ -1568,6 +1582,68 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         TypedExprKind::Int(value) => RirExpr::Int(value),
         TypedExprKind::Path(path) => RirExpr::Path(path),
         TypedExprKind::String(value) => RirExpr::String(value),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, TextSpan};
+    use crate::signature::ImportedSignatures;
+
+    use super::{Param, RirExpr, lower_typed_to_rir, typed_program_from_ast};
+
+    fn span() -> TextSpan {
+        TextSpan::new(0, 0)
+    }
+
+    fn path(name: &str) -> AstExpr {
+        AstExpr::Path {
+            path: AstPath {
+                segments: vec![name.to_owned()],
+            },
+            span: span(),
+        }
+    }
+
+    #[test]
+    fn rir_lambdas_carry_capture_names() {
+        let program = AstProgram {
+            decls: vec![AstDecl::Function(AstFnDecl {
+                name: "make_adder".to_owned(),
+                name_span: span(),
+                params: vec!["n".to_owned()],
+                param_types: Vec::new(),
+                return_type: None,
+                body: AstBlock {
+                    statements: Vec::new(),
+                    tail: Some(AstExpr::Lambda {
+                        params: vec!["x".to_owned()],
+                        param_types: Vec::new(),
+                        body: Box::new(AstBlock {
+                            statements: Vec::new(),
+                            tail: Some(AstExpr::Add {
+                                lhs: Box::new(path("x")),
+                                rhs: Box::new(path("n")),
+                                span: span(),
+                            }),
+                            span: span(),
+                        }),
+                        span: span(),
+                    }),
+                    span: span(),
+                },
+                span: span(),
+            })],
+        };
+
+        let typed =
+            typed_program_from_ast("LambdaTest".to_owned(), program, &ImportedSignatures::new());
+        let rir = lower_typed_to_rir(typed);
+        let Some(RirExpr::Lambda { captures, .. }) = &rir.functions[0].body.tail else {
+            panic!("expected lowered lambda");
+        };
+
+        assert_eq!(captures.as_slice(), &[Param::new("n")]);
     }
 }
 
