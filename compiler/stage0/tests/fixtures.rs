@@ -825,6 +825,31 @@ fn emit_all_preserves_pipeline_phase_order() -> FixtureResult {
 }
 
 #[test]
+fn emit_all_exposes_actor_message_types_in_rsig() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/actor_factory_signature.ml");
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&fixture)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    if !stdout.contains("fn make_worker() -> actor_id<string>") {
+        return fail(format!(
+            "rsig output did not expose actor message type:\n{stdout}"
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_actor_ir_snapshots_frame_contracts() -> FixtureResult {
     for (name, fixture) in [
         (

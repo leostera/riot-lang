@@ -827,7 +827,10 @@ fn infer_expr_kind(
                 binding_schemes,
             )?;
             state.pop_scope();
-            Ok(Type::ActorId(Box::new(state.fresh_var())))
+            let message_type = actor_block_message_type(state, body)
+                .map(|type_| rsig_type_to_infer_type(&type_, state))
+                .unwrap_or_else(|| state.fresh_var());
+            Ok(Type::ActorId(Box::new(message_type)))
         }
         AstExpr::Record { path, .. } => Ok(Type::Record(TypeName::new(path.segments.join(".")))),
         AstExpr::TupleIndex { base, index, .. } => {
@@ -921,6 +924,85 @@ fn infer_expr_kind(
             Ok(state.instantiate(&scheme))
         }
         AstExpr::Call { .. } | AstExpr::Path { .. } => Err(InferError::Unsupported("path")),
+    }
+}
+
+fn actor_block_message_type(state: &mut State, block: &AstBlock) -> Option<RsigType> {
+    let mut message_type = None;
+    for stmt in &block.statements {
+        if let AstStmt::Expr(AstExpr::Receive { arms, .. }) = stmt {
+            merge_receive_message_type(state, arms, &mut message_type)?;
+        }
+    }
+    if let Some(AstExpr::Receive { arms, .. }) = &block.tail {
+        merge_receive_message_type(state, arms, &mut message_type)?;
+    }
+    message_type
+}
+
+fn merge_receive_message_type(
+    state: &mut State,
+    arms: &[crate::ast::AstReceiveArm],
+    message_type: &mut Option<RsigType>,
+) -> Option<()> {
+    for arm in arms {
+        let Some(arm_type) = pattern_message_type(state, &arm.pattern) else {
+            continue;
+        };
+        *message_type = Some(match message_type.take() {
+            Some(current) => merge_message_type(current, arm_type)?,
+            None => arm_type,
+        });
+    }
+    Some(())
+}
+
+fn pattern_message_type(state: &mut State, pattern: &AstPattern) -> Option<RsigType> {
+    match pattern {
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
+        AstPattern::Unit { .. } => Some(RsigType::Unit),
+        AstPattern::Bool { .. } => Some(RsigType::Bool),
+        AstPattern::Int { .. } => Some(RsigType::I64),
+        AstPattern::String { .. } => Some(RsigType::String),
+        AstPattern::Tuple { items, .. } => Some(RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| pattern_message_type(state, item).unwrap_or(RsigType::Unknown))
+                .collect(),
+        )),
+        AstPattern::Record { path, .. } => {
+            Some(RsigType::Record(TypeName::new(path.segments.join("."))))
+        }
+        AstPattern::Constructor { path, .. } => {
+            let name = path.segments.join(".");
+            let scheme = state.get_value(&name)?.clone();
+            let mut type_ = state.instantiate(&scheme);
+            loop {
+                match state.resolve(&type_) {
+                    Type::Arrow { result, .. } => type_ = *result,
+                    result => return Some(infer_type_to_rsig_type(&result)),
+                }
+            }
+        }
+    }
+}
+
+fn merge_message_type(lhs: RsigType, rhs: RsigType) -> Option<RsigType> {
+    match (lhs, rhs) {
+        (RsigType::Unknown, type_) | (type_, RsigType::Unknown) => Some(type_),
+        (RsigType::Tuple(lhs), RsigType::Tuple(rhs)) if lhs.len() == rhs.len() => {
+            let items = lhs
+                .into_iter()
+                .zip(rhs)
+                .map(|(lhs, rhs)| merge_message_type(lhs, rhs))
+                .collect::<Option<Vec<_>>>()?;
+            Some(RsigType::Tuple(items))
+        }
+        (RsigType::ActorId(lhs), RsigType::ActorId(rhs)) => {
+            Some(RsigType::ActorId(Box::new(merge_message_type(*lhs, *rhs)?)))
+        }
+        (lhs, rhs) if lhs == rhs => Some(lhs),
+        _ => None,
     }
 }
 
@@ -1203,7 +1285,8 @@ fn infer_scheme_to_rsig_scheme(scheme: &TypeScheme) -> RsigTypeScheme {
 #[cfg(test)]
 mod tests {
     use crate::ast::{
-        AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
+        AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstPattern, AstProgram, AstReceiveArm,
+        AstStmt, TextSpan,
     };
     use crate::infer::module::{
         InferError, InferredModule, infer_function_signatures, infer_program,
@@ -1274,6 +1357,27 @@ mod tests {
         AstExpr::Apply {
             callee: Box::new(callee),
             args,
+            span: span(),
+        }
+    }
+
+    fn receive(pattern: AstPattern) -> AstExpr {
+        AstExpr::Receive {
+            arms: vec![AstReceiveArm {
+                pattern,
+                body: AstExpr::Unit { span: span() },
+            }],
+            span: span(),
+        }
+    }
+
+    fn spawn_with_receive(pattern: AstPattern) -> AstExpr {
+        AstExpr::Spawn {
+            body: Box::new(AstBlock {
+                statements: vec![AstStmt::Expr(receive(pattern))],
+                tail: None,
+                span: span(),
+            }),
             span: span(),
         }
     }
@@ -1566,6 +1670,28 @@ mod tests {
                 ],
                 RsigType::I64,
             ))
+        );
+    }
+
+    #[test]
+    fn function_signatures_project_actor_message_types_from_receive() {
+        let program = AstProgram {
+            decls: vec![function(
+                "make_worker",
+                vec![],
+                Vec::new(),
+                spawn_with_receive(AstPattern::String {
+                    value: "go".to_owned(),
+                    span: span(),
+                }),
+            )],
+        };
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("make_worker"),
+            Some(&(vec![], RsigType::ActorId(Box::new(RsigType::String))))
         );
     }
 }
