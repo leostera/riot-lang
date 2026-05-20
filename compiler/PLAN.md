@@ -22,17 +22,72 @@ Stage0 currently has:
 - `use Module` resolution through binary `.rsig` files.
 - A typed HIR boundary, RIR boundary, Actor IR boundary, LLVM text/object
   emission, and native linking.
-- A runtime value ABI (`RtValue`) for scalars, actor ids, strings, tuples, lists, and
-  records.
+- A runtime value ABI (`RtValue`) for scalars, actor ids, strings, tuples,
+  lists, and records.
 - Native actor state-machine lowering with heap-owned actor frames.
-- A single-threaded runtime scheduler, FIFO mailboxes, monitor/link stubs, and a
-  mark/sweep GC scaffold.
+- A Rust-shaped runtime split into ABI, actor, actor-id, frame, I/O, scheduler,
+  test, and value modules.
+- Opaque `ActorId` handles that route sends directly to actor slots/mailboxes,
+  with unsafe raw reconstruction kept at the runtime boundary.
+- Thread-local scheduler state, FIFO mailboxes, monitor/link stubs, and a
+  mark/sweep GC scaffold. Stage0 still executes actors on one scheduler worker;
+  true cross-core work stealing/migration is not implemented yet.
 - Snapshot-driven fixture coverage for parser/typed/RIR/Actor IR/LLVM/object
   and runtime output.
 
-The most important missing capability is not one isolated feature. It is the
-ability to add a source feature and prove it end-to-end through frontend,
-interfaces, backend, runtime, and tests.
+The most important missing capability is no longer one isolated feature. It is
+the ability to add a source feature and prove it end-to-end through frontend,
+interfaces, backend, runtime, and tests while preserving runtime value lifetime
+and actor-frame safety.
+
+## Reevaluation Checkpoint: ActorId Runtime Split
+
+This checkpoint incorporates the first runtime hardening pass after the initial
+roadmap was written.
+
+Completed since the initial roadmap:
+
+- `fix(rt): fail closed on runtime value access`
+  - Runtime value access now traps loudly on invalid type/stale-value paths
+    instead of returning null pointers, zero lengths, or default values.
+  - Stage0 rejects the corresponding invalid list/string operations earlier
+    where it has enough type information.
+- `refactor(rt): split runtime around actor ids`
+  - `compiler/rt/src/lib.rs` is now a module root, not the whole runtime.
+  - `ActorId::from_raw` is unsafe, making the raw-handle trust boundary
+    explicit.
+  - Runtime and compiler internals use `ActorId`/`actor_id` terminology; the
+    legacy actor-handle terminology is intentionally gone from `compiler/`.
+  - Actor sends resolve through the opaque actor handle to the actor mailbox
+    instead of using a global lookup table.
+  - The C ABI layer is concentrated in `rt/src/abi.rs`; Rust runtime internals
+    remain ordinary Rust modules.
+
+Current architectural read:
+
+- The next feature work should stay vertical, but GC/rooting is now the
+  critical path. Adding records, variants, match, and richer actor messages
+  before live-value rooting will create examples that pass only accidentally.
+- The runtime is multicore-ready in shape, not multicore-complete. Mailboxes are
+  already independently synchronized, and scheduler state is thread-local, but
+  stale `ActorId` lifetime and actor ownership/migration still need an explicit
+  policy before actors can safely move across cores.
+- `ActorId` as an opaque `u64` capability is fine for generated code. The Rust
+  runtime should keep the internals idiomatic and make the extern layer do the
+  raw pointer/length/handle translation.
+
+Near-term order after this checkpoint:
+
+1. Finish Wave 1 by making `RtValue` rooting reliable across calls, actor
+   frames, and allocation pressure.
+2. Add a small runtime-hardening slice before true multicore scheduling:
+   generation-check or lifetime-protect actor handles so stale `ActorId`s cannot
+   dereference freed actor slots.
+3. Only then move into Wave 2 resolver/type work and Wave 3 records, variants,
+   and pattern matching.
+4. Return to Wave 4 actor semantics once structured values and pattern matching
+   are available enough to make monitor/down and selective receive real
+   language features instead of string-shaped smoke tests.
 
 ## Validation Loop
 
@@ -59,6 +114,8 @@ env LLVM_SYS_221_PREFIX=/opt/homebrew/opt/llvm INSTA_UPDATE=always cargo test --
 - Keep `spawn` and `receive` as source/compiler constructs that lower through
   RIR and Actor IR.
 - Keep `use`, not `import`.
+- Use `actor_id<'msg>` and `ActorId` for actor handles. Do not reintroduce the
+  old actor-handle name in compiler/runtime internals or fixtures.
 - Preserve the file-to-module rule: `hello.ml -> Hello`,
   `hello_world.ml -> HelloWorld`, and mixed-case source file stems are invalid.
 - Every implementation commit should add a positive fixture, a diagnostic
@@ -280,6 +337,66 @@ shape.
   pressure without breaking existing fixtures.
 - **Validation:** Runtime unit tests force threshold collection and assert freed
   counts; full stage0 fixtures pass with a low deterministic test threshold.
+
+## Runtime Hardening Interlude
+
+These slices are prerequisites for real multicore scheduling. They should land
+after the first GC/rooting pass and before actor migration, work stealing, or
+cross-core scheduler queues.
+
+### 10A. Define the ActorId Lifetime Contract
+
+- **Commit:** `fix(rt): define actor id lifetime safety`
+- **Intent:** `ActorId` is intentionally an opaque capability, but the runtime
+  must make clear which raw handles are safe to dereference and when actor-slot
+  memory may be reclaimed.
+- **Frontend:** Keep `actor_id<'msg>` source types unchanged.
+- **Lowering/backend/runtime:** Document and enforce the initial contract:
+  `ActorId`s are created only by the runtime, `ActorId::from_raw` remains unsafe,
+  actor slots are not deallocated while generated code can still hold a handle,
+  and sends to terminated actors become no-ops. If slot reclamation is added,
+  add generation checks or an indirection header before freeing slots.
+- **Fixtures/tests:** Add direct runtime tests for sending to terminated actors,
+  monitor/link after termination, and shutdown cleanup. Avoid tests that forge
+  arbitrary aligned handles; that is intentionally outside the safe contract.
+- **Done when:** Runtime behavior for stale-but-runtime-created actor handles is
+  deterministic and documented.
+- **Validation:** Runtime tests prove sends/monitor/link against a terminated
+  runtime-created actor handle do not crash, resurrect the actor, or enqueue
+  messages.
+
+### 10B. Add Cross-Scheduler Send Queue Shape
+
+- **Commit:** `feat(rt): add cross-scheduler send queue shape`
+- **Intent:** Sending by `ActorId` should remain cheap when actors eventually
+  live on different scheduler workers.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Keep the direct `ActorId -> ActorSlot` handle,
+  but use the actor slot's scheduler owner to decide whether to push directly to
+  the local mailbox or enqueue onto a cross-scheduler inbound queue. The first
+  implementation may still have one scheduler, but the branch and data shape
+  should exist.
+- **Fixtures/tests:** Add runtime unit tests that exercise local-send and
+  simulated foreign-scheduler-send paths without starting real worker threads.
+- **Done when:** The mailbox API no longer assumes the sender and receiver live
+  on the same scheduler local.
+- **Validation:** Runtime tests cover both local and simulated foreign sends;
+  existing actor fixtures still pass without changing generated code.
+
+### 10C. Separate Scheduler Ownership From Runtime ABI
+
+- **Commit:** `refactor(rt): separate scheduler ownership from abi`
+- **Intent:** The extern layer should not know about scheduler-local internals
+  once multiple scheduler workers exist.
+- **Frontend:** No syntax change.
+- **Lowering/backend/runtime:** Introduce a small Rust runtime facade that owns
+  scheduler selection, actor spawning, sending, monitor/link operations, and GC
+  entrypoints. Keep `abi.rs` as pointer validation plus facade calls.
+- **Fixtures/tests:** Add unit tests against the Rust facade where possible, and
+  keep ABI tests focused on raw pointer/length behavior.
+- **Done when:** `abi.rs` has no direct heap/mailbox/scheduler field access.
+- **Validation:** Runtime tests cover facade behavior; `abi.rs` remains a thin
+  translation layer and full stage0 fixtures pass.
 
 ## Wave 2: Blocks, Locals, and Name Resolution
 
