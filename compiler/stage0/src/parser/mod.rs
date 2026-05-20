@@ -746,6 +746,9 @@ impl<'src> Parser<'src> {
                         span = span.join(segment_span);
                         path.segments.push(segment);
                     }
+                    if self.at(TokenKind::LBrace) {
+                        return self.parse_record_pattern(path, span);
+                    }
                     let payload = if self.match_kind(TokenKind::LParen).is_some() {
                         let mut payload = Vec::new();
                         if self.match_kind(TokenKind::RParen).is_none() {
@@ -774,6 +777,14 @@ impl<'src> Parser<'src> {
                         span,
                     })
                 } else if is_lower_ident(&name) {
+                    if self.at(TokenKind::LBrace) {
+                        return self.parse_record_pattern(
+                            AstPath {
+                                segments: vec![name],
+                            },
+                            span,
+                        );
+                    }
                     Ok(AstPattern::Bind { name, span })
                 } else {
                     Err(ParseError {
@@ -841,6 +852,54 @@ impl<'src> Parser<'src> {
                 Some("stage0 patterns currently support literals, constructors, `_`, and binders"),
             )),
         }
+    }
+
+    fn parse_record_pattern(
+        &mut self,
+        path: AstPath,
+        path_span: TextSpan,
+    ) -> Result<AstPattern, ParseError> {
+        self.expect(TokenKind::LBrace, "expected `{` after record pattern path")?;
+        let mut fields = Vec::new();
+
+        if let Some(end) = self.match_kind(TokenKind::RBrace) {
+            return Ok(AstPattern::Record {
+                path,
+                fields,
+                span: path_span.join(end),
+            });
+        }
+
+        loop {
+            let (field, field_span) = self.expect_lower_ident()?;
+            let pattern = if self.match_kind(TokenKind::Colon).is_some() {
+                self.parse_pattern()?
+            } else {
+                AstPattern::Bind {
+                    name: field.clone(),
+                    span: field_span,
+                }
+            };
+            fields.push((field, pattern));
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RBrace) {
+                break;
+            }
+        }
+
+        let end = self.expect(
+            TokenKind::RBrace,
+            "expected `}` after record pattern fields",
+        )?;
+        Ok(AstPattern::Record {
+            path,
+            fields,
+            span: path_span.join(end.span),
+        })
     }
 
     fn parse_spawn(&mut self) -> Result<AstExpr, ParseError> {

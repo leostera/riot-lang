@@ -110,6 +110,10 @@ pub(crate) enum RirPattern {
     },
     Unit,
     Tuple(Vec<RirPattern>),
+    Record {
+        type_name: TypeName,
+        fields: Vec<(String, RirPattern)>,
+    },
     Bool(bool),
     Int(i64),
     String(String),

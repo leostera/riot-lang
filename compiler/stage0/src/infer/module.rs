@@ -983,6 +983,17 @@ fn infer_pattern(
             }
             Ok(())
         }
+        AstPattern::Record { path, fields, .. } => {
+            state.unify(
+                scrutinee_type,
+                &Type::Record(TypeName::new(path.segments.join("."))),
+            )?;
+            for (_, field_pattern) in fields {
+                let field_type = state.fresh_var();
+                infer_pattern(state, field_pattern, &field_type)?;
+            }
+            Ok(())
+        }
         AstPattern::Unit { .. } => state.unify(&Type::Unit, scrutinee_type).map_err(Into::into),
         AstPattern::Bool { .. } => state.unify(&Type::Bool, scrutinee_type).map_err(Into::into),
         AstPattern::Int { .. } => state.unify(&Type::I64, scrutinee_type).map_err(Into::into),

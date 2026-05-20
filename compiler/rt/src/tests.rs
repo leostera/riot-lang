@@ -9,7 +9,7 @@ use crate::abi::{
     riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_as_bool, riot_rt_value_as_i64,
     riot_rt_value_bool, riot_rt_value_closure, riot_rt_value_eq, riot_rt_value_i64,
     riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
-    riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
+    riot_rt_value_record_get, riot_rt_value_record_is, riot_rt_value_record_set, riot_rt_value_string,
     riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
     riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
     riot_rt_value_variant, riot_rt_value_variant_get_payload, riot_rt_value_variant_is,
@@ -437,6 +437,8 @@ fn value_rendering_handles_compound_values() {
 
     let x = unsafe { riot_rt_value_record_get(record, b"x".as_ptr(), 1) };
     assert!(riot_rt_value_eq(x, riot_rt_value_i64(10)));
+    assert!(unsafe { riot_rt_value_record_is(record, b"Point".as_ptr(), 5) });
+    assert!(!unsafe { riot_rt_value_record_is(record, b"Other".as_ptr(), 5) });
 
     assert!(riot_rt_value_eq(riot_rt_value_tuple_get(tuple, 0), label));
     assert!(riot_rt_value_eq(

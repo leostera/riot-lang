@@ -1273,6 +1273,59 @@ fn validate_pattern(
             )?;
         }
     }
+    if let AstPattern::Record { path, fields, span } = pattern {
+        let Some(shape) = record_shape_for_pattern(ctx, path) else {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                *span,
+                "unknown record pattern",
+                format!("`{}` is not a known record type", path.segments.join(".")),
+                Some("declare the record with a top-level `type` declaration"),
+            )
+            .into());
+        };
+        let expected = shape
+            .fields
+            .iter()
+            .map(|(name, type_)| (name.as_str(), type_))
+            .collect::<HashMap<_, _>>();
+        let mut seen = HashSet::new();
+        for (field, field_pattern) in fields {
+            if !seen.insert(field.as_str()) {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    pattern_span(field_pattern),
+                    "duplicate record pattern field",
+                    format!(
+                        "field `{field}` appears more than once in `{}`",
+                        shape.type_name
+                    ),
+                    Some("keep one pattern for each matched field"),
+                )
+                .into());
+            }
+            let Some(expected_type) = expected.get(field.as_str()) else {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    pattern_span(field_pattern),
+                    "unknown record pattern field",
+                    format!("`{}` has no field named `{field}`", shape.type_name),
+                    Some("use one of the fields declared on this record type"),
+                )
+                .into());
+            };
+            validate_simple_payload_pattern(
+                ctx,
+                field_pattern,
+                expected_type,
+                "record field",
+                "use a binder or `_` for record fields in this slice",
+            )?;
+        }
+    }
     let Some(expected) = pattern_type(ctx, pattern) else {
         return Ok(());
     };
@@ -1334,6 +1387,19 @@ fn bind_pattern(
                 }
             }
         }
+        AstPattern::Record { path, fields, .. } => {
+            let field_types = record_shape_for_pattern(ctx, path)
+                .map(|shape| shape.fields.into_iter().collect::<HashMap<_, _>>())
+                .unwrap_or_default();
+            for (field, nested) in fields {
+                if let AstPattern::Bind { name, .. } = nested {
+                    bindings.insert(
+                        name.clone(),
+                        BindingKind::Value(field_types.get(field).cloned()),
+                    );
+                }
+            }
+        }
         AstPattern::Wildcard { .. }
         | AstPattern::Unit { .. }
         | AstPattern::Bool { .. }
@@ -1354,6 +1420,11 @@ fn pattern_type(ctx: &ValidationContext<'_>, pattern: &AstPattern) -> Option<Rsi
                 .iter()
                 .map(|item| pattern_type(ctx, item).unwrap_or(RsigType::Unknown))
                 .collect(),
+        )),
+        AstPattern::Record { path, .. } => Some(RsigType::Record(
+            record_shape_for_pattern(ctx, path)
+                .map(|shape| shape.type_name)
+                .unwrap_or_else(|| TypeName::new(path.segments.join("."))),
         )),
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
     }
@@ -1408,10 +1479,18 @@ fn pattern_span(pattern: &AstPattern) -> TextSpan {
         | AstPattern::Constructor { span, .. }
         | AstPattern::Unit { span }
         | AstPattern::Tuple { span, .. }
+        | AstPattern::Record { span, .. }
         | AstPattern::Bool { span, .. }
         | AstPattern::Int { span, .. }
         | AstPattern::String { span, .. } => *span,
     }
+}
+
+fn record_shape_for_pattern(
+    ctx: &ValidationContext<'_>,
+    path: &crate::ast::AstPath,
+) -> Option<RecordShape> {
+    ctx.record_shapes.get(&path.segments.join(".")).cloned()
 }
 
 fn validate_call_arg_type(

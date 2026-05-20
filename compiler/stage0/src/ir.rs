@@ -106,6 +106,7 @@ pub(crate) fn typed_program_from_ast(
         .collect::<Vec<_>>();
     let constructors = constructor_type_map(&types);
     let records = record_type_map(&types, &uses, imports);
+    let record_fields = record_field_type_map(&types, &uses, imports);
 
     let external_types = externals
         .iter()
@@ -138,6 +139,7 @@ pub(crate) fn typed_program_from_ast(
             imports,
             &constructors,
             &records,
+            &record_fields,
             &declared_variants,
             expression_types,
             binding_schemes,
@@ -356,6 +358,7 @@ struct TypeContext<'a> {
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,
+    record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
     declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
     binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
@@ -368,6 +371,7 @@ impl<'a> TypeContext<'a> {
         imports: &'a ImportedSignatures,
         constructors: &'a BTreeMap<String, ConstructorSignature>,
         records: &'a BTreeMap<String, TypeName>,
+        record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
         declared_variants: &'a BTreeSet<TypeName>,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
         binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
@@ -380,6 +384,7 @@ impl<'a> TypeContext<'a> {
             imports,
             constructors,
             records,
+            record_fields,
             declared_variants,
             expression_types,
             binding_schemes,
@@ -480,6 +485,44 @@ fn record_type_map(
         }
     }
     records
+}
+
+fn record_field_type_map(
+    types: &[TypedTypeDecl],
+    uses: &[TypedUse],
+    imports: &ImportedSignatures,
+) -> BTreeMap<TypeName, BTreeMap<String, RsigType>> {
+    let mut fields_by_type = BTreeMap::new();
+    for type_ in types {
+        let TypedTypeBody::Record { fields } = &type_.body else {
+            continue;
+        };
+        fields_by_type.insert(
+            type_.name.clone(),
+            fields
+                .iter()
+                .map(|field| (field.name.as_str().to_owned(), field.type_.clone()))
+                .collect(),
+        );
+    }
+    for use_ in uses {
+        let Some(rsig) = imports.get(use_.name.as_str()) else {
+            continue;
+        };
+        for type_ in &rsig.types {
+            let RsigTypeDeclKind::Record { fields } = &type_.body else {
+                continue;
+            };
+            fields_by_type.insert(
+                imported_type_name(use_.name.as_str(), &type_.name),
+                fields
+                    .iter()
+                    .map(|field| (field.name.as_str().to_owned(), field.type_.clone()))
+                    .collect(),
+            );
+        }
+    }
+    fields_by_type
 }
 
 fn insert_record_type_aliases(
@@ -1579,6 +1622,24 @@ fn type_pattern(
                     .collect(),
             )
         }
+        AstPattern::Record { path, fields, .. } => {
+            let type_name = record_expr_type(&path.segments, context);
+            let field_types = context
+                .record_fields
+                .get(&type_name)
+                .cloned()
+                .unwrap_or_default();
+            TypedPattern::Record {
+                type_name,
+                fields: fields
+                    .into_iter()
+                    .map(|(name, pattern)| {
+                        let type_ = field_types.get(&name).cloned().unwrap_or(RsigType::Unknown);
+                        (name, type_pattern(pattern, &type_, context))
+                    })
+                    .collect(),
+            }
+        }
         AstPattern::Unit { .. } => TypedPattern::Unit,
         AstPattern::Bool { value, .. } => TypedPattern::Bool(value),
         AstPattern::Int { value, .. } => TypedPattern::Int(value),
@@ -1991,9 +2052,7 @@ fn collect_actors_from_expr(
             let scrutinee_type = infer_actor_slot_type(scrutinee, locals, context);
             for arm in arms {
                 let mut arm_locals = locals.clone();
-                if let RirPattern::Bind(binding) = &arm.pattern {
-                    arm_locals.insert(binding.as_str().to_owned(), scrutinee_type);
-                }
+                bind_pattern_actor_slot_types(&arm.pattern, scrutinee_type, &mut arm_locals);
                 collect_actors_from_expr(owner, &arm.body, &mut arm_locals, context, actors);
             }
         }
@@ -2273,8 +2332,52 @@ fn collect_free_block(
 }
 
 fn bind_pattern_names(pattern: &RirPattern, bound: &mut BTreeSet<String>) {
-    if let RirPattern::Bind(binding) = pattern {
-        bound.insert(binding.as_str().to_owned());
+    match pattern {
+        RirPattern::Bind(binding) => {
+            bound.insert(binding.as_str().to_owned());
+        }
+        RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
+            for pattern in payload {
+                bind_pattern_names(pattern, bound);
+            }
+        }
+        RirPattern::Record { fields, .. } => {
+            for (_, pattern) in fields {
+                bind_pattern_names(pattern, bound);
+            }
+        }
+        RirPattern::Wildcard
+        | RirPattern::Unit
+        | RirPattern::Bool(_)
+        | RirPattern::Int(_)
+        | RirPattern::String(_) => {}
+    }
+}
+
+fn bind_pattern_actor_slot_types(
+    pattern: &RirPattern,
+    type_: Option<ActorSlotType>,
+    locals: &mut BTreeMap<String, Option<ActorSlotType>>,
+) {
+    match pattern {
+        RirPattern::Bind(binding) => {
+            locals.insert(binding.as_str().to_owned(), type_);
+        }
+        RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
+            for pattern in payload {
+                bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
+            }
+        }
+        RirPattern::Record { fields, .. } => {
+            for (_, pattern) in fields {
+                bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
+            }
+        }
+        RirPattern::Wildcard
+        | RirPattern::Unit
+        | RirPattern::Bool(_)
+        | RirPattern::Int(_)
+        | RirPattern::String(_) => {}
     }
 }
 
@@ -2686,6 +2789,13 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
                 .map(|pattern| lower_pattern(pattern, context))
                 .collect(),
         ),
+        TypedPattern::Record { type_name, fields } => RirPattern::Record {
+            type_name,
+            fields: fields
+                .into_iter()
+                .map(|(name, pattern)| (name, lower_pattern(pattern, context)))
+                .collect(),
+        },
         TypedPattern::Unit => RirPattern::Unit,
         TypedPattern::Bool(value) => RirPattern::Bool(value),
         TypedPattern::Int(value) => RirPattern::Int(value),

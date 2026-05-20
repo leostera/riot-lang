@@ -899,6 +899,14 @@ impl<'ctx> Codegen<'ctx, '_> {
                     ],
                 )
             }
+            RirPattern::Record { type_name, .. } => {
+                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
+                let (path_ptr, path_len) = self.string_literal(type_name.as_str())?;
+                self.call_runtime_value(
+                    "riot_rt_value_record_is",
+                    &[scrutinee.into(), path_ptr.into(), path_len.into()],
+                )
+            }
         }
     }
 
@@ -923,12 +931,33 @@ impl<'ctx> Codegen<'ctx, '_> {
                 let tuple = self.value_as_runtime(scrutinee.clone())?;
                 self.bind_payload_patterns(env, items, tuple)?;
             }
+            RirPattern::Record { fields, .. } => {
+                let record = self.value_as_runtime(scrutinee.clone())?;
+                self.bind_record_patterns(env, fields, record)?;
+            }
             RirPattern::Wildcard
             | RirPattern::Constructor { .. }
             | RirPattern::Unit
             | RirPattern::Bool(_)
             | RirPattern::Int(_)
             | RirPattern::String(_) => {}
+        }
+        Ok(())
+    }
+
+    fn bind_record_patterns(
+        &mut self,
+        env: &mut Env<'ctx>,
+        fields: &[(String, RirPattern)],
+        record: IntValue<'ctx>,
+    ) -> miette::Result<()> {
+        for (field, pattern) in fields {
+            let (field_ptr, field_len) = self.string_literal(field)?;
+            let value = self.call_runtime_value(
+                "riot_rt_value_record_get",
+                &[record.into(), field_ptr.into(), field_len.into()],
+            )?;
+            self.bind_pattern_env(env, pattern, &CgValue::Value(value))?;
         }
         Ok(())
     }
@@ -2537,6 +2566,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             ),
             "riot_rt_value_record_get" => {
                 i64_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
+            }
+            "riot_rt_value_record_is" => {
+                bool_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_variant_get_payload" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_tuple_get" | "riot_rt_value_list_get" => {

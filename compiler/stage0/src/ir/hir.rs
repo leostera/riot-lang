@@ -138,6 +138,10 @@ pub(crate) enum TypedPattern {
     },
     Unit,
     Tuple(Vec<TypedPattern>),
+    Record {
+        type_name: TypeName,
+        fields: Vec<(String, TypedPattern)>,
+    },
     Bool(bool),
     Int(i64),
     String(String),

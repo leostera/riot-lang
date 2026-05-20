@@ -226,9 +226,7 @@ pub(super) fn resolve_const_value(
             for arm in arms {
                 if const_pattern_matches(&arm.pattern, &scrutinee) {
                     let mut arm_bindings = bindings.clone();
-                    if let AstPattern::Bind { name, .. } = &arm.pattern {
-                        arm_bindings.insert(name.clone(), scrutinee);
-                    }
+                    bind_const_pattern(&arm.pattern, &scrutinee, &mut arm_bindings);
                     return resolve_const_value(&arm.body, &arm_bindings, functions);
                 }
             }
@@ -356,6 +354,22 @@ fn const_pattern_matches(pattern: &AstPattern, value: &ConstValue) -> bool {
                     .zip(values)
                     .all(|(pattern, value)| const_pattern_matches(pattern, value))
         }
+        AstPattern::Record { path, fields, .. } => {
+            let ConstValue::Record {
+                path: actual_path,
+                fields: values,
+            } = value
+            else {
+                return false;
+            };
+            actual_path == &path.segments.join(".")
+                && fields.iter().all(|(field, pattern)| {
+                    values
+                        .iter()
+                        .find_map(|(name, value)| (name == field).then_some(value))
+                        .is_some_and(|value| const_pattern_matches(pattern, value))
+                })
+        }
         AstPattern::Unit { .. } => matches!(value, ConstValue::Unit),
         AstPattern::Bool {
             value: expected, ..
@@ -372,6 +386,49 @@ fn const_pattern_matches(pattern: &AstPattern, value: &ConstValue) -> bool {
         } => {
             matches!(value, ConstValue::String(actual) if actual == expected)
         }
+    }
+}
+
+fn bind_const_pattern(
+    pattern: &AstPattern,
+    value: &ConstValue,
+    bindings: &mut HashMap<String, ConstValue>,
+) {
+    match pattern {
+        AstPattern::Bind { name, .. } => {
+            bindings.insert(name.clone(), value.clone());
+        }
+        AstPattern::Tuple { items, .. } => {
+            let ConstValue::Tuple(values) = value else {
+                return;
+            };
+            for (pattern, value) in items.iter().zip(values) {
+                bind_const_pattern(pattern, value, bindings);
+            }
+        }
+        AstPattern::Record { fields, .. } => {
+            let ConstValue::Record {
+                path: _,
+                fields: values,
+            } = value
+            else {
+                return;
+            };
+            for (field, pattern) in fields {
+                if let Some(value) = values
+                    .iter()
+                    .find_map(|(name, value)| (name == field).then_some(value))
+                {
+                    bind_const_pattern(pattern, value, bindings);
+                }
+            }
+        }
+        AstPattern::Wildcard { .. }
+        | AstPattern::Constructor { .. }
+        | AstPattern::Unit { .. }
+        | AstPattern::Bool { .. }
+        | AstPattern::Int { .. }
+        | AstPattern::String { .. } => {}
     }
 }
 

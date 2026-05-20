@@ -126,6 +126,11 @@ pub(crate) enum AstPattern {
         items: Vec<AstPattern>,
         span: TextSpan,
     },
+    Record {
+        path: AstPath,
+        fields: Vec<(String, AstPattern)>,
+        span: TextSpan,
+    },
     Bool {
         value: bool,
         span: TextSpan,

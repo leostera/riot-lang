@@ -283,6 +283,22 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                     .zip(items)
                     .all(|(pattern, item)| static_pattern_matches(pattern, item))
         }
+        RirPattern::Record { type_name, fields } => {
+            let StaticValue::Record {
+                path,
+                fields: values,
+            } = value
+            else {
+                return false;
+            };
+            path == type_name.as_str()
+                && fields.iter().all(|(field, pattern)| {
+                    values
+                        .iter()
+                        .find_map(|(name, value)| (name == field).then_some(value))
+                        .is_some_and(|value| static_pattern_matches(pattern, value))
+                })
+        }
     }
 }
 
@@ -346,6 +362,23 @@ fn bind_static_pattern(
             };
             for (pattern, item) in patterns.iter().zip(items) {
                 bind_static_pattern(pattern, item, bindings);
+            }
+        }
+        RirPattern::Record { fields, .. } => {
+            let StaticValue::Record {
+                path: _,
+                fields: values,
+            } = value
+            else {
+                return;
+            };
+            for (field, pattern) in fields {
+                if let Some(value) = values
+                    .iter()
+                    .find_map(|(name, value)| (name == field).then_some(value))
+                {
+                    bind_static_pattern(pattern, value.clone(), bindings);
+                }
             }
         }
         RirPattern::Wildcard

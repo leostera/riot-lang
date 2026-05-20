@@ -375,6 +375,26 @@ pub unsafe extern "C" fn riot_rt_value_record_get(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_record_is(
+    record: RtValue,
+    path_ptr: *const u8,
+    path_len: usize,
+) -> bool {
+    let Some(path) = (unsafe { bytes_from_raw(path_ptr, path_len) }) else {
+        runtime_abort("record tag test received an invalid path pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(record) else {
+            return false;
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            return false;
+        };
+        matches!(&object.kind, HeapObjectKind::Record { path: actual_path, .. } if actual_path.as_bytes() == path)
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_bytes_ptr(value: RtValue) -> *const u8 {
     with_scheduler_mut(|scheduler| {
         scheduler.value_bytes(value).map_or_else(
