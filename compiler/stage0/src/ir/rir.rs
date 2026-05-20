@@ -106,6 +106,7 @@ pub(crate) enum RirPattern {
     Constructor {
         type_name: TypeName,
         constructor: ConstructorName,
+        payload: Vec<RirPattern>,
     },
     Unit,
     Bool(bool),

@@ -12,7 +12,7 @@ use crate::abi::{
     riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
     riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
     riot_rt_value_tuple_get, riot_rt_value_unit, riot_rt_value_variant,
-    riot_rt_value_variant_payload,
+    riot_rt_value_variant_get_payload, riot_rt_value_variant_is, riot_rt_value_variant_payload,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -480,6 +480,11 @@ fn value_rendering_handles_compound_values() {
         with_scheduler_mut(|scheduler| scheduler.render_value(some)),
         "Some(42)"
     );
+    assert!(unsafe { riot_rt_value_variant_is(some, b"option".as_ptr(), 6, b"Some".as_ptr(), 4) });
+    assert!(riot_rt_value_eq(
+        riot_rt_value_variant_get_payload(some),
+        riot_rt_value_i64(42)
+    ));
 
     let pair_payload = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
     let pair = unsafe {

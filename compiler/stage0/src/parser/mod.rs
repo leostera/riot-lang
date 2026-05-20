@@ -746,7 +746,33 @@ impl<'src> Parser<'src> {
                         span = span.join(segment_span);
                         path.segments.push(segment);
                     }
-                    Ok(AstPattern::Constructor { path, span })
+                    let payload = if self.match_kind(TokenKind::LParen).is_some() {
+                        let mut payload = Vec::new();
+                        if self.match_kind(TokenKind::RParen).is_none() {
+                            loop {
+                                payload.push(self.parse_pattern()?);
+                                if self.match_kind(TokenKind::Comma).is_none() {
+                                    break;
+                                }
+                                if self.at(TokenKind::RParen) {
+                                    break;
+                                }
+                            }
+                            let end = self.expect(
+                                TokenKind::RParen,
+                                "expected `)` after constructor pattern payload",
+                            )?;
+                            span = span.join(end.span);
+                        }
+                        payload
+                    } else {
+                        Vec::new()
+                    };
+                    Ok(AstPattern::Constructor {
+                        path,
+                        payload,
+                        span,
+                    })
                 } else if is_lower_ident(&name) {
                     Ok(AstPattern::Bind { name, span })
                 } else {

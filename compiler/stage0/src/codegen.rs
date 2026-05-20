@@ -797,7 +797,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         for (index, arm) in arms.iter().enumerate() {
             self.builder.position_at_end(arm_blocks[index]);
             let mut arm_env = env.clone();
-            self.bind_pattern_env(&mut arm_env, &arm.pattern, &scrutinee);
+            self.bind_pattern_env(&mut arm_env, &arm.pattern, &scrutinee)?;
             let value = self.emit_expr(&arm.body, &mut arm_env)?;
             let incoming_value = self.match_incoming_value(value, result_abi)?;
             let end_block = self
@@ -865,38 +865,82 @@ impl<'ctx> Codegen<'ctx, '_> {
             RirPattern::Constructor {
                 type_name,
                 constructor,
+                payload,
             } => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
                 let (constructor_ptr, constructor_len) =
                     self.string_literal(constructor.as_str())?;
-                let pattern = self.call_runtime_value(
-                    "riot_rt_value_variant",
+                let tag_matches = self.call_runtime_value(
+                    "riot_rt_value_variant_is",
                     &[
+                        scrutinee.into(),
                         type_ptr.into(),
                         type_len.into(),
                         constructor_ptr.into(),
                         constructor_len.into(),
                     ],
                 )?;
-                self.push_runtime_root(pattern)?;
-                let result = self
-                    .call_runtime_value("riot_rt_value_eq", &[scrutinee.into(), pattern.into()])?;
-                self.pop_runtime_roots(1)?;
-                Ok(result)
+                if payload.is_empty() {
+                    return Ok(tag_matches);
+                }
+                Ok(tag_matches)
             }
         }
     }
 
     fn bind_pattern_env(
-        &self,
+        &mut self,
         env: &mut Env<'ctx>,
         pattern: &RirPattern,
         scrutinee: &CgValue<'ctx>,
-    ) {
-        if let RirPattern::Bind(binding) = pattern {
-            env.values
-                .insert(binding.as_str().to_owned(), scrutinee.clone());
+    ) -> miette::Result<()> {
+        match pattern {
+            RirPattern::Bind(binding) => {
+                env.values
+                    .insert(binding.as_str().to_owned(), scrutinee.clone());
+            }
+            RirPattern::Constructor { payload, .. } if !payload.is_empty() => {
+                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
+                let payload_value = self
+                    .call_runtime_value("riot_rt_value_variant_get_payload", &[scrutinee.into()])?;
+                self.bind_payload_patterns(env, payload, payload_value)?;
+            }
+            RirPattern::Wildcard
+            | RirPattern::Constructor { .. }
+            | RirPattern::Unit
+            | RirPattern::Bool(_)
+            | RirPattern::Int(_)
+            | RirPattern::String(_) => {}
+        }
+        Ok(())
+    }
+
+    fn bind_payload_patterns(
+        &mut self,
+        env: &mut Env<'ctx>,
+        patterns: &[RirPattern],
+        payload: IntValue<'ctx>,
+    ) -> miette::Result<()> {
+        match patterns {
+            [] => Ok(()),
+            [pattern] => self.bind_pattern_env(env, pattern, &CgValue::Value(payload)),
+            patterns => {
+                for (index, pattern) in patterns.iter().enumerate() {
+                    let item = self.call_runtime_value(
+                        "riot_rt_value_tuple_get",
+                        &[
+                            payload.into(),
+                            self.context
+                                .i64_type()
+                                .const_int(index as u64, false)
+                                .into(),
+                        ],
+                    )?;
+                    self.bind_pattern_env(env, pattern, &CgValue::Value(item))?;
+                }
+                Ok(())
+            }
         }
     }
 
@@ -2477,6 +2521,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_record_get" => {
                 i64_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
+            "riot_rt_value_variant_get_payload" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_tuple_get" | "riot_rt_value_list_get" => {
                 i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
@@ -2491,6 +2536,16 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_eq" | "riot_rt_value_lt" => {
                 bool_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
+            "riot_rt_value_variant_is" => bool_type.fn_type(
+                &[
+                    i64_type.into(),
+                    ptr_type.into(),
+                    i64_type.into(),
+                    ptr_type.into(),
+                    i64_type.into(),
+                ],
+                false,
+            ),
             "riot_rt_send" => {
                 void_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }

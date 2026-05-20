@@ -384,6 +384,55 @@ pub extern "C" fn riot_rt_value_eq(lhs: RtValue, rhs: RtValue) -> bool {
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_variant_is(
+    value: RtValue,
+    type_ptr: *const u8,
+    type_len: usize,
+    constructor_ptr: *const u8,
+    constructor_len: usize,
+) -> bool {
+    let Some(type_name) = (unsafe { bytes_from_raw(type_ptr, type_len) }) else {
+        runtime_abort("variant tag test received an invalid type pointer/length pair");
+    };
+    let Some(constructor) = (unsafe { bytes_from_raw(constructor_ptr, constructor_len) }) else {
+        runtime_abort("variant tag test received an invalid constructor pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(value) else {
+            return false;
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            return false;
+        };
+        matches!(
+            &object.kind,
+            HeapObjectKind::Variant {
+                type_name: actual_type,
+                constructor: actual_constructor,
+                ..
+            } if actual_type.as_bytes() == type_name
+                && actual_constructor.as_bytes() == constructor
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_variant_get_payload(value: RtValue) -> RtValue {
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(value) else {
+            runtime_abort("variant payload expected a variant value");
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            runtime_abort("variant payload received a stale variant value");
+        };
+        match &object.kind {
+            HeapObjectKind::Variant { payload, .. } => *payload,
+            _ => runtime_abort("variant payload expected a variant value"),
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_lt(lhs: RtValue, rhs: RtValue) -> bool {
     with_scheduler_mut(|scheduler| scheduler.values_less_than(lhs, rhs))
 }

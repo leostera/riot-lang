@@ -1540,12 +1540,27 @@ fn type_pattern(
             binding: context.bind(&name, scrutinee_type.clone()),
             type_: scrutinee_type.clone(),
         },
-        AstPattern::Constructor { path, .. } => {
+        AstPattern::Constructor { path, payload, .. } => {
+            let payload_types = pattern_constructor_signature(&path.segments, context)
+                .map(|constructor| constructor.payload)
+                .unwrap_or_default();
+            let payload = payload
+                .into_iter()
+                .enumerate()
+                .map(|(index, pattern)| {
+                    let type_ = payload_types
+                        .get(index)
+                        .cloned()
+                        .unwrap_or(RsigType::Unknown);
+                    type_pattern(pattern, &type_, context)
+                })
+                .collect();
             let (type_name, constructor) = pattern_constructor_type(path.segments, context)
                 .unwrap_or_else(|| (TypeName::new("_"), ConstructorName::new("_")));
             TypedPattern::Constructor {
                 type_name,
                 constructor,
+                payload,
             }
         }
         AstPattern::Unit { .. } => TypedPattern::Unit,
@@ -1559,20 +1574,20 @@ fn pattern_constructor_type(
     path: Vec<String>,
     context: &TypeContext<'_>,
 ) -> Option<(TypeName, ConstructorName)> {
-    match path.as_slice() {
-        [constructor] => {
-            let signature = context.constructors.get(constructor)?;
-            Some((
-                signature.type_name.clone(),
-                ConstructorName::new(constructor.clone()),
-            ))
-        }
-        [_module, constructor] => imported_constructor_signature(&path, context).map(|signature| {
-            (
-                signature.type_name,
-                ConstructorName::new(constructor.clone()),
-            )
-        }),
+    let constructor = path
+        .last()
+        .map(|constructor| ConstructorName::new(constructor.clone()))?;
+    pattern_constructor_signature(&path, context)
+        .map(|signature| (signature.type_name, constructor))
+}
+
+fn pattern_constructor_signature(
+    path: &[String],
+    context: &TypeContext<'_>,
+) -> Option<ConstructorSignature> {
+    match path {
+        [constructor] => context.constructors.get(constructor).cloned(),
+        [_module, _constructor] => imported_constructor_signature(path, context),
         _ => None,
     }
 }
@@ -2640,9 +2655,14 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
         TypedPattern::Constructor {
             type_name,
             constructor,
+            payload,
         } => RirPattern::Constructor {
             type_name,
             constructor,
+            payload: payload
+                .into_iter()
+                .map(|pattern| lower_pattern(pattern, context))
+                .collect(),
         },
         TypedPattern::Unit => RirPattern::Unit,
         TypedPattern::Bool(value) => RirPattern::Bool(value),

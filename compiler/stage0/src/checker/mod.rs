@@ -995,7 +995,7 @@ fn validate_expr(
             for arm in arms {
                 validate_pattern(ctx, &arm.pattern, scrutinee_type.as_ref())?;
                 let mut arm_bindings = bindings.clone();
-                bind_pattern(&arm.pattern, scrutinee_type.clone(), &mut arm_bindings);
+                bind_pattern(ctx, &arm.pattern, scrutinee_type.clone(), &mut arm_bindings);
                 validate_expr(ctx, &arm.body, &arm_bindings, in_actor)?;
             }
             Ok(ExprCategory::Other)
@@ -1202,7 +1202,12 @@ fn validate_pattern(
     pattern: &AstPattern,
     scrutinee_type: Option<&RsigType>,
 ) -> miette::Result<()> {
-    if let AstPattern::Constructor { path, span } = pattern {
+    if let AstPattern::Constructor {
+        path,
+        payload,
+        span,
+    } = pattern
+    {
         let Some(constructor) = pattern_constructor_shape(ctx, path) else {
             return Err(to_source_diagnostic(
                 ctx.source_path,
@@ -1214,20 +1219,24 @@ fn validate_pattern(
             )
             .into());
         };
-        if !constructor.payload.is_empty() {
+        if payload.len() != constructor.payload.len() {
             return Err(to_source_diagnostic(
                 ctx.source_path,
                 ctx.source,
                 *span,
-                "unsupported payload constructor pattern",
+                "variant payload pattern arity mismatch",
                 format!(
-                    "`{}` carries {} payload value(s), but stage0 cannot destructure constructor payloads yet",
+                    "`{}` carries {} payload value(s), but this pattern has {}",
                     path.segments.join("."),
-                    constructor.payload.len()
+                    constructor.payload.len(),
+                    payload.len()
                 ),
-                Some("match payload constructors after constructor payload patterns land"),
+                Some("match the constructor with the same number of payload patterns"),
             )
             .into());
+        }
+        for (payload_pattern, payload_type) in payload.iter().zip(&constructor.payload) {
+            validate_payload_pattern(ctx, payload_pattern, payload_type)?;
         }
     }
     let Some(expected) = pattern_type(ctx, pattern) else {
@@ -1255,12 +1264,33 @@ fn validate_pattern(
 }
 
 fn bind_pattern(
+    ctx: &ValidationContext<'_>,
     pattern: &AstPattern,
     scrutinee_type: Option<RsigType>,
     bindings: &mut HashMap<String, BindingKind>,
 ) {
-    if let AstPattern::Bind { name, .. } = pattern {
-        bindings.insert(name.clone(), BindingKind::Value(scrutinee_type));
+    match pattern {
+        AstPattern::Bind { name, .. } => {
+            bindings.insert(name.clone(), BindingKind::Value(scrutinee_type));
+        }
+        AstPattern::Constructor { path, payload, .. } => {
+            let payload_types = pattern_constructor_shape(ctx, path)
+                .map(|constructor| constructor.payload)
+                .unwrap_or_default();
+            for (index, nested) in payload.iter().enumerate() {
+                if let AstPattern::Bind { name, .. } = nested {
+                    bindings.insert(
+                        name.clone(),
+                        BindingKind::Value(payload_types.get(index).cloned()),
+                    );
+                }
+            }
+        }
+        AstPattern::Wildcard { .. }
+        | AstPattern::Unit { .. }
+        | AstPattern::Bool { .. }
+        | AstPattern::Int { .. }
+        | AstPattern::String { .. } => {}
     }
 }
 
@@ -1272,6 +1302,28 @@ fn pattern_type(ctx: &ValidationContext<'_>, pattern: &AstPattern) -> Option<Rsi
         AstPattern::String { .. } => Some(RsigType::String),
         AstPattern::Constructor { path, .. } => pattern_constructor_type(ctx, path),
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
+    }
+}
+
+fn validate_payload_pattern(
+    ctx: &ValidationContext<'_>,
+    pattern: &AstPattern,
+    expected: &RsigType,
+) -> miette::Result<()> {
+    match pattern {
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => Ok(()),
+        _ => Err(to_source_diagnostic(
+            ctx.source_path,
+            ctx.source,
+            pattern_span(pattern),
+            "unsupported variant payload pattern",
+            format!(
+                "stage0 can bind payloads of type `{}`, but cannot destructure nested payload patterns yet",
+                expected.canonical()
+            ),
+            Some("use a binder such as `Some(value)` or `_` for now"),
+        )
+        .into()),
     }
 }
 

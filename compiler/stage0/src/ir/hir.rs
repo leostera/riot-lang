@@ -134,6 +134,7 @@ pub(crate) enum TypedPattern {
     Constructor {
         type_name: TypeName,
         constructor: ConstructorName,
+        payload: Vec<TypedPattern>,
     },
     Unit,
     Bool(bool),

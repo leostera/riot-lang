@@ -174,9 +174,7 @@ pub(crate) fn eval_expr(
             for arm in arms {
                 if static_pattern_matches(&arm.pattern, &scrutinee) {
                     let mut arm_bindings = bindings.clone();
-                    if let RirPattern::Bind(binding) = &arm.pattern {
-                        arm_bindings.insert(binding.as_str().to_owned(), scrutinee);
-                    }
+                    bind_static_pattern(&arm.pattern, scrutinee.clone(), &mut arm_bindings);
                     return eval_expr(&arm.body, &arm_bindings, functions, depth);
                 }
             }
@@ -261,18 +259,82 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
         RirPattern::Constructor {
             type_name,
             constructor,
+            payload,
         } => {
-            matches!(
-                value,
-                StaticValue::Variant {
-                    type_name: actual_type,
-                    constructor: actual_constructor,
-                    payload,
-                } if actual_type == type_name
-                    && actual_constructor == constructor
-                    && matches!(payload.as_ref(), StaticValue::Unit)
-            )
+            let StaticValue::Variant {
+                type_name: actual_type,
+                constructor: actual_constructor,
+                payload: actual_payload,
+            } = value
+            else {
+                return false;
+            };
+            actual_type == type_name
+                && actual_constructor == constructor
+                && static_payload_patterns_match(payload, actual_payload)
         }
+    }
+}
+
+fn static_payload_patterns_match(patterns: &[RirPattern], payload: &StaticValue) -> bool {
+    match patterns {
+        [] => matches!(payload, StaticValue::Unit),
+        [pattern] => static_pattern_matches(pattern, payload),
+        patterns => {
+            let StaticValue::Tuple(items) = payload else {
+                return false;
+            };
+            patterns.len() == items.len()
+                && patterns
+                    .iter()
+                    .zip(items)
+                    .all(|(pattern, item)| static_pattern_matches(pattern, item))
+        }
+    }
+}
+
+fn bind_static_pattern(
+    pattern: &RirPattern,
+    value: StaticValue,
+    bindings: &mut HashMap<String, StaticValue>,
+) {
+    match pattern {
+        RirPattern::Bind(binding) => {
+            bindings.insert(binding.as_str().to_owned(), value);
+        }
+        RirPattern::Constructor { payload, .. } => match payload.as_slice() {
+            [] => {}
+            [pattern] => {
+                let StaticValue::Variant {
+                    payload: actual_payload,
+                    ..
+                } = value
+                else {
+                    return;
+                };
+                bind_static_pattern(pattern, *actual_payload, bindings);
+            }
+            patterns => {
+                let StaticValue::Variant {
+                    payload: actual_payload,
+                    ..
+                } = value
+                else {
+                    return;
+                };
+                let StaticValue::Tuple(items) = *actual_payload else {
+                    return;
+                };
+                for (pattern, item) in patterns.iter().zip(items) {
+                    bind_static_pattern(pattern, item, bindings);
+                }
+            }
+        },
+        RirPattern::Wildcard
+        | RirPattern::Unit
+        | RirPattern::Bool(_)
+        | RirPattern::Int(_)
+        | RirPattern::String(_) => {}
     }
 }
 

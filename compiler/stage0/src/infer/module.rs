@@ -957,13 +957,21 @@ fn infer_pattern(
             );
             Ok(())
         }
-        AstPattern::Constructor { path, .. } => {
+        AstPattern::Constructor { path, payload, .. } => {
             let name = path.segments.join(".");
             let scheme = state
                 .get_value(&name)
                 .cloned()
                 .ok_or_else(|| InferError::UnknownValue(name.clone()))?;
-            let constructor_type = state.instantiate(&scheme);
+            let mut constructor_type = state.instantiate(&scheme);
+            for payload_pattern in payload {
+                let Type::Arrow { parameter, result } = state.resolve(&constructor_type) else {
+                    return Err(InferError::Unsupported("constructor payload pattern"));
+                };
+                let parameter = *parameter;
+                infer_pattern(state, payload_pattern, &parameter)?;
+                constructor_type = *result;
+            }
             state.unify(&constructor_type, scrutinee_type)?;
             Ok(())
         }

@@ -107,13 +107,33 @@ pub(crate) struct AstMatchArm {
 
 #[derive(Debug, Clone)]
 pub(crate) enum AstPattern {
-    Wildcard { span: TextSpan },
-    Bind { name: String, span: TextSpan },
-    Constructor { path: AstPath, span: TextSpan },
-    Unit { span: TextSpan },
-    Bool { value: bool, span: TextSpan },
-    Int { value: i64, span: TextSpan },
-    String { value: String, span: TextSpan },
+    Wildcard {
+        span: TextSpan,
+    },
+    Bind {
+        name: String,
+        span: TextSpan,
+    },
+    Constructor {
+        path: AstPath,
+        payload: Vec<AstPattern>,
+        span: TextSpan,
+    },
+    Unit {
+        span: TextSpan,
+    },
+    Bool {
+        value: bool,
+        span: TextSpan,
+    },
+    Int {
+        value: i64,
+        span: TextSpan,
+    },
+    String {
+        value: String,
+        span: TextSpan,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/variant_payload_pattern_nested.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × unsupported variant payload pattern
+   ╭─[tests/fixtures/diagnostics/types/variant_payload_pattern_nested.ml:6:10]
+ 5 │   dbg(match value {
+ 6 │     Some(1) -> 1,
+   ·          ┬
+   ·          ╰── stage0 can bind payloads of type `i64`, but cannot destructure nested payload patterns yet
+ 7 │     _ -> 0
+   ╰────
+  help: use a binder such as `Some(value)` or `_` for now
