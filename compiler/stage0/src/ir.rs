@@ -820,14 +820,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 }
             } else {
                 let callee = type_path_expr(callee_path, context);
-                let type_ = apply_result_type(&callee.type_, args.len());
-                TypedExpr {
-                    type_,
-                    kind: TypedExprKind::Apply {
-                        callee: Box::new(callee),
-                        args,
-                    },
-                }
+                typed_apply_expr(callee, args)
             }
         }
         AstExpr::Apply { callee, args, .. } => {
@@ -836,14 +829,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 .into_iter()
                 .map(|arg| type_expr(arg, context))
                 .collect::<Vec<_>>();
-            let type_ = apply_result_type(&callee.type_, args.len());
-            TypedExpr {
-                type_,
-                kind: TypedExprKind::Apply {
-                    callee: Box::new(callee),
-                    args,
-                },
-            }
+            typed_apply_expr(callee, args)
         }
         AstExpr::Lambda {
             params,
@@ -1011,6 +997,19 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
         type_,
         kind: TypedExprKind::Path(path),
     }
+}
+
+fn typed_apply_expr(callee: TypedExpr, args: Vec<TypedExpr>) -> TypedExpr {
+    args.into_iter().fold(callee, |callee, arg| {
+        let type_ = apply_result_type(&callee.type_, 1);
+        TypedExpr {
+            type_,
+            kind: TypedExprKind::Apply {
+                callee: Box::new(callee),
+                args: vec![arg],
+            },
+        }
+    })
 }
 
 fn partial_call_lambda(

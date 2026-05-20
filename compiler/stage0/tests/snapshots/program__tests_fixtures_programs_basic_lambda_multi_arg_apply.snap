@@ -1,0 +1,20 @@
+---
+source: tests/fixtures.rs
+assertion_line: 729
+expression: transcript
+---
+fixture: tests/fixtures/programs/basic/lambda_multi_arg_apply.ml
+
+compile:
+status: success
+stdout:
+<empty>
+stderr:
+<empty>
+
+run:
+status: success
+stdout:
+42
+stderr:
+<empty>
