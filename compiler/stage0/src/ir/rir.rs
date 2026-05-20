@@ -169,6 +169,7 @@ pub(crate) enum RirExpr {
     Variant {
         type_name: TypeName,
         constructor: ConstructorName,
+        payload: Vec<RirExpr>,
     },
     Char(char),
     Float(String),

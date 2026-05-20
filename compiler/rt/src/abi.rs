@@ -97,6 +97,25 @@ pub unsafe extern "C" fn riot_rt_value_variant(
     constructor_ptr: *const u8,
     constructor_len: usize,
 ) -> RtValue {
+    unsafe {
+        riot_rt_value_variant_payload(
+            type_ptr,
+            type_len,
+            constructor_ptr,
+            constructor_len,
+            VALUE_UNIT,
+        )
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_variant_payload(
+    type_ptr: *const u8,
+    type_len: usize,
+    constructor_ptr: *const u8,
+    constructor_len: usize,
+    payload: RtValue,
+) -> RtValue {
     let Some(type_name) = (unsafe { bytes_from_raw(type_ptr, type_len) }) else {
         runtime_abort("variant value received an invalid type pointer/length pair");
     };
@@ -110,6 +129,7 @@ pub unsafe extern "C" fn riot_rt_value_variant(
             HeapObjectKind::Variant {
                 type_name,
                 constructor,
+                payload,
             },
             HeapOwner::Local(current_actor_id()),
         )

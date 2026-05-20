@@ -12,6 +12,7 @@ use crate::abi::{
     riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
     riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
     riot_rt_value_tuple_get, riot_rt_value_unit, riot_rt_value_variant,
+    riot_rt_value_variant_payload,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -354,6 +355,36 @@ fn value_equality_handles_nested_runtime_values() {
     let other_variant = unsafe { riot_rt_value_variant(b"color".as_ptr(), 5, b"Blue".as_ptr(), 4) };
     assert!(riot_rt_value_eq(lhs_variant, rhs_variant));
     assert!(!riot_rt_value_eq(lhs_variant, other_variant));
+
+    let lhs_some = unsafe {
+        riot_rt_value_variant_payload(
+            b"option".as_ptr(),
+            6,
+            b"Some".as_ptr(),
+            4,
+            riot_rt_value_i64(1),
+        )
+    };
+    let rhs_some = unsafe {
+        riot_rt_value_variant_payload(
+            b"option".as_ptr(),
+            6,
+            b"Some".as_ptr(),
+            4,
+            riot_rt_value_i64(1),
+        )
+    };
+    let other_some = unsafe {
+        riot_rt_value_variant_payload(
+            b"option".as_ptr(),
+            6,
+            b"Some".as_ptr(),
+            4,
+            riot_rt_value_i64(2),
+        )
+    };
+    assert!(riot_rt_value_eq(lhs_some, rhs_some));
+    assert!(!riot_rt_value_eq(lhs_some, other_some));
 }
 
 #[test]
@@ -434,5 +465,28 @@ fn value_rendering_handles_compound_values() {
     assert_eq!(
         with_scheduler_mut(|scheduler| scheduler.render_value(variant)),
         "Green"
+    );
+
+    let some = unsafe {
+        riot_rt_value_variant_payload(
+            b"option".as_ptr(),
+            6,
+            b"Some".as_ptr(),
+            4,
+            riot_rt_value_i64(42),
+        )
+    };
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(some)),
+        "Some(42)"
+    );
+
+    let pair_payload = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
+    let pair = unsafe {
+        riot_rt_value_variant_payload(b"event".as_ptr(), 5, b"Pair".as_ptr(), 4, pair_payload)
+    };
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(pair)),
+        "Pair(riot, 42)"
     );
 }

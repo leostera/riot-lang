@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 6;
+const VERSION: u16 = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
@@ -204,6 +204,7 @@ pub(crate) enum RsigTypeDeclKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RsigVariantConstructor {
     pub(crate) name: ConstructorName,
+    pub(crate) payload: Vec<RsigType>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -438,7 +439,7 @@ impl RsigTypeDecl {
             RsigTypeDeclKind::Variant { constructors } => {
                 let constructors = constructors
                     .iter()
-                    .map(|constructor| constructor.name.as_str())
+                    .map(RsigVariantConstructor::canonical)
                     .collect::<Vec<_>>()
                     .join(" | ");
                 format!("type {} = {}", self.name, constructors)
@@ -542,6 +543,16 @@ impl RsigExport {
                 vars.canonicalize(&mut external.result);
                 vars.canonicalize_scheme(&mut external.scheme);
             }
+        }
+    }
+}
+
+impl RsigVariantConstructor {
+    fn canonical(&self) -> String {
+        if self.payload.is_empty() {
+            self.name.to_string()
+        } else {
+            format!("{}({})", self.name, render_types(&self.payload))
         }
     }
 }
@@ -877,6 +888,7 @@ fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
                 put_u32(&mut bytes, constructors.len() as u32);
                 for constructor in constructors {
                     put_string(&mut bytes, constructor.name.as_str());
+                    put_types(&mut bytes, &constructor.payload);
                 }
             }
             RsigTypeDeclKind::Record { fields } => {
@@ -950,6 +962,7 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
                 for _ in 0..constructor_count {
                     constructors.push(RsigVariantConstructor {
                         name: ConstructorName::new(get_string(&mut cursor)?),
+                        payload: get_types(&mut cursor)?,
                     });
                 }
                 RsigTypeDeclKind::Variant { constructors }
@@ -1366,9 +1379,11 @@ mod tests {
                     constructors: vec![
                         RsigVariantConstructor {
                             name: ConstructorName::new("Red"),
+                            payload: Vec::new(),
                         },
                         RsigVariantConstructor {
                             name: ConstructorName::new("Green"),
+                            payload: Vec::new(),
                         },
                     ],
                 },
@@ -1386,5 +1401,43 @@ mod tests {
                 .contains("type color = Red | Green")
         );
         assert!(decoded.find_constructor("Red").is_some());
+    }
+
+    #[test]
+    fn binary_rsig_roundtrips_variant_constructor_payloads() {
+        let rsig = Rsig::with_dependencies(
+            "Options".to_owned(),
+            Vec::new(),
+            vec![RsigTypeDecl {
+                name: TypeName::new("option_i64"),
+                body: RsigTypeDeclKind::Variant {
+                    constructors: vec![
+                        RsigVariantConstructor {
+                            name: ConstructorName::new("Some"),
+                            payload: vec![RsigType::I64],
+                        },
+                        RsigVariantConstructor {
+                            name: ConstructorName::new("Pair"),
+                            payload: vec![RsigType::I64, RsigType::String],
+                        },
+                        RsigVariantConstructor {
+                            name: ConstructorName::new("None"),
+                            payload: Vec::new(),
+                        },
+                    ],
+                },
+                fingerprint: 0,
+            }],
+            Vec::new(),
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded, rsig);
+        assert!(
+            decoded
+                .canonical_text()
+                .contains("type option_i64 = Some(i64) | Pair(i64, string) | None")
+        );
     }
 }

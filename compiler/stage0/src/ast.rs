@@ -71,6 +71,7 @@ pub(crate) enum AstTypeBody {
 pub(crate) struct AstVariantConstructor {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
+    pub(crate) payload: Vec<AstTypeAnnotation>,
 }
 
 #[derive(Debug, Clone)]

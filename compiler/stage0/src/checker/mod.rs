@@ -85,7 +85,7 @@ struct ValidationContext<'a> {
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
     external_names: HashSet<String>,
-    constructor_types: HashMap<String, RsigType>,
+    constructor_types: HashMap<String, ConstructorShape>,
     declared_variants: BTreeSet<TypeName>,
     record_shapes: HashMap<String, RecordShape>,
     record_shapes_by_type: BTreeMap<TypeName, RecordShape>,
@@ -96,6 +96,12 @@ struct ValidationContext<'a> {
 struct RecordShape {
     type_name: TypeName,
     fields: Vec<(String, RsigType)>,
+}
+
+#[derive(Debug, Clone)]
+struct ConstructorShape {
+    type_name: TypeName,
+    payload: Vec<RsigType>,
 }
 
 fn validate_program(
@@ -111,7 +117,7 @@ fn validate_program(
     let function_results = function_results(program, &declared_variants);
     let declared_external_names = declared_external_names(program);
     let external_names = external_names(program);
-    let constructor_types = constructor_types(program);
+    let constructor_types = constructor_types(program, &declared_variants);
     let (record_shapes, record_shapes_by_type) =
         record_shapes(program, imports, &declared_variants);
     let ctx = ValidationContext {
@@ -339,7 +345,10 @@ fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
     })
 }
 
-fn constructor_types(program: &AstProgram) -> HashMap<String, RsigType> {
+fn constructor_types(
+    program: &AstProgram,
+    declared_variants: &BTreeSet<TypeName>,
+) -> HashMap<String, ConstructorShape> {
     program
         .decls
         .iter()
@@ -357,7 +366,16 @@ fn constructor_types(program: &AstProgram) -> HashMap<String, RsigType> {
                 .map(move |constructor| {
                     (
                         constructor.name.clone(),
-                        RsigType::Variant(type_name.clone()),
+                        ConstructorShape {
+                            type_name: type_name.clone(),
+                            payload: constructor
+                                .payload
+                                .iter()
+                                .map(|payload| {
+                                    parse_type_with_variants(&payload.text, &declared_variants)
+                                })
+                                .collect(),
+                        },
                     )
                 })
                 .collect::<Vec<_>>()
@@ -638,6 +656,10 @@ fn validate_expr(
                     )
                     .into());
                 };
+                if let Some(shape) = imported_constructor_shape(ctx, module, name) {
+                    validate_constructor_call(ctx, *span, name, &shape, args, bindings, in_actor)?;
+                    return Ok(ExprCategory::Other);
+                }
                 let Some(export) = rsig.find(name) else {
                     return Err(to_source_diagnostic(
                         ctx.source_path,
@@ -803,6 +825,14 @@ fn validate_expr(
                     for arg in args {
                         validate_expr(ctx, arg, bindings, in_actor)?;
                     }
+                    Ok(ExprCategory::Other)
+                }
+                _ if ctx.constructor_types.contains_key(name) => {
+                    let shape = ctx
+                        .constructor_types
+                        .get(name)
+                        .expect("constructor existence checked");
+                    validate_constructor_call(ctx, *span, name, shape, args, bindings, in_actor)?;
                     Ok(ExprCategory::Other)
                 }
                 _ if matches!(bindings.get(name), Some(BindingKind::Value(_))) => {
@@ -1014,7 +1044,10 @@ fn validate_expr(
                     if bindings.contains_key(name)
                         || ctx.function_names.contains(name)
                         || ctx.external_names.contains(name)
-                        || ctx.constructor_types.contains_key(name) => {}
+                        || ctx
+                            .constructor_types
+                            .get(name)
+                            .is_some_and(|constructor| constructor.payload.is_empty()) => {}
                 [module, name] => {
                     let Some(rsig) = ctx.imports.get(module.as_str()) else {
                         return Err(to_source_diagnostic(
@@ -1030,7 +1063,9 @@ fn validate_expr(
                         .into());
                     };
                     let Some(export) = rsig.find(name) else {
-                        if rsig.find_constructor(name).is_some() {
+                        if imported_constructor_shape(ctx, module, name)
+                            .is_some_and(|constructor| constructor.payload.is_empty())
+                        {
                             return Ok(ExprCategory::Other);
                         }
                         return Err(to_source_diagnostic(
@@ -1167,18 +1202,33 @@ fn validate_pattern(
     pattern: &AstPattern,
     scrutinee_type: Option<&RsigType>,
 ) -> miette::Result<()> {
-    if let AstPattern::Constructor { path, span } = pattern
-        && pattern_constructor_type(ctx, path).is_none()
-    {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            *span,
-            "unknown variant constructor",
-            format!("`{}` is not a known constructor", path.segments.join(".")),
-            Some("declare the constructor with a top-level `type` declaration"),
-        )
-        .into());
+    if let AstPattern::Constructor { path, span } = pattern {
+        let Some(constructor) = pattern_constructor_shape(ctx, path) else {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                *span,
+                "unknown variant constructor",
+                format!("`{}` is not a known constructor", path.segments.join(".")),
+                Some("declare the constructor with a top-level `type` declaration"),
+            )
+            .into());
+        };
+        if !constructor.payload.is_empty() {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                *span,
+                "unsupported payload constructor pattern",
+                format!(
+                    "`{}` carries {} payload value(s), but stage0 cannot destructure constructor payloads yet",
+                    path.segments.join("."),
+                    constructor.payload.len()
+                ),
+                Some("match payload constructors after constructor payload patterns land"),
+            )
+            .into());
+        }
     }
     let Some(expected) = pattern_type(ctx, pattern) else {
         return Ok(());
@@ -1229,15 +1279,16 @@ fn pattern_constructor_type(
     ctx: &ValidationContext<'_>,
     path: &crate::ast::AstPath,
 ) -> Option<RsigType> {
+    pattern_constructor_shape(ctx, path).map(|constructor| RsigType::Variant(constructor.type_name))
+}
+
+fn pattern_constructor_shape(
+    ctx: &ValidationContext<'_>,
+    path: &crate::ast::AstPath,
+) -> Option<ConstructorShape> {
     match path.segments.as_slice() {
         [name] => ctx.constructor_types.get(name).cloned(),
-        [module, constructor] => ctx
-            .imports
-            .get(module.as_str())
-            .and_then(|rsig| rsig.find_constructor(constructor))
-            .map(|type_| {
-                RsigType::Variant(TypeName::new(format!("{module}.{}", type_.name.as_str())))
-            }),
+        [module, constructor] => imported_constructor_shape(ctx, module, constructor),
         _ => None,
     }
 }
@@ -1281,6 +1332,128 @@ fn validate_call_arg_type(
         Some("pass a value with the expected type"),
     )
     .into())
+}
+
+fn validate_constructor_call(
+    ctx: &ValidationContext<'_>,
+    span: TextSpan,
+    constructor_name: &str,
+    constructor: &ConstructorShape,
+    args: &[AstExpr],
+    bindings: &HashMap<String, BindingKind>,
+    in_actor: bool,
+) -> miette::Result<()> {
+    if args.len() != constructor.payload.len() {
+        return Err(call_arity_error(
+            ctx,
+            span,
+            constructor_name,
+            constructor.payload.len(),
+            args.len(),
+        )
+        .into());
+    }
+    for (arg, expected) in args.iter().zip(&constructor.payload) {
+        validate_expr(ctx, arg, bindings, in_actor)?;
+        if let Some(actual) = simple_expr_type(ctx, arg, bindings)
+            && !type_matches(expected, &actual)
+        {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                expr_span(arg),
+                "variant payload type mismatch",
+                format!(
+                    "`{constructor_name}` expects `{}`, but this payload has type `{}`",
+                    expected.canonical(),
+                    actual.canonical()
+                ),
+                Some("construct the variant with a payload of the declared type"),
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+fn constructor_value_type(constructor: &ConstructorShape) -> RsigType {
+    if constructor.payload.is_empty() {
+        RsigType::Variant(constructor.type_name.clone())
+    } else {
+        source_function_type(
+            constructor.payload.clone(),
+            RsigType::Variant(constructor.type_name.clone()),
+        )
+    }
+}
+
+fn source_function_type(params: Vec<RsigType>, result: RsigType) -> RsigType {
+    if params.is_empty() {
+        RsigType::Arrow {
+            parameter: Box::new(RsigType::Unit),
+            result: Box::new(result),
+        }
+    } else {
+        params
+            .into_iter()
+            .rev()
+            .fold(result, |result, parameter| RsigType::Arrow {
+                parameter: Box::new(parameter),
+                result: Box::new(result),
+            })
+    }
+}
+
+fn imported_constructor_shape(
+    ctx: &ValidationContext<'_>,
+    module: &str,
+    constructor: &str,
+) -> Option<ConstructorShape> {
+    ctx.imports
+        .get(module)
+        .and_then(|rsig| rsig.find_constructor(constructor))
+        .and_then(|type_| {
+            let RsigTypeDeclKind::Variant { constructors } = &type_.body else {
+                return None;
+            };
+            constructors
+                .iter()
+                .find(|candidate| candidate.name.as_str() == constructor)
+                .map(|candidate| ConstructorShape {
+                    type_name: TypeName::new(format!("{module}.{}", type_.name.as_str())),
+                    payload: candidate
+                        .payload
+                        .iter()
+                        .map(|payload| qualify_imported_type(module, payload))
+                        .collect(),
+                })
+        })
+}
+
+fn qualify_imported_type(module: &str, type_: &RsigType) -> RsigType {
+    match type_ {
+        RsigType::ActorId(message) => {
+            RsigType::ActorId(Box::new(qualify_imported_type(module, message)))
+        }
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(qualify_imported_type(module, parameter)),
+            result: Box::new(qualify_imported_type(module, result)),
+        },
+        RsigType::List(item) => RsigType::List(Box::new(qualify_imported_type(module, item))),
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| qualify_imported_type(module, item))
+                .collect(),
+        ),
+        RsigType::Record(name) => {
+            RsigType::Record(TypeName::new(format!("{module}.{}", name.as_str())))
+        }
+        RsigType::Variant(name) => {
+            RsigType::Variant(TypeName::new(format!("{module}.{}", name.as_str())))
+        }
+        other => other.clone(),
+    }
 }
 
 fn validate_static_list_index(
@@ -1790,7 +1963,11 @@ fn infer_annotation_expr_type(
                     _ => Some(RsigType::Unknown),
                 }
             }),
-            [name] => ctx.function_results.get(name).cloned(),
+            [name] => ctx
+                .constructor_types
+                .get(name)
+                .map(|constructor| RsigType::Variant(constructor.type_name.clone()))
+                .or_else(|| ctx.function_results.get(name).cloned()),
             [module, name] => ctx
                 .imports
                 .get(module.as_str())
@@ -1798,6 +1975,10 @@ fn infer_annotation_expr_type(
                 .map(|export| match export {
                     RsigExport::Function(function) => function.result.clone(),
                     RsigExport::External(external) => external.result.clone(),
+                })
+                .or_else(|| {
+                    imported_constructor_shape(ctx, module, name)
+                        .map(|constructor| RsigType::Variant(constructor.type_name))
                 }),
             _ => None,
         },
@@ -1832,22 +2013,15 @@ fn infer_annotation_expr_type(
             .and_then(|name| {
                 bindings
                     .get(name)
-                    .or_else(|| ctx.constructor_types.get(name))
+                    .cloned()
+                    .or_else(|| ctx.constructor_types.get(name).map(constructor_value_type))
             })
-            .cloned()
             .or_else(|| {
                 let [module, constructor] = path.segments.as_slice() else {
                     return None;
                 };
-                ctx.imports
-                    .get(module.as_str())
-                    .and_then(|rsig| rsig.find_constructor(constructor))
-                    .map(|type_| {
-                        RsigType::Variant(TypeName::new(format!(
-                            "{module}.{}",
-                            type_.name.as_str()
-                        )))
-                    })
+                imported_constructor_shape(ctx, module, constructor)
+                    .map(|constructor| constructor_value_type(&constructor))
             }),
         AstExpr::Lambda { .. } => Some(RsigType::Unknown),
         AstExpr::String { .. } => Some(RsigType::String),
@@ -1995,19 +2169,18 @@ fn simple_expr_type(
                 Some(BindingKind::Actor) => Some(RsigType::ActorId(Box::new(RsigType::Unknown))),
                 Some(BindingKind::Value(type_)) => type_.clone(),
                 Some(BindingKind::Message) => None,
-                None => ctx.constructor_types.get(&path.segments[0]).cloned(),
+                None => ctx
+                    .constructor_types
+                    .get(&path.segments[0])
+                    .map(constructor_value_type),
             }
         }
         AstExpr::Path { path, .. } if path.segments.len() == 2 => {
             let [module, constructor] = path.segments.as_slice() else {
                 unreachable!();
             };
-            ctx.imports
-                .get(module.as_str())
-                .and_then(|rsig| rsig.find_constructor(constructor))
-                .map(|type_| {
-                    RsigType::Variant(TypeName::new(format!("{module}.{}", type_.name.as_str())))
-                })
+            imported_constructor_shape(ctx, module, constructor)
+                .map(|constructor| constructor_value_type(&constructor))
         }
         AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),

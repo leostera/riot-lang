@@ -19,7 +19,7 @@ use crate::ir::{
     ActorFrameOp, ActorIrActor, ActorIrProgram, Capture, Param, RirBlock, RirExpr, RirFunction,
     RirMatchArm, RirPattern, RirProgram, RirStmt, lower_rir_to_actor_ir,
 };
-use crate::signature::{ImportedSignatures, RsigExport, RsigType};
+use crate::signature::{ConstructorName, ImportedSignatures, RsigExport, RsigType, TypeName};
 
 mod abi;
 mod static_eval;
@@ -564,20 +564,8 @@ impl<'ctx> Codegen<'ctx, '_> {
             RirExpr::Variant {
                 type_name,
                 constructor,
-            } => {
-                let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
-                let (constructor_ptr, constructor_len) =
-                    self.string_literal(constructor.as_str())?;
-                Ok(CgValue::Value(self.call_runtime_value(
-                    "riot_rt_value_variant",
-                    &[
-                        type_ptr.into(),
-                        type_len.into(),
-                        constructor_ptr.into(),
-                        constructor_len.into(),
-                    ],
-                )?))
-            }
+                payload,
+            } => self.emit_variant_value(type_name, constructor, payload, env),
             RirExpr::Char(_) | RirExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
                 .map(|value| self.emit_static_value(value))
@@ -594,6 +582,61 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             RirExpr::Spawn { actor_id, .. } => self.emit_spawn(*actor_id, env),
             RirExpr::Receive { .. } => bail!("receive cannot be lowered outside an actor frame"),
+        }
+    }
+
+    fn emit_variant_value(
+        &mut self,
+        type_name: &TypeName,
+        constructor: &ConstructorName,
+        payload: &[RirExpr],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+        let (constructor_ptr, constructor_len) = self.string_literal(constructor.as_str())?;
+        if payload.is_empty() {
+            return Ok(CgValue::Value(self.call_runtime_value(
+                "riot_rt_value_variant",
+                &[
+                    type_ptr.into(),
+                    type_len.into(),
+                    constructor_ptr.into(),
+                    constructor_len.into(),
+                ],
+            )?));
+        }
+
+        let payload = self.emit_variant_payload(payload, env)?;
+        self.push_runtime_root(payload)?;
+        let variant = self.call_runtime_value(
+            "riot_rt_value_variant_payload",
+            &[
+                type_ptr.into(),
+                type_len.into(),
+                constructor_ptr.into(),
+                constructor_len.into(),
+                payload.into(),
+            ],
+        )?;
+        self.pop_runtime_roots(1)?;
+        Ok(CgValue::Value(variant))
+    }
+
+    fn emit_variant_payload(
+        &mut self,
+        payload: &[RirExpr],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<IntValue<'ctx>> {
+        match payload {
+            [] => self.call_runtime_value("riot_rt_value_unit", &[]),
+            [value] => {
+                let value = self.emit_expr(value, env)?;
+                self.value_as_runtime(value)
+            }
+            values => {
+                let tuple = self.emit_value_sequence("riot_rt_value_tuple", values, env)?;
+                self.value_as_runtime(tuple)
+            }
         }
     }
 
@@ -941,20 +984,8 @@ impl<'ctx> Codegen<'ctx, '_> {
             StaticValue::Variant {
                 type_name,
                 constructor,
-            } => {
-                let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
-                let (constructor_ptr, constructor_len) =
-                    self.string_literal(constructor.as_str())?;
-                Ok(CgValue::Value(self.call_runtime_value(
-                    "riot_rt_value_variant",
-                    &[
-                        type_ptr.into(),
-                        type_len.into(),
-                        constructor_ptr.into(),
-                        constructor_len.into(),
-                    ],
-                )?))
-            }
+                payload,
+            } => self.emit_static_variant(&type_name, &constructor, *payload),
         }
     }
 
@@ -1017,6 +1048,43 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
         self.pop_runtime_roots(1)?;
         Ok(CgValue::Value(record))
+    }
+
+    fn emit_static_variant(
+        &mut self,
+        type_name: &TypeName,
+        constructor: &ConstructorName,
+        payload: StaticValue,
+    ) -> miette::Result<CgValue<'ctx>> {
+        let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+        let (constructor_ptr, constructor_len) = self.string_literal(constructor.as_str())?;
+        if matches!(payload, StaticValue::Unit) {
+            return Ok(CgValue::Value(self.call_runtime_value(
+                "riot_rt_value_variant",
+                &[
+                    type_ptr.into(),
+                    type_len.into(),
+                    constructor_ptr.into(),
+                    constructor_len.into(),
+                ],
+            )?));
+        }
+
+        let payload = self.emit_static_value(payload)?;
+        let payload = self.value_as_runtime(payload)?;
+        self.push_runtime_root(payload)?;
+        let variant = self.call_runtime_value(
+            "riot_rt_value_variant_payload",
+            &[
+                type_ptr.into(),
+                type_len.into(),
+                constructor_ptr.into(),
+                constructor_len.into(),
+                payload.into(),
+            ],
+        )?;
+        self.pop_runtime_roots(1)?;
+        Ok(CgValue::Value(variant))
     }
 
     fn emit_value_sequence(
@@ -2374,6 +2442,16 @@ impl<'ctx> Codegen<'ctx, '_> {
                 ],
                 false,
             ),
+            "riot_rt_value_variant_payload" => i64_type.fn_type(
+                &[
+                    ptr_type.into(),
+                    i64_type.into(),
+                    ptr_type.into(),
+                    i64_type.into(),
+                    i64_type.into(),
+                ],
+                false,
+            ),
             "riot_rt_value_tuple" | "riot_rt_value_list" => {
                 i64_type.fn_type(&[ptr_type.into(), i64_type.into()], false)
             }
@@ -2867,12 +2945,16 @@ fn mark_expr_constraints(
             let mut nested_params = Vec::new();
             infer_block_abi(body, &[], &mut nested_locals, &mut nested_params, functions);
         }
+        RirExpr::Variant { payload, .. } => {
+            for value in payload {
+                mark_expr_constraints(value, params, locals, param_types, functions);
+            }
+        }
         RirExpr::Bool(_)
         | RirExpr::Unit
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
-        | RirExpr::Variant { .. }
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }

@@ -58,6 +58,16 @@ pub(crate) fn typed_program_from_ast(
                                 .into_iter()
                                 .map(|constructor| TypedVariantConstructor {
                                     name: ConstructorName::new(constructor.name),
+                                    payload: constructor
+                                        .payload
+                                        .into_iter()
+                                        .map(|payload| {
+                                            parse_type_with_variants(
+                                                &payload.text,
+                                                &predeclared_variants,
+                                            )
+                                        })
+                                        .collect(),
                                 })
                                 .collect(),
                         },
@@ -178,6 +188,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
                         .iter()
                         .map(|constructor| RsigVariantConstructor {
                             name: constructor.name.clone(),
+                            payload: constructor.payload.clone(),
                         })
                         .collect(),
                 },
@@ -331,13 +342,19 @@ struct TypedBindingInfo {
     type_: RsigType,
 }
 
+#[derive(Debug, Clone)]
+struct ConstructorSignature {
+    type_name: TypeName,
+    payload: Vec<RsigType>,
+}
+
 struct TypeContext<'a> {
     next_binding_id: usize,
     scopes: Vec<BTreeMap<String, TypedBindingInfo>>,
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     imports: &'a ImportedSignatures,
-    constructors: &'a BTreeMap<String, TypeName>,
+    constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,
     declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
@@ -349,7 +366,7 @@ impl<'a> TypeContext<'a> {
         functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
         imports: &'a ImportedSignatures,
-        constructors: &'a BTreeMap<String, TypeName>,
+        constructors: &'a BTreeMap<String, ConstructorSignature>,
         records: &'a BTreeMap<String, TypeName>,
         declared_variants: &'a BTreeSet<TypeName>,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
@@ -414,7 +431,7 @@ impl<'a> TypeContext<'a> {
     }
 }
 
-fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, TypeName> {
+fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, ConstructorSignature> {
     types
         .iter()
         .flat_map(|type_| {
@@ -423,7 +440,15 @@ fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, TypeName> {
             };
             constructors
                 .iter()
-                .map(|constructor| (constructor.name.as_str().to_owned(), type_.name.clone()))
+                .map(|constructor| {
+                    (
+                        constructor.name.as_str().to_owned(),
+                        ConstructorSignature {
+                            type_name: type_.name.clone(),
+                            payload: constructor.payload.clone(),
+                        },
+                    )
+                })
                 .collect::<Vec<_>>()
         })
         .collect()
@@ -1108,6 +1133,22 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 .into_iter()
                 .map(|arg| type_expr(arg, context))
                 .collect::<Vec<_>>();
+            if let Some(signature) = constructor_signature(&callee_path, context)
+                && args.len() == signature.payload.len()
+            {
+                let constructor = callee_path
+                    .last()
+                    .map(|name| ConstructorName::new(name.clone()))
+                    .unwrap_or_else(|| ConstructorName::new("_"));
+                return TypedExpr {
+                    type_: RsigType::Variant(signature.type_name.clone()),
+                    kind: TypedExprKind::Variant {
+                        type_name: signature.type_name,
+                        constructor,
+                        payload: args,
+                    },
+                };
+            }
             if is_named_call(&callee_path, context) {
                 if let Some((params, result)) = call_signature(&callee_path, context)
                     && args.len() < params.len()
@@ -1300,12 +1341,13 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     if let Some((params, result)) = call_signature(&path, context) {
         return partial_call_lambda(path, Vec::new(), params, result, context);
     }
-    if let Some((type_name, constructor)) = value_constructor_type(&path, context) {
+    if let Some((type_name, constructor)) = nullary_constructor_type(&path, context) {
         return TypedExpr {
             type_: RsigType::Variant(type_name.clone()),
             kind: TypedExprKind::Variant {
                 type_name,
                 constructor,
+                payload: Vec::new(),
             },
         };
     }
@@ -1315,17 +1357,31 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     }
 }
 
-fn value_constructor_type(
+fn nullary_constructor_type(
     path: &[String],
     context: &TypeContext<'_>,
 ) -> Option<(TypeName, ConstructorName)> {
     match path {
         [constructor] => {
-            let type_name = context.constructors.get(constructor)?.clone();
-            Some((type_name, ConstructorName::new(constructor.clone())))
+            let signature = context.constructors.get(constructor)?;
+            if !signature.payload.is_empty() {
+                return None;
+            }
+            Some((
+                signature.type_name.clone(),
+                ConstructorName::new(constructor.clone()),
+            ))
         }
-        [_module, constructor] => imported_constructor_type(path, context)
-            .map(|type_name| (type_name, ConstructorName::new(constructor.clone()))),
+        [_module, constructor] => {
+            let signature = imported_constructor_signature(path, context)?;
+            if !signature.payload.is_empty() {
+                return None;
+            }
+            Some((
+                signature.type_name,
+                ConstructorName::new(constructor.clone()),
+            ))
+        }
         _ => None,
     }
 }
@@ -1505,11 +1561,18 @@ fn pattern_constructor_type(
 ) -> Option<(TypeName, ConstructorName)> {
     match path.as_slice() {
         [constructor] => {
-            let type_name = context.constructors.get(constructor)?.clone();
-            Some((type_name, ConstructorName::new(constructor.clone())))
+            let signature = context.constructors.get(constructor)?;
+            Some((
+                signature.type_name.clone(),
+                ConstructorName::new(constructor.clone()),
+            ))
         }
-        [_module, constructor] => imported_constructor_type(&path, context)
-            .map(|type_name| (type_name, ConstructorName::new(constructor.clone()))),
+        [_module, constructor] => imported_constructor_signature(&path, context).map(|signature| {
+            (
+                signature.type_name,
+                ConstructorName::new(constructor.clone()),
+            )
+        }),
         _ => None,
     }
 }
@@ -1558,7 +1621,21 @@ fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
     }
 }
 
-fn imported_constructor_type(path: &[String], context: &TypeContext<'_>) -> Option<TypeName> {
+fn constructor_signature(
+    path: &[String],
+    context: &TypeContext<'_>,
+) -> Option<ConstructorSignature> {
+    match path {
+        [constructor] => context.constructors.get(constructor).cloned(),
+        [_module, _constructor] => imported_constructor_signature(path, context),
+        _ => None,
+    }
+}
+
+fn imported_constructor_signature(
+    path: &[String],
+    context: &TypeContext<'_>,
+) -> Option<ConstructorSignature> {
     let [module, constructor] = path else {
         return None;
     };
@@ -1566,11 +1643,50 @@ fn imported_constructor_type(path: &[String], context: &TypeContext<'_>) -> Opti
         .imports
         .get(module.as_str())
         .and_then(|rsig| rsig.find_constructor(constructor))
-        .map(|type_| imported_type_name(module, &type_.name))
+        .and_then(|type_| {
+            let RsigTypeDeclKind::Variant { constructors } = &type_.body else {
+                return None;
+            };
+            constructors
+                .iter()
+                .find(|candidate| candidate.name.as_str() == constructor)
+                .map(|candidate| ConstructorSignature {
+                    type_name: imported_type_name(module, &type_.name),
+                    payload: candidate
+                        .payload
+                        .iter()
+                        .map(|payload| qualify_imported_type(module, payload))
+                        .collect(),
+                })
+        })
 }
 
 fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
     TypeName::new(format!("{module_name}.{}", type_name.as_str()))
+}
+
+fn qualify_imported_type(module_name: &str, type_: &RsigType) -> RsigType {
+    match type_ {
+        RsigType::ActorId(message) => {
+            RsigType::ActorId(Box::new(qualify_imported_type(module_name, message)))
+        }
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(qualify_imported_type(module_name, parameter)),
+            result: Box::new(qualify_imported_type(module_name, result)),
+        },
+        RsigType::List(element) => {
+            RsigType::List(Box::new(qualify_imported_type(module_name, element)))
+        }
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| qualify_imported_type(module_name, item))
+                .collect(),
+        ),
+        RsigType::Record(name) => RsigType::Record(imported_type_name(module_name, name)),
+        RsigType::Variant(name) => RsigType::Variant(imported_type_name(module_name, name)),
+        other => other.clone(),
+    }
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
@@ -1653,17 +1769,23 @@ fn path_type(path: &[String], context: &TypeContext<'_>) -> RsigType {
         context
             .resolve(head)
             .map(|binding| binding.type_.clone())
-            .or_else(|| {
-                context
-                    .constructors
-                    .get(head)
-                    .map(|name| RsigType::Variant(name.clone()))
-            })
+            .or_else(|| context.constructors.get(head).map(constructor_value_type))
             .unwrap_or(RsigType::Unknown)
-    } else if let Some(type_name) = imported_constructor_type(path, context) {
-        RsigType::Variant(type_name)
+    } else if let Some(signature) = imported_constructor_signature(path, context) {
+        constructor_value_type(&signature)
     } else {
         RsigType::Unknown
+    }
+}
+
+fn constructor_value_type(signature: &ConstructorSignature) -> RsigType {
+    if signature.payload.is_empty() {
+        RsigType::Variant(signature.type_name.clone())
+    } else {
+        rsig_source_function_type(
+            signature.payload.clone(),
+            RsigType::Variant(signature.type_name.clone()),
+        )
     }
 }
 
@@ -1883,12 +2005,16 @@ fn collect_actors_from_expr(
                 locals.remove(binder.as_str());
             }
         }
+        RirExpr::Variant { payload, .. } => {
+            for value in payload {
+                collect_actors_from_expr(owner, value, locals, context, actors);
+            }
+        }
         RirExpr::Bool(_)
         | RirExpr::Unit
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
-        | RirExpr::Variant { .. }
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }
@@ -2081,12 +2207,16 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
             nested.insert(binder.as_str().to_owned());
             collect_free_expr(body, &nested, free);
         }
+        RirExpr::Variant { payload, .. } => {
+            for value in payload {
+                collect_free_expr(value, bound, free);
+            }
+        }
         RirExpr::Bool(_)
         | RirExpr::Unit
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
-        | RirExpr::Variant { .. }
         | RirExpr::String(_) => {}
     }
 }
@@ -2194,12 +2324,16 @@ fn closure_convert_expr(expr: &mut RirExpr) {
         }
         RirExpr::Spawn { body, .. } => closure_convert_block(body),
         RirExpr::Receive { body, .. } => closure_convert_expr(body),
+        RirExpr::Variant { payload, .. } => {
+            for value in payload {
+                closure_convert_expr(value);
+            }
+        }
         RirExpr::Bool(_)
         | RirExpr::Unit
         | RirExpr::Char(_)
         | RirExpr::Float(_)
         | RirExpr::Int(_)
-        | RirExpr::Variant { .. }
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }
@@ -2474,9 +2608,14 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         TypedExprKind::Variant {
             type_name,
             constructor,
+            payload,
         } => RirExpr::Variant {
             type_name,
             constructor,
+            payload: payload
+                .into_iter()
+                .map(|payload| lower_expr(payload, context))
+                .collect(),
         },
         TypedExprKind::Char(value) => RirExpr::Char(value),
         TypedExprKind::Float(value) => RirExpr::Float(value),

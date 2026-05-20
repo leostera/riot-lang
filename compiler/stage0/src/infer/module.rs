@@ -249,9 +249,15 @@ fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
             continue;
         };
         for constructor in constructors {
+            let payload = constructor
+                .payload
+                .iter()
+                .map(|type_| qualify_imported_type(module_name, type_))
+                .collect::<Vec<_>>();
+            let type_ = constructor_type(&payload, Type::Variant(type_name.clone()), state);
             state.add_prelude_value(
                 format!("{module_name}.{}", constructor.name.as_str()),
-                TypeScheme::monomorphic(Type::Variant(type_name.clone())),
+                TypeScheme::monomorphic(type_),
             );
         }
     }
@@ -262,6 +268,20 @@ fn source_function_type(params: Vec<Type>, result: Type) -> Type {
         Type::arrow(Type::Unit, result)
     } else {
         Type::arrows(params, result)
+    }
+}
+
+fn constructor_type(payload: &[RsigType], result: Type, state: &mut State) -> Type {
+    if payload.is_empty() {
+        result
+    } else {
+        Type::arrows(
+            payload
+                .iter()
+                .map(|type_| rsig_type_to_infer_type(type_, state))
+                .collect(),
+            result,
+        )
     }
 }
 
@@ -303,10 +323,13 @@ fn infer_decl(
             let type_name = TypeName::new(type_.name.clone());
             if let AstTypeBody::Variant { constructors } = &type_.body {
                 for constructor in constructors {
-                    state.add_value(
-                        constructor.name.clone(),
-                        TypeScheme::monomorphic(Type::Variant(type_name.clone())),
-                    );
+                    let payload = constructor
+                        .payload
+                        .iter()
+                        .map(|payload| parse_type_with_variants(&payload.text, declared_variants))
+                        .collect::<Vec<_>>();
+                    let type_ = constructor_type(&payload, Type::Variant(type_name.clone()), state);
+                    state.add_value(constructor.name.clone(), TypeScheme::monomorphic(type_));
                 }
             }
             Ok(())
@@ -1127,6 +1150,7 @@ fn qualify_imported_type(module_name: &str, type_: &RsigType) -> RsigType {
                 .map(|item| qualify_imported_type(module_name, item))
                 .collect(),
         ),
+        RsigType::Record(name) => RsigType::Record(imported_type_name(module_name, name)),
         RsigType::Variant(name) => RsigType::Variant(imported_type_name(module_name, name)),
         other => other.clone(),
     }

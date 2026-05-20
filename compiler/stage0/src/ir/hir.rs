@@ -70,6 +70,7 @@ pub(crate) enum TypedTypeBody {
 #[derive(Debug, Clone)]
 pub(crate) struct TypedVariantConstructor {
     pub(crate) name: ConstructorName,
+    pub(crate) payload: Vec<RsigType>,
 }
 
 #[derive(Debug, Clone)]
@@ -194,6 +195,7 @@ pub(crate) enum TypedExprKind {
     Variant {
         type_name: TypeName,
         constructor: ConstructorName,
+        payload: Vec<TypedExpr>,
     },
     Char(char),
     Float(String),

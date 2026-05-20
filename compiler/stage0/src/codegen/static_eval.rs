@@ -17,6 +17,7 @@ pub(crate) enum StaticValue {
     Variant {
         type_name: TypeName,
         constructor: ConstructorName,
+        payload: Box<StaticValue>,
     },
     String(String),
     Tuple(Vec<StaticValue>),
@@ -47,7 +48,23 @@ impl StaticValue {
                     .join(", ");
                 format!("{path} {{ {rendered} }}")
             }
-            StaticValue::Variant { constructor, .. } => constructor.to_string(),
+            StaticValue::Variant {
+                constructor,
+                payload,
+                ..
+            } if matches!(payload.as_ref(), StaticValue::Unit) => constructor.to_string(),
+            StaticValue::Variant {
+                constructor,
+                payload,
+                ..
+            } if matches!(payload.as_ref(), StaticValue::Tuple(_)) => {
+                format!("{}{}", constructor, payload.to_print_string())
+            }
+            StaticValue::Variant {
+                constructor,
+                payload,
+                ..
+            } => format!("{}({})", constructor, payload.to_print_string()),
             StaticValue::String(value) => value.clone(),
             StaticValue::Tuple(items) => {
                 let rendered = items
@@ -200,9 +217,20 @@ pub(crate) fn eval_expr(
         RirExpr::Variant {
             type_name,
             constructor,
+            payload,
         } => Some(StaticValue::Variant {
             type_name: type_name.clone(),
             constructor: constructor.clone(),
+            payload: Box::new(match payload.as_slice() {
+                [] => StaticValue::Unit,
+                [value] => eval_expr(value, bindings, functions, depth)?,
+                values => StaticValue::Tuple(
+                    values
+                        .iter()
+                        .map(|value| eval_expr(value, bindings, functions, depth))
+                        .collect::<Option<Vec<_>>>()?,
+                ),
+            }),
         }),
         RirExpr::Field { .. } | RirExpr::TupleIndex { .. } => None,
         RirExpr::Char(value) => Some(StaticValue::Char(*value)),
@@ -239,7 +267,10 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                 StaticValue::Variant {
                     type_name: actual_type,
                     constructor: actual_constructor,
-                } if actual_type == type_name && actual_constructor == constructor
+                    payload,
+                } if actual_type == type_name
+                    && actual_constructor == constructor
+                    && matches!(payload.as_ref(), StaticValue::Unit)
             )
         }
     }

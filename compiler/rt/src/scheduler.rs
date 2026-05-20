@@ -300,7 +300,28 @@ impl SchedulerLocal {
                     .join(", ");
                 format!("{path} {{ {rendered} }}")
             }
-            HeapObjectKind::Variant { constructor, .. } => constructor.clone(),
+            HeapObjectKind::Variant {
+                constructor,
+                payload,
+                ..
+            } => {
+                if *payload == VALUE_UNIT {
+                    constructor.clone()
+                } else {
+                    let rendered = self.render_value(*payload);
+                    if matches!(
+                        heap_index(*payload)
+                            .and_then(|index| self.heap.get(index))
+                            .and_then(Option::as_ref)
+                            .map(|object| &object.kind),
+                        Some(HeapObjectKind::Tuple(_))
+                    ) {
+                        format!("{constructor}{rendered}")
+                    } else {
+                        format!("{constructor}({rendered})")
+                    }
+                }
+            }
         }
     }
 
@@ -366,12 +387,18 @@ impl SchedulerLocal {
                 HeapObjectKind::Variant {
                     type_name: lhs_type,
                     constructor: lhs_constructor,
+                    payload: lhs_payload,
                 },
                 HeapObjectKind::Variant {
                     type_name: rhs_type,
                     constructor: rhs_constructor,
+                    payload: rhs_payload,
                 },
-            ) => lhs_type == rhs_type && lhs_constructor == rhs_constructor,
+            ) => {
+                lhs_type == rhs_type
+                    && lhs_constructor == rhs_constructor
+                    && self.values_equal(*lhs_payload, *rhs_payload)
+            }
             _ => false,
         }
     }

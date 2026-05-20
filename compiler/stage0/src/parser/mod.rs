@@ -157,9 +157,34 @@ impl<'src> Parser<'src> {
         let mut constructors = Vec::new();
         loop {
             let (constructor, constructor_span) = self.expect_upper_ident()?;
+            let payload = if self.match_kind(TokenKind::LParen).is_some() {
+                let mut payload = Vec::new();
+                if self.match_kind(TokenKind::RParen).is_none() {
+                    loop {
+                        payload.push(self.parse_type_annotation_until(
+                            &[TokenKind::Comma, TokenKind::RParen],
+                            "expected `,` or `)` after variant constructor payload type",
+                        )?);
+                        if self.match_kind(TokenKind::Comma).is_none() {
+                            break;
+                        }
+                        if self.at(TokenKind::RParen) {
+                            break;
+                        }
+                    }
+                    self.expect(
+                        TokenKind::RParen,
+                        "expected `)` after variant payload types",
+                    )?;
+                }
+                payload
+            } else {
+                Vec::new()
+            };
             constructors.push(AstVariantConstructor {
                 name: constructor,
                 name_span: constructor_span,
+                payload,
             });
 
             if self.match_kind(TokenKind::Pipe).is_none() {
