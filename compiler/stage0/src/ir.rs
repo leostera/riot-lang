@@ -124,6 +124,14 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
                 .map(|param| param.type_.clone())
                 .collect(),
             result: function.result.clone(),
+            scheme: RsigTypeScheme::from_signature(
+                &function
+                    .params
+                    .iter()
+                    .map(|param| param.type_.clone())
+                    .collect::<Vec<_>>(),
+                &function.result,
+            ),
             symbol: function.symbol.clone(),
             fingerprint: 0,
         }));
@@ -133,6 +141,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
             name: external.name.clone(),
             params: external.params.clone(),
             result: external.result.clone(),
+            scheme: RsigTypeScheme::from_signature(&external.params, &external.result),
             abi: external.abi.clone(),
             fingerprint: 0,
         }));

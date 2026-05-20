@@ -206,16 +206,12 @@ fn install_imports(state: &mut State, program: &AstProgram, imports: &ImportedSi
 
 fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
     for export in &rsig.exports {
-        let (name, params, result) = match export {
-            RsigExport::Function(function) => {
-                (&function.name, function.params.as_slice(), &function.result)
-            }
-            RsigExport::External(external) => {
-                (&external.name, external.params.as_slice(), &external.result)
-            }
+        let (name, scheme) = match export {
+            RsigExport::Function(function) => (&function.name, &function.scheme),
+            RsigExport::External(external) => (&external.name, &external.scheme),
         };
-        let type_ = rsig_signature_to_infer_type(params, result, state);
-        state.add_prelude_value(format!("{module_name}.{name}"), state.generalize(type_));
+        let scheme = rsig_scheme_to_infer_scheme(scheme, state);
+        state.add_prelude_value(format!("{module_name}.{name}"), scheme);
     }
 }
 
@@ -680,6 +676,59 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
         ),
         RsigType::Unit => Type::Unit,
         RsigType::Unknown | RsigType::Var(_) => state.fresh_var(),
+    }
+}
+
+fn rsig_scheme_to_infer_scheme(scheme: &RsigTypeScheme, state: &mut State) -> TypeScheme {
+    let mut vars = BTreeMap::new();
+    let mut quantifiers = Vec::new();
+    for name in &scheme.quantifiers {
+        let fresh = state.fresh_var();
+        if let Type::Var(var) = fresh {
+            quantifiers.push(var);
+            vars.insert(name.clone(), Type::Var(var));
+        }
+    }
+    TypeScheme {
+        quantifiers,
+        body: rsig_type_to_infer_type_with_vars(&scheme.body, state, &mut vars),
+    }
+}
+
+fn rsig_type_to_infer_type_with_vars(
+    type_: &RsigType,
+    state: &mut State,
+    vars: &mut BTreeMap<String, Type>,
+) -> Type {
+    match type_ {
+        RsigType::ActorId(message) => Type::ActorId(Box::new(rsig_type_to_infer_type_with_vars(
+            message, state, vars,
+        ))),
+        RsigType::Arrow { parameter, result } => Type::arrow(
+            rsig_type_to_infer_type_with_vars(parameter, state, vars),
+            rsig_type_to_infer_type_with_vars(result, state, vars),
+        ),
+        RsigType::Bool => Type::Bool,
+        RsigType::Char => Type::Char,
+        RsigType::F64 => Type::F64,
+        RsigType::I64 => Type::I64,
+        RsigType::List(element) => Type::List(Box::new(rsig_type_to_infer_type_with_vars(
+            element, state, vars,
+        ))),
+        RsigType::Record(name) => Type::Record(name.clone()),
+        RsigType::String => Type::String,
+        RsigType::Tuple(items) => Type::Tuple(
+            items
+                .iter()
+                .map(|item| rsig_type_to_infer_type_with_vars(item, state, vars))
+                .collect(),
+        ),
+        RsigType::Unit => Type::Unit,
+        RsigType::Var(name) => vars
+            .entry(name.clone())
+            .or_insert_with(|| state.fresh_var())
+            .clone(),
+        RsigType::Unknown => state.fresh_var(),
     }
 }
 

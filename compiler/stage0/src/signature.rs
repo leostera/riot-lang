@@ -5,7 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 2;
+const VERSION: u16 = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
@@ -25,6 +25,7 @@ pub(crate) struct RsigFunction {
     pub(crate) name: String,
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
+    pub(crate) scheme: RsigTypeScheme,
     pub(crate) symbol: String,
     pub(crate) fingerprint: u64,
 }
@@ -34,6 +35,7 @@ pub(crate) struct RsigExternal {
     pub(crate) name: String,
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
+    pub(crate) scheme: RsigTypeScheme,
     pub(crate) abi: String,
     pub(crate) fingerprint: u64,
 }
@@ -65,6 +67,13 @@ pub(crate) struct RsigTypeScheme {
 }
 
 impl RsigTypeScheme {
+    pub(crate) fn from_signature(params: &[RsigType], result: &RsigType) -> Self {
+        let body = source_function_type(params.to_vec(), result.clone());
+        let mut quantifiers = Vec::new();
+        collect_type_vars(&body, &mut quantifiers);
+        Self { quantifiers, body }
+    }
+
     pub(crate) fn monomorphic(body: RsigType) -> Self {
         Self {
             quantifiers: Vec::new(),
@@ -82,6 +91,48 @@ impl RsigTypeScheme {
                 self.body.canonical()
             )
         }
+    }
+}
+
+fn source_function_type(params: Vec<RsigType>, result: RsigType) -> RsigType {
+    if params.is_empty() {
+        RsigType::Arrow {
+            parameter: Box::new(RsigType::Unit),
+            result: Box::new(result),
+        }
+    } else {
+        params
+            .into_iter()
+            .rev()
+            .fold(result, |result, parameter| RsigType::Arrow {
+                parameter: Box::new(parameter),
+                result: Box::new(result),
+            })
+    }
+}
+
+fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
+    match type_ {
+        RsigType::ActorId(message) | RsigType::List(message) => collect_type_vars(message, vars),
+        RsigType::Arrow { parameter, result } => {
+            collect_type_vars(parameter, vars);
+            collect_type_vars(result, vars);
+        }
+        RsigType::Tuple(items) => {
+            for item in items {
+                collect_type_vars(item, vars);
+            }
+        }
+        RsigType::Var(name) if !vars.contains(name) => vars.push(name.clone()),
+        RsigType::Var(_)
+        | RsigType::Bool
+        | RsigType::Char
+        | RsigType::F64
+        | RsigType::I64
+        | RsigType::Record(_)
+        | RsigType::String
+        | RsigType::Unit
+        | RsigType::Unknown => {}
     }
 }
 
@@ -142,17 +193,19 @@ impl RsigExport {
     fn canonical_without_fingerprint(&self) -> String {
         match self {
             RsigExport::Function(function) => format!(
-                "fn {}({}) -> {} = {}",
+                "fn {}({}) -> {} : {} = {}",
                 function.name,
                 render_types(&function.params),
                 function.result.canonical(),
+                function.scheme.canonical(),
                 function.symbol
             ),
             RsigExport::External(external) => format!(
-                "external {}({}) -> {} = {}",
+                "external {}({}) -> {} : {} = {}",
                 external.name,
                 render_types(&external.params),
                 external.result.canonical(),
+                external.scheme.canonical(),
                 external.abi
             ),
         }
@@ -192,12 +245,14 @@ impl RsigExport {
                     vars.canonicalize(param);
                 }
                 vars.canonicalize(&mut function.result);
+                vars.canonicalize_scheme(&mut function.scheme);
             }
             RsigExport::External(external) => {
                 for param in &mut external.params {
                     vars.canonicalize(param);
                 }
                 vars.canonicalize(&mut external.result);
+                vars.canonicalize_scheme(&mut external.scheme);
             }
         }
     }
@@ -209,6 +264,13 @@ struct TypeVarCanonicalizer {
 }
 
 impl TypeVarCanonicalizer {
+    fn canonicalize_scheme(&mut self, scheme: &mut RsigTypeScheme) {
+        self.canonicalize(&mut scheme.body);
+        let mut quantifiers = Vec::new();
+        collect_type_vars(&scheme.body, &mut quantifiers);
+        scheme.quantifiers = quantifiers;
+    }
+
     fn canonicalize(&mut self, type_: &mut RsigType) {
         match type_ {
             RsigType::ActorId(message) | RsigType::List(message) => self.canonicalize(message),
@@ -472,6 +534,7 @@ fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
                 put_string(&mut bytes, &function.name);
                 put_types(&mut bytes, &function.params);
                 put_type(&mut bytes, &function.result);
+                put_scheme(&mut bytes, &function.scheme);
                 put_string(&mut bytes, &function.symbol);
                 put_u64(&mut bytes, function.fingerprint);
             }
@@ -480,6 +543,7 @@ fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
                 put_string(&mut bytes, &external.name);
                 put_types(&mut bytes, &external.params);
                 put_type(&mut bytes, &external.result);
+                put_scheme(&mut bytes, &external.scheme);
                 put_string(&mut bytes, &external.abi);
                 put_u64(&mut bytes, external.fingerprint);
             }
@@ -509,6 +573,7 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
         let name = get_string(&mut cursor)?;
         let params = get_types(&mut cursor)?;
         let result = get_type(&mut cursor)?;
+        let scheme = get_scheme(&mut cursor)?;
         let payload = get_string(&mut cursor)?;
         let fingerprint = get_u64(&mut cursor)?;
         match tag[0] {
@@ -516,6 +581,7 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
                 name,
                 params,
                 result,
+                scheme,
                 symbol: payload,
                 fingerprint,
             })),
@@ -523,6 +589,7 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
                 name,
                 params,
                 result,
+                scheme,
                 abi: payload,
                 fingerprint,
             })),
@@ -550,6 +617,24 @@ fn get_types(cursor: &mut Cursor<&[u8]>) -> miette::Result<Vec<RsigType>> {
         types.push(get_type(cursor)?);
     }
     Ok(types)
+}
+
+fn put_scheme(bytes: &mut Vec<u8>, scheme: &RsigTypeScheme) {
+    put_u32(bytes, scheme.quantifiers.len() as u32);
+    for quantifier in &scheme.quantifiers {
+        put_string(bytes, quantifier);
+    }
+    put_type(bytes, &scheme.body);
+}
+
+fn get_scheme(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigTypeScheme> {
+    let count = get_u32(cursor)?;
+    let mut quantifiers = Vec::new();
+    for _ in 0..count {
+        quantifiers.push(get_string(cursor)?);
+    }
+    let body = get_type(cursor)?;
+    Ok(RsigTypeScheme { quantifiers, body })
 }
 
 fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
@@ -660,7 +745,8 @@ pub(crate) type ImportedSignatures = BTreeMap<String, Rsig>;
 #[cfg(test)]
 mod tests {
     use super::{
-        Rsig, RsigExport, RsigFunction, RsigType, decode_rsig, encode_rsig, parse_type_signature,
+        Rsig, RsigExport, RsigFunction, RsigType, RsigTypeScheme, decode_rsig, encode_rsig,
+        parse_type_signature,
     };
 
     #[test]
@@ -694,6 +780,16 @@ mod tests {
                     RsigType::I64,
                 ],
                 result: RsigType::I64,
+                scheme: RsigTypeScheme::from_signature(
+                    &[
+                        RsigType::Arrow {
+                            parameter: Box::new(RsigType::I64),
+                            result: Box::new(RsigType::I64),
+                        },
+                        RsigType::I64,
+                    ],
+                    &RsigType::I64,
+                ),
                 symbol: "riot_mod_Apply_apply_i64".to_owned(),
                 fingerprint: 0,
             })],
@@ -713,6 +809,10 @@ mod tests {
                 name: "id".to_owned(),
                 params: vec![RsigType::Var("'t17".to_owned())],
                 result: RsigType::Var("'t17".to_owned()),
+                scheme: RsigTypeScheme::from_signature(
+                    &[RsigType::Var("'t17".to_owned())],
+                    &RsigType::Var("'t17".to_owned()),
+                ),
                 symbol: "riot_mod_Id_id".to_owned(),
                 fingerprint: 0,
             })],
@@ -723,6 +823,10 @@ mod tests {
                 name: "id".to_owned(),
                 params: vec![RsigType::Var("'source_name".to_owned())],
                 result: RsigType::Var("'source_name".to_owned()),
+                scheme: RsigTypeScheme::from_signature(
+                    &[RsigType::Var("'source_name".to_owned())],
+                    &RsigType::Var("'source_name".to_owned()),
+                ),
                 symbol: "riot_mod_Id_id".to_owned(),
                 fingerprint: 0,
             })],
