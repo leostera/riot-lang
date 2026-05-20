@@ -9,7 +9,7 @@ use crate::scheduler::{
 };
 use crate::value::{
     ClosureApplyFn, HeapObjectKind, HeapOwner, RtValue, VALUE_UNIT, heap_index, value_actor_id,
-    value_bool, value_i64,
+    value_bool, value_bool_payload, value_i64, value_i64_payload,
 };
 
 #[unsafe(no_mangle)]
@@ -58,8 +58,18 @@ pub extern "C" fn riot_rt_value_i64(value: i64) -> RtValue {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_as_i64(value: RtValue) -> i64 {
+    value_i64_payload(value).unwrap_or_else(|| runtime_abort("expected an i64 value"))
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_bool(value: bool) -> RtValue {
     value_bool(value)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_as_bool(value: RtValue) -> bool {
+    value_bool_payload(value).unwrap_or_else(|| runtime_abort("expected a bool value"))
 }
 
 #[unsafe(no_mangle)]

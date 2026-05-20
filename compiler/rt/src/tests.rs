@@ -6,11 +6,12 @@ use crate::abi::{
     riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
     riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold, riot_rt_init,
     riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown,
-    riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_bool, riot_rt_value_closure,
-    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get,
-    riot_rt_value_list_len, riot_rt_value_record_begin, riot_rt_value_record_get,
-    riot_rt_value_record_set, riot_rt_value_string, riot_rt_value_string_concat,
-    riot_rt_value_string_len, riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_as_bool, riot_rt_value_as_i64,
+    riot_rt_value_bool, riot_rt_value_closure, riot_rt_value_eq, riot_rt_value_i64,
+    riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
+    riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
+    riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
+    riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -184,6 +185,13 @@ fn closure_values_apply_and_trace_captures() {
     riot_rt_root_pop(1);
     assert_eq!(riot_rt_gc_collect(), 2);
     assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn scalar_runtime_values_unbox_through_the_abi() {
+    assert_eq!(riot_rt_value_as_i64(riot_rt_value_i64(42)), 42);
+    assert!(riot_rt_value_as_bool(riot_rt_value_bool(true)));
+    assert!(!riot_rt_value_as_bool(riot_rt_value_bool(false)));
 }
 
 #[test]

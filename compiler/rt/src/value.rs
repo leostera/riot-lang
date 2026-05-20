@@ -71,6 +71,14 @@ pub(crate) fn value_bool(value: bool) -> RtValue {
     }
 }
 
+pub(crate) fn value_bool_payload(value: RtValue) -> Option<bool> {
+    match value {
+        VALUE_BOOL_TRUE => Some(true),
+        VALUE_BOOL_FALSE => Some(false),
+        _ => None,
+    }
+}
+
 pub(crate) fn value_actor_id(value: ActorId) -> RtValue {
     if value.is_null() || !value.is_aligned() {
         crate::scheduler::runtime_abort("actor id is not pointer-aligned");
