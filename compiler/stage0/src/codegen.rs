@@ -512,6 +512,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
             RirExpr::Call { callee, args } => self.emit_call(callee, args, env),
+            RirExpr::Apply { .. } => bail!("higher-order apply is not lowered to LLVM yet"),
             RirExpr::Lambda { .. } => bail!("lambda values are not lowered to LLVM yet"),
             RirExpr::Unit => Ok(CgValue::Unit),
             RirExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
@@ -2291,6 +2292,7 @@ fn infer_expr_abi(
             _ => AbiType::Unknown,
         },
         RirExpr::Unit => AbiType::Unit,
+        RirExpr::Apply { .. } => AbiType::Unknown,
         RirExpr::Lambda { .. } => AbiType::Value,
         RirExpr::Path(path) => path
             .first()
@@ -2336,6 +2338,12 @@ fn mark_expr_constraints(
             mark_expr_constraints(else_branch, params, locals, param_types, functions);
         }
         RirExpr::Call { args, .. } => {
+            for arg in args {
+                mark_expr_constraints(arg, params, locals, param_types, functions);
+            }
+        }
+        RirExpr::Apply { callee, args } => {
+            mark_expr_constraints(callee, params, locals, param_types, functions);
             for arg in args {
                 mark_expr_constraints(arg, params, locals, param_types, functions);
             }

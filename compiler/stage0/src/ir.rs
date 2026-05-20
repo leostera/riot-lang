@@ -395,6 +395,13 @@ fn infer_ast_expr_type(
                 _ => RsigType::Unknown,
             }
         }
+        AstExpr::Apply { callee, args, .. } => {
+            infer_ast_expr_type(callee, locals, functions);
+            for arg in args {
+                infer_ast_expr_type(arg, locals, functions);
+            }
+            RsigType::Unknown
+        }
         AstExpr::Lambda { body, .. } => {
             let mut nested_locals = locals.clone();
             let mut nested_params = Vec::new();
@@ -514,6 +521,12 @@ fn mark_ast_constraints(
         AstExpr::Call { args, .. }
         | AstExpr::Tuple { items: args, .. }
         | AstExpr::List { items: args, .. } => {
+            for arg in args {
+                mark_ast_constraints(arg, params, locals, param_types, functions);
+            }
+        }
+        AstExpr::Apply { callee, args, .. } => {
+            mark_ast_constraints(callee, params, locals, param_types, functions);
             for arg in args {
                 mark_ast_constraints(arg, params, locals, param_types, functions);
             }
@@ -682,11 +695,41 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             kind: TypedExprKind::Bool(value),
         },
         AstExpr::Call { callee, args, .. } => {
-            let type_ = call_result_type(&callee.segments, context);
+            if is_named_call(&callee.segments, context) {
+                let type_ = call_result_type(&callee.segments, context);
+                TypedExpr {
+                    type_,
+                    kind: TypedExprKind::Call {
+                        callee: callee.segments,
+                        args: args
+                            .into_iter()
+                            .map(|arg| type_expr(arg, context))
+                            .collect(),
+                    },
+                }
+            } else {
+                let callee = TypedExpr {
+                    type_: path_type(&callee.segments, context),
+                    kind: TypedExprKind::Path(callee.segments),
+                };
+                TypedExpr {
+                    type_: RsigType::Unknown,
+                    kind: TypedExprKind::Apply {
+                        callee: Box::new(callee),
+                        args: args
+                            .into_iter()
+                            .map(|arg| type_expr(arg, context))
+                            .collect(),
+                    },
+                }
+            }
+        }
+        AstExpr::Apply { callee, args, .. } => {
+            let callee = type_expr(*callee, context);
             TypedExpr {
-                type_,
-                kind: TypedExprKind::Call {
-                    callee: callee.segments,
+                type_: RsigType::Unknown,
+                kind: TypedExprKind::Apply {
+                    callee: Box::new(callee),
                     args: args
                         .into_iter()
                         .map(|arg| type_expr(arg, context))
@@ -878,6 +921,35 @@ fn typed_binary_i64(
     }
 }
 
+fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
+    match callee {
+        [name] if context.bindings.contains_key(name) => false,
+        [name]
+            if matches!(
+                name.as_str(),
+                "dbg"
+                    | "println"
+                    | "send"
+                    | "monitor"
+                    | "link"
+                    | "list_len"
+                    | "list_get"
+                    | "string_len"
+                    | "string_concat"
+            ) =>
+        {
+            true
+        }
+        [name] => context.externals.contains_key(name) || context.functions.contains_key(name),
+        [module, name] => context
+            .imports
+            .get(module)
+            .and_then(|rsig| rsig.find(name))
+            .is_some(),
+        _ => false,
+    }
+}
+
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
     match callee {
         [name] if name == "dbg" || name == "println" => RsigType::Unit,
@@ -1043,6 +1115,12 @@ fn collect_actors_from_expr(
             collect_actors_from_expr(owner, else_branch, locals, context, actors);
         }
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
+            for arg in args {
+                collect_actors_from_expr(owner, arg, locals, context, actors);
+            }
+        }
+        RirExpr::Apply { callee, args } => {
+            collect_actors_from_expr(owner, callee, locals, context, actors);
             for arg in args {
                 collect_actors_from_expr(owner, arg, locals, context, actors);
             }
@@ -1232,6 +1310,12 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
                 collect_free_expr(arg, bound, free);
             }
         }
+        RirExpr::Apply { callee, args } => {
+            collect_free_expr(callee, bound, free);
+            for arg in args {
+                collect_free_expr(arg, bound, free);
+            }
+        }
         RirExpr::Lambda { params, body } => {
             let mut nested = bound.clone();
             for param in params {
@@ -1337,6 +1421,7 @@ fn infer_actor_slot_type(
         RirExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
         RirExpr::Tuple(_)
         | RirExpr::List(_)
+        | RirExpr::Apply { .. }
         | RirExpr::Lambda { .. }
         | RirExpr::Record { .. }
         | RirExpr::Field { .. }
@@ -1426,6 +1511,13 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
         TypedExprKind::Bool(value) => RirExpr::Bool(value),
         TypedExprKind::Call { callee, args } => RirExpr::Call {
             callee,
+            args: args
+                .into_iter()
+                .map(|arg| lower_expr(arg, context))
+                .collect(),
+        },
+        TypedExprKind::Apply { callee, args } => RirExpr::Apply {
+            callee: Box::new(lower_expr(*callee, context)),
             args: args
                 .into_iter()
                 .map(|arg| lower_expr(arg, context))

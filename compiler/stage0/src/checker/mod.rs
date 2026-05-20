@@ -588,6 +588,12 @@ fn validate_expr(
                     }
                     Ok(ExprCategory::Other)
                 }
+                _ if matches!(bindings.get(name), Some(BindingKind::Value(_))) => {
+                    for arg in args {
+                        validate_expr(ctx, arg, bindings, in_actor)?;
+                    }
+                    Ok(ExprCategory::Other)
+                }
                 _ => Err(to_source_diagnostic(
                     ctx.source_path,
                     ctx.source,
@@ -598,6 +604,13 @@ fn validate_expr(
                 )
                 .into()),
             }
+        }
+        AstExpr::Apply { callee, args, .. } => {
+            validate_expr(ctx, callee, bindings, in_actor)?;
+            for arg in args {
+                validate_expr(ctx, arg, bindings, in_actor)?;
+            }
+            Ok(ExprCategory::Other)
         }
         AstExpr::Lambda {
             params,
@@ -1177,6 +1190,7 @@ fn infer_annotation_expr_type(
                 }),
             _ => None,
         },
+        AstExpr::Apply { .. } => Some(RsigType::Unknown),
         AstExpr::Unit { .. } => Some(RsigType::Unit),
         AstExpr::Tuple { items, .. } => Some(RsigType::Tuple(
             items
@@ -1364,6 +1378,7 @@ fn simple_expr_type(
                 }),
             _ => None,
         },
+        AstExpr::Apply { .. } => Some(RsigType::Unknown),
         AstExpr::If {
             then_branch,
             else_branch,

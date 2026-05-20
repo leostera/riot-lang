@@ -180,7 +180,10 @@ pub(crate) fn eval_expr(
         RirExpr::Int(value) => Some(StaticValue::Int(*value)),
         RirExpr::Path(path) => resolve_path(path, bindings),
         RirExpr::String(value) => Some(StaticValue::String(value.clone())),
-        RirExpr::Lambda { .. } | RirExpr::Spawn { .. } | RirExpr::Receive { .. } => None,
+        RirExpr::Apply { .. }
+        | RirExpr::Lambda { .. }
+        | RirExpr::Spawn { .. }
+        | RirExpr::Receive { .. } => None,
     }
 }
 

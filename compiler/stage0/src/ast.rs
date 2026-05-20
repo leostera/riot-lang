@@ -154,6 +154,11 @@ pub(crate) enum AstExpr {
         args: Vec<AstExpr>,
         span: TextSpan,
     },
+    Apply {
+        callee: Box<AstExpr>,
+        args: Vec<AstExpr>,
+        span: TextSpan,
+    },
     Lambda {
         params: Vec<String>,
         param_types: Vec<Option<AstTypeAnnotation>>,

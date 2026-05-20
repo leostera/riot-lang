@@ -482,18 +482,21 @@ impl<'src> Parser<'src> {
             }
 
             if self.at(TokenKind::LParen) {
-                let AstExpr::Path { path, span } = expr else {
-                    return Err(self.error_at_current(
-                        "stage0 only supports calling named functions",
-                        Some("try: dbg(\"hello world\")"),
-                    ));
-                };
+                let callee_span = expr_span(&expr);
                 let args = self.parse_arg_list()?;
                 let end = self.previous_span();
-                expr = AstExpr::Call {
-                    callee: path,
-                    args,
-                    span: span.join(end),
+                expr = if let AstExpr::Path { path, span } = expr {
+                    AstExpr::Call {
+                        callee: path,
+                        args,
+                        span: span.join(end),
+                    }
+                } else {
+                    AstExpr::Apply {
+                        callee: Box::new(expr),
+                        args,
+                        span: callee_span.join(end),
+                    }
                 };
                 continue;
             }
@@ -899,5 +902,22 @@ mod tests {
         };
         assert_eq!(params, &["n"]);
         assert!(matches!(body.tail.as_ref(), Some(AstExpr::Lambda { .. })));
+    }
+
+    #[test]
+    fn parses_apply_for_non_path_callees() {
+        let program = parse_source(
+            Utf8Path::new("apply.ml"),
+            "fn main() { dbg((fn(x) { x })(1)) }\n",
+        )
+        .unwrap();
+
+        let AstDecl::Function(function) = &program.decls[0] else {
+            panic!("expected function declaration");
+        };
+        let Some(AstExpr::Call { args, .. }) = &function.body.tail else {
+            panic!("expected dbg call");
+        };
+        assert!(matches!(args.first(), Some(AstExpr::Apply { .. })));
     }
 }

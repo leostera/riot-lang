@@ -60,6 +60,11 @@ pub(super) fn expr_span(expr: &AstExpr) -> TextSpan {
             args: _,
             span,
         }
+        | AstExpr::Apply {
+            callee: _,
+            args: _,
+            span,
+        }
         | AstExpr::Lambda {
             params: _,
             param_types: _,

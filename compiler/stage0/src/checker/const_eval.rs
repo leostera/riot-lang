@@ -271,7 +271,10 @@ pub(super) fn resolve_const_value(
             bindings,
             functions,
         ),
-        AstExpr::Lambda { .. } | AstExpr::Spawn { .. } | AstExpr::Receive { .. } => None,
+        AstExpr::Apply { .. }
+        | AstExpr::Lambda { .. }
+        | AstExpr::Spawn { .. }
+        | AstExpr::Receive { .. } => None,
     }
 }
 

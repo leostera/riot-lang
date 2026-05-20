@@ -414,6 +414,14 @@ fn infer_expr(state: &mut State, expr: &AstExpr) -> Result<Type, InferError> {
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
+        AstExpr::Apply { callee, args, .. } => {
+            let callee_type = infer_expr(state, callee)?;
+            let arg_types = args
+                .iter()
+                .map(|arg| infer_expr(state, arg))
+                .collect::<Result<Vec<_>, _>>()?;
+            apply_call(state, callee_type, arg_types)
+        }
         AstExpr::Spawn { body, .. } => {
             state.push_scope();
             infer_block(state, body)?;
@@ -618,6 +626,14 @@ mod tests {
         }
     }
 
+    fn apply(callee: AstExpr, args: Vec<AstExpr>) -> AstExpr {
+        AstExpr::Apply {
+            callee: Box::new(callee),
+            args,
+            span: span(),
+        }
+    }
+
     fn function(name: &str, params: Vec<&str>, statements: Vec<AstStmt>, tail: AstExpr) -> AstDecl {
         AstDecl::Function(AstFnDecl {
             name: name.to_owned(),
@@ -761,6 +777,52 @@ mod tests {
         assert_eq!(
             exports[0].1,
             TypeScheme::monomorphic(Type::arrow(Type::I64, Type::arrow(Type::I64, Type::I64)))
+        );
+    }
+
+    #[test]
+    fn apply_expressions_infer_from_the_callee_arrow() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                apply(lambda(vec!["x"], path("x")), vec![int(1)]),
+            )],
+        };
+
+        let inferred = infer(&program).unwrap();
+        let exports = inferred.env.exported_values();
+
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::I64))
+        );
+    }
+
+    #[test]
+    fn let_bound_lambdas_can_be_called_by_name() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                vec![AstStmt::Let {
+                    name: "id".to_owned(),
+                    name_span: span(),
+                    type_annotation: None,
+                    value: lambda(vec!["x"], path("x")),
+                    span: span(),
+                }],
+                call("id", vec![int(1)]),
+            )],
+        };
+
+        let inferred = infer(&program).unwrap();
+        let exports = inferred.env.exported_values();
+
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::I64))
         );
     }
 
