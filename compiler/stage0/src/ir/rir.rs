@@ -94,6 +94,22 @@ pub(crate) enum RirStmt {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct RirMatchArm {
+    pub(crate) pattern: RirPattern,
+    pub(crate) body: RirExpr,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum RirPattern {
+    Wildcard,
+    Bind(BindingKey),
+    Unit,
+    Bool(bool),
+    Int(i64),
+    String(String),
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum RirExpr {
     Add(Box<RirExpr>, Box<RirExpr>),
     Sub(Box<RirExpr>, Box<RirExpr>),
@@ -110,6 +126,10 @@ pub(crate) enum RirExpr {
         condition: Box<RirExpr>,
         then_branch: Box<RirExpr>,
         else_branch: Box<RirExpr>,
+    },
+    Match {
+        scrutinee: Box<RirExpr>,
+        arms: Vec<RirMatchArm>,
     },
     Bool(bool),
     Call {

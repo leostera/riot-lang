@@ -87,6 +87,25 @@ pub(crate) struct TypedExpr {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct TypedMatchArm {
+    pub(crate) pattern: TypedPattern,
+    pub(crate) body: TypedExpr,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum TypedPattern {
+    Wildcard,
+    Bind {
+        binding: HirBinding,
+        type_: RsigType,
+    },
+    Unit,
+    Bool(bool),
+    Int(i64),
+    String(String),
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum TypedExprKind {
     Add(Box<TypedExpr>, Box<TypedExpr>),
     Sub(Box<TypedExpr>, Box<TypedExpr>),
@@ -103,6 +122,10 @@ pub(crate) enum TypedExprKind {
         condition: Box<TypedExpr>,
         then_branch: Box<TypedExpr>,
         else_branch: Box<TypedExpr>,
+    },
+    Match {
+        scrutinee: Box<TypedExpr>,
+        arms: Vec<TypedMatchArm>,
     },
     Bool(bool),
     Call {

@@ -10,7 +10,9 @@ use const_eval::{ConstFunction, ConstValue, resolve_const_value};
 use span::expr_span;
 use types::parse_primitive_type;
 
-use crate::ast::{AstBlock, AstDecl, AstExpr, AstProgram, AstStmt, AstTypeAnnotation, TextSpan};
+use crate::ast::{
+    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeAnnotation, TextSpan,
+};
 use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
@@ -729,6 +731,43 @@ fn validate_expr(
             validate_expr(ctx, else_branch, bindings, in_actor)?;
             Ok(ExprCategory::Other)
         }
+        AstExpr::Match {
+            scrutinee,
+            arms,
+            span,
+        } => {
+            validate_expr(ctx, scrutinee, bindings, in_actor)?;
+            let Some(last) = arms.last() else {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "empty match expression",
+                    "match expressions need at least one arm",
+                    Some("add a wildcard arm like `_ -> value`"),
+                )
+                .into());
+            };
+            if !pattern_is_irrefutable(&last.pattern) {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "non-exhaustive match expression",
+                    "stage0 match lowering currently requires a final wildcard or binder arm",
+                    Some("add a final `_ -> ...` arm"),
+                )
+                .into());
+            }
+            let scrutinee_type = simple_expr_type(ctx, scrutinee, bindings);
+            for arm in arms {
+                validate_pattern(ctx, &arm.pattern, scrutinee_type.as_ref())?;
+                let mut arm_bindings = bindings.clone();
+                bind_pattern(&arm.pattern, scrutinee_type.clone(), &mut arm_bindings);
+                validate_expr(ctx, &arm.body, &arm_bindings, in_actor)?;
+            }
+            Ok(ExprCategory::Other)
+        }
         AstExpr::Tuple { items, .. } | AstExpr::List { items, .. } => {
             for item in items {
                 validate_expr(ctx, item, bindings, in_actor)?;
@@ -831,6 +870,73 @@ fn validate_expr(
         | AstExpr::Float { .. }
         | AstExpr::Int { .. }
         | AstExpr::String { .. } => Ok(ExprCategory::Other),
+    }
+}
+
+fn pattern_is_irrefutable(pattern: &AstPattern) -> bool {
+    matches!(
+        pattern,
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. }
+    )
+}
+
+fn validate_pattern(
+    ctx: &ValidationContext<'_>,
+    pattern: &AstPattern,
+    scrutinee_type: Option<&RsigType>,
+) -> miette::Result<()> {
+    let Some(expected) = pattern_type(pattern) else {
+        return Ok(());
+    };
+    let Some(actual) = scrutinee_type else {
+        return Ok(());
+    };
+    if type_matches(&expected, actual) {
+        return Ok(());
+    }
+    Err(to_source_diagnostic(
+        ctx.source_path,
+        ctx.source,
+        pattern_span(pattern),
+        "match pattern has incompatible type",
+        format!(
+            "pattern has type `{}`, but the matched value has type `{}`",
+            expected.canonical(),
+            actual.canonical()
+        ),
+        Some("use patterns with the same type as the matched value"),
+    )
+    .into())
+}
+
+fn bind_pattern(
+    pattern: &AstPattern,
+    scrutinee_type: Option<RsigType>,
+    bindings: &mut HashMap<String, BindingKind>,
+) {
+    if let AstPattern::Bind { name, .. } = pattern {
+        bindings.insert(name.clone(), BindingKind::Value(scrutinee_type));
+    }
+}
+
+fn pattern_type(pattern: &AstPattern) -> Option<RsigType> {
+    match pattern {
+        AstPattern::Unit { .. } => Some(RsigType::Unit),
+        AstPattern::Bool { .. } => Some(RsigType::Bool),
+        AstPattern::Int { .. } => Some(RsigType::I64),
+        AstPattern::String { .. } => Some(RsigType::String),
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
+    }
+}
+
+fn pattern_span(pattern: &AstPattern) -> TextSpan {
+    match pattern {
+        AstPattern::Wildcard { span }
+        | AstPattern::Bind { span, .. }
+        | AstPattern::Unit { span }
+        | AstPattern::Bool { span, .. }
+        | AstPattern::Int { span, .. }
+        | AstPattern::String { span, .. } => *span,
     }
 }
 
@@ -1227,6 +1333,13 @@ fn infer_annotation_expr_type(
             infer_annotation_expr_type(ctx, then_branch, bindings).unwrap_or(RsigType::Unknown),
             infer_annotation_expr_type(ctx, else_branch, bindings).unwrap_or(RsigType::Unknown),
         )),
+        AstExpr::Match { arms, .. } => arms
+            .iter()
+            .map(|arm| {
+                infer_annotation_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown)
+            })
+            .reduce(merge_annotation_types)
+            .or(Some(RsigType::Unknown)),
         AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
             [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
@@ -1459,6 +1572,10 @@ fn simple_expr_type(
             let else_type = simple_expr_type(ctx, else_branch, bindings)?;
             type_matches(&then_type, &else_type).then_some(then_type)
         }
+        AstExpr::Match { arms, .. } => arms
+            .iter()
+            .map(|arm| simple_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown))
+            .reduce(merge_annotation_types),
         AstExpr::Record { path, .. } => Some(RsigType::Record(path.segments.join("."))),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),
         AstExpr::TupleIndex { base, index, .. } => {

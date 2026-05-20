@@ -7,7 +7,9 @@ use super::scheme::TypeScheme;
 use super::state::State;
 use super::types::Type;
 use super::unifier::UnifyError;
-use crate::ast::{AstBlock, AstDecl, AstExpr, AstFnDecl, AstProgram, AstStmt, TextSpan};
+use crate::ast::{
+    AstBlock, AstDecl, AstExpr, AstFnDecl, AstPattern, AstProgram, AstStmt, TextSpan,
+};
 use crate::signature::{
     ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeScheme, parse_type,
     parse_type_signature,
@@ -486,6 +488,23 @@ fn infer_expr_kind(
             state.unify(&then_type, &else_type)?;
             Ok(state.resolve(&then_type))
         }
+        AstExpr::Match {
+            scrutinee, arms, ..
+        } => {
+            if arms.is_empty() {
+                return Err(InferError::Unsupported("empty match"));
+            }
+            let scrutinee_type = infer_expr(state, scrutinee, expression_types, binding_schemes)?;
+            let result = state.fresh_var();
+            for arm in arms {
+                state.push_scope();
+                infer_pattern(state, &arm.pattern, &scrutinee_type)?;
+                let body_type = infer_expr(state, &arm.body, expression_types, binding_schemes)?;
+                state.unify(&result, &body_type)?;
+                state.pop_scope();
+            }
+            Ok(state.resolve(&result))
+        }
         AstExpr::Tuple { items, .. } => Ok(Type::Tuple(
             items
                 .iter()
@@ -608,6 +627,29 @@ fn apply_call(
     Ok(callee_type)
 }
 
+fn infer_pattern(
+    state: &mut State,
+    pattern: &AstPattern,
+    scrutinee_type: &Type,
+) -> Result<(), InferError> {
+    match pattern {
+        AstPattern::Wildcard { .. } => Ok(()),
+        AstPattern::Bind { name, .. } => {
+            state.add_value(
+                name.clone(),
+                state.monomorphic(state.resolve(scrutinee_type)),
+            );
+            Ok(())
+        }
+        AstPattern::Unit { .. } => state.unify(&Type::Unit, scrutinee_type).map_err(Into::into),
+        AstPattern::Bool { .. } => state.unify(&Type::Bool, scrutinee_type).map_err(Into::into),
+        AstPattern::Int { .. } => state.unify(&Type::I64, scrutinee_type).map_err(Into::into),
+        AstPattern::String { .. } => state
+            .unify(&Type::String, scrutinee_type)
+            .map_err(Into::into),
+    }
+}
+
 fn expr_span(expr: &AstExpr) -> TextSpan {
     match expr {
         AstExpr::Add { span, .. }
@@ -622,6 +664,7 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Or { span, .. }
         | AstExpr::Not { span, .. }
         | AstExpr::If { span, .. }
+        | AstExpr::Match { span, .. }
         | AstExpr::Bool { span, .. }
         | AstExpr::Call { span, .. }
         | AstExpr::Apply { span, .. }

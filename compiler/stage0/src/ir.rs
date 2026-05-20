@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstProgram, AstStmt, TextSpan};
+use crate::ast::{AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, TextSpan};
 use crate::signature::{
     ImportedSignatures, Rsig, RsigExport, RsigExternal, RsigFunction, RsigType, RsigTypeScheme,
     parse_type_signature,
@@ -472,6 +472,15 @@ fn infer_ast_expr_type(
                 infer_ast_expr_type(else_branch, locals, functions),
             )
         }
+        AstExpr::Match {
+            scrutinee, arms, ..
+        } => {
+            infer_ast_expr_type(scrutinee, locals, functions);
+            arms.iter()
+                .map(|arm| infer_ast_expr_type(&arm.body, locals, functions))
+                .reduce(merge_types)
+                .unwrap_or(RsigType::Unknown)
+        }
         AstExpr::Bool { .. } => RsigType::Bool,
         AstExpr::Call { callee, args, .. } => {
             for arg in args {
@@ -612,6 +621,14 @@ fn mark_ast_constraints(
             mark_ast_expr_as(params, locals, param_types, condition, RsigType::Bool);
             mark_ast_constraints(then_branch, params, locals, param_types, functions);
             mark_ast_constraints(else_branch, params, locals, param_types, functions);
+        }
+        AstExpr::Match {
+            scrutinee, arms, ..
+        } => {
+            mark_ast_constraints(scrutinee, params, locals, param_types, functions);
+            for arm in arms {
+                mark_ast_constraints(&arm.body, params, locals, param_types, functions);
+            }
         }
         AstExpr::Call { args, .. }
         | AstExpr::Tuple { items: args, .. }
@@ -800,6 +817,28 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     condition: Box::new(condition),
                     then_branch: Box::new(then_branch),
                     else_branch: Box::new(else_branch),
+                },
+            }
+        }
+        AstExpr::Match {
+            scrutinee, arms, ..
+        } => {
+            let scrutinee = type_expr(*scrutinee, context);
+            let mut typed_arms = Vec::with_capacity(arms.len());
+            let mut type_ = RsigType::Unknown;
+            for arm in arms {
+                context.push_scope();
+                let pattern = type_pattern(arm.pattern, &scrutinee.type_, context);
+                let body = type_expr(arm.body, context);
+                type_ = merge_types(type_, body.type_.clone());
+                context.pop_scope();
+                typed_arms.push(TypedMatchArm { pattern, body });
+            }
+            TypedExpr {
+                type_,
+                kind: TypedExprKind::Match {
+                    scrutinee: Box::new(scrutinee),
+                    arms: typed_arms,
                 },
             }
         }
@@ -1083,6 +1122,7 @@ fn ast_expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Or { span, .. }
         | AstExpr::Not { span, .. }
         | AstExpr::If { span, .. }
+        | AstExpr::Match { span, .. }
         | AstExpr::Bool { span, .. }
         | AstExpr::Call { span, .. }
         | AstExpr::Apply { span, .. }
@@ -1138,6 +1178,24 @@ fn typed_tuple_index_type(base: &TypedExpr, index: usize) -> RsigType {
             .unwrap_or(RsigType::Unknown);
     }
     RsigType::Unknown
+}
+
+fn type_pattern(
+    pattern: AstPattern,
+    scrutinee_type: &RsigType,
+    context: &mut TypeContext<'_>,
+) -> TypedPattern {
+    match pattern {
+        AstPattern::Wildcard { .. } => TypedPattern::Wildcard,
+        AstPattern::Bind { name, .. } => TypedPattern::Bind {
+            binding: context.bind(&name, scrutinee_type.clone()),
+            type_: scrutinee_type.clone(),
+        },
+        AstPattern::Unit { .. } => TypedPattern::Unit,
+        AstPattern::Bool { value, .. } => TypedPattern::Bool(value),
+        AstPattern::Int { value, .. } => TypedPattern::Int(value),
+        AstPattern::String { value, .. } => TypedPattern::String(value),
+    }
 }
 
 fn typed_binary_i64(
@@ -1436,6 +1494,17 @@ fn collect_actors_from_expr(
             collect_actors_from_expr(owner, then_branch, locals, context, actors);
             collect_actors_from_expr(owner, else_branch, locals, context, actors);
         }
+        RirExpr::Match { scrutinee, arms } => {
+            collect_actors_from_expr(owner, scrutinee, locals, context, actors);
+            let scrutinee_type = infer_actor_slot_type(scrutinee, locals, context);
+            for arm in arms {
+                let mut arm_locals = locals.clone();
+                if let RirPattern::Bind(binding) = &arm.pattern {
+                    arm_locals.insert(binding.as_str().to_owned(), scrutinee_type);
+                }
+                collect_actors_from_expr(owner, &arm.body, &mut arm_locals, context, actors);
+            }
+        }
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
                 collect_actors_from_expr(owner, arg, locals, context, actors);
@@ -1627,6 +1696,14 @@ fn collect_free_expr(expr: &RirExpr, bound: &BTreeSet<String>, free: &mut BTreeS
             collect_free_expr(then_branch, bound, free);
             collect_free_expr(else_branch, bound, free);
         }
+        RirExpr::Match { scrutinee, arms } => {
+            collect_free_expr(scrutinee, bound, free);
+            for arm in arms {
+                let mut nested = bound.clone();
+                bind_pattern_names(&arm.pattern, &mut nested);
+                collect_free_expr(&arm.body, &nested, free);
+            }
+        }
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
                 collect_free_expr(arg, bound, free);
@@ -1688,6 +1765,12 @@ fn collect_free_block(
     }
 }
 
+fn bind_pattern_names(pattern: &RirPattern, bound: &mut BTreeSet<String>) {
+    if let RirPattern::Bind(binding) = pattern {
+        bound.insert(binding.as_str().to_owned());
+    }
+}
+
 fn closure_convert_block(block: &mut RirBlock) {
     for stmt in &mut block.statements {
         match stmt {
@@ -1722,6 +1805,12 @@ fn closure_convert_expr(expr: &mut RirExpr) {
             closure_convert_expr(condition);
             closure_convert_expr(then_branch);
             closure_convert_expr(else_branch);
+        }
+        RirExpr::Match { scrutinee, arms } => {
+            closure_convert_expr(scrutinee);
+            for arm in arms {
+                closure_convert_expr(&mut arm.body);
+            }
         }
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
@@ -1795,6 +1884,10 @@ fn infer_actor_slot_type(
             infer_actor_slot_type(then_branch, locals, context),
             infer_actor_slot_type(else_branch, locals, context),
         ),
+        RirExpr::Match { arms, .. } => arms
+            .iter()
+            .map(|arm| infer_actor_slot_type(&arm.body, locals, context))
+            .fold(None, unify_actor_slot_type),
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => None,
             [name] if name == "send" || name == "monitor" || name == "link" => None,
@@ -1915,6 +2008,23 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             then_branch: Box::new(lower_expr(*then_branch, context)),
             else_branch: Box::new(lower_expr(*else_branch, context)),
         },
+        TypedExprKind::Match { scrutinee, arms } => {
+            let scrutinee = lower_expr(*scrutinee, context);
+            let arms = arms
+                .into_iter()
+                .map(|arm| {
+                    context.push_scope();
+                    let pattern = lower_pattern(arm.pattern, context);
+                    let body = lower_expr(arm.body, context);
+                    context.pop_scope();
+                    RirMatchArm { pattern, body }
+                })
+                .collect();
+            RirExpr::Match {
+                scrutinee: Box::new(scrutinee),
+                arms,
+            }
+        }
         TypedExprKind::Bool(value) => RirExpr::Bool(value),
         TypedExprKind::Call { callee, args } => RirExpr::Call {
             callee,
@@ -2000,6 +2110,17 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             RirExpr::Path(path)
         }
         TypedExprKind::String(value) => RirExpr::String(value),
+    }
+}
+
+fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPattern {
+    match pattern {
+        TypedPattern::Wildcard => RirPattern::Wildcard,
+        TypedPattern::Bind { binding, .. } => RirPattern::Bind(context.bind_existing(&binding)),
+        TypedPattern::Unit => RirPattern::Unit,
+        TypedPattern::Bool(value) => RirPattern::Bool(value),
+        TypedPattern::Int(value) => RirPattern::Int(value),
+        TypedPattern::String(value) => RirPattern::String(value),
     }
 }
 

@@ -67,6 +67,22 @@ pub(crate) struct AstBlock {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct AstMatchArm {
+    pub(crate) pattern: AstPattern,
+    pub(crate) body: AstExpr,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum AstPattern {
+    Wildcard { span: TextSpan },
+    Bind { name: String, span: TextSpan },
+    Unit { span: TextSpan },
+    Bool { value: bool, span: TextSpan },
+    Int { value: i64, span: TextSpan },
+    String { value: String, span: TextSpan },
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum AstStmt {
     Let {
         name: String,
@@ -143,6 +159,11 @@ pub(crate) enum AstExpr {
         condition: Box<AstExpr>,
         then_branch: Box<AstExpr>,
         else_branch: Box<AstExpr>,
+        span: TextSpan,
+    },
+    Match {
+        scrutinee: Box<AstExpr>,
+        arms: Vec<AstMatchArm>,
         span: TextSpan,
     },
     Bool {

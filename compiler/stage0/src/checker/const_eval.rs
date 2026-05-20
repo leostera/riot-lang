@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::ast::{AstBlock, AstExpr};
+use crate::ast::{AstBlock, AstExpr, AstPattern};
 
 use super::types::PrimitiveType;
 
@@ -12,7 +12,7 @@ pub(super) struct ConstFunction {
     pub(super) body: AstBlock,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) enum ConstValue {
     Bool(bool),
     Char(char),
@@ -217,6 +217,23 @@ pub(super) fn resolve_const_value(
             ConstValue::Bool(false) => resolve_const_value(else_branch, bindings, functions),
             _ => None,
         },
+        AstExpr::Match {
+            scrutinee,
+            arms,
+            span: _,
+        } => {
+            let scrutinee = resolve_const_value(scrutinee, bindings, functions)?;
+            for arm in arms {
+                if const_pattern_matches(&arm.pattern, &scrutinee) {
+                    let mut arm_bindings = bindings.clone();
+                    if let AstPattern::Bind { name, .. } = &arm.pattern {
+                        arm_bindings.insert(name.clone(), scrutinee);
+                    }
+                    return resolve_const_value(&arm.body, &arm_bindings, functions);
+                }
+            }
+            None
+        }
         AstExpr::Bool { value, span: _ } => Some(ConstValue::Bool(*value)),
         AstExpr::Char { value, span: _ } => Some(ConstValue::Char(*value)),
         AstExpr::Unit { span: _ } => Some(ConstValue::Unit),
@@ -251,16 +268,19 @@ pub(super) fn resolve_const_value(
         AstExpr::Int { value, span: _ } => Some(ConstValue::Int(*value)),
         AstExpr::String { value, span: _ } => Some(ConstValue::String(value.clone())),
         AstExpr::Path { path, span: _ } => resolve_path_value(path.segments.as_slice(), bindings),
-        AstExpr::Field { base, field, .. } => match resolve_const_value(base, bindings, functions)? {
+        AstExpr::Field { base, field, .. } => match resolve_const_value(base, bindings, functions)?
+        {
             ConstValue::Record { fields, .. } => fields
                 .into_iter()
                 .find_map(|(name, value)| (name == *field).then_some(value)),
             _ => None,
         },
-        AstExpr::TupleIndex { base, index, .. } => match resolve_const_value(base, bindings, functions)? {
-            ConstValue::Tuple(items) => items.get(*index).cloned(),
-            _ => None,
-        },
+        AstExpr::TupleIndex { base, index, .. } => {
+            match resolve_const_value(base, bindings, functions)? {
+                ConstValue::Tuple(items) => items.get(*index).cloned(),
+                _ => None,
+            }
+        }
         AstExpr::Call {
             callee,
             args,
@@ -295,6 +315,28 @@ fn resolve_path_value(
     }
 
     Some(value)
+}
+
+fn const_pattern_matches(pattern: &AstPattern, value: &ConstValue) -> bool {
+    match pattern {
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => true,
+        AstPattern::Unit { .. } => matches!(value, ConstValue::Unit),
+        AstPattern::Bool {
+            value: expected, ..
+        } => {
+            matches!(value, ConstValue::Bool(actual) if actual == expected)
+        }
+        AstPattern::Int {
+            value: expected, ..
+        } => {
+            matches!(value, ConstValue::Int(actual) if actual == expected)
+        }
+        AstPattern::String {
+            value: expected, ..
+        } => {
+            matches!(value, ConstValue::String(actual) if actual == expected)
+        }
+    }
 }
 
 fn resolve_call_value(

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::ir::{RirBlock, RirExpr, RirFunction, RirStmt};
+use crate::ir::{RirBlock, RirExpr, RirFunction, RirPattern, RirStmt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum StaticValue {
     Bool(bool),
     Char(char),
@@ -146,6 +146,19 @@ pub(crate) fn eval_expr(
                 eval_expr(else_branch, bindings, functions, depth)
             }
         }
+        RirExpr::Match { scrutinee, arms } => {
+            let scrutinee = eval_expr(scrutinee, bindings, functions, depth)?;
+            for arm in arms {
+                if static_pattern_matches(&arm.pattern, &scrutinee) {
+                    let mut arm_bindings = bindings.clone();
+                    if let RirPattern::Bind(binding) = &arm.pattern {
+                        arm_bindings.insert(binding.as_str().to_owned(), scrutinee);
+                    }
+                    return eval_expr(&arm.body, &arm_bindings, functions, depth);
+                }
+            }
+            None
+        }
         RirExpr::Bool(value) => Some(StaticValue::Bool(*value)),
         RirExpr::Call { callee, args } => {
             let [name] = callee.as_slice() else {
@@ -184,6 +197,22 @@ pub(crate) fn eval_expr(
         | RirExpr::Lambda { .. }
         | RirExpr::Spawn { .. }
         | RirExpr::Receive { .. } => None,
+    }
+}
+
+fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
+    match pattern {
+        RirPattern::Wildcard | RirPattern::Bind(_) => true,
+        RirPattern::Unit => matches!(value, StaticValue::Unit),
+        RirPattern::Bool(expected) => {
+            matches!(value, StaticValue::Bool(actual) if actual == expected)
+        }
+        RirPattern::Int(expected) => {
+            matches!(value, StaticValue::Int(actual) if actual == expected)
+        }
+        RirPattern::String(expected) => {
+            matches!(value, StaticValue::String(actual) if actual == expected)
+        }
     }
 }
 

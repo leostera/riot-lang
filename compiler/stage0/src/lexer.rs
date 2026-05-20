@@ -27,6 +27,8 @@ pub(crate) enum TokenKind {
     Receive,
     #[token("if")]
     If,
+    #[token("match")]
+    Match,
     #[token("else")]
     Else,
     #[token("true")]

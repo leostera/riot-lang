@@ -1,8 +1,8 @@
 use camino::Utf8Path;
 
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstPath, AstProgram, AstStmt,
-    AstTypeAnnotation, AstUseDecl, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstMatchArm, AstPath, AstPattern,
+    AstProgram, AstStmt, AstTypeAnnotation, AstUseDecl, TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
@@ -446,11 +446,14 @@ impl<'src> Parser<'src> {
                 self.bump();
                 if self.at(TokenKind::Int) {
                     let token = self.bump();
-                    let index = self.text(token.span).parse::<usize>().map_err(|error| ParseError {
-                        span: token.span,
-                        message: format!("invalid tuple projection index: {error}"),
-                        help: None,
-                    })?;
+                    let index =
+                        self.text(token.span)
+                            .parse::<usize>()
+                            .map_err(|error| ParseError {
+                                span: token.span,
+                                message: format!("invalid tuple projection index: {error}"),
+                                help: None,
+                            })?;
                     let span = expr_span(&expr).join(token.span);
                     expr = AstExpr::TupleIndex {
                         base: Box::new(expr),
@@ -524,6 +527,7 @@ impl<'src> Parser<'src> {
             TokenKind::Fn => self.parse_lambda(),
             TokenKind::Spawn => self.parse_spawn(),
             TokenKind::Receive => self.parse_receive(),
+            TokenKind::Match => self.parse_match(),
             TokenKind::Ident => {
                 let (head, span) = self.expect_ident()?;
                 let path = AstPath {
@@ -558,6 +562,97 @@ impl<'src> Parser<'src> {
             body: Box::new(body),
             span,
         })
+    }
+
+    fn parse_match(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::Match, "expected `match`")?;
+        let scrutinee = self.parse_expr()?;
+        self.expect(TokenKind::LBrace, "expected `{` after match scrutinee")?;
+        let mut arms = Vec::new();
+
+        if self.at(TokenKind::RBrace) {
+            return Err(self.error_at_current("match expression needs at least one arm", None));
+        }
+
+        loop {
+            let pattern = self.parse_pattern()?;
+            self.expect(TokenKind::Arrow, "expected `->` after match pattern")?;
+            let body = self.parse_expr()?;
+            arms.push(AstMatchArm { pattern, body });
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RBrace) {
+                break;
+            }
+        }
+
+        let end = self.expect(TokenKind::RBrace, "expected `}` after match arms")?;
+        Ok(AstExpr::Match {
+            scrutinee: Box::new(scrutinee),
+            arms,
+            span: start.span.join(end.span),
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Result<AstPattern, ParseError> {
+        if self.at(TokenKind::True) || self.at(TokenKind::False) {
+            let token = self.bump();
+            return Ok(AstPattern::Bool {
+                value: token.kind == TokenKind::True,
+                span: token.span,
+            });
+        }
+
+        match self.current().kind {
+            TokenKind::Ident => {
+                let (name, span) = self.expect_lower_ident()?;
+                if name == "_" {
+                    Ok(AstPattern::Wildcard { span })
+                } else {
+                    Ok(AstPattern::Bind { name, span })
+                }
+            }
+            TokenKind::Int => {
+                let token = self.expect(TokenKind::Int, "expected integer pattern")?;
+                let raw = self.text(token.span);
+                let value = parse_int_literal(raw).map_err(|message| ParseError {
+                    span: token.span,
+                    message,
+                    help: None,
+                })?;
+                Ok(AstPattern::Int {
+                    value,
+                    span: token.span,
+                })
+            }
+            TokenKind::String => {
+                let token = self.expect(TokenKind::String, "expected string pattern")?;
+                let raw = self.text(token.span);
+                let value = snailquote::unescape(raw).map_err(|error| ParseError {
+                    span: token.span,
+                    message: format!("invalid string pattern: {error}"),
+                    help: None,
+                })?;
+                Ok(AstPattern::String {
+                    value,
+                    span: token.span,
+                })
+            }
+            TokenKind::LParen => {
+                let start = self.expect(TokenKind::LParen, "expected unit pattern")?;
+                let end = self.expect(TokenKind::RParen, "expected `)` after unit pattern")?;
+                Ok(AstPattern::Unit {
+                    span: start.span.join(end.span),
+                })
+            }
+            _ => Err(self.error_at_current(
+                "expected match pattern",
+                Some("stage0 patterns currently support literals, `_`, and binders"),
+            )),
+        }
     }
 
     fn parse_spawn(&mut self) -> Result<AstExpr, ParseError> {

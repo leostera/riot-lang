@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use camino::Utf8Path;
+use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -16,7 +17,7 @@ use miette::bail;
 
 use crate::ir::{
     ActorFrameOp, ActorIrActor, ActorIrProgram, Capture, Param, RirBlock, RirExpr, RirFunction,
-    RirProgram, RirStmt, lower_rir_to_actor_ir,
+    RirMatchArm, RirPattern, RirProgram, RirStmt, lower_rir_to_actor_ir,
 };
 use crate::signature::{ImportedSignatures, RsigExport, RsigType};
 
@@ -508,6 +509,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 then_branch,
                 else_branch,
             } => self.emit_if(condition, then_branch, else_branch, env),
+            RirExpr::Match { scrutinee, arms } => self.emit_match(scrutinee, arms, env),
             RirExpr::Bool(value) => Ok(CgValue::Bool(
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
@@ -670,6 +672,189 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             AbiType::Unit => Ok(CgValue::Unit),
             AbiType::Unknown => unreachable!(),
+        }
+    }
+
+    fn emit_match(
+        &mut self,
+        scrutinee: &RirExpr,
+        arms: &[RirMatchArm],
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        if arms.is_empty() {
+            bail!("cannot lower empty match expression");
+        }
+        let Some(parent) = self.current_function() else {
+            bail!("match expression emitted without an active function");
+        };
+        let result_abi = arms
+            .iter()
+            .map(|arm| infer_expr_abi(&arm.body, &HashMap::new(), &self.function_abis))
+            .fold(AbiType::Unknown, unify_abi);
+        if result_abi == AbiType::Unknown {
+            bail!("cannot lower match expression with unknown result ABI");
+        }
+
+        let scrutinee = self.emit_expr(scrutinee, env)?;
+        let scrutinee_root = self.push_optional_runtime_root(&scrutinee)?;
+        let cont_block = self.context.append_basic_block(parent, "match.cont");
+        let test_blocks = (0..arms.len())
+            .map(|index| {
+                self.context
+                    .append_basic_block(parent, &format!("match.test.{index}"))
+            })
+            .collect::<Vec<_>>();
+        let arm_blocks = (0..arms.len())
+            .map(|index| {
+                self.context
+                    .append_basic_block(parent, &format!("match.arm.{index}"))
+            })
+            .collect::<Vec<_>>();
+        self.builder
+            .build_unconditional_branch(test_blocks[0])
+            .map_err(|error| miette::miette!("failed to enter match: {error}"))?;
+
+        for (index, arm) in arms.iter().enumerate() {
+            self.builder.position_at_end(test_blocks[index]);
+            if pattern_is_irrefutable(&arm.pattern) {
+                self.builder
+                    .build_unconditional_branch(arm_blocks[index])
+                    .map_err(|error| miette::miette!("failed to emit match arm: {error}"))?;
+            } else {
+                let next = test_blocks.get(index + 1).copied().unwrap_or(cont_block);
+                let condition = self.emit_pattern_test(&scrutinee, &arm.pattern)?;
+                self.builder
+                    .build_conditional_branch(condition, arm_blocks[index], next)
+                    .map_err(|error| miette::miette!("failed to emit match test: {error}"))?;
+            }
+        }
+
+        let mut incoming = Vec::new();
+        for (index, arm) in arms.iter().enumerate() {
+            self.builder.position_at_end(arm_blocks[index]);
+            let mut arm_env = env.clone();
+            self.bind_pattern_env(&mut arm_env, &arm.pattern, &scrutinee);
+            let value = self.emit_expr(&arm.body, &mut arm_env)?;
+            let incoming_value = self.match_incoming_value(value, result_abi)?;
+            let end_block = self
+                .builder
+                .get_insert_block()
+                .ok_or_else(|| miette::miette!("missing match arm block"))?;
+            self.builder
+                .build_unconditional_branch(cont_block)
+                .map_err(|error| miette::miette!("failed to leave match arm: {error}"))?;
+            if let Some(value) = incoming_value {
+                incoming.push((value, end_block));
+            }
+        }
+
+        self.builder.position_at_end(cont_block);
+        let result = self.match_result_value(result_abi, incoming)?;
+        self.pop_runtime_roots(scrutinee_root)?;
+        Ok(result)
+    }
+
+    fn emit_pattern_test(
+        &mut self,
+        scrutinee: &CgValue<'ctx>,
+        pattern: &RirPattern,
+    ) -> miette::Result<IntValue<'ctx>> {
+        let bool_type = self.context.bool_type();
+        match pattern {
+            RirPattern::Wildcard | RirPattern::Bind(_) => Ok(bool_type.const_int(1, false)),
+            RirPattern::Unit => Ok(bool_type.const_int(1, false)),
+            RirPattern::Bool(expected) => {
+                let actual = self.value_as_bool(scrutinee.clone())?;
+                Ok(self
+                    .builder
+                    .build_int_compare(
+                        IntPredicate::EQ,
+                        actual,
+                        bool_type.const_int(u64::from(*expected), false),
+                        "match_bool",
+                    )
+                    .map_err(|error| miette::miette!("failed to emit bool pattern: {error}"))?)
+            }
+            RirPattern::Int(expected) => {
+                let actual = self.value_as_i64(scrutinee.clone())?;
+                Ok(self
+                    .builder
+                    .build_int_compare(
+                        IntPredicate::EQ,
+                        actual,
+                        self.i64_const(*expected),
+                        "match_i64",
+                    )
+                    .map_err(|error| miette::miette!("failed to emit int pattern: {error}"))?)
+            }
+            RirPattern::String(expected) => {
+                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
+                let (ptr, len) = self.string_literal(expected)?;
+                let pattern =
+                    self.call_runtime_value("riot_rt_value_string", &[ptr.into(), len.into()])?;
+                self.push_runtime_root(pattern)?;
+                let result = self
+                    .call_runtime_value("riot_rt_value_eq", &[scrutinee.into(), pattern.into()])?;
+                self.pop_runtime_roots(1)?;
+                Ok(result)
+            }
+        }
+    }
+
+    fn bind_pattern_env(
+        &self,
+        env: &mut Env<'ctx>,
+        pattern: &RirPattern,
+        scrutinee: &CgValue<'ctx>,
+    ) {
+        if let RirPattern::Bind(binding) = pattern {
+            env.values
+                .insert(binding.as_str().to_owned(), scrutinee.clone());
+        }
+    }
+
+    fn match_incoming_value(
+        &mut self,
+        value: CgValue<'ctx>,
+        abi: AbiType,
+    ) -> miette::Result<Option<BasicValueEnum<'ctx>>> {
+        Ok(match abi {
+            AbiType::Unit => None,
+            AbiType::I64 | AbiType::ActorId => Some(self.value_as_i64(value)?.into()),
+            AbiType::Bool => Some(self.value_as_bool(value)?.into()),
+            AbiType::Value => Some(self.value_as_runtime(value)?.into()),
+            AbiType::Unknown => bail!("cannot lower match value with unknown ABI"),
+        })
+    }
+
+    fn match_result_value(
+        &self,
+        abi: AbiType,
+        incoming: Vec<(BasicValueEnum<'ctx>, BasicBlock<'ctx>)>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        match abi {
+            AbiType::Unit => Ok(CgValue::Unit),
+            AbiType::I64 | AbiType::ActorId | AbiType::Bool | AbiType::Value => {
+                let ty = self.basic_type_for_abi(abi)?;
+                let phi = self
+                    .builder
+                    .build_phi(ty, "matchtmp")
+                    .map_err(|error| miette::miette!("failed to emit match phi: {error}"))?;
+                let incoming_refs = incoming
+                    .iter()
+                    .map(|(value, block)| (value as &dyn inkwell::values::BasicValue<'ctx>, *block))
+                    .collect::<Vec<_>>();
+                phi.add_incoming(&incoming_refs);
+                let value = phi.as_basic_value();
+                match abi {
+                    AbiType::I64 => Ok(CgValue::I64(value.into_int_value())),
+                    AbiType::ActorId => Ok(CgValue::ActorId(value.into_int_value())),
+                    AbiType::Bool => Ok(CgValue::Bool(value.into_int_value())),
+                    AbiType::Value => Ok(CgValue::Value(value.into_int_value())),
+                    AbiType::Unit | AbiType::Unknown => unreachable!(),
+                }
+            }
+            AbiType::Unknown => bail!("cannot lower match with unknown ABI"),
         }
     }
 
@@ -2353,6 +2538,10 @@ fn progress_flags(next_index: usize, len: usize) -> u32 {
     }
 }
 
+fn pattern_is_irrefutable(pattern: &RirPattern) -> bool {
+    matches!(pattern, RirPattern::Wildcard | RirPattern::Bind(_))
+}
+
 fn infer_function_abis(program: &RirProgram) -> HashMap<String, FunctionAbi> {
     let mut abis = program
         .functions
@@ -2464,6 +2653,10 @@ fn infer_expr_abi(
             infer_expr_abi(then_branch, locals, functions),
             infer_expr_abi(else_branch, locals, functions),
         ),
+        RirExpr::Match { arms, .. } => arms
+            .iter()
+            .map(|arm| infer_expr_abi(&arm.body, locals, functions))
+            .fold(AbiType::Unknown, unify_abi),
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
@@ -2520,6 +2713,12 @@ fn mark_expr_constraints(
             mark_expr_constraints(condition, params, locals, param_types, functions);
             mark_expr_constraints(then_branch, params, locals, param_types, functions);
             mark_expr_constraints(else_branch, params, locals, param_types, functions);
+        }
+        RirExpr::Match { scrutinee, arms } => {
+            mark_expr_constraints(scrutinee, params, locals, param_types, functions);
+            for arm in arms {
+                mark_expr_constraints(&arm.body, params, locals, param_types, functions);
+            }
         }
         RirExpr::Call { args, .. } => {
             for arg in args {
