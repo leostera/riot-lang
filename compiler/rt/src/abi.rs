@@ -8,8 +8,8 @@ use crate::scheduler::{
     SchedulerLocal, current_actor_id, render_message, runtime_abort, with_scheduler_mut,
 };
 use crate::value::{
-    HeapObjectKind, HeapOwner, RtValue, VALUE_UNIT, heap_index, value_actor_id, value_bool,
-    value_i64,
+    ClosureApplyFn, HeapObjectKind, HeapOwner, RtValue, VALUE_UNIT, heap_index, value_actor_id,
+    value_bool, value_i64,
 };
 
 #[unsafe(no_mangle)]
@@ -104,6 +104,39 @@ pub unsafe extern "C" fn riot_rt_value_list(values: *const RtValue, len: usize) 
             HeapOwner::Local(current_actor_id()),
         )
     })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_value_closure(
+    apply: Option<ClosureApplyFn>,
+    captures: *const RtValue,
+    len: usize,
+) -> RtValue {
+    let Some(apply) = apply else {
+        runtime_abort("closure value received a null apply function");
+    };
+    let Some(captures) = (unsafe { values_from_raw(captures, len) }) else {
+        runtime_abort("closure value received an invalid captures pointer/length pair");
+    };
+    with_scheduler_mut(|scheduler| {
+        scheduler.alloc_value(
+            HeapObjectKind::Closure {
+                apply,
+                captures: captures.to_vec(),
+            },
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_apply(closure: RtValue, argument: RtValue) -> RtValue {
+    let (apply, captures) = with_scheduler_mut(|scheduler| {
+        scheduler
+            .closure_parts(closure)
+            .unwrap_or_else(|| runtime_abort("apply expected a closure value"))
+    });
+    unsafe { apply(captures.as_ptr(), captures.len(), argument) }
 }
 
 #[unsafe(no_mangle)]

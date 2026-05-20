@@ -10,9 +10,9 @@ use crate::actor_id::ActorId;
 use crate::frame::RtFrameLayout;
 use crate::io::write_bytes_line;
 use crate::value::{
-    HeapObject, HeapObjectKind, HeapOwner, RtValue, VALUE_ACTOR_ID_TAG, VALUE_BOOL_FALSE,
-    VALUE_BOOL_TRUE, VALUE_HEAP_TAG, VALUE_I64_TAG, VALUE_UNIT, heap_index, value_actor_id_payload,
-    value_i64_payload, value_tag,
+    ClosureApplyFn, HeapObject, HeapObjectKind, HeapOwner, RtValue, VALUE_ACTOR_ID_TAG,
+    VALUE_BOOL_FALSE, VALUE_BOOL_TRUE, VALUE_HEAP_TAG, VALUE_I64_TAG, VALUE_UNIT, heap_index,
+    value_actor_id_payload, value_i64_payload, value_tag,
 };
 
 const PRIMARY_SCHEDULER_ID: u32 = 0;
@@ -291,6 +291,7 @@ impl SchedulerLocal {
                     .join(", ");
                 format!("[{rendered}]")
             }
+            HeapObjectKind::Closure { .. } => "<closure>".to_owned(),
             HeapObjectKind::Record { path, fields } => {
                 let rendered = fields
                     .iter()
@@ -312,6 +313,9 @@ impl SchedulerLocal {
     }
 
     pub(crate) fn values_equal(&self, lhs: RtValue, rhs: RtValue) -> bool {
+        if lhs == rhs {
+            return true;
+        }
         match (value_tag(lhs), value_tag(rhs)) {
             (VALUE_I64_TAG, VALUE_I64_TAG) => value_i64_payload(lhs) == value_i64_payload(rhs),
             (VALUE_BOOL_FALSE, VALUE_BOOL_FALSE) | (VALUE_BOOL_TRUE, VALUE_BOOL_TRUE) => true,
@@ -358,6 +362,15 @@ impl SchedulerLocal {
                     )
             }
             _ => false,
+        }
+    }
+
+    pub(crate) fn closure_parts(&self, value: RtValue) -> Option<(ClosureApplyFn, Vec<RtValue>)> {
+        let index = heap_index(value)?;
+        let object = self.heap.get(index)?.as_ref()?;
+        match &object.kind {
+            HeapObjectKind::Closure { apply, captures } => Some((*apply, captures.clone())),
+            _ => None,
         }
     }
 

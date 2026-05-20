@@ -6,11 +6,11 @@ use crate::abi::{
     riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
     riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold, riot_rt_init,
     riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown,
-    riot_rt_spawn_actor_v2, riot_rt_value_bool, riot_rt_value_eq, riot_rt_value_i64,
-    riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
-    riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
-    riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
-    riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_bool, riot_rt_value_closure,
+    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get,
+    riot_rt_value_list_len, riot_rt_value_record_begin, riot_rt_value_record_get,
+    riot_rt_value_record_set, riot_rt_value_string, riot_rt_value_string_concat,
+    riot_rt_value_string_len, riot_rt_value_tuple, riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -19,7 +19,7 @@ use crate::actor::{
 use crate::actor_id::ActorId;
 use crate::frame::RtFrameLayout;
 use crate::scheduler::{render_message, with_scheduler_mut};
-use crate::value::{VALUE_NULL, VALUE_TAG_MASK};
+use crate::value::{RtValue, VALUE_NULL, VALUE_TAG_MASK};
 
 static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
 static MESSAGES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
@@ -65,6 +65,17 @@ unsafe extern "C" fn idle_resume(
     _message: *const RtMessage,
 ) -> u32 {
     POLL_WAITING
+}
+
+unsafe extern "C" fn return_first_capture_or_argument(
+    captures: *const RtValue,
+    len: usize,
+    argument: RtValue,
+) -> RtValue {
+    if len == 0 {
+        return argument;
+    }
+    unsafe { *captures }
 }
 
 #[test]
@@ -135,6 +146,38 @@ fn value_roots_preserve_nested_children() {
     let values = [label];
     let tuple = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
     riot_rt_root_push(tuple);
+    assert_eq!(riot_rt_gc_collect(), 0);
+    assert_eq!(riot_rt_gc_heap_len(), 2);
+
+    riot_rt_root_pop(1);
+    assert_eq!(riot_rt_gc_collect(), 2);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn closure_values_apply_and_trace_captures() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let captured = unsafe { riot_rt_value_string(b"captured".as_ptr(), 8) };
+    let captures = [captured];
+    let closure = unsafe {
+        riot_rt_value_closure(
+            Some(return_first_capture_or_argument),
+            captures.as_ptr(),
+            captures.len(),
+        )
+    };
+    riot_rt_root_push(closure);
+
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(closure)),
+        "<closure>"
+    );
+    assert!(riot_rt_value_eq(
+        riot_rt_value_apply(closure, riot_rt_value_unit()),
+        captured
+    ));
     assert_eq!(riot_rt_gc_collect(), 0);
     assert_eq!(riot_rt_gc_heap_len(), 2);
 

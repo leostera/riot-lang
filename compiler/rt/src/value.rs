@@ -1,6 +1,7 @@
 use crate::actor_id::ActorId;
 
 pub type RtValue = u64;
+pub type ClosureApplyFn = unsafe extern "C" fn(*const RtValue, usize, RtValue) -> RtValue;
 
 pub(crate) const VALUE_NULL: RtValue = 0;
 pub(crate) const VALUE_TAG_MASK: RtValue = 0x0f;
@@ -21,6 +22,10 @@ pub(crate) enum HeapObjectKind {
     String(Vec<u8>),
     Tuple(Vec<RtValue>),
     List(Vec<RtValue>),
+    Closure {
+        apply: ClosureApplyFn,
+        captures: Vec<RtValue>,
+    },
     Record {
         path: String,
         fields: Vec<(String, RtValue)>,
@@ -37,6 +42,7 @@ impl HeapObject {
     pub(crate) fn owned_children(&self) -> Vec<RtValue> {
         match &self.kind {
             HeapObjectKind::Tuple(items) | HeapObjectKind::List(items) => items.clone(),
+            HeapObjectKind::Closure { captures, .. } => captures.clone(),
             HeapObjectKind::Record { fields, .. } => {
                 fields.iter().map(|(_, value)| *value).collect()
             }
