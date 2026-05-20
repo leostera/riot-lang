@@ -916,6 +916,35 @@ mod tests {
     }
 
     #[test]
+    fn let_bound_lambdas_are_instantiated_at_each_use() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                vec![
+                    AstStmt::Let {
+                        name: "id".to_owned(),
+                        name_span: span(),
+                        type_annotation: None,
+                        value: lambda(vec!["x"], path("x")),
+                        span: span(),
+                    },
+                    AstStmt::Expr(call("id", vec![int(1)])),
+                ],
+                call("id", vec![bool_(true)]),
+            )],
+        };
+
+        let inferred = infer(&program).unwrap();
+        let exports = inferred.env.exported_values();
+
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::Unit, Type::Bool))
+        );
+    }
+
+    #[test]
     fn prelude_values_are_visible_but_not_exported() {
         let program = AstProgram {
             decls: vec![function(
