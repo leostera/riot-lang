@@ -1660,11 +1660,11 @@ impl<'ctx> Codegen<'ctx, '_> {
             bail!("external `{symbol}` called with wrong arity");
         }
         let function =
-            self.get_or_add_function(symbol, self.external_function_type(params, result)?);
+            self.get_or_add_function(symbol, self.external_function_type(symbol, params, result)?);
         let mut call_args = Vec::new();
         let mut rooted_values = 0;
         for (arg, param) in args.iter().zip(params) {
-            rooted_values += self.push_external_arg(&mut call_args, arg, param, env)?;
+            rooted_values += self.push_external_arg(symbol, &mut call_args, arg, param, env)?;
         }
         let call = self
             .builder
@@ -2302,12 +2302,20 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn push_external_arg(
         &mut self,
+        symbol: &str,
         output: &mut Vec<BasicMetadataValueEnum<'ctx>>,
         arg: &RirExpr,
         type_: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<usize> {
         match type_ {
+            type_ if external_param_is_boxed(symbol, type_) => {
+                let value = self.emit_expr(arg, env)?;
+                let value = self.value_as_runtime(value)?;
+                self.push_runtime_root(value)?;
+                output.push(value.into());
+                Ok(1)
+            }
             RsigType::String => {
                 let value = self.emit_expr(arg, env)?;
                 let roots = self.push_optional_runtime_root(&value)?;
@@ -2330,13 +2338,6 @@ impl<'ctx> Codegen<'ctx, '_> {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_actor_id(value)?.into());
                 Ok(0)
-            }
-            type_ if external_param_is_boxed(type_) => {
-                let value = self.emit_expr(arg, env)?;
-                let value = self.value_as_runtime(value)?;
-                self.push_runtime_root(value)?;
-                output.push(value.into());
-                Ok(1)
             }
             _ => bail!(
                 "external argument type `{}` is not supported by stage0 codegen yet",
@@ -2695,12 +2696,16 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn external_function_type(
         &self,
+        symbol: &str,
         params: &[RsigType],
         result: &RsigType,
     ) -> miette::Result<FunctionType<'ctx>> {
         let mut llvm_params = Vec::new();
         for param in params {
             match param {
+                type_ if external_param_is_boxed(symbol, type_) => {
+                    llvm_params.push(self.context.i64_type().into())
+                }
                 RsigType::String => {
                     llvm_params.push(self.ptr_type().into());
                     llvm_params.push(self.context.i64_type().into());
@@ -2709,9 +2714,6 @@ impl<'ctx> Codegen<'ctx, '_> {
                     llvm_params.push(self.context.i64_type().into())
                 }
                 RsigType::Bool => llvm_params.push(self.context.bool_type().into()),
-                type_ if external_param_is_boxed(type_) => {
-                    llvm_params.push(self.context.i64_type().into())
-                }
                 _ => bail!(
                     "unsupported external parameter type `{}`",
                     param.canonical()
@@ -2856,7 +2858,12 @@ fn pattern_is_irrefutable(pattern: &RirPattern) -> bool {
     matches!(pattern, RirPattern::Wildcard | RirPattern::Bind { .. })
 }
 
-fn external_param_is_boxed(type_: &RsigType) -> bool {
+fn external_param_is_boxed(symbol: &str, type_: &RsigType) -> bool {
+    matches!(type_, RsigType::String) && symbol.starts_with("riot_rt_value_")
+        || external_param_type_is_boxed(type_)
+}
+
+fn external_param_type_is_boxed(type_: &RsigType) -> bool {
     matches!(
         type_,
         RsigType::Arrow { .. }
