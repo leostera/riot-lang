@@ -20,6 +20,37 @@ pub(crate) enum InferError {
     UnknownValue(String),
     #[error("{0}")]
     Unify(#[from] UnifyError),
+    #[error("{error}")]
+    At {
+        span: TextSpan,
+        error: Box<InferError>,
+    },
+}
+
+impl InferError {
+    pub(crate) fn span(&self) -> Option<TextSpan> {
+        match self {
+            InferError::At { span, .. } => Some(*span),
+            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
+        }
+    }
+
+    fn at(self, span: TextSpan) -> Self {
+        match self {
+            InferError::At { .. } => self,
+            error => InferError::At {
+                span,
+                error: Box::new(error),
+            },
+        }
+    }
+
+    fn root(&self) -> &InferError {
+        match self {
+            InferError::At { error, .. } => error.root(),
+            error => error,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -305,9 +336,11 @@ fn infer_expr(
     expr: &AstExpr,
     expression_types: &mut BTreeMap<TextSpan, Type>,
 ) -> Result<Type, InferError> {
-    let inferred = infer_expr_kind(state, expr, expression_types)?;
+    let span = expr_span(expr);
+    let inferred =
+        infer_expr_kind(state, expr, expression_types).map_err(|error| error.at(span))?;
     let resolved = state.resolve(&inferred);
-    expression_types.insert(expr_span(expr), resolved.clone());
+    expression_types.insert(span, resolved.clone());
     Ok(resolved)
 }
 
@@ -787,9 +820,10 @@ mod tests {
 
         let err = infer(&program).unwrap_err();
 
+        assert_eq!(Some(span()), err.span());
         assert_eq!(
-            crate::infer::module::InferError::UnknownValue("one".to_owned()),
-            err
+            &crate::infer::module::InferError::UnknownValue("one".to_owned()),
+            err.root()
         );
     }
 

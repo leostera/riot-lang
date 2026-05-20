@@ -32,10 +32,14 @@ pub(crate) fn typecheck(
 ) -> miette::Result<CheckedProgram> {
     validate_program(source_path, source, &program, imports, mode)?;
     let inferred = infer_program(&program, imports).map_err(|error| {
+        let span = error
+            .span()
+            .or_else(|| first_decl_span(&program))
+            .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
         to_source_diagnostic(
             source_path,
             source,
-            first_decl_span(&program).unwrap_or_else(|| TextSpan::new(0, source.len().min(1))),
+            span,
             "type inference failed",
             error.to_string(),
             Some("fix the type error before lowering"),
