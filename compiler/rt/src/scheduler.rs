@@ -16,6 +16,7 @@ use crate::value::{
 
 const PRIMARY_SCHEDULER_ID: u32 = 0;
 const DEFAULT_GC_THRESHOLD: usize = 1024;
+const RECEIVE_SCAN_BUDGET: usize = 32;
 
 struct SchedulerCell {
     scheduler: UnsafeCell<SchedulerLocal>,
@@ -510,10 +511,11 @@ impl SchedulerLocal {
                         actor.actor_id(),
                         actor.frame_ptr(),
                         actor.resume(),
-                        actor.current_messages(),
+                        actor.receive_candidates(RECEIVE_SCAN_BUDGET),
                     )
                 };
                 let mut consumed = None;
+                let mut waiting_candidates = 0;
                 let mut terminate = false;
 
                 if current_messages.is_empty() {
@@ -530,7 +532,7 @@ impl SchedulerLocal {
                     made_progress |= result & (POLL_PROGRESS | POLL_YIELD) != 0;
                     terminate = result & POLL_DONE != 0;
                 } else {
-                    for (message_index, current_message) in current_messages.iter().enumerate() {
+                    for (message_index, current_message) in current_messages {
                         let message = current_message.as_rt_message();
                         let message_ptr = &message as *const RtMessage;
                         let result = ACTIVE_SCHEDULER.with(|active| {
@@ -552,6 +554,12 @@ impl SchedulerLocal {
                         if result & POLL_DONE != 0 {
                             terminate = true;
                         }
+                        if result & POLL_WAITING != 0
+                            && result & (POLL_PROGRESS | POLL_YIELD | POLL_CONSUMED | POLL_DONE)
+                                == 0
+                        {
+                            waiting_candidates += 1;
+                        }
                         if consumed.is_some()
                             || terminate
                             || result & (POLL_PROGRESS | POLL_YIELD) != 0
@@ -567,6 +575,9 @@ impl SchedulerLocal {
                         actor.consume_message(message_index);
                     }
                     if !terminate && consumed.is_none() {
+                        if waiting_candidates > 0 {
+                            made_progress |= actor.advance_receive_cursor(waiting_candidates);
+                        }
                         continue;
                     }
                 }

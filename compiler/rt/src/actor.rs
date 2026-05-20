@@ -107,12 +107,14 @@ impl RuntimeMessage {
 
 pub(crate) struct Mailbox {
     messages: Mutex<VecDeque<RuntimeMessage>>,
+    cursor: AtomicUsize,
 }
 
 impl Mailbox {
     fn new() -> Self {
         Self {
             messages: Mutex::new(VecDeque::new()),
+            cursor: AtomicUsize::new(0),
         }
     }
 
@@ -124,16 +126,48 @@ impl Mailbox {
         self.messages().front().cloned()
     }
 
-    pub(crate) fn snapshot(&self) -> Vec<RuntimeMessage> {
-        self.messages().iter().cloned().collect()
+    pub(crate) fn scan_candidates(&self, limit: usize) -> Vec<(usize, RuntimeMessage)> {
+        let messages = self.messages();
+        let len = messages.len();
+        if len == 0 {
+            self.cursor.store(0, Ordering::Release);
+            return Vec::new();
+        }
+        let limit = limit.max(1).min(len);
+        let start = self.cursor.load(Ordering::Acquire).min(len - 1);
+        (0..limit)
+            .filter_map(|offset| {
+                let index = (start + offset) % len;
+                messages.get(index).cloned().map(|message| (index, message))
+            })
+            .collect()
+    }
+
+    pub(crate) fn advance_cursor(&self, count: usize) -> bool {
+        let messages = self.messages();
+        let len = messages.len();
+        if len == 0 {
+            self.cursor.store(0, Ordering::Release);
+            return false;
+        }
+        let start = self.cursor.load(Ordering::Acquire).min(len - 1);
+        let next = (start + count) % len;
+        self.cursor.store(next, Ordering::Release);
+        next != 0
+    }
+
+    pub(crate) fn reset_cursor(&self) {
+        self.cursor.store(0, Ordering::Release);
     }
 
     pub(crate) fn remove(&self, index: usize) {
         self.messages().remove(index);
+        self.reset_cursor();
     }
 
     pub(crate) fn clear(&self) {
         self.messages().clear();
+        self.reset_cursor();
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -238,8 +272,12 @@ impl ActorSlot {
         self.mailbox.front()
     }
 
-    pub(crate) fn current_messages(&self) -> Vec<RuntimeMessage> {
-        self.mailbox.snapshot()
+    pub(crate) fn receive_candidates(&self, limit: usize) -> Vec<(usize, RuntimeMessage)> {
+        self.mailbox.scan_candidates(limit)
+    }
+
+    pub(crate) fn advance_receive_cursor(&self, count: usize) -> bool {
+        self.mailbox.advance_cursor(count)
     }
 
     pub(crate) fn consume_message(&self, index: usize) {
