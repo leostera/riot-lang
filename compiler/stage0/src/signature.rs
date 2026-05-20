@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::io::{Cursor, Read};
@@ -44,6 +45,12 @@ impl From<&str> for ModuleName {
 
 impl AsRef<str> for ModuleName {
     fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Borrow<str> for ModuleName {
+    fn borrow(&self) -> &str {
         self.as_str()
     }
 }
@@ -1046,7 +1053,7 @@ fn get_u64(cursor: &mut Cursor<&[u8]>) -> miette::Result<u64> {
     Ok(u64::from_le_bytes(bytes))
 }
 
-pub(crate) type ImportedSignatures = BTreeMap<String, Rsig>;
+pub(crate) type ImportedSignatures = BTreeMap<ModuleName, Rsig>;
 
 #[cfg(test)]
 mod tests {

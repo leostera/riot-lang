@@ -154,7 +154,7 @@ fn declared_variant_names(
                 names.insert(TypeName::new(type_.name.clone()));
             }
             AstDecl::Use(use_) => {
-                if let Some(rsig) = imports.get(&use_.name) {
+                if let Some(rsig) = imports.get(use_.name.as_str()) {
                     for type_ in &rsig.types {
                         names.insert(imported_type_name(&use_.name, &type_.name));
                     }
@@ -224,7 +224,7 @@ fn install_imports(state: &mut State, program: &AstProgram, imports: &ImportedSi
         let AstDecl::Use(use_) = decl else {
             continue;
         };
-        let Some(rsig) = imports.get(&use_.name) else {
+        let Some(rsig) = imports.get(use_.name.as_str()) else {
             continue;
         };
         install_import_signature(state, &use_.name, rsig);

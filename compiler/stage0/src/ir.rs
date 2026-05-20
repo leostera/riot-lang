@@ -34,7 +34,7 @@ pub(crate) fn typed_program_from_ast(
         match decl {
             AstDecl::Use(use_) => {
                 let fingerprint = imports
-                    .get(&use_.name)
+                    .get(use_.name.as_str())
                     .map(|rsig| rsig.module_fingerprint)
                     .unwrap_or(0);
                 uses.push(TypedUse {
@@ -1380,7 +1380,7 @@ fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
         [name] => context.externals.contains_key(name) || context.functions.contains_key(name),
         [module, name] => context
             .imports
-            .get(module)
+            .get(module.as_str())
             .and_then(|rsig| rsig.find(name))
             .is_some(),
         _ => false,
@@ -1393,7 +1393,7 @@ fn imported_constructor_type(path: &[String], context: &TypeContext<'_>) -> Opti
     };
     context
         .imports
-        .get(module)
+        .get(module.as_str())
         .and_then(|rsig| rsig.find_constructor(constructor))
         .map(|type_| imported_type_name(module, &type_.name))
 }
@@ -1449,7 +1449,7 @@ fn call_signature(
             }),
         [module, name] => context
             .imports
-            .get(module)
+            .get(module.as_str())
             .and_then(|rsig| rsig.find(name))
             .map(|export| match export {
                 RsigExport::Function(function) => {
@@ -2071,7 +2071,7 @@ fn infer_actor_slot_type(
                 .and_then(|(_, result)| ActorSlotType::from_rsig(result)),
             [module, name] => context
                 .imports
-                .get(module)
+                .get(module.as_str())
                 .and_then(|rsig| rsig.find(name))
                 .and_then(|export| match export {
                     RsigExport::Function(function) => ActorSlotType::from_rsig(&function.result),

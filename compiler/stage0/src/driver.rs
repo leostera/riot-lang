@@ -14,7 +14,7 @@ use crate::ir::{lower_rir_to_actor_ir, lower_typed_to_rir};
 use crate::linker::link_executable;
 use crate::parser::parse_source;
 use crate::runtime::{build_runtime, find_repo_root};
-use crate::signature::{ImportedSignatures, resolve_rsig, write_rsig};
+use crate::signature::{ImportedSignatures, ModuleName, resolve_rsig, write_rsig};
 
 pub(crate) fn run(cli: Cli) -> miette::Result<()> {
     match cli.command {
@@ -181,7 +181,7 @@ fn resolve_imports(
     for decl in &ast.decls {
         if let AstDecl::Use(use_) = decl {
             let (_path, rsig) = resolve_rsig(&use_.name, source_dir, sig_dirs)?;
-            imports.insert(use_.name.clone(), rsig);
+            imports.insert(ModuleName::new(use_.name.clone()), rsig);
         }
     }
     Ok(imports)

@@ -1,6 +1,8 @@
 use camino::Utf8PathBuf;
 use clap::{Parser as ClapParser, Subcommand, ValueEnum};
 
+use crate::signature::ModuleName;
+
 #[derive(Debug, ClapParser)]
 #[command(name = "stage0")]
 #[command(about = "Riot ML stage0 compiler")]
@@ -97,7 +99,7 @@ pub(crate) enum EmitPass {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ObjectMapping {
-    pub(crate) module: String,
+    pub(crate) module: ModuleName,
     pub(crate) path: Utf8PathBuf,
 }
 
@@ -109,7 +111,19 @@ fn parse_object_mapping(value: &str) -> Result<ObjectMapping, String> {
         return Err("object mapping module name cannot be empty".to_owned());
     }
     Ok(ObjectMapping {
-        module: module.to_owned(),
+        module: ModuleName::new(module),
         path: Utf8PathBuf::from(path),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_object_mapping;
+
+    #[test]
+    fn parses_object_mapping_module_name_as_typed_identity() {
+        let mapping = parse_object_mapping("Palette=/tmp/Palette.o").unwrap();
+
+        assert_eq!(mapping.module.as_str(), "Palette");
+    }
 }

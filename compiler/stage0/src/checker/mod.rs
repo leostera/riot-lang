@@ -154,7 +154,7 @@ fn validate_program(
     for decl in &program.decls {
         match decl {
             AstDecl::Use(use_) => {
-                if !imports.contains_key(&use_.name) {
+                if !imports.contains_key(use_.name.as_str()) {
                     return Err(to_source_diagnostic(
                         source_path,
                         source,
@@ -249,7 +249,7 @@ fn declared_variant_names(
                 names.insert(TypeName::new(type_.name.clone()));
             }
             AstDecl::Use(use_) => {
-                if let Some(rsig) = imports.get(&use_.name) {
+                if let Some(rsig) = imports.get(use_.name.as_str()) {
                     for type_ in &rsig.types {
                         names.insert(imported_type_name(&use_.name, &type_.name));
                     }
@@ -506,7 +506,7 @@ fn validate_expr(
     match expr {
         AstExpr::Call { callee, args, span } => {
             if let [module, name] = callee.segments.as_slice() {
-                let Some(rsig) = ctx.imports.get(module) else {
+                let Some(rsig) = ctx.imports.get(module.as_str()) else {
                     return Err(to_source_diagnostic(
                         ctx.source_path,
                         ctx.source,
@@ -892,7 +892,7 @@ fn validate_expr(
                         || ctx.external_names.contains(name)
                         || ctx.constructor_types.contains_key(name) => {}
                 [module, name] => {
-                    let Some(rsig) = ctx.imports.get(module) else {
+                    let Some(rsig) = ctx.imports.get(module.as_str()) else {
                         return Err(to_source_diagnostic(
                             ctx.source_path,
                             ctx.source,
@@ -1035,7 +1035,7 @@ fn pattern_constructor_type(
         [name] => ctx.constructor_types.get(name).cloned(),
         [module, constructor] => ctx
             .imports
-            .get(module)
+            .get(module.as_str())
             .and_then(|rsig| rsig.find_constructor(constructor))
             .map(|type_| {
                 RsigType::Variant(TypeName::new(format!("{module}.{}", type_.name.as_str())))
@@ -1476,7 +1476,7 @@ fn infer_annotation_expr_type(
             [name] => ctx.function_results.get(name).cloned(),
             [module, name] => ctx
                 .imports
-                .get(module)
+                .get(module.as_str())
                 .and_then(|rsig| rsig.find(name))
                 .map(|export| match export {
                     RsigExport::Function(function) => function.result.clone(),
@@ -1523,7 +1523,7 @@ fn infer_annotation_expr_type(
                     return None;
                 };
                 ctx.imports
-                    .get(module)
+                    .get(module.as_str())
                     .and_then(|rsig| rsig.find_constructor(constructor))
                     .map(|type_| {
                         RsigType::Variant(TypeName::new(format!(
@@ -1686,7 +1686,7 @@ fn simple_expr_type(
                 unreachable!();
             };
             ctx.imports
-                .get(module)
+                .get(module.as_str())
                 .and_then(|rsig| rsig.find_constructor(constructor))
                 .map(|type_| {
                     RsigType::Variant(TypeName::new(format!("{module}.{}", type_.name.as_str())))
@@ -1706,7 +1706,7 @@ fn simple_expr_type(
             }
             [module, name] => ctx
                 .imports
-                .get(module)
+                .get(module.as_str())
                 .and_then(|rsig| rsig.find(name))
                 .map(|export| match export {
                     RsigExport::Function(function) => function.result.clone(),
