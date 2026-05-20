@@ -1672,7 +1672,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             .map_err(|error| miette::miette!("failed to emit external call `{symbol}`: {error}"))?;
         let result = self.call_result(
             call.try_as_basic_value().basic(),
-            AbiType::from_rsig(result),
+            external_result_abi(result),
         );
         self.pop_runtime_roots(rooted_values)?;
         result
@@ -2718,15 +2718,11 @@ impl<'ctx> Codegen<'ctx, '_> {
                 ),
             }
         }
-        match AbiType::from_rsig(result) {
+        match external_result_abi(result) {
             AbiType::Unit => Ok(self.context.void_type().fn_type(&llvm_params, false)),
-            AbiType::I64 | AbiType::ActorId | AbiType::Bool => Ok(self
-                .basic_type_for_abi(AbiType::from_rsig(result))?
+            AbiType::I64 | AbiType::ActorId | AbiType::Bool | AbiType::Value => Ok(self
+                .basic_type_for_abi(external_result_abi(result))?
                 .fn_type(&llvm_params, false)),
-            AbiType::Value => bail!(
-                "unsupported external result type `{}`; boxed Riot values are not a C return ABI yet",
-                result.canonical()
-            ),
             AbiType::Unknown => bail!("unsupported external result type `{}`", result.canonical()),
         }
     }
@@ -2866,6 +2862,28 @@ fn external_param_is_boxed(type_: &RsigType) -> bool {
         RsigType::Arrow { .. }
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::Tuple(_)
+            | RsigType::Unknown
+            | RsigType::Var(_)
+            | RsigType::Variant(_)
+    )
+}
+
+fn external_result_abi(type_: &RsigType) -> AbiType {
+    if external_result_is_boxed(type_) {
+        AbiType::Value
+    } else {
+        AbiType::from_rsig(type_)
+    }
+}
+
+fn external_result_is_boxed(type_: &RsigType) -> bool {
+    matches!(
+        type_,
+        RsigType::Arrow { .. }
+            | RsigType::List(_)
+            | RsigType::Record(_)
+            | RsigType::String
             | RsigType::Tuple(_)
             | RsigType::Unknown
             | RsigType::Var(_)
