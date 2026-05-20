@@ -164,11 +164,7 @@ fn build_program_module<'ctx>(
             .iter()
             .map(|function| (function.name.as_str(), function))
             .collect(),
-        externals: program
-            .externals
-            .iter()
-            .map(|external| (external.name.as_str(), external))
-            .collect(),
+        externals: codegen_externals(program)?,
         actor_ir: lower_rir_to_actor_ir(program, imports),
         string_counter: 0,
     };
@@ -225,7 +221,7 @@ struct Codegen<'ctx, 'a> {
     functions: HashMap<String, FunctionValue<'ctx>>,
     function_abis: HashMap<String, FunctionAbi>,
     function_map: HashMap<&'a str, &'a RirFunction>,
-    externals: BTreeMap<&'a str, &'a crate::ir::RirExternal>,
+    externals: BTreeMap<String, crate::ir::RirExternal>,
     actor_ir: ActorIrProgram,
     string_counter: usize,
 }
@@ -1459,7 +1455,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             }
             [name] if name == "link" => self.emit_actor_id_runtime_call("riot_rt_link", args, env),
             [name] if self.externals.contains_key(name.as_str()) => {
-                let external = *self.externals.get(name.as_str()).unwrap();
+                let external = self.externals.get(name.as_str()).unwrap().clone();
                 self.emit_external_call(
                     &external.abi,
                     &external.params,
@@ -3206,6 +3202,35 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
         }
         _ => AbiType::Unknown,
     }
+}
+
+fn codegen_externals(
+    program: &RirProgram,
+) -> miette::Result<BTreeMap<String, crate::ir::RirExternal>> {
+    let mut externals = crate::stdlib::prelude_signature()?
+        .exports
+        .into_iter()
+        .filter_map(|export| {
+            let crate::signature::RsigExport::External(external) = export else {
+                return None;
+            };
+            Some((
+                external.name.clone(),
+                crate::ir::RirExternal {
+                    name: external.name,
+                    params: external.params,
+                    result: external.result,
+                    abi: external.abi,
+                },
+            ))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    for external in &program.externals {
+        externals.insert(external.name.clone(), external.clone());
+    }
+
+    Ok(externals)
 }
 
 #[cfg(test)]
