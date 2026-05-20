@@ -32,6 +32,7 @@ impl AbiType {
             | RsigType::List(_)
             | RsigType::Record(_)
             | RsigType::Variant(_)
+            | RsigType::VariantApp { .. }
             | RsigType::Arrow { .. } => AbiType::Value,
             _ => AbiType::Unknown,
         }

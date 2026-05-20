@@ -8,7 +8,7 @@ use crate::ast::{
 use crate::signature::{
     ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
     RsigExternal, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
-    RsigTypeScheme, RsigVariantConstructor, TypeName, parse_type_signature,
+    RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName, parse_type_signature,
     parse_type_signature_with_variants, parse_type_with_variants,
 };
 
@@ -49,10 +49,17 @@ pub(crate) fn typed_program_from_ast(
             AstDecl::External(external) => {
                 raw_externals.push(external);
             }
+            AstDecl::Module(_) | AstDecl::Include(_) => {}
             AstDecl::Type(type_) => {
                 types.push(TypedTypeDecl {
                     name: TypeName::new(type_.name),
+                    params: type_
+                        .params
+                        .into_iter()
+                        .map(|param| TypeParamName::new(param.name))
+                        .collect(),
                     body: match type_.body {
+                        AstTypeBody::Abstract => TypedTypeBody::Abstract,
                         AstTypeBody::Variant { constructors } => TypedTypeBody::Variant {
                             constructors: constructors
                                 .into_iter()
@@ -184,7 +191,9 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
         .iter()
         .map(|type_| RsigTypeDecl {
             name: type_.name.clone(),
+            params: type_.params.clone(),
             body: match &type_.body {
+                TypedTypeBody::Abstract => RsigTypeDeclKind::Abstract,
                 TypedTypeBody::Variant { constructors } => RsigTypeDeclKind::Variant {
                     constructors: constructors
                         .iter()
@@ -437,19 +446,50 @@ impl<'a> TypeContext<'a> {
 }
 
 fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, ConstructorSignature> {
-    types
+    let mut constructors = crate::stdlib::prelude_signature()
+        .ok()
+        .map(|rsig| constructor_type_map_from_rsig(&rsig, None))
+        .unwrap_or_default();
+    constructors.extend(types.iter().flat_map(|type_| {
+        let TypedTypeBody::Variant { constructors } = &type_.body else {
+            return Vec::new();
+        };
+        constructors
+            .iter()
+            .map(|constructor| {
+                (
+                    constructor.name.as_str().to_owned(),
+                    ConstructorSignature {
+                        type_name: type_.name.clone(),
+                        payload: constructor.payload.clone(),
+                    },
+                )
+            })
+            .collect::<Vec<_>>()
+    }));
+    constructors
+}
+
+fn constructor_type_map_from_rsig(
+    rsig: &Rsig,
+    module: Option<&str>,
+) -> BTreeMap<String, ConstructorSignature> {
+    rsig.types
         .iter()
         .flat_map(|type_| {
-            let TypedTypeBody::Variant { constructors } = &type_.body else {
+            let RsigTypeDeclKind::Variant { constructors } = &type_.body else {
                 return Vec::new();
             };
+            let type_name = module
+                .map(|module| imported_type_name(module, &type_.name))
+                .unwrap_or_else(|| type_.name.clone());
             constructors
                 .iter()
-                .map(|constructor| {
+                .map(move |constructor| {
                     (
                         constructor.name.as_str().to_owned(),
                         ConstructorSignature {
-                            type_name: type_.name.clone(),
+                            type_name: type_name.clone(),
                             payload: constructor.payload.clone(),
                         },
                     )
@@ -565,7 +605,7 @@ fn declared_variant_names(
     uses: &[TypedUse],
     imports: &ImportedSignatures,
 ) -> BTreeSet<TypeName> {
-    let mut names = BTreeSet::new();
+    let mut names = prelude_variant_names();
     for type_ in types {
         if matches!(type_.body, TypedTypeBody::Variant { .. }) {
             names.insert(type_.name.clone());
@@ -587,7 +627,7 @@ fn declared_variant_names_from_ast(
     program: &AstProgram,
     imports: &ImportedSignatures,
 ) -> BTreeSet<TypeName> {
-    let mut names = BTreeSet::new();
+    let mut names = prelude_variant_names();
     for decl in &program.decls {
         match decl {
             AstDecl::Type(type_) if matches!(type_.body, AstTypeBody::Variant { .. }) => {
@@ -602,10 +642,28 @@ fn declared_variant_names_from_ast(
                     }
                 }
             }
-            _ => {}
+            AstDecl::Module(_)
+            | AstDecl::Include(_)
+            | AstDecl::Type(_)
+            | AstDecl::External(_)
+            | AstDecl::Function(_) => {}
         }
     }
     names
+}
+
+fn prelude_variant_names() -> BTreeSet<TypeName> {
+    crate::stdlib::prelude_signature()
+        .ok()
+        .map(|rsig| {
+            rsig.types
+                .into_iter()
+                .filter_map(|type_| {
+                    matches!(type_.body, RsigTypeDeclKind::Variant { .. }).then_some(type_.name)
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn infer_ast_function_types(
@@ -1807,9 +1865,28 @@ fn qualify_imported_type(module_name: &str, type_: &RsigType) -> RsigType {
                 .collect(),
         ),
         RsigType::Record(name) => RsigType::Record(imported_type_name(module_name, name)),
+        RsigType::Variant(name) if is_prelude_type_name(name) => RsigType::Variant(name.clone()),
         RsigType::Variant(name) => RsigType::Variant(imported_type_name(module_name, name)),
+        RsigType::VariantApp { name, args } if is_prelude_type_name(name) => RsigType::VariantApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| qualify_imported_type(module_name, arg))
+                .collect(),
+        },
+        RsigType::VariantApp { name, args } => RsigType::VariantApp {
+            name: imported_type_name(module_name, name),
+            args: args
+                .iter()
+                .map(|arg| qualify_imported_type(module_name, arg))
+                .collect(),
+        },
         other => other.clone(),
     }
+}
+
+fn is_prelude_type_name(type_name: &TypeName) -> bool {
+    matches!(type_name.as_str(), "option" | "result" | "Never" | "int")
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {

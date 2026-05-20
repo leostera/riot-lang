@@ -19,6 +19,12 @@ pub(crate) enum TokenKind {
     Let,
     #[token("use")]
     Use,
+    #[token("pub")]
+    Pub,
+    #[token("mod")]
+    Mod,
+    #[token("include")]
+    Include,
     #[token("external")]
     External,
     #[token("type")]

@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 7;
+const VERSION: u16 = 8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
@@ -187,12 +187,14 @@ pub(crate) struct RsigDependency {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RsigTypeDecl {
     pub(crate) name: TypeName,
+    pub(crate) params: Vec<TypeParamName>,
     pub(crate) body: RsigTypeDeclKind,
     pub(crate) fingerprint: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum RsigTypeDeclKind {
+    Abstract,
     Variant {
         constructors: Vec<RsigVariantConstructor>,
     },
@@ -205,6 +207,43 @@ pub(crate) enum RsigTypeDeclKind {
 pub(crate) struct RsigVariantConstructor {
     pub(crate) name: ConstructorName,
     pub(crate) payload: Vec<RsigType>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TypeParamName(String);
+
+impl TypeParamName {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for TypeParamName {
+    fn from(value: String) -> Self {
+        TypeParamName::new(value)
+    }
+}
+
+impl From<&str> for TypeParamName {
+    fn from(value: &str) -> Self {
+        TypeParamName::new(value)
+    }
+}
+
+impl AsRef<str> for TypeParamName {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for TypeParamName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -257,6 +296,10 @@ pub(crate) enum RsigType {
     List(Box<RsigType>),
     Record(TypeName),
     Variant(TypeName),
+    VariantApp {
+        name: TypeName,
+        args: Vec<RsigType>,
+    },
     Unknown,
 }
 
@@ -323,6 +366,11 @@ fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
                 collect_type_vars(item, vars);
             }
         }
+        RsigType::VariantApp { args, .. } => {
+            for arg in args {
+                collect_type_vars(arg, vars);
+            }
+        }
         RsigType::Var(name) if !vars.contains(name) => vars.push(name.clone()),
         RsigType::Var(_)
         | RsigType::Bool
@@ -330,9 +378,9 @@ fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
         | RsigType::F64
         | RsigType::I64
         | RsigType::Record(_)
-        | RsigType::Variant(_)
         | RsigType::String
         | RsigType::Unit
+        | RsigType::Variant(_)
         | RsigType::Unknown => {}
     }
 }
@@ -434,15 +482,30 @@ impl RsigDependency {
 }
 
 impl RsigTypeDecl {
+    fn canonical_header(&self) -> String {
+        if self.params.is_empty() {
+            format!("type {}", self.name)
+        } else {
+            let params = self
+                .params
+                .iter()
+                .map(TypeParamName::as_str)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("type {}<{}>", self.name, params)
+        }
+    }
+
     fn canonical_without_fingerprint(&self) -> String {
         match &self.body {
+            RsigTypeDeclKind::Abstract => self.canonical_header(),
             RsigTypeDeclKind::Variant { constructors } => {
                 let constructors = constructors
                     .iter()
                     .map(RsigVariantConstructor::canonical)
                     .collect::<Vec<_>>()
                     .join(" | ");
-                format!("type {} = {}", self.name, constructors)
+                format!("{} = {}", self.canonical_header(), constructors)
             }
             RsigTypeDeclKind::Record { fields } => {
                 let fields = fields
@@ -450,7 +513,7 @@ impl RsigTypeDecl {
                     .map(|field| format!("{}: {}", field.name, field.type_.canonical()))
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("type {} = {{ {} }}", self.name, fields)
+                format!("{} = {{ {} }}", self.canonical_header(), fields)
             }
         }
     }
@@ -582,6 +645,11 @@ impl TypeVarCanonicalizer {
                     self.canonicalize(item);
                 }
             }
+            RsigType::VariantApp { args, .. } => {
+                for arg in args {
+                    self.canonicalize(arg);
+                }
+            }
             RsigType::Var(name) => {
                 let next = canonical_type_var_name(self.names.len());
                 let canonical = self.names.entry(name.clone()).or_insert(next);
@@ -627,6 +695,9 @@ impl RsigType {
             RsigType::List(item) => format!("{} list", item.canonical()),
             RsigType::Record(name) => name.to_string(),
             RsigType::Variant(name) => name.to_string(),
+            RsigType::VariantApp { name, args } => {
+                format!("{}<{}>", name, render_types(args))
+            }
             RsigType::Unknown => "_".to_owned(),
         }
     }
@@ -705,14 +776,16 @@ pub(crate) fn parse_type_signature_with_variants(
     text: &str,
     variants: &BTreeSet<TypeName>,
 ) -> (Vec<RsigType>, RsigType) {
-    let (params, result) = parse_type_signature(text);
-    (
-        params
-            .into_iter()
-            .map(|type_| resolve_declared_variants(type_, variants))
-            .collect(),
-        resolve_declared_variants(result, variants),
-    )
+    let mut parts = split_top_level_arrows(text);
+    if parts.len() < 2 {
+        return (Vec::new(), parse_type_with_variants(text, variants));
+    }
+    let result = parse_type_with_variants(parts.pop().unwrap_or("_"), variants);
+    let params = parts
+        .into_iter()
+        .map(|part| parse_type_with_variants(part, variants))
+        .collect();
+    (params, result)
 }
 
 pub(crate) fn parse_type(text: &str) -> RsigType {
@@ -763,6 +836,17 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
 }
 
 pub(crate) fn parse_type_with_variants(text: &str, variants: &BTreeSet<TypeName>) -> RsigType {
+    let text = text.trim();
+    if let Some((name, args)) = parse_named_type_app(text) {
+        let name = TypeName::new(name);
+        let args = split_top_level_commas(args)
+            .into_iter()
+            .map(|arg| parse_type_with_variants(arg, variants))
+            .collect::<Vec<_>>();
+        if variants.contains(&name) {
+            return RsigType::VariantApp { name, args };
+        }
+    }
     resolve_declared_variants(parse_type(text), variants)
 }
 
@@ -784,6 +868,13 @@ fn resolve_declared_variants(type_: RsigType, variants: &BTreeSet<TypeName>) -> 
                 .map(|item| resolve_declared_variants(item, variants))
                 .collect(),
         ),
+        RsigType::VariantApp { name, args } => RsigType::VariantApp {
+            name,
+            args: args
+                .into_iter()
+                .map(|arg| resolve_declared_variants(arg, variants))
+                .collect(),
+        },
         RsigType::Record(name) => {
             if variants.contains(&name) {
                 RsigType::Variant(name)
@@ -811,6 +902,16 @@ fn strip_wrapping_parens(text: &str) -> Option<&str> {
         }
     }
     Some(inner)
+}
+
+fn parse_named_type_app(text: &str) -> Option<(&str, &str)> {
+    let (name, rest) = text.split_once('<')?;
+    let args = rest.strip_suffix('>')?;
+    let name = name.trim();
+    if name.is_empty() || name == "actor_id" {
+        return None;
+    }
+    Some((name, args))
 }
 
 pub(crate) fn stable_hash(text: &str) -> u64 {
@@ -882,7 +983,14 @@ fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
     put_u32(&mut bytes, rsig.types.len() as u32);
     for type_ in &rsig.types {
         put_string(&mut bytes, type_.name.as_str());
+        put_u32(&mut bytes, type_.params.len() as u32);
+        for param in &type_.params {
+            put_string(&mut bytes, param.as_str());
+        }
         match &type_.body {
+            RsigTypeDeclKind::Abstract => {
+                bytes.push(2);
+            }
             RsigTypeDeclKind::Variant { constructors } => {
                 bytes.push(0);
                 put_u32(&mut bytes, constructors.len() as u32);
@@ -953,6 +1061,11 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
     let mut types = Vec::new();
     for _ in 0..type_count {
         let name = TypeName::new(get_string(&mut cursor)?);
+        let param_count = get_u32(&mut cursor)?;
+        let mut params = Vec::new();
+        for _ in 0..param_count {
+            params.push(TypeParamName::new(get_string(&mut cursor)?));
+        }
         let mut tag = [0_u8; 1];
         cursor.read_exact(&mut tag).into_diagnostic()?;
         let body = match tag[0] {
@@ -978,11 +1091,13 @@ fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
                 }
                 RsigTypeDeclKind::Record { fields }
             }
+            2 => RsigTypeDeclKind::Abstract,
             other => bail!("unsupported rsig type declaration tag {other}"),
         };
         let fingerprint = get_u64(&mut cursor)?;
         types.push(RsigTypeDecl {
             name,
+            params,
             body,
             fingerprint,
         });
@@ -1098,6 +1213,11 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
             bytes.push(13);
             put_string(bytes, name.as_str());
         }
+        RsigType::VariantApp { name, args } => {
+            bytes.push(14);
+            put_string(bytes, name.as_str());
+            put_types(bytes, args);
+        }
         RsigType::Unknown => bytes.push(11),
     }
 }
@@ -1123,6 +1243,10 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
             result: Box::new(get_type(cursor)?),
         },
         13 => RsigType::Variant(TypeName::new(get_string(cursor)?)),
+        14 => RsigType::VariantApp {
+            name: TypeName::new(get_string(cursor)?),
+            args: get_types(cursor)?,
+        },
         tag => bail!("unknown type tag {tag}"),
     })
 }
@@ -1176,8 +1300,8 @@ mod tests {
     use super::{
         ConstructorName, FieldName, Rsig, RsigDependency, RsigExport, RsigFunction,
         RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme,
-        RsigVariantConstructor, TypeName, decode_rsig, encode_rsig, parse_type_signature,
-        parse_type_signature_with_variants,
+        RsigVariantConstructor, TypeName, TypeParamName, decode_rsig, encode_rsig,
+        parse_type_signature, parse_type_signature_with_variants,
     };
     use std::collections::BTreeSet;
 
@@ -1341,6 +1465,7 @@ mod tests {
             Vec::new(),
             vec![RsigTypeDecl {
                 name: TypeName::new("point"),
+                params: Vec::new(),
                 body: RsigTypeDeclKind::Record {
                     fields: vec![
                         RsigRecordField {
@@ -1375,6 +1500,7 @@ mod tests {
             Vec::new(),
             vec![RsigTypeDecl {
                 name: TypeName::new("color"),
+                params: Vec::new(),
                 body: RsigTypeDeclKind::Variant {
                     constructors: vec![
                         RsigVariantConstructor {
@@ -1410,6 +1536,7 @@ mod tests {
             Vec::new(),
             vec![RsigTypeDecl {
                 name: TypeName::new("option_i64"),
+                params: Vec::new(),
                 body: RsigTypeDeclKind::Variant {
                     constructors: vec![
                         RsigVariantConstructor {
@@ -1439,5 +1566,25 @@ mod tests {
                 .canonical_text()
                 .contains("type option_i64 = Some(i64) | Pair(i64, string) | None")
         );
+    }
+
+    #[test]
+    fn binary_rsig_roundtrips_abstract_generic_types() {
+        let rsig = Rsig::with_dependencies(
+            "Prelude".to_owned(),
+            Vec::new(),
+            vec![RsigTypeDecl {
+                name: TypeName::new("option"),
+                params: vec![TypeParamName::new("'value")],
+                body: RsigTypeDeclKind::Abstract,
+                fingerprint: 0,
+            }],
+            Vec::new(),
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded, rsig);
+        assert!(decoded.canonical_text().contains("type option<'value>"));
     }
 }

@@ -474,6 +474,48 @@ pub extern "C" fn riot_rt_value_variant_get_payload(value: RtValue) -> RtValue {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_option_is_some(value: RtValue) -> bool {
+    unsafe { riot_rt_value_variant_is(value, b"option".as_ptr(), 6, b"Some".as_ptr(), 4) }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_option_is_none(value: RtValue) -> bool {
+    unsafe { riot_rt_value_variant_is(value, b"option".as_ptr(), 6, b"None".as_ptr(), 4) }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_option_unwrap_or(value: RtValue, fallback: RtValue) -> RtValue {
+    if riot_rt_option_is_some(value) {
+        riot_rt_value_variant_get_payload(value)
+    } else if riot_rt_option_is_none(value) {
+        fallback
+    } else {
+        runtime_abort("Option.unwrap_or expected an option value");
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_result_is_ok(value: RtValue) -> bool {
+    unsafe { riot_rt_value_variant_is(value, b"result".as_ptr(), 6, b"Ok".as_ptr(), 2) }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_result_is_err(value: RtValue) -> bool {
+    unsafe { riot_rt_value_variant_is(value, b"result".as_ptr(), 6, b"Err".as_ptr(), 3) }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_result_unwrap_or(value: RtValue, fallback: RtValue) -> RtValue {
+    if riot_rt_result_is_ok(value) {
+        riot_rt_value_variant_get_payload(value)
+    } else if riot_rt_result_is_err(value) {
+        fallback
+    } else {
+        runtime_abort("Result.unwrap_or expected a result value");
+    }
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_lt(lhs: RtValue, rhs: RtValue) -> bool {
     with_scheduler_mut(|scheduler| scheduler.values_less_than(lhs, rhs))
 }

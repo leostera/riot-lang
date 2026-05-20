@@ -81,10 +81,7 @@ pub(super) fn parse_primitive_type(text: &str) -> Result<PrimitiveType, TypeAnno
         "f16" => Ok(PrimitiveType::F16),
         "f32" => Ok(PrimitiveType::F32),
         "f64" => Ok(PrimitiveType::F64),
-        "int" => Err(TypeAnnotationError {
-            message: "`int` is not a primitive Riot ML type".to_owned(),
-            help: Some("use an explicitly sized integer type, for example `i64` or `u64`"),
-        }),
+        "int" => Ok(PrimitiveType::ISize),
         "float" => Err(TypeAnnotationError {
             message: "`float` is not a primitive Riot ML type".to_owned(),
             help: Some("use an explicitly sized floating-point type, for example `f32` or `f64`"),

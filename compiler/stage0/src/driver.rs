@@ -48,7 +48,8 @@ fn compile(args: CompileArgs) -> miette::Result<()> {
         .map_err(|path| miette::miette!("temp path is not utf-8: {}", path.display()))?;
     emit_executable_object(&rir, &imports, &object, args.emit_llvm.as_deref())?;
 
-    let imported_objects = resolve_imported_objects(&rir.uses, &args.objects, &args.object_dirs)?;
+    let imported_objects =
+        resolve_imported_objects(&rir.uses, &imports, &args.objects, &args.object_dirs)?;
     link_executable(&object, &imported_objects, &runtime, &args.output)?;
 
     Ok(())
@@ -180,7 +181,16 @@ fn resolve_imports(
     let mut imports = BTreeMap::new();
     for decl in &ast.decls {
         if let AstDecl::Use(use_) = decl {
-            let (_path, rsig) = resolve_rsig(&use_.name, source_dir, sig_dirs)?;
+            let rsig = match resolve_rsig(&use_.name, source_dir, sig_dirs) {
+                Ok((_path, rsig)) => rsig,
+                Err(error) => {
+                    if let Some(rsig) = crate::stdlib::std_signature(&use_.name)? {
+                        rsig
+                    } else {
+                        return Err(error);
+                    }
+                }
+            };
             imports.insert(ModuleName::new(use_.name.clone()), rsig);
         }
     }
@@ -189,6 +199,7 @@ fn resolve_imports(
 
 fn resolve_imported_objects(
     uses: &[ModuleName],
+    imports: &ImportedSignatures,
     mappings: &[ObjectMapping],
     object_dirs: &[Utf8PathBuf],
 ) -> miette::Result<Vec<Utf8PathBuf>> {
@@ -198,6 +209,12 @@ fn resolve_imported_objects(
         .collect::<BTreeMap<_, _>>();
     let mut objects = Vec::new();
     for module in uses {
+        if imports
+            .get(module)
+            .is_some_and(crate::stdlib::is_std_signature)
+        {
+            continue;
+        }
         if let Some(path) = explicit.get(module.as_str()) {
             objects.push(path.clone());
             continue;

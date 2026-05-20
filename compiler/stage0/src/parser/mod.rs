@@ -1,9 +1,10 @@
 use camino::Utf8Path;
 
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstMatchArm, AstPath, AstPattern,
-    AstProgram, AstReceiveArm, AstRecordTypeField, AstStmt, AstTypeAnnotation, AstTypeBody,
-    AstTypeDecl, AstUseDecl, AstVariantConstructor, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstIncludeDecl, AstMatchArm,
+    AstModuleDecl, AstPath, AstPattern, AstProgram, AstReceiveArm, AstRecordTypeField, AstStmt,
+    AstTypeAnnotation, AstTypeBody, AstTypeDecl, AstTypeParam, AstUseDecl, AstVariantConstructor,
+    TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::lexer::{Token, TokenKind, lex};
@@ -71,11 +72,14 @@ impl<'src> Parser<'src> {
     fn parse_decl(&mut self) -> Result<AstDecl, ParseError> {
         match self.current().kind {
             TokenKind::Use => self.parse_use_decl().map(AstDecl::Use),
+            TokenKind::Pub => self.parse_pub_decl(),
+            TokenKind::Mod => self.parse_module_decl(false).map(AstDecl::Module),
+            TokenKind::Include => self.parse_include_decl().map(AstDecl::Include),
             TokenKind::External => self.parse_external_decl().map(AstDecl::External),
             TokenKind::Type => self.parse_type_decl().map(AstDecl::Type),
             TokenKind::Fn => self.parse_fn_decl().map(AstDecl::Function),
             _ => Err(self.error_at_current(
-                "expected top-level `use`, `external`, `type`, or `fn` declaration",
+                "expected top-level `use`, `pub mod`, `include`, `external`, `type`, or `fn` declaration",
                 Some("try: fn main() { println(\"hello world\") }"),
             )),
         }
@@ -102,6 +106,37 @@ impl<'src> Parser<'src> {
             ));
         }
         Ok(AstUseDecl {
+            name,
+            name_span,
+            span: start.span.join(name_span),
+        })
+    }
+
+    fn parse_pub_decl(&mut self) -> Result<AstDecl, ParseError> {
+        self.expect(TokenKind::Pub, "expected `pub`")?;
+        match self.current().kind {
+            TokenKind::Mod => self.parse_module_decl(true).map(AstDecl::Module),
+            _ => {
+                Err(self.error_at_current("expected `mod` after `pub`", Some("try: pub mod List")))
+            }
+        }
+    }
+
+    fn parse_module_decl(&mut self, public: bool) -> Result<AstModuleDecl, ParseError> {
+        let start = self.expect(TokenKind::Mod, "expected `mod`")?;
+        let (name, name_span) = self.expect_module_name()?;
+        Ok(AstModuleDecl {
+            name,
+            name_span,
+            public,
+            span: start.span.join(name_span),
+        })
+    }
+
+    fn parse_include_decl(&mut self) -> Result<AstIncludeDecl, ParseError> {
+        let start = self.expect(TokenKind::Include, "expected `include`")?;
+        let (name, name_span) = self.expect_module_name()?;
+        Ok(AstIncludeDecl {
             name,
             name_span,
             span: start.span.join(name_span),
@@ -147,11 +182,20 @@ impl<'src> Parser<'src> {
 
     fn parse_type_decl(&mut self) -> Result<AstTypeDecl, ParseError> {
         let start = self.expect(TokenKind::Type, "expected type declaration")?;
-        let (name, name_span) = self.expect_lower_ident()?;
-        self.expect(TokenKind::Eq, "expected `=` after type name")?;
+        let (name, name_span) = self.expect_type_ident()?;
+        let params = self.parse_type_params()?;
+        if self.match_kind(TokenKind::Eq).is_none() {
+            return Ok(AstTypeDecl {
+                name,
+                name_span,
+                params,
+                body: AstTypeBody::Abstract,
+                span: start.span.join(name_span),
+            });
+        }
 
         if self.at(TokenKind::LBrace) {
-            return self.parse_record_type_decl(start.span, name, name_span);
+            return self.parse_record_type_decl(start.span, name, name_span, params);
         }
 
         let mut constructors = Vec::new();
@@ -206,9 +250,38 @@ impl<'src> Parser<'src> {
         Ok(AstTypeDecl {
             name,
             name_span,
+            params,
             body: AstTypeBody::Variant { constructors },
             span,
         })
+    }
+
+    fn parse_type_params(&mut self) -> Result<Vec<AstTypeParam>, ParseError> {
+        if self.match_kind(TokenKind::Lt).is_none() {
+            return Ok(Vec::new());
+        }
+
+        let mut params = Vec::new();
+        loop {
+            let token = self.expect(TokenKind::Ident, "expected type parameter")?;
+            let name = self.text(token.span).to_owned();
+            if !name.starts_with('\'') {
+                return Err(ParseError {
+                    span: token.span,
+                    message: format!("expected type parameter, found `{name}`"),
+                    help: Some("type parameters start with `'`, for example `'value`"),
+                });
+            }
+            params.push(AstTypeParam {
+                name,
+                span: token.span,
+            });
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+        }
+        self.expect(TokenKind::Gt, "expected `>` after type parameters")?;
+        Ok(params)
     }
 
     fn parse_record_type_decl(
@@ -216,6 +289,7 @@ impl<'src> Parser<'src> {
         start: TextSpan,
         name: String,
         name_span: TextSpan,
+        params: Vec<AstTypeParam>,
     ) -> Result<AstTypeDecl, ParseError> {
         self.expect(TokenKind::LBrace, "expected `{` in record type")?;
         let mut fields = Vec::new();
@@ -251,6 +325,7 @@ impl<'src> Parser<'src> {
         Ok(AstTypeDecl {
             name,
             name_span,
+            params,
             body: AstTypeBody::Record { fields },
             span: start.join(end.span),
         })
@@ -1197,6 +1272,34 @@ impl<'src> Parser<'src> {
                 span,
                 message: format!("expected uppercase variant constructor, found `{ident}`"),
                 help: Some("variant constructors are ClassCase, for example `Some` or `None`"),
+            })
+        }
+    }
+
+    fn expect_type_ident(&mut self) -> Result<(String, TextSpan), ParseError> {
+        let (ident, span) = self.expect_ident()?;
+
+        if is_lower_ident(&ident) || is_upper_ident(&ident) {
+            Ok((ident, span))
+        } else {
+            Err(ParseError {
+                span,
+                message: format!("expected type name, found `{ident}`"),
+                help: Some("type names are identifiers, for example `option` or `Never`"),
+            })
+        }
+    }
+
+    fn expect_module_name(&mut self) -> Result<(String, TextSpan), ParseError> {
+        let (ident, span) = self.expect_ident()?;
+
+        if is_upper_ident(&ident) {
+            Ok((ident, span))
+        } else {
+            Err(ParseError {
+                span,
+                message: format!("expected module name, found `{ident}`"),
+                help: Some("module names are ClassCase, for example `List` or `Prelude`"),
             })
         }
     }

@@ -18,7 +18,7 @@ use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::infer_program;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
 use crate::signature::{
-    ImportedSignatures, ModuleName, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
+    ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
     parse_type_with_variants,
 };
 
@@ -185,6 +185,7 @@ fn validate_program(
                     .into());
                 }
             }
+            AstDecl::Module(_) | AstDecl::Include(_) => {}
             AstDecl::External(external) => {
                 if external.type_text.trim().is_empty() {
                     return Err(to_source_diagnostic(
@@ -262,7 +263,7 @@ fn declared_variant_names(
     program: &AstProgram,
     imports: &ImportedSignatures,
 ) -> BTreeSet<TypeName> {
-    let mut names = BTreeSet::new();
+    let mut names = prelude_variant_names();
     for decl in &program.decls {
         match decl {
             AstDecl::Type(type_) if matches!(type_.body, AstTypeBody::Variant { .. }) => {
@@ -277,10 +278,28 @@ fn declared_variant_names(
                     }
                 }
             }
-            AstDecl::Type(_) | AstDecl::External(_) | AstDecl::Function(_) => {}
+            AstDecl::Module(_)
+            | AstDecl::Include(_)
+            | AstDecl::Type(_)
+            | AstDecl::External(_)
+            | AstDecl::Function(_) => {}
         }
     }
     names
+}
+
+fn prelude_variant_names() -> BTreeSet<TypeName> {
+    crate::stdlib::prelude_signature()
+        .ok()
+        .map(|rsig| {
+            rsig.types
+                .into_iter()
+                .filter_map(|type_| {
+                    matches!(type_.body, RsigTypeDeclKind::Variant { .. }).then_some(type_.name)
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
@@ -333,6 +352,8 @@ fn declared_external_names(program: &AstProgram) -> HashSet<String> {
 fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
     program.decls.first().map(|decl| match decl {
         AstDecl::Use(use_) => use_.span,
+        AstDecl::Module(module) => module.span,
+        AstDecl::Include(include) => include.span,
         AstDecl::External(external) => external.span,
         AstDecl::Type(type_) => type_.span,
         AstDecl::Function(function) => function.span,
@@ -343,32 +364,67 @@ fn constructor_types(
     program: &AstProgram,
     declared_variants: &BTreeSet<TypeName>,
 ) -> HashMap<String, ConstructorShape> {
-    program
-        .decls
+    let mut constructors = crate::stdlib::prelude_signature()
+        .ok()
+        .map(|rsig| constructor_types_from_rsig(&rsig, None))
+        .unwrap_or_default();
+    constructors.extend(
+        program
+            .decls
+            .iter()
+            .filter_map(|decl| match decl {
+                AstDecl::Type(type_) => Some(type_),
+                _ => None,
+            })
+            .flat_map(|type_| {
+                let type_name = TypeName::new(type_.name.clone());
+                let AstTypeBody::Variant { constructors } = &type_.body else {
+                    return Vec::new();
+                };
+                constructors
+                    .iter()
+                    .map(move |constructor| {
+                        (
+                            constructor.name.clone(),
+                            ConstructorShape {
+                                type_name: type_name.clone(),
+                                payload: constructor
+                                    .payload
+                                    .iter()
+                                    .map(|payload| {
+                                        parse_type_with_variants(&payload.text, &declared_variants)
+                                    })
+                                    .collect(),
+                            },
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            }),
+    );
+    constructors
+}
+
+fn constructor_types_from_rsig(
+    rsig: &Rsig,
+    module: Option<&str>,
+) -> HashMap<String, ConstructorShape> {
+    rsig.types
         .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::Type(type_) => Some(type_),
-            _ => None,
-        })
         .flat_map(|type_| {
-            let type_name = TypeName::new(type_.name.clone());
-            let AstTypeBody::Variant { constructors } = &type_.body else {
+            let RsigTypeDeclKind::Variant { constructors } = &type_.body else {
                 return Vec::new();
             };
+            let type_name = module
+                .map(|module| TypeName::new(format!("{module}.{}", type_.name.as_str())))
+                .unwrap_or_else(|| type_.name.clone());
             constructors
                 .iter()
                 .map(move |constructor| {
                     (
-                        constructor.name.clone(),
+                        constructor.name.as_str().to_owned(),
                         ConstructorShape {
                             type_name: type_name.clone(),
-                            payload: constructor
-                                .payload
-                                .iter()
-                                .map(|payload| {
-                                    parse_type_with_variants(&payload.text, &declared_variants)
-                                })
-                                .collect(),
+                            payload: constructor.payload.clone(),
                         },
                     )
                 })
@@ -1642,10 +1698,32 @@ fn qualify_imported_type(module: &str, type_: &RsigType) -> RsigType {
             RsigType::Record(TypeName::new(format!("{module}.{}", name.as_str())))
         }
         RsigType::Variant(name) => {
-            RsigType::Variant(TypeName::new(format!("{module}.{}", name.as_str())))
+            if is_prelude_type_name(name) {
+                RsigType::Variant(name.clone())
+            } else {
+                RsigType::Variant(TypeName::new(format!("{module}.{}", name.as_str())))
+            }
+        }
+        RsigType::VariantApp { name, args } => {
+            let name = if is_prelude_type_name(name) {
+                name.clone()
+            } else {
+                TypeName::new(format!("{module}.{}", name.as_str()))
+            };
+            RsigType::VariantApp {
+                name,
+                args: args
+                    .iter()
+                    .map(|arg| qualify_imported_type(module, arg))
+                    .collect(),
+            }
         }
         other => other.clone(),
     }
+}
+
+fn is_prelude_type_name(type_name: &TypeName) -> bool {
+    matches!(type_name.as_str(), "option" | "result" | "Never" | "int")
 }
 
 fn validate_static_list_index(
@@ -1945,7 +2023,7 @@ fn validate_type_annotation(
     value: &AstExpr,
     _bindings: &HashMap<String, BindingKind>,
 ) -> miette::Result<()> {
-    if annotation.text == "int" || annotation.text == "float" {
+    if annotation.text == "float" {
         let error = parse_primitive_type(&annotation.text).unwrap_err();
         return Err(to_source_diagnostic(
             ctx.source_path,
@@ -2040,7 +2118,7 @@ fn validate_function_abi_annotation(
     ctx: &ValidationContext<'_>,
     annotation: &AstTypeAnnotation,
 ) -> miette::Result<()> {
-    if annotation.text == "int" || annotation.text == "float" {
+    if annotation.text == "float" {
         let error = parse_primitive_type(&annotation.text).unwrap_err();
         return Err(to_source_diagnostic(
             ctx.source_path,
@@ -2065,6 +2143,7 @@ fn validate_function_abi_annotation(
             | RsigType::List(_)
             | RsigType::Record(_)
             | RsigType::Variant(_)
+            | RsigType::VariantApp { .. }
             | RsigType::Arrow { .. }
     ) {
         return Ok(());
@@ -2298,6 +2377,8 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
     expected == actual
         || matches!(expected, RsigType::Unknown)
         || matches!(actual, RsigType::Unknown)
+        || matches!(expected, RsigType::Var(_))
+        || matches!(actual, RsigType::Var(_))
         || matches!(
             (expected, actual),
             (RsigType::Tuple(expected), RsigType::Tuple(actual))
@@ -2306,6 +2387,30 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
                         .iter()
                         .zip(actual)
                         .all(|(expected, actual)| type_matches(expected, actual))
+        )
+        || matches!(
+            (expected, actual),
+            (
+                RsigType::VariantApp {
+                    name: expected_name,
+                    args: expected_args
+                },
+                RsigType::VariantApp {
+                    name: actual_name,
+                    args: actual_args
+                }
+            ) if expected_name == actual_name
+                && expected_args.len() == actual_args.len()
+                && expected_args
+                    .iter()
+                    .zip(actual_args)
+                    .all(|(expected, actual)| type_matches(expected, actual))
+        )
+        || matches!(
+            (expected, actual),
+            (RsigType::VariantApp { name, .. }, RsigType::Variant(actual))
+                | (RsigType::Variant(actual), RsigType::VariantApp { name, .. })
+                if name == actual
         )
 }
 
@@ -2316,8 +2421,11 @@ fn export_has_unknown_abi(export: &RsigExport) -> bool {
                 || function.params.iter().any(rsig_type_has_unknown_abi)
         }
         RsigExport::External(external) => {
-            rsig_type_has_unknown_abi(&external.result)
-                || external.params.iter().any(rsig_type_has_unknown_abi)
+            rsig_external_type_has_unknown_abi(&external.result)
+                || external
+                    .params
+                    .iter()
+                    .any(rsig_external_type_has_unknown_abi)
         }
     }
 }
@@ -2330,6 +2438,7 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
             rsig_type_has_unknown_abi(parameter) || rsig_type_has_unknown_abi(result)
         }
         RsigType::Tuple(items) => items.iter().any(rsig_type_has_unknown_abi),
+        RsigType::VariantApp { .. } => false,
         RsigType::Bool
         | RsigType::Char
         | RsigType::F64
@@ -2338,6 +2447,14 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
         | RsigType::Unit
         | RsigType::Record(_) => false,
         RsigType::Variant(_) => false,
+    }
+}
+
+fn rsig_external_type_has_unknown_abi(type_: &RsigType) -> bool {
+    match type_ {
+        RsigType::Unknown => true,
+        RsigType::Var(_) | RsigType::VariantApp { .. } => false,
+        other => rsig_type_has_unknown_abi(other),
     }
 }
 

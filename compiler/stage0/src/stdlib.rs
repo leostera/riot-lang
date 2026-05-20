@@ -1,26 +1,140 @@
+use std::collections::BTreeSet;
+
 use camino::Utf8Path;
 use miette::bail;
 
-use crate::ast::{AstDecl, AstProgram};
+use crate::ast::{AstDecl, AstProgram, AstTypeBody};
 use crate::parser::parse_source;
 use crate::signature::{
-    ModuleName, Rsig, RsigExport, RsigExternal, RsigTypeScheme, parse_type_signature,
+    ConstructorName, FieldName, ModuleName, Rsig, RsigExport, RsigExternal, RsigRecordField,
+    RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme, RsigVariantConstructor, TypeName,
+    TypeParamName, parse_type_signature_with_variants, parse_type_with_variants,
 };
 
+const STD_SOURCE: &str = include_str!("../../std/std.ml");
 const PRELUDE_SOURCE: &str = include_str!("../../std/prelude.ml");
+const ACTOR_SOURCE: &str = include_str!("../../std/actor.ml");
+const LIST_SOURCE: &str = include_str!("../../std/list.ml");
+const STRING_SOURCE: &str = include_str!("../../std/string.ml");
+const OPTION_SOURCE: &str = include_str!("../../std/option.ml");
+const RESULT_SOURCE: &str = include_str!("../../std/result.ml");
 
 pub(crate) fn prelude_signature() -> miette::Result<Rsig> {
-    let path = Utf8Path::new("compiler/std/prelude.ml");
-    let ast = parse_source(path, PRELUDE_SOURCE)?;
-    extern_signature(ModuleName::new("Prelude"), ast)
+    std_signature("Prelude")?.ok_or_else(|| miette::miette!("compiler/std/prelude.ml is missing"))
 }
 
-fn extern_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Rsig> {
+pub(crate) fn std_signature(module: &str) -> miette::Result<Option<Rsig>> {
+    let Some((module, path, source)) = std_source(module) else {
+        return Ok(None);
+    };
+    let ast = parse_source(Utf8Path::new(path), source)?;
+    module_signature(module, ast)
+}
+
+pub(crate) fn is_std_signature(rsig: &Rsig) -> bool {
+    std_signature(rsig.module.as_str())
+        .ok()
+        .flatten()
+        .is_some_and(|std| std.module_fingerprint == rsig.module_fingerprint)
+}
+
+fn std_source(module: &str) -> Option<(ModuleName, &'static str, &'static str)> {
+    Some(match module {
+        "Std" => (ModuleName::new("Std"), "compiler/std/std.ml", STD_SOURCE),
+        "Prelude" => (
+            ModuleName::new("Prelude"),
+            "compiler/std/prelude.ml",
+            PRELUDE_SOURCE,
+        ),
+        "Actor" => (
+            ModuleName::new("Actor"),
+            "compiler/std/actor.ml",
+            ACTOR_SOURCE,
+        ),
+        "List" => (ModuleName::new("List"), "compiler/std/list.ml", LIST_SOURCE),
+        "String" => (
+            ModuleName::new("String"),
+            "compiler/std/string.ml",
+            STRING_SOURCE,
+        ),
+        "Option" => (
+            ModuleName::new("Option"),
+            "compiler/std/option.ml",
+            OPTION_SOURCE,
+        ),
+        "Result" => (
+            ModuleName::new("Result"),
+            "compiler/std/result.ml",
+            RESULT_SOURCE,
+        ),
+        _ => return None,
+    })
+}
+
+fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Option<Rsig>> {
+    let declared_variants = declared_variants(&ast);
+    let mut types = Vec::new();
     let mut exports = Vec::new();
     for decl in ast.decls {
         match decl {
+            AstDecl::Use(_) | AstDecl::Module(_) => {}
+            AstDecl::Include(include) => {
+                let Some(included) = std_signature(&include.name)? else {
+                    bail!(
+                        "compiler/std include {} does not name a std module",
+                        include.name
+                    );
+                };
+                types.extend(included.types);
+                exports.extend(included.exports);
+            }
+            AstDecl::Type(type_) => {
+                types.push(RsigTypeDecl {
+                    name: TypeName::new(type_.name),
+                    params: type_
+                        .params
+                        .into_iter()
+                        .map(|param| TypeParamName::new(param.name))
+                        .collect(),
+                    body: match type_.body {
+                        AstTypeBody::Abstract => RsigTypeDeclKind::Abstract,
+                        AstTypeBody::Variant { constructors } => RsigTypeDeclKind::Variant {
+                            constructors: constructors
+                                .into_iter()
+                                .map(|constructor| RsigVariantConstructor {
+                                    name: ConstructorName::new(constructor.name),
+                                    payload: constructor
+                                        .payload
+                                        .into_iter()
+                                        .map(|payload| {
+                                            parse_type_with_variants(
+                                                &payload.text,
+                                                &declared_variants,
+                                            )
+                                        })
+                                        .collect(),
+                                })
+                                .collect(),
+                        },
+                        AstTypeBody::Record { fields } => RsigTypeDeclKind::Record {
+                            fields: fields
+                                .into_iter()
+                                .map(|field| RsigRecordField {
+                                    name: FieldName::new(field.name),
+                                    type_: parse_type_with_variants(
+                                        &field.type_annotation.text,
+                                        &declared_variants,
+                                    ),
+                                })
+                                .collect(),
+                        },
+                    },
+                    fingerprint: 0,
+                });
+            }
             AstDecl::External(external) => {
-                let (params, result) = parse_type_signature(&external.type_text);
+                let (params, result) =
+                    parse_type_signature_with_variants(&external.type_text, &declared_variants);
                 let scheme = RsigTypeScheme::from_signature(&params, &result);
                 exports.push(RsigExport::External(RsigExternal {
                     name: external.name,
@@ -31,22 +145,33 @@ fn extern_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Rsig>
                     fingerprint: 0,
                 }));
             }
-            AstDecl::Use(_) | AstDecl::Type(_) | AstDecl::Function(_) => {
-                bail!("compiler/std/prelude.ml currently supports external declarations only")
+            AstDecl::Function(_) => {
+                bail!("compiler/std modules currently support declarations, not functions")
             }
         }
     }
-    Ok(Rsig::with_dependencies(
+    Ok(Some(Rsig::with_dependencies(
         module,
         Vec::new(),
-        Vec::new(),
+        types,
         exports,
-    ))
+    )))
+}
+
+fn declared_variants(ast: &AstProgram) -> BTreeSet<TypeName> {
+    let mut names = BTreeSet::from([TypeName::new("option"), TypeName::new("result")]);
+    names.extend(ast.decls.iter().filter_map(|decl| {
+        let AstDecl::Type(type_) = decl else {
+            return None;
+        };
+        matches!(type_.body, AstTypeBody::Variant { .. }).then(|| TypeName::new(type_.name.clone()))
+    }));
+    names
 }
 
 #[cfg(test)]
 mod tests {
-    use super::prelude_signature;
+    use super::{prelude_signature, std_signature};
 
     #[test]
     fn prelude_source_loads_as_binary_signature_data() {
@@ -61,5 +186,48 @@ mod tests {
         assert!(names.contains(&"dbg".to_owned()));
         assert!(names.contains(&"send".to_owned()));
         assert!(names.contains(&"string_concat".to_owned()));
+        assert!(
+            rsig.canonical_text()
+                .contains("type option<'value> = Some('value) | None")
+        );
+        assert!(rsig.canonical_text().contains("type Never"));
+    }
+
+    #[test]
+    fn std_index_source_loads_prelude_exports() {
+        let rsig = std_signature("Std").unwrap().unwrap();
+
+        assert_eq!(rsig.module.as_str(), "Std");
+        assert!(rsig.find("dbg").is_some());
+        assert!(rsig.find("send").is_some());
+    }
+
+    #[test]
+    fn std_modules_load_as_signatures() {
+        for module in ["Actor", "List", "String", "Option", "Result"] {
+            let rsig = std_signature(module).unwrap().unwrap();
+            assert_eq!(rsig.module.as_str(), module);
+        }
+        assert!(
+            std_signature("List")
+                .unwrap()
+                .unwrap()
+                .find("len")
+                .is_some()
+        );
+        assert!(
+            std_signature("Option")
+                .unwrap()
+                .unwrap()
+                .find("is_some")
+                .is_some()
+        );
+        assert!(
+            std_signature("Result")
+                .unwrap()
+                .unwrap()
+                .canonical_text()
+                .contains("external unwrap_or(result<'a, 'b>, 'a) -> 'a")
+        );
     }
 }

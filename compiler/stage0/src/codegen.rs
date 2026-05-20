@@ -2741,6 +2741,7 @@ fn external_param_type_is_boxed(type_: &RsigType) -> bool {
             | RsigType::Unknown
             | RsigType::Var(_)
             | RsigType::Variant(_)
+            | RsigType::VariantApp { .. }
     )
 }
 
@@ -2763,6 +2764,7 @@ fn external_result_is_boxed(type_: &RsigType) -> bool {
             | RsigType::Unknown
             | RsigType::Var(_)
             | RsigType::Variant(_)
+            | RsigType::VariantApp { .. }
     )
 }
 

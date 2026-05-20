@@ -5,15 +5,17 @@ use std::sync::{Mutex, OnceLock};
 use crate::abi::{
     riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
     riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold, riot_rt_init,
-    riot_rt_msg_value, riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64,
-    riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_as_bool,
-    riot_rt_value_as_i64, riot_rt_value_bool, riot_rt_value_closure, riot_rt_value_eq,
-    riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len,
-    riot_rt_value_record_begin, riot_rt_value_record_get, riot_rt_value_record_is,
-    riot_rt_value_record_set, riot_rt_value_string, riot_rt_value_string_concat,
-    riot_rt_value_string_len, riot_rt_value_tuple, riot_rt_value_tuple_arity_is,
-    riot_rt_value_tuple_get, riot_rt_value_unit, riot_rt_value_variant,
-    riot_rt_value_variant_get_payload, riot_rt_value_variant_is, riot_rt_value_variant_payload,
+    riot_rt_msg_value, riot_rt_option_is_none, riot_rt_option_is_some, riot_rt_option_unwrap_or,
+    riot_rt_result_is_err, riot_rt_result_is_ok, riot_rt_result_unwrap_or, riot_rt_root_pop,
+    riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown, riot_rt_spawn_actor_v2,
+    riot_rt_value_apply, riot_rt_value_as_bool, riot_rt_value_as_i64, riot_rt_value_bool,
+    riot_rt_value_closure, riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list,
+    riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
+    riot_rt_value_record_get, riot_rt_value_record_is, riot_rt_value_record_set,
+    riot_rt_value_string, riot_rt_value_string_concat, riot_rt_value_string_len,
+    riot_rt_value_tuple, riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_value_variant, riot_rt_value_variant_get_payload, riot_rt_value_variant_is,
+    riot_rt_value_variant_payload,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -501,6 +503,19 @@ fn value_rendering_handles_compound_values() {
         riot_rt_value_variant_get_payload(some),
         riot_rt_value_i64(42)
     ));
+    assert!(riot_rt_option_is_some(some));
+    assert!(!riot_rt_option_is_none(some));
+    assert!(riot_rt_value_eq(
+        riot_rt_option_unwrap_or(some, riot_rt_value_i64(7)),
+        riot_rt_value_i64(42)
+    ));
+    let none = unsafe { riot_rt_value_variant(b"option".as_ptr(), 6, b"None".as_ptr(), 4) };
+    assert!(!riot_rt_option_is_some(none));
+    assert!(riot_rt_option_is_none(none));
+    assert!(riot_rt_value_eq(
+        riot_rt_option_unwrap_or(none, riot_rt_value_i64(7)),
+        riot_rt_value_i64(7)
+    ));
 
     let pair_payload = unsafe { riot_rt_value_tuple(values.as_ptr(), values.len()) };
     let pair = unsafe {
@@ -510,4 +525,35 @@ fn value_rendering_handles_compound_values() {
         with_scheduler_mut(|scheduler| scheduler.render_value(pair)),
         "Pair(riot, 42)"
     );
+
+    let ok = unsafe {
+        riot_rt_value_variant_payload(
+            b"result".as_ptr(),
+            6,
+            b"Ok".as_ptr(),
+            2,
+            riot_rt_value_i64(9),
+        )
+    };
+    let err = unsafe {
+        riot_rt_value_variant_payload(
+            b"result".as_ptr(),
+            6,
+            b"Err".as_ptr(),
+            3,
+            riot_rt_value_string(b"no".as_ptr(), 2),
+        )
+    };
+    assert!(riot_rt_result_is_ok(ok));
+    assert!(!riot_rt_result_is_err(ok));
+    assert!(!riot_rt_result_is_ok(err));
+    assert!(riot_rt_result_is_err(err));
+    assert!(riot_rt_value_eq(
+        riot_rt_result_unwrap_or(ok, riot_rt_value_i64(3)),
+        riot_rt_value_i64(9)
+    ));
+    assert!(riot_rt_value_eq(
+        riot_rt_result_unwrap_or(err, riot_rt_value_i64(3)),
+        riot_rt_value_i64(3)
+    ));
 }

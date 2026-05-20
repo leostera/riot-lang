@@ -27,6 +27,8 @@ pub(crate) struct AstProgram {
 #[derive(Debug, Clone)]
 pub(crate) enum AstDecl {
     Use(AstUseDecl),
+    Module(AstModuleDecl),
+    Include(AstIncludeDecl),
     External(AstExternalDecl),
     Type(AstTypeDecl),
     Function(AstFnDecl),
@@ -34,6 +36,21 @@ pub(crate) enum AstDecl {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AstUseDecl {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
+    pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstModuleDecl {
+    pub(crate) name: String,
+    pub(crate) name_span: TextSpan,
+    pub(crate) public: bool,
+    pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AstIncludeDecl {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
     pub(crate) span: TextSpan,
@@ -53,12 +70,20 @@ pub(crate) struct AstExternalDecl {
 pub(crate) struct AstTypeDecl {
     pub(crate) name: String,
     pub(crate) name_span: TextSpan,
+    pub(crate) params: Vec<AstTypeParam>,
     pub(crate) body: AstTypeBody,
     pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct AstTypeParam {
+    pub(crate) name: String,
+    pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum AstTypeBody {
+    Abstract,
     Variant {
         constructors: Vec<AstVariantConstructor>,
     },
