@@ -188,6 +188,23 @@ fn closure_values_apply_and_trace_captures() {
 }
 
 #[test]
+fn closure_values_apply_arguments_without_captures() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let closure =
+        unsafe { riot_rt_value_closure(Some(return_first_capture_or_argument), ptr::null(), 0) };
+
+    assert!(riot_rt_value_eq(
+        riot_rt_value_apply(closure, riot_rt_value_i64(7)),
+        riot_rt_value_i64(7)
+    ));
+
+    assert_eq!(riot_rt_gc_collect(), 1);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
 fn scalar_runtime_values_unbox_through_the_abi() {
     assert_eq!(riot_rt_value_as_i64(riot_rt_value_i64(42)), 42);
     assert!(riot_rt_value_as_bool(riot_rt_value_bool(true)));
