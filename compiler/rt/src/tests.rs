@@ -13,10 +13,11 @@ use crate::abi::{
     riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
-    POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, actor_from_id,
-    runtime_message_from_raw,
+    ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
+    actor_from_id, runtime_message_from_raw,
 };
 use crate::actor_id::ActorId;
+use crate::frame::RtFrameLayout;
 use crate::scheduler::{render_message, with_scheduler_mut};
 use crate::value::{VALUE_NULL, VALUE_TAG_MASK};
 
@@ -203,6 +204,26 @@ fn stale_actor_ids_are_terminated_tombstones_after_shutdown() {
     assert!(actor.is_terminated());
     riot_rt_send_i64(actor_id, 42);
     assert!(actor.current_message().is_none());
+}
+
+#[test]
+fn actor_id_sends_push_directly_to_foreign_mailboxes() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let frame = riot_rt_alloc_frame_v2(8, 8, None);
+    assert!(!frame.is_null());
+    let actor = ActorSlot::boxed(99, 1, frame, RtFrameLayout::new(8, 8, None), idle_resume);
+    let actor_id = actor.actor_id();
+    assert_eq!(actor.scheduler_id(), 99);
+
+    with_scheduler_mut(|scheduler| scheduler.send(actor_id, RuntimeMessage::I64(42)));
+
+    let message = actor
+        .current_message()
+        .expect("actor id send writes directly to the actor mailbox");
+    assert_eq!(render_message(&message), "42");
+    actor.terminate();
 }
 
 #[test]

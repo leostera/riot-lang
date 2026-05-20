@@ -97,7 +97,6 @@ impl SchedulerLocal {
         let Some(actor) = (unsafe { actor_from_id(actor_id) }) else {
             return;
         };
-        let _target_scheduler_id = actor.scheduler_id();
         actor.send(message);
     }
 
