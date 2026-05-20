@@ -13,7 +13,8 @@ use crate::abi::{
     riot_rt_value_tuple_get, riot_rt_value_unit,
 };
 use crate::actor::{
-    POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, runtime_message_from_raw,
+    POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, actor_from_id,
+    runtime_message_from_raw,
 };
 use crate::actor_id::ActorId;
 use crate::scheduler::{render_message, with_scheduler_mut};
@@ -179,6 +180,29 @@ fn gc_traces_actor_frame_value_roots() {
 
     riot_rt_shutdown();
     assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn stale_actor_ids_are_terminated_tombstones_after_shutdown() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let retired_before = with_scheduler_mut(|scheduler| scheduler.retired_actor_count());
+    let frame = riot_rt_alloc_frame_v2(8, 8, None);
+    assert!(!frame.is_null());
+    let actor_id = unsafe { riot_rt_spawn_actor_v2(frame, Some(idle_resume), 8, 8, None) };
+    assert!(!actor_id.is_null());
+
+    riot_rt_shutdown();
+
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.retired_actor_count()),
+        retired_before + 1
+    );
+    let actor = unsafe { actor_from_id(actor_id) }.expect("retired actor slot remains valid");
+    assert!(actor.is_terminated());
+    riot_rt_send_i64(actor_id, 42);
+    assert!(actor.current_message().is_none());
 }
 
 #[test]

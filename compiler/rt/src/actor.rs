@@ -118,6 +118,10 @@ impl Mailbox {
         self.messages().pop_front();
     }
 
+    pub(crate) fn clear(&self) {
+        self.messages().clear();
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.messages().is_empty()
     }
@@ -258,6 +262,7 @@ impl ActorSlot {
         }
         let frame = self.frame.swap(0, Ordering::AcqRel) as *mut u8;
         unsafe { free_frame(frame, self.layout) };
+        self.mailbox.clear();
     }
 
     fn monitors(&self) -> MutexGuard<'_, Vec<ActorId>> {

@@ -43,6 +43,7 @@ thread_local! {
 pub(crate) struct SchedulerLocal {
     scheduler_id: u32,
     actors: Vec<Box<ActorSlot>>,
+    retired_actors: Vec<Box<ActorSlot>>,
     pub(crate) heap: Vec<Option<HeapObject>>,
     roots: Vec<RtValue>,
     gc_threshold: usize,
@@ -54,6 +55,7 @@ impl SchedulerLocal {
         Self {
             scheduler_id,
             actors: Vec::new(),
+            retired_actors: Vec::new(),
             heap: Vec::new(),
             roots: Vec::new(),
             gc_threshold: DEFAULT_GC_THRESHOLD,
@@ -131,7 +133,7 @@ impl SchedulerLocal {
             }
         }
 
-        self.actors.clear();
+        self.retired_actors.extend(self.actors.drain(..));
         self.roots.clear();
         self.collect_garbage();
     }
@@ -226,6 +228,10 @@ impl SchedulerLocal {
 
     pub(crate) fn gc_collection_count(&self) -> usize {
         self.gc_collection_count
+    }
+
+    pub(crate) fn retired_actor_count(&self) -> usize {
+        self.retired_actors.len()
     }
 
     fn mark_value(&mut self, value: RtValue) {
