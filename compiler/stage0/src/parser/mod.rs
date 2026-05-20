@@ -812,9 +812,27 @@ impl<'src> Parser<'src> {
                 })
             }
             TokenKind::LParen => {
-                let start = self.expect(TokenKind::LParen, "expected unit pattern")?;
-                let end = self.expect(TokenKind::RParen, "expected `)` after unit pattern")?;
-                Ok(AstPattern::Unit {
+                let start = self.expect(TokenKind::LParen, "expected tuple or unit pattern")?;
+                if let Some(end) = self.match_kind(TokenKind::RParen) {
+                    return Ok(AstPattern::Unit {
+                        span: start.span.join(end),
+                    });
+                }
+                let first = self.parse_pattern()?;
+                if self.match_kind(TokenKind::Comma).is_none() {
+                    self.expect(TokenKind::RParen, "expected `)` after pattern")?;
+                    return Ok(first);
+                }
+                let mut items = vec![first];
+                while !self.at(TokenKind::RParen) {
+                    items.push(self.parse_pattern()?);
+                    if self.match_kind(TokenKind::Comma).is_none() {
+                        break;
+                    }
+                }
+                let end = self.expect(TokenKind::RParen, "expected `)` after tuple pattern")?;
+                Ok(AstPattern::Tuple {
+                    items,
                     span: start.span.join(end.span),
                 })
             }

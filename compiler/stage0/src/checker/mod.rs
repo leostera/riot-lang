@@ -1236,7 +1236,41 @@ fn validate_pattern(
             .into());
         }
         for (payload_pattern, payload_type) in payload.iter().zip(&constructor.payload) {
-            validate_payload_pattern(ctx, payload_pattern, payload_type)?;
+            validate_simple_payload_pattern(
+                ctx,
+                payload_pattern,
+                payload_type,
+                "variant payload",
+                "use a binder such as `Some(value)` or `_` for now",
+            )?;
+        }
+    }
+    if let AstPattern::Tuple { items, span } = pattern
+        && let Some(RsigType::Tuple(types)) = scrutinee_type
+    {
+        if items.len() != types.len() {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                *span,
+                "tuple pattern arity mismatch",
+                format!(
+                    "matched tuple has {} item(s), but this pattern has {}",
+                    types.len(),
+                    items.len()
+                ),
+                Some("match the tuple with the same number of item patterns"),
+            )
+            .into());
+        }
+        for (item, type_) in items.iter().zip(types) {
+            validate_simple_payload_pattern(
+                ctx,
+                item,
+                type_,
+                "tuple item",
+                "use a binder or `_` for tuple items in this slice",
+            )?;
         }
     }
     let Some(expected) = pattern_type(ctx, pattern) else {
@@ -1286,6 +1320,20 @@ fn bind_pattern(
                 }
             }
         }
+        AstPattern::Tuple { items, .. } => {
+            let item_types = match scrutinee_type {
+                Some(RsigType::Tuple(items)) => items,
+                _ => Vec::new(),
+            };
+            for (index, nested) in items.iter().enumerate() {
+                if let AstPattern::Bind { name, .. } = nested {
+                    bindings.insert(
+                        name.clone(),
+                        BindingKind::Value(item_types.get(index).cloned()),
+                    );
+                }
+            }
+        }
         AstPattern::Wildcard { .. }
         | AstPattern::Unit { .. }
         | AstPattern::Bool { .. }
@@ -1301,14 +1349,22 @@ fn pattern_type(ctx: &ValidationContext<'_>, pattern: &AstPattern) -> Option<Rsi
         AstPattern::Int { .. } => Some(RsigType::I64),
         AstPattern::String { .. } => Some(RsigType::String),
         AstPattern::Constructor { path, .. } => pattern_constructor_type(ctx, path),
+        AstPattern::Tuple { items, .. } => Some(RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| pattern_type(ctx, item).unwrap_or(RsigType::Unknown))
+                .collect(),
+        )),
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
     }
 }
 
-fn validate_payload_pattern(
+fn validate_simple_payload_pattern(
     ctx: &ValidationContext<'_>,
     pattern: &AstPattern,
     expected: &RsigType,
+    subject: &str,
+    help: &'static str,
 ) -> miette::Result<()> {
     match pattern {
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => Ok(()),
@@ -1316,12 +1372,12 @@ fn validate_payload_pattern(
             ctx.source_path,
             ctx.source,
             pattern_span(pattern),
-            "unsupported variant payload pattern",
+            format!("unsupported {subject} pattern"),
             format!(
-                "stage0 can bind payloads of type `{}`, but cannot destructure nested payload patterns yet",
+                "stage0 can bind {subject}s of type `{}`, but cannot destructure nested {subject} patterns yet",
                 expected.canonical()
             ),
-            Some("use a binder such as `Some(value)` or `_` for now"),
+            Some(help),
         )
         .into()),
     }
@@ -1351,6 +1407,7 @@ fn pattern_span(pattern: &AstPattern) -> TextSpan {
         | AstPattern::Bind { span, .. }
         | AstPattern::Constructor { span, .. }
         | AstPattern::Unit { span }
+        | AstPattern::Tuple { span, .. }
         | AstPattern::Bool { span, .. }
         | AstPattern::Int { span, .. }
         | AstPattern::String { span, .. } => *span,
@@ -2147,6 +2204,15 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
     expected == actual
         || matches!(expected, RsigType::Unknown)
         || matches!(actual, RsigType::Unknown)
+        || matches!(
+            (expected, actual),
+            (RsigType::Tuple(expected), RsigType::Tuple(actual))
+                if expected.len() == actual.len()
+                    && expected
+                        .iter()
+                        .zip(actual)
+                        .all(|(expected, actual)| type_matches(expected, actual))
+        )
 }
 
 fn export_has_unknown_abi(export: &RsigExport) -> bool {

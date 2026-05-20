@@ -273,6 +273,16 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                 && actual_constructor == constructor
                 && static_payload_patterns_match(payload, actual_payload)
         }
+        RirPattern::Tuple(patterns) => {
+            let StaticValue::Tuple(items) = value else {
+                return false;
+            };
+            patterns.len() == items.len()
+                && patterns
+                    .iter()
+                    .zip(items)
+                    .all(|(pattern, item)| static_pattern_matches(pattern, item))
+        }
     }
 }
 
@@ -330,6 +340,14 @@ fn bind_static_pattern(
                 }
             }
         },
+        RirPattern::Tuple(patterns) => {
+            let StaticValue::Tuple(items) = value else {
+                return;
+            };
+            for (pattern, item) in patterns.iter().zip(items) {
+                bind_static_pattern(pattern, item, bindings);
+            }
+        }
         RirPattern::Wildcard
         | RirPattern::Unit
         | RirPattern::Bool(_)

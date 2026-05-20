@@ -11,8 +11,9 @@ use crate::abi::{
     riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
     riot_rt_value_record_get, riot_rt_value_record_set, riot_rt_value_string,
     riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
-    riot_rt_value_tuple_get, riot_rt_value_unit, riot_rt_value_variant,
-    riot_rt_value_variant_get_payload, riot_rt_value_variant_is, riot_rt_value_variant_payload,
+    riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_value_variant, riot_rt_value_variant_get_payload, riot_rt_value_variant_is,
+    riot_rt_value_variant_payload,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -442,6 +443,8 @@ fn value_rendering_handles_compound_values() {
         riot_rt_value_tuple_get(tuple, 1),
         riot_rt_value_i64(42)
     ));
+    assert!(riot_rt_value_tuple_arity_is(tuple, 2));
+    assert!(!riot_rt_value_tuple_arity_is(tuple, 3));
 
     let list_items = [label, riot_rt_value_i64(7)];
     let list = unsafe { riot_rt_value_list(list_items.as_ptr(), list_items.len()) };

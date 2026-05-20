@@ -122,6 +122,10 @@ pub(crate) enum AstPattern {
     Unit {
         span: TextSpan,
     },
+    Tuple {
+        items: Vec<AstPattern>,
+        span: TextSpan,
+    },
     Bool {
         value: bool,
         span: TextSpan,

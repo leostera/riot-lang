@@ -975,6 +975,14 @@ fn infer_pattern(
             state.unify(&constructor_type, scrutinee_type)?;
             Ok(())
         }
+        AstPattern::Tuple { items, .. } => {
+            let item_types = items.iter().map(|_| state.fresh_var()).collect::<Vec<_>>();
+            state.unify(scrutinee_type, &Type::Tuple(item_types.clone()))?;
+            for (item, item_type) in items.iter().zip(&item_types) {
+                infer_pattern(state, item, item_type)?;
+            }
+            Ok(())
+        }
         AstPattern::Unit { .. } => state.unify(&Type::Unit, scrutinee_type).map_err(Into::into),
         AstPattern::Bool { .. } => state.unify(&Type::Bool, scrutinee_type).map_err(Into::into),
         AstPattern::Int { .. } => state.unify(&Type::I64, scrutinee_type).map_err(Into::into),

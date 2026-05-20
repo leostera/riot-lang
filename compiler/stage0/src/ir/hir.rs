@@ -137,6 +137,7 @@ pub(crate) enum TypedPattern {
         payload: Vec<TypedPattern>,
     },
     Unit,
+    Tuple(Vec<TypedPattern>),
     Bool(bool),
     Int(i64),
     String(String),

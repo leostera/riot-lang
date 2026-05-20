@@ -109,6 +109,7 @@ pub(crate) enum RirPattern {
         payload: Vec<RirPattern>,
     },
     Unit,
+    Tuple(Vec<RirPattern>),
     Bool(bool),
     Int(i64),
     String(String),

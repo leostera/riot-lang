@@ -332,6 +332,22 @@ pub extern "C" fn riot_rt_value_tuple_get(tuple: RtValue, index: usize) -> RtVal
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_tuple_arity_is(tuple: RtValue, len: usize) -> bool {
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(tuple) else {
+            return false;
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            return false;
+        };
+        match &object.kind {
+            HeapObjectKind::Tuple(items) => items.len() == len,
+            _ => false,
+        }
+    })
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn riot_rt_value_record_get(
     record: RtValue,
     name_ptr: *const u8,

@@ -886,6 +886,19 @@ impl<'ctx> Codegen<'ctx, '_> {
                 }
                 Ok(tag_matches)
             }
+            RirPattern::Tuple(items) => {
+                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
+                self.call_runtime_value(
+                    "riot_rt_value_tuple_arity_is",
+                    &[
+                        scrutinee.into(),
+                        self.context
+                            .i64_type()
+                            .const_int(items.len() as u64, false)
+                            .into(),
+                    ],
+                )
+            }
         }
     }
 
@@ -905,6 +918,10 @@ impl<'ctx> Codegen<'ctx, '_> {
                 let payload_value = self
                     .call_runtime_value("riot_rt_value_variant_get_payload", &[scrutinee.into()])?;
                 self.bind_payload_patterns(env, payload, payload_value)?;
+            }
+            RirPattern::Tuple(items) => {
+                let tuple = self.value_as_runtime(scrutinee.clone())?;
+                self.bind_payload_patterns(env, items, tuple)?;
             }
             RirPattern::Wildcard
             | RirPattern::Constructor { .. }
@@ -2524,6 +2541,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_value_variant_get_payload" => i64_type.fn_type(&[i64_type.into()], false),
             "riot_rt_value_tuple_get" | "riot_rt_value_list_get" => {
                 i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
+            }
+            "riot_rt_value_tuple_arity_is" => {
+                bool_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_list_len" | "riot_rt_value_string_len" => {
                 i64_type.fn_type(&[i64_type.into()], false)

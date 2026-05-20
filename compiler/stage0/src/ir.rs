@@ -1563,6 +1563,22 @@ fn type_pattern(
                 payload,
             }
         }
+        AstPattern::Tuple { items, .. } => {
+            let item_types = match scrutinee_type {
+                RsigType::Tuple(items) => items.clone(),
+                _ => Vec::new(),
+            };
+            TypedPattern::Tuple(
+                items
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, pattern)| {
+                        let type_ = item_types.get(index).cloned().unwrap_or(RsigType::Unknown);
+                        type_pattern(pattern, &type_, context)
+                    })
+                    .collect(),
+            )
+        }
         AstPattern::Unit { .. } => TypedPattern::Unit,
         AstPattern::Bool { value, .. } => TypedPattern::Bool(value),
         AstPattern::Int { value, .. } => TypedPattern::Int(value),
@@ -2664,6 +2680,12 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
                 .map(|pattern| lower_pattern(pattern, context))
                 .collect(),
         },
+        TypedPattern::Tuple(items) => RirPattern::Tuple(
+            items
+                .into_iter()
+                .map(|pattern| lower_pattern(pattern, context))
+                .collect(),
+        ),
         TypedPattern::Unit => RirPattern::Unit,
         TypedPattern::Bool(value) => RirPattern::Bool(value),
         TypedPattern::Int(value) => RirPattern::Int(value),

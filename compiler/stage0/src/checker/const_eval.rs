@@ -346,6 +346,16 @@ fn const_pattern_matches(pattern: &AstPattern, value: &ConstValue) -> bool {
     match pattern {
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => true,
         AstPattern::Constructor { .. } => false,
+        AstPattern::Tuple { items, .. } => {
+            let ConstValue::Tuple(values) = value else {
+                return false;
+            };
+            items.len() == values.len()
+                && items
+                    .iter()
+                    .zip(values)
+                    .all(|(pattern, value)| const_pattern_matches(pattern, value))
+        }
         AstPattern::Unit { .. } => matches!(value, ConstValue::Unit),
         AstPattern::Bool {
             value: expected, ..
