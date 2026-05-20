@@ -1,4 +1,0 @@
-type 'a option = Some of 'a | None
-val seed : int option
-val make : unit -> 'a -> int option * 'a
-val answer : int option * unit

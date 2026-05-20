@@ -1,1 +1,0 @@
-module X = Make(Foo)

@@ -1,3 +1,0 @@
-type 'a option = Some of 'a | None
-val choose : left:'a -> right:'a -> bool -> 'a
-val answer : char option

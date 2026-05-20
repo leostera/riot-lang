@@ -1,4 +1,0 @@
-type 'a option = Some of 'a | None
-module Outer :
-  sig module Inner : sig type t = char option val value : t end end
-val answer : Outer.Inner.t

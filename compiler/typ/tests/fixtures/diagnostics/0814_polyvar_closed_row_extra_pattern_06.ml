@@ -1,3 +1,0 @@
-let use_zeta : [ `A of int ] -> int = function
-  | `A x -> x
-  | `B -> 5

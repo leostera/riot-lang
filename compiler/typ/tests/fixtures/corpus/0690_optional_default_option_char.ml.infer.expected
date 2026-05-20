@@ -1,3 +1,0 @@
-type 'a option = Some of 'a | None
-val build : ?value:char option -> unit -> char option
-val answer : char option

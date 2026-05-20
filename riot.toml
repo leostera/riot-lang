@@ -1,9 +1,7 @@
 [workspace]
 members = [
-  "compiler/raml",
-  "compiler/raml-native",
-  "compiler/syn",
-  "compiler/typ",
+  "packages/syn",
+  "packages/typ",
   "packages/blink",
   "packages/colors",
   "packages/contentstore",
@@ -69,7 +67,6 @@ members = [
   "packages/tty",
   #"packages/hello-foreign",
   #"packages/syn",
-  "compiler/riotc",
 ]
 ignore = [
   "tests/fixtures",

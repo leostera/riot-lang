@@ -1,9 +1,0 @@
-{
-  "has_trailing_newline": true,
-  "kind": "implementation",
-  "nonempty_lines": 2,
-  "relpath": "nested/grouped.ml",
-  "source_bytes": 25,
-  "source_lines": 3,
-  "unit_name": "Grouped"
-}

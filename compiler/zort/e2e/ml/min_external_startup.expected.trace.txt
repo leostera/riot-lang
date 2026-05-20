@@ -1,1 +1,0 @@
-trace startup_calls=1 start_program_calls=1 globals_inited=1 metadata_registered=1 frametables=3 frame_descriptors=5 gc_root_tables=1 gc_root_entries=1 gc_root_blocks=1 gc_root_block_fields=0 code_segments=2 data_segments=2 program_fragment_registered=1 result_raw=1

@@ -1,2 +1,0 @@
-timestamp_ms,strategy,label,iters,ns_per_op,allocations,field_writes,bytes_writes,root_registrations,root_unregistrations,collections,reclaims
-1775683071436,mark_sweep,root-churn,1000,8305.88,1000,4000,0,1000,1000,1,0

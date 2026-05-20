@@ -1,2 +1,0 @@
-type 'a option = Some of 'a | None
-val answer : int option

@@ -1,9 +1,0 @@
-{
-  "exports": [],
-  "init": [],
-  "unit_id": {
-    "kind": "implementation",
-    "relpath": "fixtures/hello.ml",
-    "unit_name": "Hello"
-  }
-}

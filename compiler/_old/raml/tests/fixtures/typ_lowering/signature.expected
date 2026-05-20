@@ -1,9 +1,0 @@
-{
-  "errors": [
-    {
-      "kind": "unsupported_source_kind",
-      "source_kind": "interface"
-    }
-  ],
-  "status": "error"
-}

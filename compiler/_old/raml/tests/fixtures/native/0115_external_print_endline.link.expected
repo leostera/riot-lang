@@ -1,1 +1,0 @@
-clang -arch arm64 build/fixture.s -o build/fixture

@@ -1,1 +1,0 @@
-trace startup_calls_before_restart=1 shutdown_calls_before_restart=1 start_program_calls_before_restart=1 startup_depth_before_restart=0 globals_after_shutdown=0 metadata_after_shutdown=0 shutdown_happened_before_restart=1 result_raw_before_restart=1

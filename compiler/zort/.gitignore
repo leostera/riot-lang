@@ -1,9 +1,0 @@
-.zig-cache/
-.zig-cache-local/
-.zig-global-cache/
-.zig-global-cache-local/
-zig-out/
-tmp_*.zig
-e2e/ml/*.cmi
-e2e/ml/*.cmx
-e2e/ml/*.o
