@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use camino::Utf8Path;
 
 mod const_eval;
+mod entrypoint;
 mod patterns;
 mod shapes;
 mod span;
@@ -11,6 +12,7 @@ mod type_annotation;
 mod types;
 
 use const_eval::{ConstFunction, ConstValue};
+use entrypoint::EntrypointValidator;
 use patterns::PatternValidator;
 use shapes::TypeShapeCollector;
 use span::expr_span;
@@ -186,30 +188,8 @@ impl<'a> ProgramValidator<'a> {
             })
             .collect::<Vec<_>>();
 
-        if main_decls.len() > 1 {
-            let duplicate = main_decls[1];
-            return Err(ctx
-                .diagnostic(
-                    duplicate.span,
-                    "duplicate main function",
-                    "stage0 requires a single main function per file",
-                    Some("keep only one `fn main() { ... }`"),
-                )
-                .into());
-        }
-
-        if self.mode == CheckMode::Executable && main_decls.is_empty() {
-            let span = first_decl_span(program)
-                .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
-            return Err(ctx
-                .diagnostic(
-                    span,
-                    "missing main function",
-                    "stage0 compile requires one entrypoint named main",
-                    Some("add: fn main() { dbg(\"hello world\") }"),
-                )
-                .into());
-        }
+        let entrypoint_validator = EntrypointValidator::new(&ctx, self.mode);
+        entrypoint_validator.validate_program(program, &main_decls)?;
 
         for decl in &program.decls {
             match decl {
@@ -258,11 +238,11 @@ impl<'a> ProgramValidator<'a> {
                 }
                 AstDecl::Function(function) => {
                     TypeAnnotationChecker::new(&ctx).validate_function(function)?;
-                    validate_main_function_signature(&ctx, function)?;
+                    entrypoint_validator.validate_function(function)?;
                     validate_block(
                         &ctx,
                         &function.body,
-                        main_requires_output_action(&ctx, function),
+                        entrypoint_validator.requires_output_action(function),
                         &function.params,
                         &function.param_types,
                     )?;
