@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::OnceLock;
 
 use assert_cmd::cargo::cargo_bin;
 use tempfile::TempDir;
@@ -8,6 +9,7 @@ use tempfile::TempDir;
 type FixtureResult = Result<(), Box<dyn std::error::Error>>;
 
 fn program_fixture_compiles(fixture: &Path) -> FixtureResult {
+    ensure_release_runtime_built()?;
     let temp_dir = TempDir::new()?;
     let output_path = temp_dir.path().join(output_name(fixture));
 
@@ -1332,6 +1334,31 @@ fn emit_actor_ir_snapshots_frame_contracts() -> FixtureResult {
     }
 
     Ok(())
+}
+
+fn ensure_release_runtime_built() -> std::io::Result<()> {
+    static RELEASE_RUNTIME: OnceLock<Result<(), String>> = OnceLock::new();
+    match RELEASE_RUNTIME.get_or_init(|| {
+        let output = Command::new("cargo")
+            .current_dir(manifest_dir())
+            .arg("build")
+            .arg("--release")
+            .arg("--manifest-path")
+            .arg("../rt/Cargo.toml")
+            .output()
+            .map_err(|error| format!("failed to start release runtime build: {error}"))?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "failed to build release runtime before fixture compile:\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            ))
+        }
+    }) {
+        Ok(()) => Ok(()),
+        Err(message) => Err(std::io::Error::other(message.clone())),
+    }
 }
 
 fn compile_fixture(fixture: &Path, output_path: &Path) -> std::io::Result<Output> {
