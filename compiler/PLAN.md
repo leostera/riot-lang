@@ -46,12 +46,11 @@ exhaustiveness before lambda parameter types had been inferred. Stage0 now rerun
 validation with inferred expression types and refreshes match scrutinee type
 facts after pattern constraints.
 
-Known hardening gap discovered while adding multi-module fixtures: runtime
-variant values constructed through an imported constructor and then matched in
-the defining module can disagree on qualified versus local type names. Add a
-future slice that makes variant runtime identity module-stable across `.rsig`,
-TyIR, lambda patterns, and LLVM tag checks before relying on imported
-payload-bearing variants for compiler data.
+Resolved hardening gap: runtime variant values constructed through imported
+constructors used to disagree with provider-local matches because codegen used
+qualified consumer type names for one side and local provider type names for the
+other. LLVM lowering now canonicalizes runtime variant tags to the base type name
+while keeping `.rsig` and type-checker names qualified.
 
 `compiler/riotc` may remain as an eventual consumer, but it should not drive the
 loop until stage0 is sturdy enough to serve as the reference implementation.
