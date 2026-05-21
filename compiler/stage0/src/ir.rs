@@ -2532,7 +2532,7 @@ mod tests {
     use crate::parser::SourceParser;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use crate::lambda::lower::RirLowerer;
+    use crate::lambda::lower::LambdaLowerer;
 
     use super::{Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt};
 
@@ -2604,7 +2604,7 @@ mod tests {
         };
 
         let typed = typed_program("LambdaTest", program);
-        let rir = RirLowerer::new().lower(typed);
+        let rir = LambdaLowerer::new().lower(typed);
         let Some(RirExpr::Lambda { captures, .. }) = &rir.functions[0].body.tail else {
             panic!("expected lowered lambda");
         };
@@ -2668,7 +2668,7 @@ mod tests {
         };
 
         let typed = typed_program("ShadowTest", program);
-        let rir = RirLowerer::new().lower(typed);
+        let rir = LambdaLowerer::new().lower(typed);
         let Some(RirStmt::Let {
             value: RirExpr::Lambda { captures, .. },
             ..
@@ -2797,7 +2797,7 @@ mod tests {
         };
 
         let typed = typed_program("ApplyTest", program);
-        let rir = RirLowerer::new().lower(typed);
+        let rir = LambdaLowerer::new().lower(typed);
         let Some(RirExpr::Add(lhs, _)) = &rir.functions[0].body.tail else {
             panic!("expected add tail");
         };

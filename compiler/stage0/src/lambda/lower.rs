@@ -3,9 +3,9 @@ use crate::checker::tyir::TypedProgram;
 use super::ir::RirProgram;
 
 #[derive(Debug, Default)]
-pub(crate) struct RirLowerer;
+pub(crate) struct LambdaLowerer;
 
-impl RirLowerer {
+impl LambdaLowerer {
     pub(crate) fn new() -> Self {
         Self
     }
@@ -23,6 +23,6 @@ impl LambdaSimplifier {
     }
 
     pub(crate) fn simplify(&self, tyir: TypedProgram) -> RirProgram {
-        RirLowerer::new().lower(tyir)
+        LambdaLowerer::new().lower(tyir)
     }
 }
