@@ -8,6 +8,7 @@ mod entrypoint;
 mod imports;
 mod patterns;
 mod shapes;
+mod signature;
 mod span;
 pub(crate) mod tyir;
 mod type_annotation;

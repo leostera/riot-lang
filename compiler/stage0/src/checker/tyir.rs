@@ -48,7 +48,7 @@ impl RsigBuilder {
     }
 
     pub(crate) fn build(&self, program: &TypedProgram) -> Rsig {
-        crate::ir::signature_for(program)
+        super::signature::signature_for(program)
     }
 }
 
