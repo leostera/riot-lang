@@ -1,10 +1,6 @@
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
 use crate::ast::{AstBlock, AstExpr, AstPattern, AstStmt};
-
-use super::types::PrimitiveType;
 
 #[derive(Debug, Clone)]
 pub(super) struct ConstFunction {
@@ -26,99 +22,6 @@ pub(super) enum ConstValue {
         path: String,
         fields: Vec<(String, ConstValue)>,
     },
-}
-
-impl ConstValue {
-    pub(super) fn to_print_string(&self) -> String {
-        match self {
-            ConstValue::Bool(true) => "true".to_owned(),
-            ConstValue::Bool(false) => "false".to_owned(),
-            ConstValue::Char(value) => value.to_string(),
-            ConstValue::Float(value) => value.clone(),
-            ConstValue::Int(value) => value.to_string(),
-            ConstValue::String(value) => value.clone(),
-            ConstValue::Unit => "()".to_owned(),
-            ConstValue::Tuple(items) => {
-                let rendered = items
-                    .iter()
-                    .map(ConstValue::to_print_string)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("({rendered})")
-            }
-            ConstValue::List(items) => {
-                let rendered = items
-                    .iter()
-                    .map(ConstValue::to_print_string)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("[{rendered}]")
-            }
-            ConstValue::Record { path, fields } => {
-                let rendered = fields
-                    .iter()
-                    .map(|(name, value)| format!("{name}: {}", value.to_print_string()))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{path} {{ {rendered} }}")
-            }
-        }
-    }
-
-    pub(super) fn type_name(&self) -> String {
-        match self {
-            ConstValue::Bool(_) => "bool".to_owned(),
-            ConstValue::Char(_) => "char".to_owned(),
-            ConstValue::Float(_) => "f64".to_owned(),
-            ConstValue::Int(_) => "i64".to_owned(),
-            ConstValue::String(_) => "string".to_owned(),
-            ConstValue::Unit => "unit".to_owned(),
-            ConstValue::Tuple(items) => {
-                let rendered = items
-                    .iter()
-                    .map(ConstValue::type_name)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("({rendered})")
-            }
-            ConstValue::List(items) => {
-                let element = items
-                    .first()
-                    .map(ConstValue::type_name)
-                    .unwrap_or_else(|| "_".to_owned());
-                format!("{element} list")
-            }
-            ConstValue::Record { path, fields: _ } => path.clone(),
-        }
-    }
-
-    pub(super) fn matches_primitive(&self, type_: PrimitiveType) -> bool {
-        match (self, type_) {
-            (ConstValue::Bool(_), PrimitiveType::Bool)
-            | (ConstValue::Char(_), PrimitiveType::Char)
-            | (ConstValue::String(_), PrimitiveType::String)
-            | (ConstValue::Unit, PrimitiveType::Unit)
-            | (
-                ConstValue::Float(_),
-                PrimitiveType::F16 | PrimitiveType::F32 | PrimitiveType::F64,
-            ) => true,
-            (ConstValue::Int(value), PrimitiveType::Byte | PrimitiveType::U8) => {
-                u8::try_from(*value).is_ok()
-            }
-            (ConstValue::Int(value), PrimitiveType::I8) => i8::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::I16) => i16::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::I32) => i32::try_from(*value).is_ok(),
-            (ConstValue::Int(_), PrimitiveType::I64) => true,
-            (ConstValue::Int(_), PrimitiveType::I128) => true,
-            (ConstValue::Int(value), PrimitiveType::ISize) => isize::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::U16) => u16::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::U32) => u32::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::U64) => u64::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::U128) => u128::try_from(*value).is_ok(),
-            (ConstValue::Int(value), PrimitiveType::USize) => usize::try_from(*value).is_ok(),
-            _ => false,
-        }
-    }
 }
 
 pub(super) fn resolve_const_value(

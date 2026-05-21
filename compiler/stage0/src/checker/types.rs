@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum PrimitiveType {
     Bool,
@@ -23,34 +21,6 @@ pub(super) enum PrimitiveType {
     F16,
     F32,
     F64,
-}
-
-impl PrimitiveType {
-    pub(super) fn name(self) -> &'static str {
-        match self {
-            PrimitiveType::Bool => "bool",
-            PrimitiveType::Byte => "byte",
-            PrimitiveType::Bytes => "bytes",
-            PrimitiveType::Char => "char",
-            PrimitiveType::String => "string",
-            PrimitiveType::Unit => "unit",
-            PrimitiveType::I8 => "i8",
-            PrimitiveType::I16 => "i16",
-            PrimitiveType::I32 => "i32",
-            PrimitiveType::I64 => "i64",
-            PrimitiveType::I128 => "i128",
-            PrimitiveType::ISize => "isize",
-            PrimitiveType::U8 => "u8",
-            PrimitiveType::U16 => "u16",
-            PrimitiveType::U32 => "u32",
-            PrimitiveType::U64 => "u64",
-            PrimitiveType::U128 => "u128",
-            PrimitiveType::USize => "usize",
-            PrimitiveType::F16 => "f16",
-            PrimitiveType::F32 => "f32",
-            PrimitiveType::F64 => "f64",
-        }
-    }
 }
 
 pub(super) struct TypeAnnotationError {
