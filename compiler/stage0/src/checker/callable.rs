@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::signature::{ImportedSignatures, ModuleName, RsigExport, RsigType};
+use crate::signature::{ImportedSignatures, ModuleName, RsigExport, RsigType, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum CallableKind {
@@ -64,15 +64,23 @@ impl<'a> CallableResolver<'a> {
             .and_then(|rsig| rsig.find(name))
             .map(|export| match export {
                 RsigExport::Function(function) => CallableSignature {
-                    params: function.params.clone(),
-                    result: function.result.clone(),
+                    params: function
+                        .params
+                        .iter()
+                        .map(|param| qualify_imported_type(module, param))
+                        .collect(),
+                    result: qualify_imported_type(module, &function.result),
                     kind: CallableKind::ImportedFunction {
                         module: module_name,
                     },
                 },
                 RsigExport::External(external) => CallableSignature {
-                    params: external.params.clone(),
-                    result: external.result.clone(),
+                    params: external
+                        .params
+                        .iter()
+                        .map(|param| qualify_imported_type(module, param))
+                        .collect(),
+                    result: qualify_imported_type(module, &external.result),
                     kind: CallableKind::ImportedExternal {
                         module: module_name,
                     },
@@ -105,6 +113,57 @@ fn local_or_prelude_name(callee: &[String]) -> Option<&str> {
         [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
         _ => None,
     }
+}
+
+fn qualify_imported_type(module: &str, type_: &RsigType) -> RsigType {
+    match type_ {
+        RsigType::ActorId(message) => {
+            RsigType::ActorId(Box::new(qualify_imported_type(module, message)))
+        }
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(qualify_imported_type(module, parameter)),
+            result: Box::new(qualify_imported_type(module, result)),
+        },
+        RsigType::List(item) => RsigType::List(Box::new(qualify_imported_type(module, item))),
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| qualify_imported_type(module, item))
+                .collect(),
+        ),
+        RsigType::Record(name) => {
+            RsigType::Record(TypeName::new(format!("{module}.{}", name.as_str())))
+        }
+        RsigType::Variant(name) => {
+            if is_prelude_type_name(name) {
+                RsigType::Variant(name.clone())
+            } else {
+                RsigType::Variant(TypeName::new(format!("{module}.{}", name.as_str())))
+            }
+        }
+        RsigType::VariantApp { name, args } => {
+            let name = if is_prelude_type_name(name) {
+                name.clone()
+            } else {
+                TypeName::new(format!("{module}.{}", name.as_str()))
+            };
+            RsigType::VariantApp {
+                name,
+                args: args
+                    .iter()
+                    .map(|arg| qualify_imported_type(module, arg))
+                    .collect(),
+            }
+        }
+        other => other.clone(),
+    }
+}
+
+fn is_prelude_type_name(type_name: &TypeName) -> bool {
+    matches!(
+        type_name.as_str(),
+        "List" | "Option" | "Result" | "String" | "Never" | "int"
+    )
 }
 
 #[cfg(test)]

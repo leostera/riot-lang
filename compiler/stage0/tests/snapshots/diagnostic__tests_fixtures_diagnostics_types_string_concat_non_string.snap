@@ -11,12 +11,12 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × invalid string_concat argument
+  × string_concat argument has the wrong type
    ╭─[tests/fixtures/diagnostics/types/string_concat_non_string.ml:2:29]
  1 │ fn main() {
  2 │   dbg(string_concat("riot", 0))
    ·                             ┬
-   ·                             ╰── `string_concat` expects `string`, but this argument has type `i64`
+   ·                             ╰── expected `String`, found `i64`
  3 │ }
    ╰────
-  help: pass a value with the expected type
+  help: check the call argument type

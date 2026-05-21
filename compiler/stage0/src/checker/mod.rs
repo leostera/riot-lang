@@ -25,6 +25,8 @@ use shapes::TypeShapeCollector;
 use span::expr_span;
 use type_annotation::TypeAnnotationChecker;
 
+use callable::{CallableKind, CallableResolver, CallableSignature, prelude_external_signatures};
+
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeAnnotation,
     AstTypeBody, TextSpan,
@@ -114,10 +116,11 @@ struct ValidationContext<'a> {
     source_path: &'a Utf8Path,
     source: &'a str,
     functions: HashMap<String, ConstFunction>,
+    function_signatures: BTreeMap<String, (Vec<RsigType>, RsigType)>,
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
-    external_signatures: HashMap<String, (Vec<RsigType>, RsigType)>,
+    external_signatures: BTreeMap<String, (Vec<RsigType>, RsigType)>,
     external_names: HashSet<String>,
     constructor_types: HashMap<String, ConstructorShape>,
     declared_variants: BTreeSet<TypeName>,
@@ -129,6 +132,15 @@ struct ValidationContext<'a> {
 impl<'a> ValidationContext<'a> {
     fn lower_type_annotation(&self, annotation: &AstTypeAnnotation) -> RsigType {
         lower_type_annotation(annotation, &self.declared_variants)
+    }
+
+    fn callable_signature(&self, callee: &[String]) -> Option<CallableSignature> {
+        CallableResolver::new(
+            &self.function_signatures,
+            &self.external_signatures,
+            self.imports,
+        )
+        .resolve(callee)
     }
 
     fn diagnostic(
@@ -168,6 +180,7 @@ impl<'a> ProgramValidator<'a> {
         let functions = const_functions(program);
         let function_names = functions.keys().cloned().collect::<HashSet<_>>();
         let type_shapes = TypeShapeCollector::new(self.imports).collect(program);
+        let function_signatures = function_signatures(program, &type_shapes.declared_variants);
         let function_results = function_results(program, &type_shapes.declared_variants);
         let declared_external_names = declared_external_names(program);
         let external_signatures = external_signatures(program, &type_shapes.declared_variants);
@@ -177,6 +190,7 @@ impl<'a> ProgramValidator<'a> {
             source_path: self.source_path,
             source: self.source,
             functions,
+            function_signatures,
             function_names,
             function_results,
             declared_external_names,
@@ -403,6 +417,40 @@ fn function_results(
         .collect()
 }
 
+fn function_signatures(
+    program: &AstProgram,
+    declared_variants: &BTreeSet<TypeName>,
+) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+    program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::Function(function) => {
+                let params = function
+                    .params
+                    .iter()
+                    .enumerate()
+                    .map(|(index, _)| {
+                        function
+                            .param_types
+                            .get(index)
+                            .and_then(|annotation| annotation.as_ref())
+                            .map(|annotation| lower_type_annotation(annotation, declared_variants))
+                            .unwrap_or(RsigType::Unknown)
+                    })
+                    .collect();
+                let result = function
+                    .return_type
+                    .as_ref()
+                    .map(|annotation| lower_type_annotation(annotation, declared_variants))
+                    .unwrap_or(RsigType::Unknown);
+                Some((function.name.clone(), (params, result)))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 fn lower_type_annotation(
     annotation: &AstTypeAnnotation,
     declared_variants: &BTreeSet<TypeName>,
@@ -494,19 +542,8 @@ fn external_names(program: &AstProgram) -> HashSet<String> {
 fn external_signatures(
     program: &AstProgram,
     declared_variants: &BTreeSet<TypeName>,
-) -> HashMap<String, (Vec<RsigType>, RsigType)> {
-    let mut signatures = crate::stdlib::Stdlib::new()
-        .prelude_signature()
-        .expect("compiler/std/prelude.ml must parse")
-        .exports
-        .into_iter()
-        .filter_map(|export| {
-            let RsigExport::External(external) = export else {
-                return None;
-            };
-            Some((external.name, (external.params, external.result)))
-        })
-        .collect::<HashMap<_, _>>();
+) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+    let mut signatures = prelude_external_signatures();
     for decl in &program.decls {
         if let AstDecl::External(external) = decl {
             let (params, result) = RsigTypeLowerer::new()
@@ -873,6 +910,25 @@ fn validate_expr(
     match expr {
         AstExpr::Call { callee, args, span } => {
             if let [module, name] = callee.segments.as_slice() {
+                if let Some(shape) = imported_constructor_shape(ctx, module, name) {
+                    validate_constructor_call(ctx, *span, name, &shape, args, bindings, in_actor)?;
+                    return Ok(ExprCategory::Other);
+                }
+            }
+
+            if let Some(signature) = ctx.callable_signature(&callee.segments) {
+                return validate_callable_call(
+                    ctx,
+                    *span,
+                    &callee.segments,
+                    &signature,
+                    args,
+                    bindings,
+                    in_actor,
+                );
+            }
+
+            if let [module, name] = callee.segments.as_slice() {
                 let Some(rsig) = ctx.imports.get(module.as_str()) else {
                     return Err(ctx
                         .diagnostic(
@@ -885,11 +941,7 @@ fn validate_expr(
                         )
                         .into());
                 };
-                if let Some(shape) = imported_constructor_shape(ctx, module, name) {
-                    validate_constructor_call(ctx, *span, name, &shape, args, bindings, in_actor)?;
-                    return Ok(ExprCategory::Other);
-                }
-                let Some(export) = rsig.find(name) else {
+                if rsig.find(name).is_none() {
                     return Err(ctx
                         .diagnostic(
                             *span,
@@ -898,21 +950,7 @@ fn validate_expr(
                             Some("check the producer .rsig"),
                         )
                         .into());
-                };
-                if export_has_unknown_abi(export) {
-                    return Err(ctx.diagnostic(*span,
-                        "imported value has unknown ABI",
-                        format!(
-                            "module `{module}` exports `{name}`, but its .rsig type is not concrete enough to call"
-                        ),
-                        Some("add enough type information for the exported function"),
-                    )
-                    .into());
                 }
-                for arg in args {
-                    validate_expr(ctx, arg, bindings, in_actor)?;
-                }
-                return Ok(ExprCategory::Other);
             }
 
             let [name] = callee.segments.as_slice() else {
@@ -927,126 +965,6 @@ fn validate_expr(
             };
 
             match name.as_str() {
-                "dbg" => {
-                    if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "dbg", 1, args.len()));
-                    }
-                    validate_expr(ctx, &args[0], bindings, in_actor)?;
-                    Ok(ExprCategory::Output)
-                }
-                "println" => {
-                    if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "println", 1, args.len()));
-                    }
-                    validate_expr(ctx, &args[0], bindings, in_actor)?;
-                    Ok(ExprCategory::Output)
-                }
-                "send" => {
-                    if args.len() != 2 {
-                        return Err(call_arity_error(ctx, *span, "send", 2, args.len()));
-                    }
-                    validate_actor_target(ctx, &args[0], bindings, *span, "send")?;
-                    validate_expr(ctx, &args[1], bindings, in_actor)?;
-                    Ok(ExprCategory::Actor)
-                }
-                "monitor" | "link" => {
-                    if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, name, 1, args.len()));
-                    }
-                    validate_actor_target(ctx, &args[0], bindings, *span, name)?;
-                    Ok(ExprCategory::Actor)
-                }
-                "list_len" if !ctx.declared_external_names.contains(name) => {
-                    if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "list_len", 1, args.len()));
-                    }
-                    validate_expr(ctx, &args[0], bindings, in_actor)?;
-                    validate_call_arg_type(
-                        ctx,
-                        *span,
-                        "list_len",
-                        &args[0],
-                        bindings,
-                        "list",
-                        |type_| matches!(type_, RsigType::List(_)),
-                    )?;
-                    Ok(ExprCategory::Other)
-                }
-                "list_get" if !ctx.declared_external_names.contains(name) => {
-                    if args.len() != 2 {
-                        return Err(call_arity_error(ctx, *span, "list_get", 2, args.len()));
-                    }
-                    validate_expr(ctx, &args[0], bindings, in_actor)?;
-                    validate_expr(ctx, &args[1], bindings, in_actor)?;
-                    validate_call_arg_type(
-                        ctx,
-                        *span,
-                        "list_get",
-                        &args[0],
-                        bindings,
-                        "list",
-                        |type_| matches!(type_, RsigType::List(_)),
-                    )?;
-                    validate_call_arg_type(
-                        ctx,
-                        *span,
-                        "list_get",
-                        &args[1],
-                        bindings,
-                        "i64",
-                        |type_| matches!(type_, RsigType::I64),
-                    )?;
-                    validate_static_list_index(ctx, *span, "list_get", &args[0], &args[1])?;
-                    Ok(ExprCategory::Other)
-                }
-                "string_len" if !ctx.declared_external_names.contains(name) => {
-                    if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "string_len", 1, args.len()));
-                    }
-                    validate_expr(ctx, &args[0], bindings, in_actor)?;
-                    validate_call_arg_type(
-                        ctx,
-                        *span,
-                        "string_len",
-                        &args[0],
-                        bindings,
-                        "string",
-                        |type_| matches!(type_, RsigType::String),
-                    )?;
-                    Ok(ExprCategory::Other)
-                }
-                "string_concat" if !ctx.declared_external_names.contains(name) => {
-                    if args.len() != 2 {
-                        return Err(call_arity_error(ctx, *span, "string_concat", 2, args.len()));
-                    }
-                    validate_expr(ctx, &args[0], bindings, in_actor)?;
-                    validate_expr(ctx, &args[1], bindings, in_actor)?;
-                    validate_call_arg_type(
-                        ctx,
-                        *span,
-                        "string_concat",
-                        &args[0],
-                        bindings,
-                        "string",
-                        |type_| matches!(type_, RsigType::String),
-                    )?;
-                    validate_call_arg_type(
-                        ctx,
-                        *span,
-                        "string_concat",
-                        &args[1],
-                        bindings,
-                        "string",
-                        |type_| matches!(type_, RsigType::String),
-                    )?;
-                    Ok(ExprCategory::Other)
-                }
-                _ if ctx.function_names.contains(name) || ctx.external_names.contains(name) => {
-                    for arg in args {
-                        validate_expr(ctx, arg, bindings, in_actor)?;
-                    }
-                    Ok(ExprCategory::Other)
-                }
                 _ if ctx.constructor_types.contains_key(name) => {
                     let shape = ctx
                         .constructor_types
@@ -1909,34 +1827,6 @@ fn record_shape_for_pattern(
     ctx.record_shapes.get(&path.segments.join(".")).cloned()
 }
 
-fn validate_call_arg_type(
-    ctx: &ValidationContext<'_>,
-    _function_span: TextSpan,
-    function_name: &str,
-    arg: &AstExpr,
-    bindings: &HashMap<String, BindingKind>,
-    expected: &str,
-    accepts: impl Fn(&RsigType) -> bool,
-) -> miette::Result<()> {
-    let Some(actual) = simple_expr_type(ctx, arg, bindings) else {
-        return Ok(());
-    };
-    if accepts(&actual) {
-        return Ok(());
-    }
-    Err(ctx
-        .diagnostic(
-            expr_span(arg),
-            format!("invalid {function_name} argument"),
-            format!(
-                "`{function_name}` expects `{expected}`, but this argument has type `{}`",
-                actual.canonical()
-            ),
-            Some("pass a value with the expected type"),
-        )
-        .into())
-}
-
 fn validate_constructor_call(
     ctx: &ValidationContext<'_>,
     span: TextSpan,
@@ -2331,6 +2221,167 @@ fn validate_receive_arms(
     Ok(())
 }
 
+fn validate_callable_call(
+    ctx: &ValidationContext<'_>,
+    span: TextSpan,
+    callee: &[String],
+    signature: &CallableSignature,
+    args: &[AstExpr],
+    bindings: &HashMap<String, BindingKind>,
+    in_actor: bool,
+) -> miette::Result<ExprCategory> {
+    let name = callee_display_name(callee);
+    if args.is_empty() && !signature.params.is_empty() || args.len() > signature.params.len() {
+        return Err(call_arity_error(
+            ctx,
+            span,
+            &name,
+            signature.params.len(),
+            args.len(),
+        ));
+    }
+    if callable_signature_has_unknown_import_abi(signature) {
+        return Err(ctx
+            .diagnostic(
+                span,
+                "imported value has unknown ABI",
+                format!("`{name}` is imported, but its .rsig type is not concrete enough to call"),
+                Some("add enough type information for the exported function"),
+            )
+            .into());
+    }
+
+    for (index, arg) in args.iter().enumerate() {
+        if is_actor_operation(callee) && index == 0 {
+            validate_actor_target(ctx, arg, bindings, span, &name)?;
+        } else {
+            validate_expr(ctx, arg, bindings, in_actor)?;
+        }
+        if let Some(expected) = signature.params.get(index) {
+            validate_signature_arg_type(ctx, &name, arg, expected, bindings)?;
+        }
+    }
+    validate_static_callable_facts(ctx, span, callee, args)?;
+
+    if args.len() < signature.params.len() {
+        return Ok(ExprCategory::Other);
+    }
+    if is_output_operation(callee) {
+        Ok(ExprCategory::Output)
+    } else if is_actor_operation(callee) {
+        Ok(ExprCategory::Actor)
+    } else {
+        Ok(ExprCategory::Other)
+    }
+}
+
+fn callable_signature_has_unknown_import_abi(signature: &CallableSignature) -> bool {
+    match signature.kind {
+        CallableKind::ImportedFunction { .. } => {
+            rsig_type_has_unknown_abi(&signature.result)
+                || signature.params.iter().any(rsig_type_has_unknown_abi)
+        }
+        CallableKind::ImportedExternal { .. } => {
+            rsig_external_type_has_unknown_abi(&signature.result)
+                || signature
+                    .params
+                    .iter()
+                    .any(rsig_external_type_has_unknown_abi)
+        }
+        CallableKind::Function | CallableKind::External => false,
+    }
+}
+
+fn validate_signature_arg_type(
+    ctx: &ValidationContext<'_>,
+    name: &str,
+    arg: &AstExpr,
+    expected: &RsigType,
+    bindings: &HashMap<String, BindingKind>,
+) -> miette::Result<()> {
+    if !signature_arg_needs_static_check(expected) {
+        return Ok(());
+    }
+    let Some(actual) = simple_expr_type(ctx, arg, bindings) else {
+        return Ok(());
+    };
+    if type_matches(expected, &actual) {
+        Ok(())
+    } else {
+        Err(ctx
+            .diagnostic(
+                expr_span(arg),
+                format!("{name} argument has the wrong type"),
+                format!(
+                    "expected `{}`, found `{}`",
+                    expected.canonical(),
+                    actual.canonical()
+                ),
+                Some("check the call argument type"),
+            )
+            .into())
+    }
+}
+
+fn signature_arg_needs_static_check(type_: &RsigType) -> bool {
+    match type_ {
+        RsigType::Unknown | RsigType::Var(_) => false,
+        RsigType::ActorId(_) => false,
+        RsigType::List(_) => true,
+        RsigType::Tuple(items) => items.iter().any(signature_arg_needs_static_check),
+        RsigType::VariantApp { args, .. } => args.iter().any(signature_arg_needs_static_check),
+        RsigType::Arrow { .. } => false,
+        RsigType::Bool
+        | RsigType::Char
+        | RsigType::F64
+        | RsigType::I32
+        | RsigType::I64
+        | RsigType::String
+        | RsigType::Unit
+        | RsigType::Record(_)
+        | RsigType::Variant(_) => true,
+    }
+}
+
+fn validate_static_callable_facts(
+    ctx: &ValidationContext<'_>,
+    span: TextSpan,
+    callee: &[String],
+    args: &[AstExpr],
+) -> miette::Result<()> {
+    if matches!(callable_leaf_name(callee), Some("list_get"))
+        && !ctx.declared_external_names.contains("list_get")
+        && let [list, index] = args
+    {
+        validate_static_list_index(ctx, span, "list_get", list, index)?;
+    }
+    Ok(())
+}
+
+fn is_output_operation(callee: &[String]) -> bool {
+    matches!(callable_leaf_name(callee), Some("dbg" | "println"))
+}
+
+fn is_actor_operation(callee: &[String]) -> bool {
+    matches!(
+        callable_leaf_name(callee),
+        Some("send" | "monitor" | "link")
+    )
+}
+
+fn callable_leaf_name(callee: &[String]) -> Option<&str> {
+    match callee {
+        [name] => Some(name.as_str()),
+        [_, _, name] => Some(name.as_str()),
+        [_, name] => Some(name.as_str()),
+        _ => None,
+    }
+}
+
+fn callee_display_name(callee: &[String]) -> String {
+    callee.join(".")
+}
+
 fn validate_actor_target(
     ctx: &ValidationContext<'_>,
     expr: &AstExpr,
@@ -2456,8 +2507,12 @@ fn infer_annotation_expr_type(
                 .get(module.as_str())
                 .and_then(|rsig| rsig.find(name))
                 .map(|export| match export {
-                    RsigExport::Function(function) => function.result.clone(),
-                    RsigExport::External(external) => external.result.clone(),
+                    RsigExport::Function(function) => {
+                        qualify_imported_type(module, &function.result)
+                    }
+                    RsigExport::External(external) => {
+                        qualify_imported_type(module, &external.result)
+                    }
                 })
                 .or_else(|| {
                     imported_constructor_shape(ctx, module, name)
@@ -2746,8 +2801,12 @@ fn simple_expr_type(
                 .get(module.as_str())
                 .and_then(|rsig| rsig.find(name))
                 .map(|export| match export {
-                    RsigExport::Function(function) => function.result.clone(),
-                    RsigExport::External(external) => external.result.clone(),
+                    RsigExport::Function(function) => {
+                        qualify_imported_type(module, &function.result)
+                    }
+                    RsigExport::External(external) => {
+                        qualify_imported_type(module, &external.result)
+                    }
                 })
                 .or_else(|| {
                     imported_constructor_shape(ctx, module, name)
