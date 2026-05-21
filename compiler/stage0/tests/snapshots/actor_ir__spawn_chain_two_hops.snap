@@ -24,7 +24,7 @@ ActorIrProgram {
                         name: "middle$3",
                         value: Spawn {
                             actor_id: 1,
-                            body: RirBlock {
+                            body: LambdaBlock {
                                 statements: [
                                     Let {
                                         name: BindingKey(
@@ -32,12 +32,12 @@ ActorIrProgram {
                                         ),
                                         value: Spawn {
                                             actor_id: 2,
-                                            body: RirBlock {
+                                            body: LambdaBlock {
                                                 statements: [],
                                                 tail: Some(
                                                     Receive {
                                                         arms: [
-                                                            RirReceiveArm {
+                                                            LambdaReceiveArm {
                                                                 pattern: Bind {
                                                                     binding: BindingKey(
                                                                         "msg$0",
@@ -67,7 +67,7 @@ ActorIrProgram {
                                 tail: Some(
                                     Receive {
                                         arms: [
-                                            RirReceiveArm {
+                                            LambdaReceiveArm {
                                                 pattern: Bind {
                                                     binding: BindingKey(
                                                         "msg$2",
@@ -105,7 +105,7 @@ ActorIrProgram {
                 ActorFrameState {
                     op: Receive {
                         arms: [
-                            RirReceiveArm {
+                            LambdaReceiveArm {
                                 pattern: Bind {
                                     binding: BindingKey(
                                         "msg$4",
@@ -156,12 +156,12 @@ ActorIrProgram {
                         name: "leaf$1",
                         value: Spawn {
                             actor_id: 2,
-                            body: RirBlock {
+                            body: LambdaBlock {
                                 statements: [],
                                 tail: Some(
                                     Receive {
                                         arms: [
-                                            RirReceiveArm {
+                                            LambdaReceiveArm {
                                                 pattern: Bind {
                                                     binding: BindingKey(
                                                         "msg$0",
@@ -194,7 +194,7 @@ ActorIrProgram {
                 ActorFrameState {
                     op: Receive {
                         arms: [
-                            RirReceiveArm {
+                            LambdaReceiveArm {
                                 pattern: Bind {
                                     binding: BindingKey(
                                         "msg$2",
@@ -237,7 +237,7 @@ ActorIrProgram {
                 ActorFrameState {
                     op: Receive {
                         arms: [
-                            RirReceiveArm {
+                            LambdaReceiveArm {
                                 pattern: Bind {
                                     binding: BindingKey(
                                         "msg$0",

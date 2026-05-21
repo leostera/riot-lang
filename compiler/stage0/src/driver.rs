@@ -282,7 +282,7 @@ impl Stage0Driver {
         }
     }
 
-    fn emit_mode_for(lambda_ir: &crate::lambda::ir::RirProgram) -> CodegenMode {
+    fn emit_mode_for(lambda_ir: &crate::lambda::ir::LambdaProgram) -> CodegenMode {
         if lambda_ir
             .functions
             .iter()

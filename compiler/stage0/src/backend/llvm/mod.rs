@@ -20,8 +20,8 @@ use crate::actor::air::{
     ActorFrameOp, ActorFrameSlot, ActorFrameState, ActorIrActor, ActorIrProgram, ActorStateNext,
 };
 use crate::lambda::ir::{
-    Capture, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm, RirPattern,
-    RirProgram, RirStmt,
+    Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaMatchArm,
+    LambdaPattern, LambdaProgram, LambdaStmt, Param,
 };
 use crate::signature::{ConstructorName, ImportedSignatures, RsigExport, RsigType, TypeName};
 
@@ -52,7 +52,7 @@ impl LlvmBackend {
 
     pub(crate) fn emit_executable_object(
         &self,
-        program: &RirProgram,
+        program: &LambdaProgram,
         imports: &ImportedSignatures,
         object_path: &Utf8Path,
         llvm_ir_path: Option<&Utf8Path>,
@@ -68,7 +68,7 @@ impl LlvmBackend {
 
     pub(crate) fn emit_module_object(
         &self,
-        program: &RirProgram,
+        program: &LambdaProgram,
         imports: &ImportedSignatures,
         object_path: &Utf8Path,
         llvm_ir_path: Option<&Utf8Path>,
@@ -84,7 +84,7 @@ impl LlvmBackend {
 
     pub(crate) fn emit_llvm_text(
         &self,
-        program: &RirProgram,
+        program: &LambdaProgram,
         imports: &ImportedSignatures,
         mode: CodegenMode,
     ) -> miette::Result<String> {
@@ -96,7 +96,7 @@ impl LlvmBackend {
 
     pub(crate) fn emit_assembly_text(
         &self,
-        program: &RirProgram,
+        program: &LambdaProgram,
         imports: &ImportedSignatures,
         mode: CodegenMode,
     ) -> miette::Result<String> {
@@ -111,7 +111,7 @@ impl LlvmBackend {
 
     fn emit_object_with_mode(
         &self,
-        program: &RirProgram,
+        program: &LambdaProgram,
         imports: &ImportedSignatures,
         object_path: &Utf8Path,
         llvm_ir_path: Option<&Utf8Path>,
@@ -156,7 +156,7 @@ impl LlvmBackend {
     fn build_program_module<'ctx>(
         context: &'ctx Context,
         target_machine: &TargetMachine,
-        program: &RirProgram,
+        program: &LambdaProgram,
         imports: &ImportedSignatures,
         mode: CodegenMode,
     ) -> miette::Result<Module<'ctx>> {
@@ -251,12 +251,12 @@ struct Codegen<'ctx, 'a> {
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
-    program: &'a RirProgram,
+    program: &'a LambdaProgram,
     imports: &'a ImportedSignatures,
     functions: HashMap<String, FunctionValue<'ctx>>,
     function_abis: HashMap<String, FunctionAbi>,
-    function_map: HashMap<&'a str, &'a RirFunction>,
-    externals: BTreeMap<String, RirExternal>,
+    function_map: HashMap<&'a str, &'a LambdaFunction>,
+    externals: BTreeMap<String, LambdaExternal>,
     actor_ir: ActorIrProgram,
     string_counter: usize,
 }
@@ -404,13 +404,13 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_block(
         &mut self,
-        block: &RirBlock,
+        block: &LambdaBlock,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let mut rooted_values = self.push_env_runtime_roots(env)?;
         for stmt in &block.statements {
             match stmt {
-                RirStmt::Let { name, value } => {
+                LambdaStmt::Let { name, value } => {
                     if let Some(static_value) = self.static_eval(value, &env.statics) {
                         env.statics.insert(name.as_str().to_owned(), static_value);
                     }
@@ -421,7 +421,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     }
                     env.values.insert(name.as_str().to_owned(), value);
                 }
-                RirStmt::Expr(expr) => {
+                LambdaStmt::Expr(expr) => {
                     self.emit_expr(expr, env)?;
                 }
             }
@@ -436,9 +436,13 @@ impl<'ctx> Codegen<'ctx, '_> {
         Ok(result)
     }
 
-    fn emit_expr(&mut self, expr: &RirExpr, env: &mut Env<'ctx>) -> miette::Result<CgValue<'ctx>> {
+    fn emit_expr(
+        &mut self,
+        expr: &LambdaExpr,
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
         match expr {
-            RirExpr::Add(lhs, rhs) => {
+            LambdaExpr::Add(lhs, rhs) => {
                 let lhs = self.emit_i64(lhs, env)?;
                 let rhs = self.emit_i64(rhs, env)?;
                 Ok(CgValue::I64(
@@ -447,7 +451,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit add: {error}"))?,
                 ))
             }
-            RirExpr::Sub(lhs, rhs) => {
+            LambdaExpr::Sub(lhs, rhs) => {
                 let lhs = self.emit_i64(lhs, env)?;
                 let rhs = self.emit_i64(rhs, env)?;
                 Ok(CgValue::I64(
@@ -456,7 +460,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit sub: {error}"))?,
                 ))
             }
-            RirExpr::Mul(lhs, rhs) => {
+            LambdaExpr::Mul(lhs, rhs) => {
                 let lhs = self.emit_i64(lhs, env)?;
                 let rhs = self.emit_i64(rhs, env)?;
                 Ok(CgValue::I64(
@@ -465,7 +469,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit mul: {error}"))?,
                 ))
             }
-            RirExpr::Div(lhs, rhs) => {
+            LambdaExpr::Div(lhs, rhs) => {
                 let lhs = self.emit_i64(lhs, env)?;
                 let rhs = self.emit_i64(rhs, env)?;
                 Ok(CgValue::I64(
@@ -474,7 +478,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit div: {error}"))?,
                 ))
             }
-            RirExpr::Mod(lhs, rhs) => {
+            LambdaExpr::Mod(lhs, rhs) => {
                 let lhs = self.emit_i64(lhs, env)?;
                 let rhs = self.emit_i64(rhs, env)?;
                 Ok(CgValue::I64(
@@ -483,7 +487,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit mod: {error}"))?,
                 ))
             }
-            RirExpr::Neg(value) => {
+            LambdaExpr::Neg(value) => {
                 if let Some(value) = self.static_eval(expr, &env.statics) {
                     return Ok(CgValue::Static(value));
                 }
@@ -494,7 +498,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit negation: {error}"))?,
                 ))
             }
-            RirExpr::Eq(lhs, rhs) => {
+            LambdaExpr::Eq(lhs, rhs) => {
                 let lhs_value = self.emit_expr(lhs, env)?;
                 let lhs_root = self.push_optional_runtime_root(&lhs_value)?;
                 let rhs_value = self.emit_expr(rhs, env)?;
@@ -525,7 +529,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(lhs_root + rhs_root)?;
                 result
             }
-            RirExpr::Lt(lhs, rhs) => {
+            LambdaExpr::Lt(lhs, rhs) => {
                 let lhs_value = self.emit_expr(lhs, env)?;
                 let lhs_root = self.push_optional_runtime_root(&lhs_value)?;
                 let rhs_value = self.emit_expr(rhs, env)?;
@@ -553,7 +557,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(lhs_root + rhs_root)?;
                 result
             }
-            RirExpr::And(lhs, rhs) => {
+            LambdaExpr::And(lhs, rhs) => {
                 let lhs = self.emit_bool(lhs, env)?;
                 let rhs = self.emit_bool(rhs, env)?;
                 Ok(CgValue::Bool(
@@ -562,7 +566,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit and: {error}"))?,
                 ))
             }
-            RirExpr::Or(lhs, rhs) => {
+            LambdaExpr::Or(lhs, rhs) => {
                 let lhs = self.emit_bool(lhs, env)?;
                 let rhs = self.emit_bool(rhs, env)?;
                 Ok(CgValue::Bool(
@@ -571,7 +575,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit or: {error}"))?,
                 ))
             }
-            RirExpr::Not(value) => {
+            LambdaExpr::Not(value) => {
                 let value = self.emit_bool(value, env)?;
                 Ok(CgValue::Bool(
                     self.builder
@@ -579,35 +583,35 @@ impl<'ctx> Codegen<'ctx, '_> {
                         .map_err(|error| miette::miette!("failed to emit not: {error}"))?,
                 ))
             }
-            RirExpr::If {
+            LambdaExpr::If {
                 condition,
                 then_branch,
                 else_branch,
             } => self.emit_if(condition, then_branch, else_branch, env),
-            RirExpr::Match { scrutinee, arms } => self.emit_match(scrutinee, arms, env),
-            RirExpr::Block(block) => {
+            LambdaExpr::Match { scrutinee, arms } => self.emit_match(scrutinee, arms, env),
+            LambdaExpr::Block(block) => {
                 let mut scoped = env.clone();
                 self.emit_block(block, &mut scoped)
             }
-            RirExpr::Bool(value) => Ok(CgValue::Bool(
+            LambdaExpr::Bool(value) => Ok(CgValue::Bool(
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
-            RirExpr::Call { callee, args } => self.emit_call(callee, args, env),
-            RirExpr::Apply {
+            LambdaExpr::Call { callee, args } => self.emit_call(callee, args, env),
+            LambdaExpr::Apply {
                 callee,
                 args,
                 result,
             } => self.emit_apply(callee, args, result, env),
-            RirExpr::Lambda {
+            LambdaExpr::Lambda {
                 params,
                 captures,
                 body,
             } => self.emit_lambda_value(params, captures, body, env),
-            RirExpr::Unit => Ok(CgValue::Unit),
-            RirExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
-            RirExpr::List(items) => self.emit_value_sequence("riot_rt_value_list", items, env),
-            RirExpr::Record { path, fields } => self.emit_record_value(path, fields, env),
-            RirExpr::Field { base, field } => {
+            LambdaExpr::Unit => Ok(CgValue::Unit),
+            LambdaExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
+            LambdaExpr::List(items) => self.emit_value_sequence("riot_rt_value_list", items, env),
+            LambdaExpr::Record { path, fields } => self.emit_record_value(path, fields, env),
+            LambdaExpr::Field { base, field } => {
                 let base = self.emit_expr(base, env)?;
                 let base = self.value_as_runtime(base)?;
                 self.push_runtime_root(base)?;
@@ -619,7 +623,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(1)?;
                 Ok(CgValue::Value(value))
             }
-            RirExpr::TupleIndex { base, index } => {
+            LambdaExpr::TupleIndex { base, index } => {
                 let base = self.emit_expr(base, env)?;
                 let base = self.value_as_runtime(base)?;
                 self.push_runtime_root(base)?;
@@ -636,27 +640,27 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(1)?;
                 Ok(CgValue::Value(value))
             }
-            RirExpr::Variant {
+            LambdaExpr::Variant {
                 type_name,
                 constructor,
                 payload,
             } => self.emit_variant_value(type_name, constructor, payload, env),
-            RirExpr::Char(_) | RirExpr::Float(_) => self
+            LambdaExpr::Char(_) | LambdaExpr::Float(_) => self
                 .static_eval(expr, &env.statics)
                 .map(|value| self.emit_static_value(value))
                 .transpose()?
                 .ok_or_else(|| miette::miette!("unsupported non-scalar expression")),
-            RirExpr::Int(value) => Ok(CgValue::I64(self.i64_const(*value))),
-            RirExpr::Path(path) => self.emit_path(path.as_slice(), env),
-            RirExpr::String(value) => {
+            LambdaExpr::Int(value) => Ok(CgValue::I64(self.i64_const(*value))),
+            LambdaExpr::Path(path) => self.emit_path(path.as_slice(), env),
+            LambdaExpr::String(value) => {
                 let (ptr, len) = self.string_literal(value)?;
                 Ok(CgValue::Value(self.call_runtime_value(
                     "riot_rt_value_string",
                     &[ptr.into(), len.into()],
                 )?))
             }
-            RirExpr::Spawn { actor_id, .. } => self.emit_spawn(*actor_id, env),
-            RirExpr::Receive { .. } => bail!("receive cannot be lowered outside an actor frame"),
+            LambdaExpr::Spawn { actor_id, .. } => self.emit_spawn(*actor_id, env),
+            LambdaExpr::Receive { .. } => bail!("receive cannot be lowered outside an actor frame"),
         }
     }
 
@@ -664,7 +668,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         type_name: &TypeName,
         constructor: &ConstructorName,
-        payload: &[RirExpr],
+        payload: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
@@ -699,7 +703,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_variant_payload(
         &mut self,
-        payload: &[RirExpr],
+        payload: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<IntValue<'ctx>> {
         match payload {
@@ -717,9 +721,9 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_if(
         &mut self,
-        condition: &RirExpr,
-        then_branch: &RirExpr,
-        else_branch: &RirExpr,
+        condition: &LambdaExpr,
+        then_branch: &LambdaExpr,
+        else_branch: &LambdaExpr,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let Some(parent) = self.current_function() else {
@@ -743,7 +747,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         if result_abi == AbiType::Unknown {
             return self
                 .static_eval(
-                    &RirExpr::If {
+                    &LambdaExpr::If {
                         condition: Box::new(condition.clone()),
                         then_branch: Box::new(then_branch.clone()),
                         else_branch: Box::new(else_branch.clone()),
@@ -827,8 +831,8 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_match(
         &mut self,
-        scrutinee: &RirExpr,
-        arms: &[RirMatchArm],
+        scrutinee: &LambdaExpr,
+        arms: &[LambdaMatchArm],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         if arms.is_empty() {
@@ -909,12 +913,14 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_pattern_test(
         &mut self,
         scrutinee: &CgValue<'ctx>,
-        pattern: &RirPattern,
+        pattern: &LambdaPattern,
     ) -> miette::Result<IntValue<'ctx>> {
         let bool_type = self.context.bool_type();
         match pattern {
-            RirPattern::Wildcard | RirPattern::Bind { .. } => Ok(bool_type.const_int(1, false)),
-            RirPattern::Unit => {
+            LambdaPattern::Wildcard | LambdaPattern::Bind { .. } => {
+                Ok(bool_type.const_int(1, false))
+            }
+            LambdaPattern::Unit => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let unit = self.call_runtime_value("riot_rt_value_unit", &[])?;
                 Ok(self
@@ -922,7 +928,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .build_int_compare(IntPredicate::EQ, scrutinee, unit, "match_unit")
                     .map_err(|error| miette::miette!("failed to emit unit pattern: {error}"))?)
             }
-            RirPattern::Bool(expected) => {
+            LambdaPattern::Bool(expected) => {
                 let actual = self.value_as_bool(scrutinee.clone())?;
                 Ok(self
                     .builder
@@ -934,7 +940,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     )
                     .map_err(|error| miette::miette!("failed to emit bool pattern: {error}"))?)
             }
-            RirPattern::Int(expected) => {
+            LambdaPattern::Int(expected) => {
                 let actual = self.value_as_i64(scrutinee.clone())?;
                 Ok(self
                     .builder
@@ -946,7 +952,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     )
                     .map_err(|error| miette::miette!("failed to emit int pattern: {error}"))?)
             }
-            RirPattern::String(expected) => {
+            LambdaPattern::String(expected) => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let (ptr, len) = self.string_literal(expected)?;
                 let pattern =
@@ -957,7 +963,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 self.pop_runtime_roots(1)?;
                 Ok(result)
             }
-            RirPattern::Constructor {
+            LambdaPattern::Constructor {
                 type_name,
                 constructor,
                 payload,
@@ -981,7 +987,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 }
                 Ok(tag_matches)
             }
-            RirPattern::Tuple(items) => {
+            LambdaPattern::Tuple(items) => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 self.call_runtime_value(
                     "riot_rt_value_tuple_arity_is",
@@ -994,10 +1000,10 @@ impl<'ctx> Codegen<'ctx, '_> {
                     ],
                 )
             }
-            RirPattern::List { prefix, tail } => {
+            LambdaPattern::List { prefix, tail } => {
                 self.emit_list_pattern_test(scrutinee, prefix, tail.as_deref())
             }
-            RirPattern::Record { type_name, .. } => {
+            LambdaPattern::Record { type_name, .. } => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let (path_ptr, path_len) = self.string_literal(type_name.as_str())?;
                 self.call_runtime_value(
@@ -1011,8 +1017,8 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_list_pattern_test(
         &mut self,
         scrutinee: &CgValue<'ctx>,
-        prefix: &[RirPattern],
-        tail: Option<&RirPattern>,
+        prefix: &[LambdaPattern],
+        tail: Option<&LambdaPattern>,
     ) -> miette::Result<IntValue<'ctx>> {
         let bool_type = self.context.bool_type();
         let list = self.value_as_runtime(scrutinee.clone())?;
@@ -1103,11 +1109,11 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn bind_pattern_env(
         &mut self,
         env: &mut Env<'ctx>,
-        pattern: &RirPattern,
+        pattern: &LambdaPattern,
         scrutinee: &CgValue<'ctx>,
     ) -> miette::Result<usize> {
         match pattern {
-            RirPattern::Bind { binding, type_ } => {
+            LambdaPattern::Bind { binding, type_ } => {
                 let value = match scrutinee {
                     CgValue::Value(value) => self.runtime_value_as_type(*value, type_)?,
                     _ => scrutinee.clone(),
@@ -1121,36 +1127,36 @@ impl<'ctx> Codegen<'ctx, '_> {
                 env.values.insert(binding.as_str().to_owned(), value);
                 Ok(roots)
             }
-            RirPattern::Constructor { payload, .. } if !payload.is_empty() => {
+            LambdaPattern::Constructor { payload, .. } if !payload.is_empty() => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let payload_value = self
                     .call_runtime_value("riot_rt_value_variant_get_payload", &[scrutinee.into()])?;
                 self.bind_payload_patterns(env, payload, payload_value)
             }
-            RirPattern::Tuple(items) => {
+            LambdaPattern::Tuple(items) => {
                 let tuple = self.value_as_runtime(scrutinee.clone())?;
                 self.bind_payload_patterns(env, items, tuple)
             }
-            RirPattern::List { prefix, tail } => {
+            LambdaPattern::List { prefix, tail } => {
                 self.bind_list_patterns(env, prefix, tail.as_deref(), scrutinee)
             }
-            RirPattern::Record { fields, .. } => {
+            LambdaPattern::Record { fields, .. } => {
                 let record = self.value_as_runtime(scrutinee.clone())?;
                 self.bind_record_patterns(env, fields, record)
             }
-            RirPattern::Wildcard
-            | RirPattern::Constructor { .. }
-            | RirPattern::Unit
-            | RirPattern::Bool(_)
-            | RirPattern::Int(_)
-            | RirPattern::String(_) => Ok(0),
+            LambdaPattern::Wildcard
+            | LambdaPattern::Constructor { .. }
+            | LambdaPattern::Unit
+            | LambdaPattern::Bool(_)
+            | LambdaPattern::Int(_)
+            | LambdaPattern::String(_) => Ok(0),
         }
     }
 
     fn bind_record_patterns(
         &mut self,
         env: &mut Env<'ctx>,
-        fields: &[(String, RirPattern)],
+        fields: &[(String, LambdaPattern)],
         record: IntValue<'ctx>,
     ) -> miette::Result<usize> {
         let mut roots = 0;
@@ -1168,7 +1174,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn bind_payload_patterns(
         &mut self,
         env: &mut Env<'ctx>,
-        patterns: &[RirPattern],
+        patterns: &[LambdaPattern],
         payload: IntValue<'ctx>,
     ) -> miette::Result<usize> {
         match patterns {
@@ -1197,8 +1203,8 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn bind_list_patterns(
         &mut self,
         env: &mut Env<'ctx>,
-        prefix: &[RirPattern],
-        tail: Option<&RirPattern>,
+        prefix: &[LambdaPattern],
+        tail: Option<&LambdaPattern>,
         scrutinee: &CgValue<'ctx>,
     ) -> miette::Result<usize> {
         let list = self.value_as_runtime(scrutinee.clone())?;
@@ -1410,7 +1416,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_value_sequence(
         &mut self,
         symbol: &str,
-        items: &[RirExpr],
+        items: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let mut values = Vec::with_capacity(items.len());
@@ -1431,7 +1437,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         params: &[Param],
         captures: &[Capture],
-        body: &RirBlock,
+        body: &LambdaBlock,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let apply = self.declare_lambda_apply_function(params, captures, body)?;
@@ -1464,8 +1470,8 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_apply(
         &mut self,
-        callee: &RirExpr,
-        args: &[RirExpr],
+        callee: &LambdaExpr,
+        args: &[LambdaExpr],
         result_type: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
@@ -1534,7 +1540,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         params: &[Param],
         captures: &[Capture],
-        body: &RirBlock,
+        body: &LambdaBlock,
     ) -> miette::Result<PointerValue<'ctx>> {
         let index = self.string_counter;
         self.string_counter += 1;
@@ -1587,7 +1593,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             } else {
                 let mut nested_captures = captures.to_vec();
                 nested_captures.push(Capture::from_key(param.key().clone()));
-                let nested = RirExpr::Lambda {
+                let nested = LambdaExpr::Lambda {
                     params: rest.to_vec(),
                     captures: nested_captures,
                     body: Box::new(body.clone()),
@@ -1610,7 +1616,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_record_value(
         &mut self,
         path: &[String],
-        fields: &[(String, RirExpr)],
+        fields: &[(String, LambdaExpr)],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let path = path.join(".");
@@ -1671,7 +1677,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_call(
         &mut self,
         callee: &[String],
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         match callee {
@@ -1702,7 +1708,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_local_call(
         &mut self,
         name: &str,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let function = self.functions[name];
@@ -1730,7 +1736,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         module: &str,
         name: &str,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let export = self
@@ -1762,7 +1768,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         symbol: &str,
         params: &[RsigType],
         result: &RsigType,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         if params.len() != args.len() {
@@ -1797,7 +1803,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         symbol: &str,
         params: &[RsigType],
         result: &RsigType,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         if params.len() != args.len() {
@@ -1825,7 +1831,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_output(
         &mut self,
         name: &str,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let Some(arg) = args.first() else {
@@ -2320,12 +2326,20 @@ impl<'ctx> Codegen<'ctx, '_> {
             .map_err(|error| miette::miette!("failed to address actor frame field: {error}"))
     }
 
-    fn emit_i64(&mut self, expr: &RirExpr, env: &mut Env<'ctx>) -> miette::Result<IntValue<'ctx>> {
+    fn emit_i64(
+        &mut self,
+        expr: &LambdaExpr,
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<IntValue<'ctx>> {
         let value = self.emit_expr(expr, env)?;
         self.value_as_i64(value)
     }
 
-    fn emit_bool(&mut self, expr: &RirExpr, env: &mut Env<'ctx>) -> miette::Result<IntValue<'ctx>> {
+    fn emit_bool(
+        &mut self,
+        expr: &LambdaExpr,
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<IntValue<'ctx>> {
         let value = self.emit_expr(expr, env)?;
         self.value_as_bool(value)
     }
@@ -2374,7 +2388,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn emit_basic_arg(
         &mut self,
-        arg: &RirExpr,
+        arg: &LambdaExpr,
         abi: AbiType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<(BasicMetadataValueEnum<'ctx>, usize)> {
@@ -2396,7 +2410,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         symbol: &str,
         output: &mut Vec<BasicMetadataValueEnum<'ctx>>,
-        arg: &RirExpr,
+        arg: &LambdaExpr,
         type_: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<usize> {
@@ -2886,7 +2900,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
     fn static_eval(
         &self,
-        expr: &RirExpr,
+        expr: &LambdaExpr,
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
         StaticEvaluator::new(&self.function_map).eval_expr(expr, bindings)
@@ -2895,7 +2909,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn static_eval_call(
         &self,
         name: &str,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
         StaticEvaluator::new(&self.function_map).eval_call(name, args, bindings)
@@ -2956,8 +2970,11 @@ fn progress_flags(next_index: usize, len: usize) -> u32 {
     }
 }
 
-fn pattern_is_irrefutable(pattern: &RirPattern) -> bool {
-    matches!(pattern, RirPattern::Wildcard | RirPattern::Bind { .. })
+fn pattern_is_irrefutable(pattern: &LambdaPattern) -> bool {
+    matches!(
+        pattern,
+        LambdaPattern::Wildcard | LambdaPattern::Bind { .. }
+    )
 }
 
 fn external_param_is_boxed(symbol: &str, type_: &RsigType) -> bool {
@@ -3012,8 +3029,8 @@ fn external_result_is_boxed(type_: &RsigType) -> bool {
 }
 
 fn infer_function_abis(
-    program: &RirProgram,
-    externals: &BTreeMap<String, RirExternal>,
+    program: &LambdaProgram,
+    externals: &BTreeMap<String, LambdaExternal>,
 ) -> HashMap<String, FunctionAbi> {
     let mut abis = program
         .functions
@@ -3074,20 +3091,20 @@ fn infer_function_abis(
 }
 
 fn infer_block_abi(
-    block: &RirBlock,
+    block: &LambdaBlock,
     params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, RirExternal>,
+    externals: &BTreeMap<String, LambdaExternal>,
 ) -> AbiType {
     for stmt in &block.statements {
         match stmt {
-            RirStmt::Let { name, value } => {
+            LambdaStmt::Let { name, value } => {
                 let abi = infer_expr_abi(value, locals, functions, externals);
                 locals.insert(name.as_str().to_owned(), abi);
             }
-            RirStmt::Expr(expr) => {
+            LambdaStmt::Expr(expr) => {
                 mark_expr_constraints(expr, params, locals, param_types, functions, externals);
             }
         }
@@ -3101,26 +3118,26 @@ fn infer_block_abi(
 }
 
 fn infer_expr_abi(
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, RirExternal>,
+    externals: &BTreeMap<String, LambdaExternal>,
 ) -> AbiType {
     match expr {
-        RirExpr::Add(_, _)
-        | RirExpr::Sub(_, _)
-        | RirExpr::Mul(_, _)
-        | RirExpr::Div(_, _)
-        | RirExpr::Mod(_, _)
-        | RirExpr::Neg(_)
-        | RirExpr::Int(_) => AbiType::I64,
-        RirExpr::Eq(_, _)
-        | RirExpr::Lt(_, _)
-        | RirExpr::And(_, _)
-        | RirExpr::Or(_, _)
-        | RirExpr::Not(_)
-        | RirExpr::Bool(_) => AbiType::Bool,
-        RirExpr::If {
+        LambdaExpr::Add(_, _)
+        | LambdaExpr::Sub(_, _)
+        | LambdaExpr::Mul(_, _)
+        | LambdaExpr::Div(_, _)
+        | LambdaExpr::Mod(_, _)
+        | LambdaExpr::Neg(_)
+        | LambdaExpr::Int(_) => AbiType::I64,
+        LambdaExpr::Eq(_, _)
+        | LambdaExpr::Lt(_, _)
+        | LambdaExpr::And(_, _)
+        | LambdaExpr::Or(_, _)
+        | LambdaExpr::Not(_)
+        | LambdaExpr::Bool(_) => AbiType::Bool,
+        LambdaExpr::If {
             then_branch,
             else_branch,
             ..
@@ -3128,12 +3145,12 @@ fn infer_expr_abi(
             infer_expr_abi(then_branch, locals, functions, externals),
             infer_expr_abi(else_branch, locals, functions, externals),
         ),
-        RirExpr::Match { arms, .. } => arms
+        LambdaExpr::Match { arms, .. } => arms
             .iter()
             .map(|arm| infer_match_arm_abi(arm, locals, functions, externals))
             .fold(AbiType::Unknown, unify_abi),
-        RirExpr::Block(block) => infer_block_expr_abi(block, locals, functions, externals),
-        RirExpr::Call { callee, .. } => match callee.as_slice() {
+        LambdaExpr::Block(block) => infer_block_expr_abi(block, locals, functions, externals),
+        LambdaExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
             [name] => externals
@@ -3143,48 +3160,48 @@ fn infer_expr_abi(
                 .unwrap_or(AbiType::Unknown),
             _ => AbiType::Unknown,
         },
-        RirExpr::Unit => AbiType::Unit,
-        RirExpr::Apply { result, .. } => AbiType::from_rsig(result),
-        RirExpr::Lambda { .. } => AbiType::Value,
-        RirExpr::Path(path) => path
+        LambdaExpr::Unit => AbiType::Unit,
+        LambdaExpr::Apply { result, .. } => AbiType::from_rsig(result),
+        LambdaExpr::Lambda { .. } => AbiType::Value,
+        LambdaExpr::Path(path) => path
             .first()
             .and_then(|name| locals.get(name))
             .copied()
             .unwrap_or(AbiType::Unknown),
-        RirExpr::Tuple(_)
-        | RirExpr::List(_)
-        | RirExpr::Record { .. }
-        | RirExpr::Variant { .. }
-        | RirExpr::Field { .. }
-        | RirExpr::TupleIndex { .. }
-        | RirExpr::String(_) => AbiType::Value,
-        RirExpr::Spawn { .. } => AbiType::ActorId,
-        RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => AbiType::Unknown,
+        LambdaExpr::Tuple(_)
+        | LambdaExpr::List(_)
+        | LambdaExpr::Record { .. }
+        | LambdaExpr::Variant { .. }
+        | LambdaExpr::Field { .. }
+        | LambdaExpr::TupleIndex { .. }
+        | LambdaExpr::String(_) => AbiType::Value,
+        LambdaExpr::Spawn { .. } => AbiType::ActorId,
+        LambdaExpr::Receive { .. } | LambdaExpr::Char(_) | LambdaExpr::Float(_) => AbiType::Unknown,
     }
 }
 
 fn infer_match_arm_abi(
-    arm: &RirMatchArm,
+    arm: &LambdaMatchArm,
     outer_locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, RirExternal>,
+    externals: &BTreeMap<String, LambdaExternal>,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
     bind_pattern_abis(&arm.pattern, &mut locals);
     infer_expr_abi(&arm.body, &locals, functions, externals)
 }
 
-fn bind_pattern_abis(pattern: &RirPattern, locals: &mut HashMap<String, AbiType>) {
+fn bind_pattern_abis(pattern: &LambdaPattern, locals: &mut HashMap<String, AbiType>) {
     match pattern {
-        RirPattern::Bind { binding, type_ } => {
+        LambdaPattern::Bind { binding, type_ } => {
             locals.insert(binding.as_str().to_owned(), AbiType::from_rsig(type_));
         }
-        RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
+        LambdaPattern::Constructor { payload, .. } | LambdaPattern::Tuple(payload) => {
             for pattern in payload {
                 bind_pattern_abis(pattern, locals);
             }
         }
-        RirPattern::List { prefix, tail } => {
+        LambdaPattern::List { prefix, tail } => {
             for pattern in prefix {
                 bind_pattern_abis(pattern, locals);
             }
@@ -3192,24 +3209,24 @@ fn bind_pattern_abis(pattern: &RirPattern, locals: &mut HashMap<String, AbiType>
                 bind_pattern_abis(tail, locals);
             }
         }
-        RirPattern::Record { fields, .. } => {
+        LambdaPattern::Record { fields, .. } => {
             for (_, pattern) in fields {
                 bind_pattern_abis(pattern, locals);
             }
         }
-        RirPattern::Wildcard
-        | RirPattern::Unit
-        | RirPattern::Bool(_)
-        | RirPattern::Int(_)
-        | RirPattern::String(_) => {}
+        LambdaPattern::Wildcard
+        | LambdaPattern::Unit
+        | LambdaPattern::Bool(_)
+        | LambdaPattern::Int(_)
+        | LambdaPattern::String(_) => {}
     }
 }
 
 fn infer_block_expr_abi(
-    block: &RirBlock,
+    block: &LambdaBlock,
     outer_locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, RirExternal>,
+    externals: &BTreeMap<String, LambdaExternal>,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
     let mut param_types = Vec::new();
@@ -3224,25 +3241,25 @@ fn infer_block_expr_abi(
 }
 
 fn mark_expr_constraints(
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, RirExternal>,
+    externals: &BTreeMap<String, LambdaExternal>,
 ) {
     match expr {
-        RirExpr::Add(lhs, rhs)
-        | RirExpr::Sub(lhs, rhs)
-        | RirExpr::Mul(lhs, rhs)
-        | RirExpr::Div(lhs, rhs)
-        | RirExpr::Mod(lhs, rhs)
-        | RirExpr::Lt(lhs, rhs) => {
+        LambdaExpr::Add(lhs, rhs)
+        | LambdaExpr::Sub(lhs, rhs)
+        | LambdaExpr::Mul(lhs, rhs)
+        | LambdaExpr::Div(lhs, rhs)
+        | LambdaExpr::Mod(lhs, rhs)
+        | LambdaExpr::Lt(lhs, rhs) => {
             mark_expr_as(params, locals, param_types, lhs, AbiType::I64);
             mark_expr_as(params, locals, param_types, rhs, AbiType::I64);
         }
-        RirExpr::Neg(value) => mark_expr_as(params, locals, param_types, value, AbiType::I64),
-        RirExpr::If {
+        LambdaExpr::Neg(value) => mark_expr_as(params, locals, param_types, value, AbiType::I64),
+        LambdaExpr::If {
             condition,
             then_branch,
             else_branch,
@@ -3265,13 +3282,13 @@ fn mark_expr_constraints(
                 externals,
             );
         }
-        RirExpr::Match { scrutinee, arms } => {
+        LambdaExpr::Match { scrutinee, arms } => {
             mark_expr_constraints(scrutinee, params, locals, param_types, functions, externals);
             for arm in arms {
                 mark_expr_constraints(&arm.body, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Block(block) => {
+        LambdaExpr::Block(block) => {
             let mut nested_locals = locals.clone();
             let mut nested_params = Vec::new();
             infer_block_abi(
@@ -3283,18 +3300,18 @@ fn mark_expr_constraints(
                 externals,
             );
         }
-        RirExpr::Call { args, .. } => {
+        LambdaExpr::Call { args, .. } => {
             for arg in args {
                 mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Apply { callee, args, .. } => {
+        LambdaExpr::Apply { callee, args, .. } => {
             mark_expr_constraints(callee, params, locals, param_types, functions, externals);
             for arg in args {
                 mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Lambda {
+        LambdaExpr::Lambda {
             params: lambda_params,
             body,
             ..
@@ -3313,32 +3330,32 @@ fn mark_expr_constraints(
                 externals,
             );
         }
-        RirExpr::Tuple(items) | RirExpr::List(items) => {
+        LambdaExpr::Tuple(items) | LambdaExpr::List(items) => {
             for item in items {
                 mark_expr_constraints(item, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Record { fields, .. } => {
+        LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
                 mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
+        LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
             mark_expr_constraints(base, params, locals, param_types, functions, externals);
         }
-        RirExpr::And(lhs, rhs) | RirExpr::Or(lhs, rhs) | RirExpr::Eq(lhs, rhs) => {
+        LambdaExpr::And(lhs, rhs) | LambdaExpr::Or(lhs, rhs) | LambdaExpr::Eq(lhs, rhs) => {
             mark_expr_constraints(lhs, params, locals, param_types, functions, externals);
             mark_expr_constraints(rhs, params, locals, param_types, functions, externals);
         }
-        RirExpr::Not(value) => {
+        LambdaExpr::Not(value) => {
             mark_expr_constraints(value, params, locals, param_types, functions, externals);
         }
-        RirExpr::Receive { arms } => {
+        LambdaExpr::Receive { arms } => {
             for arm in arms {
                 mark_expr_constraints(&arm.body, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Spawn { body, .. } => {
+        LambdaExpr::Spawn { body, .. } => {
             let mut nested_locals = HashMap::new();
             let mut nested_params = Vec::new();
             infer_block_abi(
@@ -3350,18 +3367,18 @@ fn mark_expr_constraints(
                 externals,
             );
         }
-        RirExpr::Variant { payload, .. } => {
+        LambdaExpr::Variant { payload, .. } => {
             for value in payload {
                 mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
-        RirExpr::Bool(_)
-        | RirExpr::Unit
-        | RirExpr::Char(_)
-        | RirExpr::Float(_)
-        | RirExpr::Int(_)
-        | RirExpr::Path(_)
-        | RirExpr::String(_) => {}
+        LambdaExpr::Bool(_)
+        | LambdaExpr::Unit
+        | LambdaExpr::Char(_)
+        | LambdaExpr::Float(_)
+        | LambdaExpr::Int(_)
+        | LambdaExpr::Path(_)
+        | LambdaExpr::String(_) => {}
     }
 }
 
@@ -3369,17 +3386,17 @@ fn mark_expr_as(
     params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     abi: AbiType,
 ) {
-    if let RirExpr::Block(block) = expr {
+    if let LambdaExpr::Block(block) = expr {
         if let Some(tail) = &block.tail {
             mark_expr_as(params, locals, param_types, tail, abi);
         }
         return;
     }
 
-    if let RirExpr::Path(path) = expr
+    if let LambdaExpr::Path(path) = expr
         && let [name] = path.as_slice()
     {
         locals.insert(name.clone(), abi);
@@ -3400,7 +3417,7 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
     }
 }
 
-fn codegen_externals(program: &RirProgram) -> miette::Result<BTreeMap<String, RirExternal>> {
+fn codegen_externals(program: &LambdaProgram) -> miette::Result<BTreeMap<String, LambdaExternal>> {
     let mut externals = crate::stdlib::Stdlib::new()
         .prelude_signature()?
         .exports
@@ -3411,7 +3428,7 @@ fn codegen_externals(program: &RirProgram) -> miette::Result<BTreeMap<String, Ri
             };
             Some((
                 external.name.clone(),
-                RirExternal {
+                LambdaExternal {
                     name: external.name,
                     params: external.params,
                     result: external.result,
@@ -3431,7 +3448,8 @@ fn codegen_externals(program: &RirProgram) -> miette::Result<BTreeMap<String, Ri
 #[cfg(test)]
 mod tests {
     use crate::lambda::ir::{
-        BindingKey, Capture, Param, RirBlock, RirExpr, RirFunction, RirPath, RirProgram, RirStmt,
+        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaFunction, LambdaPath, LambdaProgram,
+        LambdaStmt, Param,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
@@ -3439,26 +3457,26 @@ mod tests {
 
     #[test]
     fn lambda_values_lower_to_runtime_closure_calls() {
-        let program = RirProgram {
+        let program = LambdaProgram {
             module_name: ModuleName::new("ClosureTest"),
             uses: Vec::new(),
             externals: Vec::new(),
-            functions: vec![RirFunction {
+            functions: vec![LambdaFunction {
                 name: "main".to_owned(),
                 params: Vec::new(),
                 param_types: Vec::new(),
                 result: RsigType::Unknown,
-                body: RirBlock {
-                    statements: vec![RirStmt::Let {
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Let {
                         name: BindingKey::new("n"),
-                        value: RirExpr::Int(1),
+                        value: LambdaExpr::Int(1),
                     }],
-                    tail: Some(RirExpr::Lambda {
+                    tail: Some(LambdaExpr::Lambda {
                         params: vec![Param::from_key(crate::lambda::ir::BindingKey::new("x"))],
                         captures: vec![Capture::new("n")],
-                        body: Box::new(RirBlock {
+                        body: Box::new(LambdaBlock {
                             statements: Vec::new(),
-                            tail: Some(RirExpr::Path(RirPath::singleton("n"))),
+                            tail: Some(LambdaExpr::Path(LambdaPath::singleton("n"))),
                         }),
                     }),
                 },
@@ -3480,30 +3498,30 @@ mod tests {
 
     #[test]
     fn lambda_apply_lowers_to_runtime_apply_function() {
-        let program = RirProgram {
+        let program = LambdaProgram {
             module_name: ModuleName::new("ClosureApplyTest"),
             uses: Vec::new(),
             externals: Vec::new(),
-            functions: vec![RirFunction {
+            functions: vec![LambdaFunction {
                 name: "main".to_owned(),
                 params: Vec::new(),
                 param_types: Vec::new(),
                 result: RsigType::Unknown,
-                body: RirBlock {
+                body: LambdaBlock {
                     statements: Vec::new(),
-                    tail: Some(RirExpr::Apply {
-                        callee: Box::new(RirExpr::Lambda {
+                    tail: Some(LambdaExpr::Apply {
+                        callee: Box::new(LambdaExpr::Lambda {
                             params: vec![Param::from_key(crate::lambda::ir::BindingKey::new("x"))],
                             captures: Vec::new(),
-                            body: Box::new(RirBlock {
+                            body: Box::new(LambdaBlock {
                                 statements: Vec::new(),
-                                tail: Some(RirExpr::Add(
-                                    Box::new(RirExpr::Path(RirPath::singleton("x"))),
-                                    Box::new(RirExpr::Int(1)),
+                                tail: Some(LambdaExpr::Add(
+                                    Box::new(LambdaExpr::Path(LambdaPath::singleton("x"))),
+                                    Box::new(LambdaExpr::Int(1)),
                                 )),
                             }),
                         }),
-                        args: vec![RirExpr::Int(41)],
+                        args: vec![LambdaExpr::Int(41)],
                         result: RsigType::I64,
                     }),
                 },

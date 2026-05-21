@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::lambda::ir::{RirBlock, RirExpr, RirFunction, RirPattern, RirStmt};
+use crate::lambda::ir::{LambdaBlock, LambdaExpr, LambdaFunction, LambdaPattern, LambdaStmt};
 use crate::signature::{ConstructorName, TypeName};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -95,17 +95,17 @@ impl StaticValue {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StaticEvaluator<'a> {
-    functions: &'a HashMap<&'a str, &'a RirFunction>,
+    functions: &'a HashMap<&'a str, &'a LambdaFunction>,
 }
 
 impl<'a> StaticEvaluator<'a> {
-    pub(crate) fn new(functions: &'a HashMap<&'a str, &'a RirFunction>) -> Self {
+    pub(crate) fn new(functions: &'a HashMap<&'a str, &'a LambdaFunction>) -> Self {
         Self { functions }
     }
 
     pub(crate) fn eval_expr(
         &self,
-        expr: &RirExpr,
+        expr: &LambdaExpr,
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
         eval_expr(expr, bindings, self.functions, 0)
@@ -114,7 +114,7 @@ impl<'a> StaticEvaluator<'a> {
     pub(crate) fn eval_call(
         &self,
         name: &str,
-        args: &[RirExpr],
+        args: &[LambdaExpr],
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
         eval_call(name, args, bindings, self.functions, 0)
@@ -130,28 +130,28 @@ impl<'a> StaticEvaluator<'a> {
 }
 
 fn eval_expr(
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     bindings: &HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &RirFunction>,
+    functions: &HashMap<&str, &LambdaFunction>,
     depth: usize,
 ) -> Option<StaticValue> {
     if depth > 64 {
         return None;
     }
     match expr {
-        RirExpr::Add(lhs, rhs) => Some(StaticValue::Int(
+        LambdaExpr::Add(lhs, rhs) => Some(StaticValue::Int(
             eval_expr(lhs, bindings, functions, depth)?.as_int()?
                 + eval_expr(rhs, bindings, functions, depth)?.as_int()?,
         )),
-        RirExpr::Sub(lhs, rhs) => Some(StaticValue::Int(
+        LambdaExpr::Sub(lhs, rhs) => Some(StaticValue::Int(
             eval_expr(lhs, bindings, functions, depth)?.as_int()?
                 - eval_expr(rhs, bindings, functions, depth)?.as_int()?,
         )),
-        RirExpr::Mul(lhs, rhs) => Some(StaticValue::Int(
+        LambdaExpr::Mul(lhs, rhs) => Some(StaticValue::Int(
             eval_expr(lhs, bindings, functions, depth)?.as_int()?
                 * eval_expr(rhs, bindings, functions, depth)?.as_int()?,
         )),
-        RirExpr::Div(lhs, rhs) => {
+        LambdaExpr::Div(lhs, rhs) => {
             let rhs = eval_expr(rhs, bindings, functions, depth)?.as_int()?;
             if rhs == 0 {
                 return None;
@@ -160,7 +160,7 @@ fn eval_expr(
                 eval_expr(lhs, bindings, functions, depth)?.as_int()? / rhs,
             ))
         }
-        RirExpr::Mod(lhs, rhs) => {
+        LambdaExpr::Mod(lhs, rhs) => {
             let rhs = eval_expr(rhs, bindings, functions, depth)?.as_int()?;
             if rhs == 0 {
                 return None;
@@ -169,32 +169,32 @@ fn eval_expr(
                 eval_expr(lhs, bindings, functions, depth)?.as_int()? % rhs,
             ))
         }
-        RirExpr::Neg(value) => match eval_expr(value, bindings, functions, depth)? {
+        LambdaExpr::Neg(value) => match eval_expr(value, bindings, functions, depth)? {
             StaticValue::Float(value) => Some(StaticValue::Float(format!("-{value}"))),
             StaticValue::Int(value) => Some(StaticValue::Int(-value)),
             _ => None,
         },
-        RirExpr::Eq(lhs, rhs) => {
+        LambdaExpr::Eq(lhs, rhs) => {
             let lhs = eval_expr(lhs, bindings, functions, depth)?.to_print_string();
             let rhs = eval_expr(rhs, bindings, functions, depth)?.to_print_string();
             Some(StaticValue::Bool(lhs == rhs))
         }
-        RirExpr::Lt(lhs, rhs) => Some(StaticValue::Bool(
+        LambdaExpr::Lt(lhs, rhs) => Some(StaticValue::Bool(
             eval_expr(lhs, bindings, functions, depth)?.as_int()?
                 < eval_expr(rhs, bindings, functions, depth)?.as_int()?,
         )),
-        RirExpr::And(lhs, rhs) => Some(StaticValue::Bool(
+        LambdaExpr::And(lhs, rhs) => Some(StaticValue::Bool(
             eval_expr(lhs, bindings, functions, depth)?.as_bool()?
                 && eval_expr(rhs, bindings, functions, depth)?.as_bool()?,
         )),
-        RirExpr::Or(lhs, rhs) => Some(StaticValue::Bool(
+        LambdaExpr::Or(lhs, rhs) => Some(StaticValue::Bool(
             eval_expr(lhs, bindings, functions, depth)?.as_bool()?
                 || eval_expr(rhs, bindings, functions, depth)?.as_bool()?,
         )),
-        RirExpr::Not(value) => Some(StaticValue::Bool(
+        LambdaExpr::Not(value) => Some(StaticValue::Bool(
             !eval_expr(value, bindings, functions, depth)?.as_bool()?,
         )),
-        RirExpr::If {
+        LambdaExpr::If {
             condition,
             then_branch,
             else_branch,
@@ -205,7 +205,7 @@ fn eval_expr(
                 eval_expr(else_branch, bindings, functions, depth)
             }
         }
-        RirExpr::Match { scrutinee, arms } => {
+        LambdaExpr::Match { scrutinee, arms } => {
             let scrutinee = eval_expr(scrutinee, bindings, functions, depth)?;
             for arm in arms {
                 if static_pattern_matches(&arm.pattern, &scrutinee) {
@@ -216,29 +216,29 @@ fn eval_expr(
             }
             None
         }
-        RirExpr::Block(block) => {
+        LambdaExpr::Block(block) => {
             let mut block_bindings = bindings.clone();
             eval_block(block, &mut block_bindings, functions, depth)
         }
-        RirExpr::Bool(value) => Some(StaticValue::Bool(*value)),
-        RirExpr::Call { callee, args } => {
+        LambdaExpr::Bool(value) => Some(StaticValue::Bool(*value)),
+        LambdaExpr::Call { callee, args } => {
             let [name] = callee.as_slice() else {
                 return None;
             };
             eval_call(name, args, bindings, functions, depth)
         }
-        RirExpr::Unit => Some(StaticValue::Unit),
-        RirExpr::Tuple(items) => items
+        LambdaExpr::Unit => Some(StaticValue::Unit),
+        LambdaExpr::Tuple(items) => items
             .iter()
             .map(|item| eval_expr(item, bindings, functions, depth))
             .collect::<Option<Vec<_>>>()
             .map(StaticValue::Tuple),
-        RirExpr::List(items) => items
+        LambdaExpr::List(items) => items
             .iter()
             .map(|item| eval_expr(item, bindings, functions, depth))
             .collect::<Option<Vec<_>>>()
             .map(StaticValue::List),
-        RirExpr::Record { path, fields } => fields
+        LambdaExpr::Record { path, fields } => fields
             .iter()
             .map(|(name, value)| {
                 Some((name.clone(), eval_expr(value, bindings, functions, depth)?))
@@ -248,7 +248,7 @@ fn eval_expr(
                 path: path.join("."),
                 fields,
             }),
-        RirExpr::Variant {
+        LambdaExpr::Variant {
             type_name,
             constructor,
             payload,
@@ -266,33 +266,33 @@ fn eval_expr(
                 ),
             }),
         }),
-        RirExpr::Field { .. } | RirExpr::TupleIndex { .. } => None,
-        RirExpr::Char(value) => Some(StaticValue::Char(*value)),
-        RirExpr::Float(value) => Some(StaticValue::Float(value.clone())),
-        RirExpr::Int(value) => Some(StaticValue::Int(*value)),
-        RirExpr::Path(path) => resolve_path(path.as_slice(), bindings),
-        RirExpr::String(value) => Some(StaticValue::String(value.clone())),
-        RirExpr::Apply { .. }
-        | RirExpr::Lambda { .. }
-        | RirExpr::Spawn { .. }
-        | RirExpr::Receive { .. } => None,
+        LambdaExpr::Field { .. } | LambdaExpr::TupleIndex { .. } => None,
+        LambdaExpr::Char(value) => Some(StaticValue::Char(*value)),
+        LambdaExpr::Float(value) => Some(StaticValue::Float(value.clone())),
+        LambdaExpr::Int(value) => Some(StaticValue::Int(*value)),
+        LambdaExpr::Path(path) => resolve_path(path.as_slice(), bindings),
+        LambdaExpr::String(value) => Some(StaticValue::String(value.clone())),
+        LambdaExpr::Apply { .. }
+        | LambdaExpr::Lambda { .. }
+        | LambdaExpr::Spawn { .. }
+        | LambdaExpr::Receive { .. } => None,
     }
 }
 
-fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
+fn static_pattern_matches(pattern: &LambdaPattern, value: &StaticValue) -> bool {
     match pattern {
-        RirPattern::Wildcard | RirPattern::Bind { .. } => true,
-        RirPattern::Unit => matches!(value, StaticValue::Unit),
-        RirPattern::Bool(expected) => {
+        LambdaPattern::Wildcard | LambdaPattern::Bind { .. } => true,
+        LambdaPattern::Unit => matches!(value, StaticValue::Unit),
+        LambdaPattern::Bool(expected) => {
             matches!(value, StaticValue::Bool(actual) if actual == expected)
         }
-        RirPattern::Int(expected) => {
+        LambdaPattern::Int(expected) => {
             matches!(value, StaticValue::Int(actual) if actual == expected)
         }
-        RirPattern::String(expected) => {
+        LambdaPattern::String(expected) => {
             matches!(value, StaticValue::String(actual) if actual == expected)
         }
-        RirPattern::Constructor {
+        LambdaPattern::Constructor {
             type_name,
             constructor,
             payload,
@@ -309,7 +309,7 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                 && actual_constructor == constructor
                 && static_payload_patterns_match(payload, actual_payload)
         }
-        RirPattern::Tuple(patterns) => {
+        LambdaPattern::Tuple(patterns) => {
             let StaticValue::Tuple(items) = value else {
                 return false;
             };
@@ -319,7 +319,7 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                     .zip(items)
                     .all(|(pattern, item)| static_pattern_matches(pattern, item))
         }
-        RirPattern::List { prefix, tail } => {
+        LambdaPattern::List { prefix, tail } => {
             let StaticValue::List(items) = value else {
                 return false;
             };
@@ -337,7 +337,7 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                     static_pattern_matches(tail, &StaticValue::List(items[prefix.len()..].to_vec()))
                 })
         }
-        RirPattern::Record { type_name, fields } => {
+        LambdaPattern::Record { type_name, fields } => {
             let StaticValue::Record {
                 path,
                 fields: values,
@@ -356,7 +356,7 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
     }
 }
 
-fn static_payload_patterns_match(patterns: &[RirPattern], payload: &StaticValue) -> bool {
+fn static_payload_patterns_match(patterns: &[LambdaPattern], payload: &StaticValue) -> bool {
     match patterns {
         [] => matches!(payload, StaticValue::Unit),
         [pattern] => static_pattern_matches(pattern, payload),
@@ -374,15 +374,15 @@ fn static_payload_patterns_match(patterns: &[RirPattern], payload: &StaticValue)
 }
 
 fn bind_static_pattern(
-    pattern: &RirPattern,
+    pattern: &LambdaPattern,
     value: StaticValue,
     bindings: &mut HashMap<String, StaticValue>,
 ) {
     match pattern {
-        RirPattern::Bind { binding, .. } => {
+        LambdaPattern::Bind { binding, .. } => {
             bindings.insert(binding.as_str().to_owned(), value);
         }
-        RirPattern::Constructor { payload, .. } => match payload.as_slice() {
+        LambdaPattern::Constructor { payload, .. } => match payload.as_slice() {
             [] => {}
             [pattern] => {
                 let StaticValue::Variant {
@@ -410,7 +410,7 @@ fn bind_static_pattern(
                 }
             }
         },
-        RirPattern::Tuple(patterns) => {
+        LambdaPattern::Tuple(patterns) => {
             let StaticValue::Tuple(items) = value else {
                 return;
             };
@@ -418,7 +418,7 @@ fn bind_static_pattern(
                 bind_static_pattern(pattern, item, bindings);
             }
         }
-        RirPattern::List { prefix, tail } => {
+        LambdaPattern::List { prefix, tail } => {
             let StaticValue::List(items) = value else {
                 return;
             };
@@ -433,7 +433,7 @@ fn bind_static_pattern(
                 );
             }
         }
-        RirPattern::Record { fields, .. } => {
+        LambdaPattern::Record { fields, .. } => {
             let StaticValue::Record {
                 path: _,
                 fields: values,
@@ -450,19 +450,19 @@ fn bind_static_pattern(
                 }
             }
         }
-        RirPattern::Wildcard
-        | RirPattern::Unit
-        | RirPattern::Bool(_)
-        | RirPattern::Int(_)
-        | RirPattern::String(_) => {}
+        LambdaPattern::Wildcard
+        | LambdaPattern::Unit
+        | LambdaPattern::Bool(_)
+        | LambdaPattern::Int(_)
+        | LambdaPattern::String(_) => {}
     }
 }
 
 fn eval_call(
     name: &str,
-    args: &[RirExpr],
+    args: &[LambdaExpr],
     bindings: &HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &RirFunction>,
+    functions: &HashMap<&str, &LambdaFunction>,
     depth: usize,
 ) -> Option<StaticValue> {
     let function = functions.get(name)?;
@@ -480,18 +480,18 @@ fn eval_call(
 }
 
 fn eval_block(
-    block: &RirBlock,
+    block: &LambdaBlock,
     bindings: &mut HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &RirFunction>,
+    functions: &HashMap<&str, &LambdaFunction>,
     depth: usize,
 ) -> Option<StaticValue> {
     for stmt in &block.statements {
         match stmt {
-            RirStmt::Let { name, value } => {
+            LambdaStmt::Let { name, value } => {
                 let value = eval_expr(value, bindings, functions, depth)?;
                 bindings.insert(name.as_str().to_owned(), value);
             }
-            RirStmt::Expr(expr) => {
+            LambdaStmt::Expr(expr) => {
                 eval_expr(expr, bindings, functions, depth)?;
             }
         }

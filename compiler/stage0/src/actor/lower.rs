@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::lambda::ir::{RirBlock, RirExpr, RirProgram, RirStmt};
+use crate::lambda::ir::{LambdaBlock, LambdaExpr, LambdaProgram, LambdaStmt};
 use crate::signature::ImportedSignatures;
 
 use super::air::{ActorIrActor, ActorIrProgram, ActorSlotType};
@@ -18,7 +18,7 @@ impl<'a> ActorIrLowerer<'a> {
         Self { imports }
     }
 
-    pub(crate) fn lower(&self, program: &RirProgram) -> ActorIrProgram {
+    pub(crate) fn lower(&self, program: &LambdaProgram) -> ActorIrProgram {
         let mut actors = Vec::new();
         let context = ActorSlotTypeContext::from_program(program, self.imports);
         for function in &program.functions {
@@ -43,27 +43,27 @@ impl<'a> StacklessActorLowerer<'a> {
         Self { imports }
     }
 
-    pub(crate) fn lower(&self, lambda_ir: &RirProgram) -> ActorIrProgram {
+    pub(crate) fn lower(&self, lambda_ir: &LambdaProgram) -> ActorIrProgram {
         ActorIrLowerer::new(self.imports).lower(lambda_ir)
     }
 }
 
 fn collect_actors_from_block(
-    block: &RirBlock,
+    block: &LambdaBlock,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorSlotTypeContext<'_>,
     actors: &mut Vec<ActorIrActor>,
 ) {
     for stmt in &block.statements {
         match stmt {
-            RirStmt::Let { name, value } => {
+            LambdaStmt::Let { name, value } => {
                 collect_actors_from_expr(value, locals, context, actors);
                 locals.insert(
                     name.as_str().to_owned(),
                     infer_actor_slot_type(value, locals, context),
                 );
             }
-            RirStmt::Expr(expr) => collect_actors_from_expr(expr, locals, context, actors),
+            LambdaStmt::Expr(expr) => collect_actors_from_expr(expr, locals, context, actors),
         }
     }
     if let Some(tail) = &block.tail {
@@ -72,13 +72,13 @@ fn collect_actors_from_block(
 }
 
 fn collect_actors_from_expr(
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorSlotTypeContext<'_>,
     actors: &mut Vec<ActorIrActor>,
 ) {
     match expr {
-        RirExpr::Spawn { actor_id, body } => {
+        LambdaExpr::Spawn { actor_id, body } => {
             let actor = actor_frame_from_block(*actor_id, body, locals, context);
             let mut actor_locals = actor
                 .frame
@@ -89,22 +89,22 @@ fn collect_actors_from_expr(
             actors.push(actor);
             collect_actors_from_block(body, &mut actor_locals, context, actors);
         }
-        RirExpr::Add(lhs, rhs)
-        | RirExpr::Sub(lhs, rhs)
-        | RirExpr::Mul(lhs, rhs)
-        | RirExpr::Div(lhs, rhs)
-        | RirExpr::Mod(lhs, rhs)
-        | RirExpr::Eq(lhs, rhs)
-        | RirExpr::Lt(lhs, rhs)
-        | RirExpr::And(lhs, rhs)
-        | RirExpr::Or(lhs, rhs) => {
+        LambdaExpr::Add(lhs, rhs)
+        | LambdaExpr::Sub(lhs, rhs)
+        | LambdaExpr::Mul(lhs, rhs)
+        | LambdaExpr::Div(lhs, rhs)
+        | LambdaExpr::Mod(lhs, rhs)
+        | LambdaExpr::Eq(lhs, rhs)
+        | LambdaExpr::Lt(lhs, rhs)
+        | LambdaExpr::And(lhs, rhs)
+        | LambdaExpr::Or(lhs, rhs) => {
             collect_actors_from_expr(lhs, locals, context, actors);
             collect_actors_from_expr(rhs, locals, context, actors);
         }
-        RirExpr::Neg(value) | RirExpr::Not(value) => {
+        LambdaExpr::Neg(value) | LambdaExpr::Not(value) => {
             collect_actors_from_expr(value, locals, context, actors);
         }
-        RirExpr::If {
+        LambdaExpr::If {
             condition,
             then_branch,
             else_branch,
@@ -113,7 +113,7 @@ fn collect_actors_from_expr(
             collect_actors_from_expr(then_branch, locals, context, actors);
             collect_actors_from_expr(else_branch, locals, context, actors);
         }
-        RirExpr::Match { scrutinee, arms } => {
+        LambdaExpr::Match { scrutinee, arms } => {
             collect_actors_from_expr(scrutinee, locals, context, actors);
             let scrutinee_type = infer_actor_slot_type(scrutinee, locals, context);
             for arm in arms {
@@ -122,37 +122,37 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(&arm.body, &mut arm_locals, context, actors);
             }
         }
-        RirExpr::Block(block) => {
+        LambdaExpr::Block(block) => {
             let mut block_locals = locals.clone();
             collect_actors_from_block(block, &mut block_locals, context, actors);
         }
-        RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
+        LambdaExpr::Call { args, .. } | LambdaExpr::Tuple(args) | LambdaExpr::List(args) => {
             for arg in args {
                 collect_actors_from_expr(arg, locals, context, actors);
             }
         }
-        RirExpr::Apply { callee, args, .. } => {
+        LambdaExpr::Apply { callee, args, .. } => {
             collect_actors_from_expr(callee, locals, context, actors);
             for arg in args {
                 collect_actors_from_expr(arg, locals, context, actors);
             }
         }
-        RirExpr::Lambda { params, body, .. } => {
+        LambdaExpr::Lambda { params, body, .. } => {
             let mut lambda_locals = locals.clone();
             for param in params {
                 lambda_locals.insert(param.as_str().to_owned(), None);
             }
             collect_actors_from_block(body, &mut lambda_locals, context, actors);
         }
-        RirExpr::Record { fields, .. } => {
+        LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
                 collect_actors_from_expr(value, locals, context, actors);
             }
         }
-        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
+        LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
             collect_actors_from_expr(base, locals, context, actors);
         }
-        RirExpr::Receive { arms } => {
+        LambdaExpr::Receive { arms } => {
             for arm in arms {
                 let mut arm_locals = locals.clone();
                 bind_pattern_actor_slot_types(
@@ -163,17 +163,17 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(&arm.body, &mut arm_locals, context, actors);
             }
         }
-        RirExpr::Variant { payload, .. } => {
+        LambdaExpr::Variant { payload, .. } => {
             for value in payload {
                 collect_actors_from_expr(value, locals, context, actors);
             }
         }
-        RirExpr::Bool(_)
-        | RirExpr::Unit
-        | RirExpr::Char(_)
-        | RirExpr::Float(_)
-        | RirExpr::Int(_)
-        | RirExpr::Path(_)
-        | RirExpr::String(_) => {}
+        LambdaExpr::Bool(_)
+        | LambdaExpr::Unit
+        | LambdaExpr::Char(_)
+        | LambdaExpr::Float(_)
+        | LambdaExpr::Int(_)
+        | LambdaExpr::Path(_)
+        | LambdaExpr::String(_) => {}
     }
 }

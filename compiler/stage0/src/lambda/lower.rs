@@ -9,8 +9,8 @@ use crate::signature::TypeName;
 use super::closure::closure_convert_program;
 
 use super::ir::{
-    BindingKey, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm, RirPath,
-    RirPattern, RirProgram, RirReceiveArm, RirStmt,
+    BindingKey, LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaMatchArm,
+    LambdaPath, LambdaPattern, LambdaProgram, LambdaReceiveArm, LambdaStmt, Param,
 };
 use super::operators::lower_prelude_operator;
 
@@ -22,15 +22,15 @@ impl LambdaLowerer {
         Self
     }
 
-    pub(crate) fn lower(&self, program: TypedProgram) -> RirProgram {
+    pub(crate) fn lower(&self, program: TypedProgram) -> LambdaProgram {
         let mut context = LowerContext::default();
-        let lowered = RirProgram {
+        let lowered = LambdaProgram {
             module_name: program.module_name,
             uses: program.uses.into_iter().map(|use_| use_.name).collect(),
             externals: program
                 .externals
                 .into_iter()
-                .map(|external| RirExternal {
+                .map(|external| LambdaExternal {
                     name: external.name,
                     params: external.params,
                     result: external.result,
@@ -51,7 +51,7 @@ impl LambdaLowerer {
                     }
                     let body = lower_block(function.body, &mut context);
                     context.pop_scope();
-                    RirFunction {
+                    LambdaFunction {
                         name: function.name,
                         params,
                         param_types,
@@ -73,7 +73,7 @@ impl LambdaSimplifier {
         Self
     }
 
-    pub(crate) fn simplify(&self, tyir: TypedProgram) -> RirProgram {
+    pub(crate) fn simplify(&self, tyir: TypedProgram) -> LambdaProgram {
         LambdaLowerer::new().lower(tyir)
     }
 }
@@ -112,9 +112,9 @@ impl LowerContext {
     }
 }
 
-fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
+fn lower_block(block: TypedBlock, context: &mut LowerContext) -> LambdaBlock {
     context.push_scope();
-    let lowered = RirBlock {
+    let lowered = LambdaBlock {
         statements: block
             .statements
             .into_iter()
@@ -122,9 +122,9 @@ fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
                 TypedStmt::Let { binding, value, .. } => {
                     let value = lower_expr(value, context);
                     let name = context.bind_existing(&binding);
-                    RirStmt::Let { name, value }
+                    LambdaStmt::Let { name, value }
                 }
-                TypedStmt::Expr(expr) => RirStmt::Expr(lower_expr(expr, context)),
+                TypedStmt::Expr(expr) => LambdaStmt::Expr(lower_expr(expr, context)),
             })
             .collect(),
         tail: block.tail.map(|tail| lower_expr(tail, context)),
@@ -133,14 +133,14 @@ fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
     lowered
 }
 
-fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
+fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> LambdaExpr {
     let expr_type = expr.type_;
     match expr.kind {
         TypedExprKind::If {
             condition,
             then_branch,
             else_branch,
-        } => RirExpr::If {
+        } => LambdaExpr::If {
             condition: Box::new(lower_expr(*condition, context)),
             then_branch: Box::new(lower_expr(*then_branch, context)),
             else_branch: Box::new(lower_expr(*else_branch, context)),
@@ -154,18 +154,18 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                     let pattern = lower_pattern(arm.pattern, context);
                     let body = lower_expr(arm.body, context);
                     context.pop_scope();
-                    RirMatchArm { pattern, body }
+                    LambdaMatchArm { pattern, body }
                 })
                 .collect();
-            RirExpr::Match {
+            LambdaExpr::Match {
                 scrutinee: Box::new(scrutinee),
                 arms,
             }
         }
-        TypedExprKind::Block(block) => RirExpr::Block(Box::new(lower_block(*block, context))),
+        TypedExprKind::Block(block) => LambdaExpr::Block(Box::new(lower_block(*block, context))),
         TypedExprKind::Literal(literal) => lower_literal(literal),
         TypedExprKind::Call { callee, args } => lower_call(callee, args, context),
-        TypedExprKind::Apply { callee, args } => RirExpr::Apply {
+        TypedExprKind::Apply { callee, args } => LambdaExpr::Apply {
             callee: Box::new(lower_expr(*callee, context)),
             args: args
                 .into_iter()
@@ -181,17 +181,17 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .collect::<Vec<_>>();
             let body = lower_block(*body, context);
             context.pop_scope();
-            RirExpr::Lambda {
+            LambdaExpr::Lambda {
                 params,
                 captures: Vec::new(),
                 body: Box::new(body),
             }
         }
-        TypedExprKind::Spawn { body } => RirExpr::Spawn {
+        TypedExprKind::Spawn { body } => LambdaExpr::Spawn {
             actor_id: context.next_actor_id(),
             body: Box::new(lower_block(*body, context)),
         },
-        TypedExprKind::Receive { arms } => RirExpr::Receive {
+        TypedExprKind::Receive { arms } => LambdaExpr::Receive {
             arms: arms
                 .into_iter()
                 .map(|arm| {
@@ -199,34 +199,34 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                     let pattern = lower_pattern(arm.pattern, context);
                     let body = lower_expr(arm.body, context);
                     context.pop_scope();
-                    RirReceiveArm { pattern, body }
+                    LambdaReceiveArm { pattern, body }
                 })
                 .collect(),
         },
-        TypedExprKind::Tuple(items) => RirExpr::Tuple(
+        TypedExprKind::Tuple(items) => LambdaExpr::Tuple(
             items
                 .into_iter()
                 .map(|item| lower_expr(item, context))
                 .collect(),
         ),
-        TypedExprKind::List(items) => RirExpr::List(
+        TypedExprKind::List(items) => LambdaExpr::List(
             items
                 .into_iter()
                 .map(|item| lower_expr(item, context))
                 .collect(),
         ),
-        TypedExprKind::Record { path, fields } => RirExpr::Record {
+        TypedExprKind::Record { path, fields } => LambdaExpr::Record {
             path: path.as_strings(),
             fields: fields
                 .into_iter()
                 .map(|(name, value)| (name, lower_expr(value, context)))
                 .collect(),
         },
-        TypedExprKind::Field { base, field } => RirExpr::Field {
+        TypedExprKind::Field { base, field } => LambdaExpr::Field {
             base: Box::new(lower_expr(*base, context)),
             field,
         },
-        TypedExprKind::TupleIndex { base, index } => RirExpr::TupleIndex {
+        TypedExprKind::TupleIndex { base, index } => LambdaExpr::TupleIndex {
             base: Box::new(lower_expr(*base, context)),
             index,
         },
@@ -236,9 +236,9 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             payload,
         } => {
             if type_name.is_none() && constructor.as_str() == "()" && payload.is_empty() {
-                RirExpr::Unit
+                LambdaExpr::Unit
             } else {
-                RirExpr::Variant {
+                LambdaExpr::Variant {
                     type_name: type_name.unwrap_or_else(|| TypeName::new("unit")),
                     constructor,
                     payload: payload
@@ -248,12 +248,14 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 }
             }
         }
-        TypedExprKind::Entity(ident) => RirExpr::Path(lower_entity_path(ident, context)),
-        TypedExprKind::Local(binding) => RirExpr::Path(RirPath::singleton(binding.key_name())),
+        TypedExprKind::Entity(ident) => LambdaExpr::Path(lower_entity_path(ident, context)),
+        TypedExprKind::Local(binding) => {
+            LambdaExpr::Path(LambdaPath::singleton(binding.key_name()))
+        }
     }
 }
 
-fn lower_call(callee: EntityId, args: Vec<TypedExpr>, context: &mut LowerContext) -> RirExpr {
+fn lower_call(callee: EntityId, args: Vec<TypedExpr>, context: &mut LowerContext) -> LambdaExpr {
     let callee = lower_entity_path(callee, context);
     let args = args
         .into_iter()
@@ -262,24 +264,24 @@ fn lower_call(callee: EntityId, args: Vec<TypedExpr>, context: &mut LowerContext
     lower_prelude_operator(callee, args)
 }
 
-fn lower_entity_path(entity: EntityId, _context: &LowerContext) -> RirPath {
-    RirPath::from_segments(entity.as_strings())
+fn lower_entity_path(entity: EntityId, _context: &LowerContext) -> LambdaPath {
+    LambdaPath::from_segments(entity.as_strings())
 }
 
-fn lower_literal(literal: TypedLiteral) -> RirExpr {
+fn lower_literal(literal: TypedLiteral) -> LambdaExpr {
     match literal {
-        TypedLiteral::Bool(value) => RirExpr::Bool(value),
-        TypedLiteral::Char(value) => RirExpr::Char(value),
-        TypedLiteral::Float(value) => RirExpr::Float(value),
-        TypedLiteral::Int(value) => RirExpr::Int(value),
-        TypedLiteral::String(value) => RirExpr::String(value),
+        TypedLiteral::Bool(value) => LambdaExpr::Bool(value),
+        TypedLiteral::Char(value) => LambdaExpr::Char(value),
+        TypedLiteral::Float(value) => LambdaExpr::Float(value),
+        TypedLiteral::Int(value) => LambdaExpr::Int(value),
+        TypedLiteral::String(value) => LambdaExpr::String(value),
     }
 }
 
-fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPattern {
+fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> LambdaPattern {
     match pattern {
-        TypedPattern::Wildcard => RirPattern::Wildcard,
-        TypedPattern::Bind { binding, type_ } => RirPattern::Bind {
+        TypedPattern::Wildcard => LambdaPattern::Wildcard,
+        TypedPattern::Bind { binding, type_ } => LambdaPattern::Bind {
             binding: context.bind_existing(&binding),
             type_,
         },
@@ -287,7 +289,7 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
             type_name,
             constructor,
             payload,
-        } => RirPattern::Constructor {
+        } => LambdaPattern::Constructor {
             type_name,
             constructor,
             payload: payload
@@ -295,29 +297,29 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
                 .map(|pattern| lower_pattern(pattern, context))
                 .collect(),
         },
-        TypedPattern::Tuple(items) => RirPattern::Tuple(
+        TypedPattern::Tuple(items) => LambdaPattern::Tuple(
             items
                 .into_iter()
                 .map(|pattern| lower_pattern(pattern, context))
                 .collect(),
         ),
-        TypedPattern::List { prefix, tail } => RirPattern::List {
+        TypedPattern::List { prefix, tail } => LambdaPattern::List {
             prefix: prefix
                 .into_iter()
                 .map(|pattern| lower_pattern(pattern, context))
                 .collect(),
             tail: tail.map(|tail| Box::new(lower_pattern(*tail, context))),
         },
-        TypedPattern::Record { type_name, fields } => RirPattern::Record {
+        TypedPattern::Record { type_name, fields } => LambdaPattern::Record {
             type_name,
             fields: fields
                 .into_iter()
                 .map(|(name, pattern)| (name, lower_pattern(pattern, context)))
                 .collect(),
         },
-        TypedPattern::Unit => RirPattern::Unit,
-        TypedPattern::Bool(value) => RirPattern::Bool(value),
-        TypedPattern::Int(value) => RirPattern::Int(value),
-        TypedPattern::String(value) => RirPattern::String(value),
+        TypedPattern::Unit => LambdaPattern::Unit,
+        TypedPattern::Bool(value) => LambdaPattern::Bool(value),
+        TypedPattern::Int(value) => LambdaPattern::Int(value),
+        TypedPattern::String(value) => LambdaPattern::String(value),
     }
 }

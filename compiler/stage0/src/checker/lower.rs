@@ -1459,7 +1459,7 @@ mod tests {
 
     use crate::lambda::lower::LambdaLowerer;
 
-    use crate::lambda::ir::{Capture, RirExpr, RirStmt};
+    use crate::lambda::ir::{Capture, LambdaExpr, LambdaStmt};
 
     use super::{TypedExprKind, TypedStmt};
 
@@ -1500,7 +1500,7 @@ mod tests {
     }
 
     #[test]
-    fn rir_lambdas_carry_capture_names() {
+    fn lambda_ir_lambdas_carry_capture_names() {
         let program = AstProgram {
             decls: vec![AstDecl::Function(AstFnDecl {
                 name: "make_adder".to_owned(),
@@ -1531,8 +1531,8 @@ mod tests {
         };
 
         let typed = typed_program("LambdaTest", program);
-        let rir = LambdaLowerer::new().lower(typed);
-        let Some(RirExpr::Lambda { captures, .. }) = &rir.functions[0].body.tail else {
+        let lambda_ir = LambdaLowerer::new().lower(typed);
+        let Some(LambdaExpr::Lambda { captures, .. }) = &lambda_ir.functions[0].body.tail else {
             panic!("expected lowered lambda");
         };
 
@@ -1540,7 +1540,7 @@ mod tests {
     }
 
     #[test]
-    fn rir_lambda_captures_track_shadowed_binding_identity() {
+    fn lambda_ir_captures_track_shadowed_binding_identity() {
         let program = AstProgram {
             decls: vec![AstDecl::Function(AstFnDecl {
                 name: "main".to_owned(),
@@ -1595,11 +1595,11 @@ mod tests {
         };
 
         let typed = typed_program("ShadowTest", program);
-        let rir = LambdaLowerer::new().lower(typed);
-        let Some(RirStmt::Let {
-            value: RirExpr::Lambda { captures, .. },
+        let lambda_ir = LambdaLowerer::new().lower(typed);
+        let Some(LambdaStmt::Let {
+            value: LambdaExpr::Lambda { captures, .. },
             ..
-        }) = rir.functions[0].body.statements.get(1)
+        }) = lambda_ir.functions[0].body.statements.get(1)
         else {
             panic!("expected second statement to bind a lambda");
         };
@@ -1686,7 +1686,7 @@ mod tests {
     }
 
     #[test]
-    fn rir_apply_carries_typed_arrow_result() {
+    fn lambda_ir_apply_carries_typed_arrow_result() {
         let program = AstProgram {
             decls: vec![AstDecl::Function(AstFnDecl {
                 name: "apply_i64".to_owned(),
@@ -1724,11 +1724,11 @@ mod tests {
         };
 
         let typed = typed_program("ApplyTest", program);
-        let rir = LambdaLowerer::new().lower(typed);
-        let Some(RirExpr::Add(lhs, _)) = &rir.functions[0].body.tail else {
+        let lambda_ir = LambdaLowerer::new().lower(typed);
+        let Some(LambdaExpr::Add(lhs, _)) = &lambda_ir.functions[0].body.tail else {
             panic!("expected add tail");
         };
-        let RirExpr::Apply { result, .. } = lhs.as_ref() else {
+        let LambdaExpr::Apply { result, .. } = lhs.as_ref() else {
             panic!("expected typed apply");
         };
 

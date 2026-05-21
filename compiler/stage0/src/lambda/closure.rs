@@ -1,18 +1,18 @@
 use std::collections::BTreeSet;
 
-use super::ir::{Capture, RirBlock, RirExpr, RirPattern, RirProgram, RirStmt};
+use super::ir::{Capture, LambdaBlock, LambdaExpr, LambdaPattern, LambdaProgram, LambdaStmt};
 
-pub(crate) fn closure_convert_program(mut program: RirProgram) -> RirProgram {
+pub(crate) fn closure_convert_program(mut program: LambdaProgram) -> LambdaProgram {
     for function in &mut program.functions {
         closure_convert_block(&mut function.body);
     }
     program
 }
 
-fn closure_convert_block(block: &mut RirBlock) {
+fn closure_convert_block(block: &mut LambdaBlock) {
     for stmt in &mut block.statements {
         match stmt {
-            RirStmt::Let { value, .. } | RirStmt::Expr(value) => closure_convert_expr(value),
+            LambdaStmt::Let { value, .. } | LambdaStmt::Expr(value) => closure_convert_expr(value),
         }
     }
     if let Some(tail) = &mut block.tail {
@@ -20,22 +20,22 @@ fn closure_convert_block(block: &mut RirBlock) {
     }
 }
 
-fn closure_convert_expr(expr: &mut RirExpr) {
+fn closure_convert_expr(expr: &mut LambdaExpr) {
     match expr {
-        RirExpr::Add(lhs, rhs)
-        | RirExpr::Sub(lhs, rhs)
-        | RirExpr::Mul(lhs, rhs)
-        | RirExpr::Div(lhs, rhs)
-        | RirExpr::Mod(lhs, rhs)
-        | RirExpr::Eq(lhs, rhs)
-        | RirExpr::Lt(lhs, rhs)
-        | RirExpr::And(lhs, rhs)
-        | RirExpr::Or(lhs, rhs) => {
+        LambdaExpr::Add(lhs, rhs)
+        | LambdaExpr::Sub(lhs, rhs)
+        | LambdaExpr::Mul(lhs, rhs)
+        | LambdaExpr::Div(lhs, rhs)
+        | LambdaExpr::Mod(lhs, rhs)
+        | LambdaExpr::Eq(lhs, rhs)
+        | LambdaExpr::Lt(lhs, rhs)
+        | LambdaExpr::And(lhs, rhs)
+        | LambdaExpr::Or(lhs, rhs) => {
             closure_convert_expr(lhs);
             closure_convert_expr(rhs);
         }
-        RirExpr::Neg(value) | RirExpr::Not(value) => closure_convert_expr(value),
-        RirExpr::If {
+        LambdaExpr::Neg(value) | LambdaExpr::Not(value) => closure_convert_expr(value),
+        LambdaExpr::If {
             condition,
             then_branch,
             else_branch,
@@ -44,25 +44,25 @@ fn closure_convert_expr(expr: &mut RirExpr) {
             closure_convert_expr(then_branch);
             closure_convert_expr(else_branch);
         }
-        RirExpr::Match { scrutinee, arms } => {
+        LambdaExpr::Match { scrutinee, arms } => {
             closure_convert_expr(scrutinee);
             for arm in arms {
                 closure_convert_expr(&mut arm.body);
             }
         }
-        RirExpr::Block(block) => closure_convert_block(block),
-        RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
+        LambdaExpr::Block(block) => closure_convert_block(block),
+        LambdaExpr::Call { args, .. } | LambdaExpr::Tuple(args) | LambdaExpr::List(args) => {
             for arg in args {
                 closure_convert_expr(arg);
             }
         }
-        RirExpr::Apply { callee, args, .. } => {
+        LambdaExpr::Apply { callee, args, .. } => {
             closure_convert_expr(callee);
             for arg in args {
                 closure_convert_expr(arg);
             }
         }
-        RirExpr::Lambda {
+        LambdaExpr::Lambda {
             params,
             captures,
             body,
@@ -76,62 +76,62 @@ fn closure_convert_expr(expr: &mut RirExpr) {
             collect_free_block(body, &bound, &mut free);
             *captures = free.into_iter().map(Capture::new).collect();
         }
-        RirExpr::Record { fields, .. } => {
+        LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
                 closure_convert_expr(value);
             }
         }
-        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
+        LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
             closure_convert_expr(base);
         }
-        RirExpr::Spawn { body, .. } => closure_convert_block(body),
-        RirExpr::Receive { arms } => {
+        LambdaExpr::Spawn { body, .. } => closure_convert_block(body),
+        LambdaExpr::Receive { arms } => {
             for arm in arms {
                 closure_convert_expr(&mut arm.body);
             }
         }
-        RirExpr::Variant { payload, .. } => {
+        LambdaExpr::Variant { payload, .. } => {
             for value in payload {
                 closure_convert_expr(value);
             }
         }
-        RirExpr::Bool(_)
-        | RirExpr::Unit
-        | RirExpr::Char(_)
-        | RirExpr::Float(_)
-        | RirExpr::Int(_)
-        | RirExpr::Path(_)
-        | RirExpr::String(_) => {}
+        LambdaExpr::Bool(_)
+        | LambdaExpr::Unit
+        | LambdaExpr::Char(_)
+        | LambdaExpr::Float(_)
+        | LambdaExpr::Int(_)
+        | LambdaExpr::Path(_)
+        | LambdaExpr::String(_) => {}
     }
 }
 
 pub(crate) fn collect_free_expr(
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     bound: &BTreeSet<String>,
     free: &mut BTreeSet<String>,
 ) {
     match expr {
-        RirExpr::Path(path) => {
+        LambdaExpr::Path(path) => {
             if let [name] = path.as_slice()
                 && !bound.contains(name)
             {
                 free.insert(name.clone());
             }
         }
-        RirExpr::Add(lhs, rhs)
-        | RirExpr::Sub(lhs, rhs)
-        | RirExpr::Mul(lhs, rhs)
-        | RirExpr::Div(lhs, rhs)
-        | RirExpr::Mod(lhs, rhs)
-        | RirExpr::Eq(lhs, rhs)
-        | RirExpr::Lt(lhs, rhs)
-        | RirExpr::And(lhs, rhs)
-        | RirExpr::Or(lhs, rhs) => {
+        LambdaExpr::Add(lhs, rhs)
+        | LambdaExpr::Sub(lhs, rhs)
+        | LambdaExpr::Mul(lhs, rhs)
+        | LambdaExpr::Div(lhs, rhs)
+        | LambdaExpr::Mod(lhs, rhs)
+        | LambdaExpr::Eq(lhs, rhs)
+        | LambdaExpr::Lt(lhs, rhs)
+        | LambdaExpr::And(lhs, rhs)
+        | LambdaExpr::Or(lhs, rhs) => {
             collect_free_expr(lhs, bound, free);
             collect_free_expr(rhs, bound, free);
         }
-        RirExpr::Neg(value) | RirExpr::Not(value) => collect_free_expr(value, bound, free),
-        RirExpr::If {
+        LambdaExpr::Neg(value) | LambdaExpr::Not(value) => collect_free_expr(value, bound, free),
+        LambdaExpr::If {
             condition,
             then_branch,
             else_branch,
@@ -140,7 +140,7 @@ pub(crate) fn collect_free_expr(
             collect_free_expr(then_branch, bound, free);
             collect_free_expr(else_branch, bound, free);
         }
-        RirExpr::Match { scrutinee, arms } => {
+        LambdaExpr::Match { scrutinee, arms } => {
             collect_free_expr(scrutinee, bound, free);
             for arm in arms {
                 let mut nested = bound.clone();
@@ -148,68 +148,68 @@ pub(crate) fn collect_free_expr(
                 collect_free_expr(&arm.body, &nested, free);
             }
         }
-        RirExpr::Block(block) => collect_free_block(block, bound, free),
-        RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
+        LambdaExpr::Block(block) => collect_free_block(block, bound, free),
+        LambdaExpr::Call { args, .. } | LambdaExpr::Tuple(args) | LambdaExpr::List(args) => {
             for arg in args {
                 collect_free_expr(arg, bound, free);
             }
         }
-        RirExpr::Apply { callee, args, .. } => {
+        LambdaExpr::Apply { callee, args, .. } => {
             collect_free_expr(callee, bound, free);
             for arg in args {
                 collect_free_expr(arg, bound, free);
             }
         }
-        RirExpr::Lambda { params, body, .. } => {
+        LambdaExpr::Lambda { params, body, .. } => {
             let mut nested = bound.clone();
             for param in params {
                 nested.insert(param.as_str().to_owned());
             }
             collect_free_block(body, &nested, free);
         }
-        RirExpr::Record { fields, .. } => {
+        LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
                 collect_free_expr(value, bound, free);
             }
         }
-        RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
+        LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
             collect_free_expr(base, bound, free)
         }
-        RirExpr::Spawn { body, .. } => collect_free_block(body, bound, free),
-        RirExpr::Receive { arms } => {
+        LambdaExpr::Spawn { body, .. } => collect_free_block(body, bound, free),
+        LambdaExpr::Receive { arms } => {
             for arm in arms {
                 let mut nested = bound.clone();
                 bind_pattern_names(&arm.pattern, &mut nested);
                 collect_free_expr(&arm.body, &nested, free);
             }
         }
-        RirExpr::Variant { payload, .. } => {
+        LambdaExpr::Variant { payload, .. } => {
             for value in payload {
                 collect_free_expr(value, bound, free);
             }
         }
-        RirExpr::Bool(_)
-        | RirExpr::Unit
-        | RirExpr::Char(_)
-        | RirExpr::Float(_)
-        | RirExpr::Int(_)
-        | RirExpr::String(_) => {}
+        LambdaExpr::Bool(_)
+        | LambdaExpr::Unit
+        | LambdaExpr::Char(_)
+        | LambdaExpr::Float(_)
+        | LambdaExpr::Int(_)
+        | LambdaExpr::String(_) => {}
     }
 }
 
 pub(crate) fn collect_free_block(
-    block: &RirBlock,
+    block: &LambdaBlock,
     outer_bound: &BTreeSet<String>,
     free: &mut BTreeSet<String>,
 ) {
     let mut bound = outer_bound.clone();
     for stmt in &block.statements {
         match stmt {
-            RirStmt::Let { name, value } => {
+            LambdaStmt::Let { name, value } => {
                 collect_free_expr(value, &bound, free);
                 bound.insert(name.as_str().to_owned());
             }
-            RirStmt::Expr(expr) => collect_free_expr(expr, &bound, free),
+            LambdaStmt::Expr(expr) => collect_free_expr(expr, &bound, free),
         }
     }
     if let Some(tail) = &block.tail {
@@ -217,17 +217,17 @@ pub(crate) fn collect_free_block(
     }
 }
 
-pub(crate) fn bind_pattern_names(pattern: &RirPattern, bound: &mut BTreeSet<String>) {
+pub(crate) fn bind_pattern_names(pattern: &LambdaPattern, bound: &mut BTreeSet<String>) {
     match pattern {
-        RirPattern::Bind { binding, .. } => {
+        LambdaPattern::Bind { binding, .. } => {
             bound.insert(binding.as_str().to_owned());
         }
-        RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
+        LambdaPattern::Constructor { payload, .. } | LambdaPattern::Tuple(payload) => {
             for pattern in payload {
                 bind_pattern_names(pattern, bound);
             }
         }
-        RirPattern::List { prefix, tail } => {
+        LambdaPattern::List { prefix, tail } => {
             for pattern in prefix {
                 bind_pattern_names(pattern, bound);
             }
@@ -235,15 +235,15 @@ pub(crate) fn bind_pattern_names(pattern: &RirPattern, bound: &mut BTreeSet<Stri
                 bind_pattern_names(tail, bound);
             }
         }
-        RirPattern::Record { fields, .. } => {
+        LambdaPattern::Record { fields, .. } => {
             for (_, pattern) in fields {
                 bind_pattern_names(pattern, bound);
             }
         }
-        RirPattern::Wildcard
-        | RirPattern::Unit
-        | RirPattern::Bool(_)
-        | RirPattern::Int(_)
-        | RirPattern::String(_) => {}
+        LambdaPattern::Wildcard
+        | LambdaPattern::Unit
+        | LambdaPattern::Bool(_)
+        | LambdaPattern::Int(_)
+        | LambdaPattern::String(_) => {}
     }
 }

@@ -50,15 +50,15 @@ impl Capture {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RirProgram {
+pub(crate) struct LambdaProgram {
     pub(crate) module_name: ModuleName,
     pub(crate) uses: Vec<ModuleName>,
-    pub(crate) externals: Vec<RirExternal>,
-    pub(crate) functions: Vec<RirFunction>,
+    pub(crate) externals: Vec<LambdaExternal>,
+    pub(crate) functions: Vec<LambdaFunction>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RirExternal {
+pub(crate) struct LambdaExternal {
     pub(crate) name: String,
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
@@ -66,43 +66,43 @@ pub(crate) struct RirExternal {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RirFunction {
+pub(crate) struct LambdaFunction {
     pub(crate) name: String,
     pub(crate) params: Vec<Param>,
     pub(crate) param_types: Vec<RsigType>,
     pub(crate) result: RsigType,
-    pub(crate) body: RirBlock,
+    pub(crate) body: LambdaBlock,
     pub(crate) symbol: String,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RirBlock {
-    pub(crate) statements: Vec<RirStmt>,
-    pub(crate) tail: Option<RirExpr>,
+pub(crate) struct LambdaBlock {
+    pub(crate) statements: Vec<LambdaStmt>,
+    pub(crate) tail: Option<LambdaExpr>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum RirStmt {
-    Let { name: BindingKey, value: RirExpr },
-    Expr(RirExpr),
+pub(crate) enum LambdaStmt {
+    Let { name: BindingKey, value: LambdaExpr },
+    Expr(LambdaExpr),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RirMatchArm {
-    pub(crate) pattern: RirPattern,
-    pub(crate) body: RirExpr,
+pub(crate) struct LambdaMatchArm {
+    pub(crate) pattern: LambdaPattern,
+    pub(crate) body: LambdaExpr,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RirReceiveArm {
-    pub(crate) pattern: RirPattern,
-    pub(crate) body: RirExpr,
+pub(crate) struct LambdaReceiveArm {
+    pub(crate) pattern: LambdaPattern,
+    pub(crate) body: LambdaExpr,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct RirPath(Vec<String>);
+pub(crate) struct LambdaPath(Vec<String>);
 
-impl RirPath {
+impl LambdaPath {
     pub(crate) fn from_segments(segments: Vec<String>) -> Self {
         Self(segments)
     }
@@ -124,14 +124,14 @@ impl RirPath {
     }
 }
 
-impl fmt::Debug for RirPath {
+impl fmt::Debug for LambdaPath {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(formatter)
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum RirPattern {
+pub(crate) enum LambdaPattern {
     Wildcard,
     Bind {
         binding: BindingKey,
@@ -140,17 +140,17 @@ pub(crate) enum RirPattern {
     Constructor {
         type_name: TypeName,
         constructor: ConstructorName,
-        payload: Vec<RirPattern>,
+        payload: Vec<LambdaPattern>,
     },
     Unit,
-    Tuple(Vec<RirPattern>),
+    Tuple(Vec<LambdaPattern>),
     List {
-        prefix: Vec<RirPattern>,
-        tail: Option<Box<RirPattern>>,
+        prefix: Vec<LambdaPattern>,
+        tail: Option<Box<LambdaPattern>>,
     },
     Record {
         type_name: TypeName,
-        fields: Vec<(String, RirPattern)>,
+        fields: Vec<(String, LambdaPattern)>,
     },
     Bool(bool),
     Int(i64),
@@ -158,73 +158,73 @@ pub(crate) enum RirPattern {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum RirExpr {
-    Add(Box<RirExpr>, Box<RirExpr>),
-    Sub(Box<RirExpr>, Box<RirExpr>),
-    Mul(Box<RirExpr>, Box<RirExpr>),
-    Div(Box<RirExpr>, Box<RirExpr>),
-    Mod(Box<RirExpr>, Box<RirExpr>),
-    Neg(Box<RirExpr>),
-    Eq(Box<RirExpr>, Box<RirExpr>),
-    Lt(Box<RirExpr>, Box<RirExpr>),
-    And(Box<RirExpr>, Box<RirExpr>),
-    Or(Box<RirExpr>, Box<RirExpr>),
-    Not(Box<RirExpr>),
+pub(crate) enum LambdaExpr {
+    Add(Box<LambdaExpr>, Box<LambdaExpr>),
+    Sub(Box<LambdaExpr>, Box<LambdaExpr>),
+    Mul(Box<LambdaExpr>, Box<LambdaExpr>),
+    Div(Box<LambdaExpr>, Box<LambdaExpr>),
+    Mod(Box<LambdaExpr>, Box<LambdaExpr>),
+    Neg(Box<LambdaExpr>),
+    Eq(Box<LambdaExpr>, Box<LambdaExpr>),
+    Lt(Box<LambdaExpr>, Box<LambdaExpr>),
+    And(Box<LambdaExpr>, Box<LambdaExpr>),
+    Or(Box<LambdaExpr>, Box<LambdaExpr>),
+    Not(Box<LambdaExpr>),
     If {
-        condition: Box<RirExpr>,
-        then_branch: Box<RirExpr>,
-        else_branch: Box<RirExpr>,
+        condition: Box<LambdaExpr>,
+        then_branch: Box<LambdaExpr>,
+        else_branch: Box<LambdaExpr>,
     },
     Match {
-        scrutinee: Box<RirExpr>,
-        arms: Vec<RirMatchArm>,
+        scrutinee: Box<LambdaExpr>,
+        arms: Vec<LambdaMatchArm>,
     },
-    Block(Box<RirBlock>),
+    Block(Box<LambdaBlock>),
     Bool(bool),
     Call {
         callee: Vec<String>,
-        args: Vec<RirExpr>,
+        args: Vec<LambdaExpr>,
     },
     Apply {
-        callee: Box<RirExpr>,
-        args: Vec<RirExpr>,
+        callee: Box<LambdaExpr>,
+        args: Vec<LambdaExpr>,
         result: RsigType,
     },
     Lambda {
         params: Vec<Param>,
         captures: Vec<Capture>,
-        body: Box<RirBlock>,
+        body: Box<LambdaBlock>,
     },
     Unit,
-    Tuple(Vec<RirExpr>),
-    List(Vec<RirExpr>),
+    Tuple(Vec<LambdaExpr>),
+    List(Vec<LambdaExpr>),
     Record {
         path: Vec<String>,
-        fields: Vec<(String, RirExpr)>,
+        fields: Vec<(String, LambdaExpr)>,
     },
     Field {
-        base: Box<RirExpr>,
+        base: Box<LambdaExpr>,
         field: String,
     },
     TupleIndex {
-        base: Box<RirExpr>,
+        base: Box<LambdaExpr>,
         index: usize,
     },
     Variant {
         type_name: TypeName,
         constructor: ConstructorName,
-        payload: Vec<RirExpr>,
+        payload: Vec<LambdaExpr>,
     },
     Char(char),
     Float(String),
     Int(i64),
-    Path(RirPath),
+    Path(LambdaPath),
     String(String),
     Spawn {
         actor_id: usize,
-        body: Box<RirBlock>,
+        body: Box<LambdaBlock>,
     },
     Receive {
-        arms: Vec<RirReceiveArm>,
+        arms: Vec<LambdaReceiveArm>,
     },
 }

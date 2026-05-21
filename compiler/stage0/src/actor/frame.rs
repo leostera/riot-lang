@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::lambda::closure::{bind_pattern_names, collect_free_expr};
-use crate::lambda::ir::{RirBlock, RirExpr, RirPattern, RirProgram, RirStmt};
+use crate::lambda::ir::{LambdaBlock, LambdaExpr, LambdaPattern, LambdaProgram, LambdaStmt};
 use crate::signature::{ImportedSignatures, RsigExport, RsigType};
 
 use super::air::{
@@ -16,7 +16,7 @@ pub(crate) struct ActorSlotTypeContext<'a> {
 }
 
 impl<'a> ActorSlotTypeContext<'a> {
-    pub(crate) fn from_program(program: &RirProgram, imports: &'a ImportedSignatures) -> Self {
+    pub(crate) fn from_program(program: &LambdaProgram, imports: &'a ImportedSignatures) -> Self {
         Self {
             functions: function_type_map(program),
             externals: external_type_map(program),
@@ -25,7 +25,7 @@ impl<'a> ActorSlotTypeContext<'a> {
     }
 }
 
-fn function_type_map(program: &RirProgram) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+fn function_type_map(program: &LambdaProgram) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
     program
         .functions
         .iter()
@@ -38,7 +38,7 @@ fn function_type_map(program: &RirProgram) -> BTreeMap<String, (Vec<RsigType>, R
         .collect()
 }
 
-fn external_type_map(program: &RirProgram) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+fn external_type_map(program: &LambdaProgram) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
     program
         .externals
         .iter()
@@ -52,12 +52,12 @@ fn external_type_map(program: &RirProgram) -> BTreeMap<String, (Vec<RsigType>, R
 }
 
 pub(crate) fn bind_pattern_actor_slot_types(
-    pattern: &RirPattern,
+    pattern: &LambdaPattern,
     type_: Option<ActorSlotType>,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
 ) {
     match pattern {
-        RirPattern::Bind {
+        LambdaPattern::Bind {
             binding,
             type_: binding_type,
         } => {
@@ -66,12 +66,12 @@ pub(crate) fn bind_pattern_actor_slot_types(
                 ActorSlotType::from_rsig(binding_type).or(type_),
             );
         }
-        RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
+        LambdaPattern::Constructor { payload, .. } | LambdaPattern::Tuple(payload) => {
             for pattern in payload {
                 bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
             }
         }
-        RirPattern::List { prefix, tail } => {
+        LambdaPattern::List { prefix, tail } => {
             for pattern in prefix {
                 bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
             }
@@ -79,39 +79,39 @@ pub(crate) fn bind_pattern_actor_slot_types(
                 bind_pattern_actor_slot_types(tail, Some(ActorSlotType::Value), locals);
             }
         }
-        RirPattern::Record { fields, .. } => {
+        LambdaPattern::Record { fields, .. } => {
             for (_, pattern) in fields {
                 bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
             }
         }
-        RirPattern::Wildcard
-        | RirPattern::Unit
-        | RirPattern::Bool(_)
-        | RirPattern::Int(_)
-        | RirPattern::String(_) => {}
+        LambdaPattern::Wildcard
+        | LambdaPattern::Unit
+        | LambdaPattern::Bool(_)
+        | LambdaPattern::Int(_)
+        | LambdaPattern::String(_) => {}
     }
 }
 
 pub(crate) fn infer_actor_slot_type(
-    expr: &RirExpr,
+    expr: &LambdaExpr,
     locals: &BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorSlotTypeContext<'_>,
 ) -> Option<ActorSlotType> {
     match expr {
-        RirExpr::Add(_, _)
-        | RirExpr::Sub(_, _)
-        | RirExpr::Mul(_, _)
-        | RirExpr::Div(_, _)
-        | RirExpr::Mod(_, _)
-        | RirExpr::Neg(_)
-        | RirExpr::Int(_) => Some(ActorSlotType::I64),
-        RirExpr::Eq(_, _)
-        | RirExpr::Lt(_, _)
-        | RirExpr::And(_, _)
-        | RirExpr::Or(_, _)
-        | RirExpr::Not(_)
-        | RirExpr::Bool(_) => Some(ActorSlotType::Bool),
-        RirExpr::If {
+        LambdaExpr::Add(_, _)
+        | LambdaExpr::Sub(_, _)
+        | LambdaExpr::Mul(_, _)
+        | LambdaExpr::Div(_, _)
+        | LambdaExpr::Mod(_, _)
+        | LambdaExpr::Neg(_)
+        | LambdaExpr::Int(_) => Some(ActorSlotType::I64),
+        LambdaExpr::Eq(_, _)
+        | LambdaExpr::Lt(_, _)
+        | LambdaExpr::And(_, _)
+        | LambdaExpr::Or(_, _)
+        | LambdaExpr::Not(_)
+        | LambdaExpr::Bool(_) => Some(ActorSlotType::Bool),
+        LambdaExpr::If {
             then_branch,
             else_branch,
             ..
@@ -119,12 +119,12 @@ pub(crate) fn infer_actor_slot_type(
             infer_actor_slot_type(then_branch, locals, context),
             infer_actor_slot_type(else_branch, locals, context),
         ),
-        RirExpr::Match { arms, .. } => arms
+        LambdaExpr::Match { arms, .. } => arms
             .iter()
             .map(|arm| infer_actor_slot_type(&arm.body, locals, context))
             .fold(None, unify_actor_slot_type),
-        RirExpr::Block(block) => infer_actor_block_slot_type(block, locals, context),
-        RirExpr::Call { callee, .. } => match callee.as_slice() {
+        LambdaExpr::Block(block) => infer_actor_block_slot_type(block, locals, context),
+        LambdaExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => None,
             [name] if name == "send" || name == "monitor" || name == "link" => None,
             [name] if name == "list_len" || name == "string_len" => Some(ActorSlotType::I64),
@@ -144,38 +144,41 @@ pub(crate) fn infer_actor_slot_type(
                 }),
             _ => None,
         },
-        RirExpr::Path(path) => path
+        LambdaExpr::Path(path) => path
             .first()
             .and_then(|name| locals.get(name))
             .copied()
             .flatten(),
-        RirExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
-        RirExpr::Tuple(_)
-        | RirExpr::List(_)
-        | RirExpr::Lambda { .. }
-        | RirExpr::Record { .. }
-        | RirExpr::Variant { .. }
-        | RirExpr::Field { .. }
-        | RirExpr::TupleIndex { .. }
-        | RirExpr::String(_) => Some(ActorSlotType::Value),
-        RirExpr::Apply { result, .. } => ActorSlotType::from_rsig(result),
-        RirExpr::Unit | RirExpr::Receive { .. } | RirExpr::Char(_) | RirExpr::Float(_) => None,
+        LambdaExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
+        LambdaExpr::Tuple(_)
+        | LambdaExpr::List(_)
+        | LambdaExpr::Lambda { .. }
+        | LambdaExpr::Record { .. }
+        | LambdaExpr::Variant { .. }
+        | LambdaExpr::Field { .. }
+        | LambdaExpr::TupleIndex { .. }
+        | LambdaExpr::String(_) => Some(ActorSlotType::Value),
+        LambdaExpr::Apply { result, .. } => ActorSlotType::from_rsig(result),
+        LambdaExpr::Unit
+        | LambdaExpr::Receive { .. }
+        | LambdaExpr::Char(_)
+        | LambdaExpr::Float(_) => None,
     }
 }
 
 fn infer_actor_block_slot_type(
-    block: &RirBlock,
+    block: &LambdaBlock,
     outer_locals: &BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorSlotTypeContext<'_>,
 ) -> Option<ActorSlotType> {
     let mut locals = outer_locals.clone();
     for stmt in &block.statements {
         match stmt {
-            RirStmt::Let { name, value } => {
+            LambdaStmt::Let { name, value } => {
                 let type_ = infer_actor_slot_type(value, &locals, context);
                 locals.insert(name.as_str().to_owned(), type_);
             }
-            RirStmt::Expr(expr) => {
+            LambdaStmt::Expr(expr) => {
                 infer_actor_slot_type(expr, &locals, context);
             }
         }
@@ -199,7 +202,7 @@ fn unify_actor_slot_type(
 
 pub(crate) fn actor_frame_from_block(
     actor_id: usize,
-    block: &RirBlock,
+    block: &LambdaBlock,
     outer_locals: &BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorSlotTypeContext<'_>,
 ) -> ActorIrActor {
@@ -281,23 +284,23 @@ pub(crate) fn actor_frame_from_block(
     }
 }
 
-fn actor_ops(block: &RirBlock) -> Vec<ActorFrameOp> {
+fn actor_ops(block: &LambdaBlock) -> Vec<ActorFrameOp> {
     let mut ops = Vec::new();
     for stmt in &block.statements {
         match stmt {
-            RirStmt::Let { name, value } => ops.push(ActorFrameOp::Let {
+            LambdaStmt::Let { name, value } => ops.push(ActorFrameOp::Let {
                 name: ActorFrameSlotName::new(name.as_str()),
                 value: value.clone(),
             }),
-            RirStmt::Expr(RirExpr::Receive { arms }) => {
+            LambdaStmt::Expr(LambdaExpr::Receive { arms }) => {
                 ops.push(ActorFrameOp::Receive { arms: arms.clone() });
             }
-            RirStmt::Expr(expr) => ops.push(ActorFrameOp::Expr(expr.clone())),
+            LambdaStmt::Expr(expr) => ops.push(ActorFrameOp::Expr(expr.clone())),
         }
     }
     if let Some(expr) = &block.tail {
         match expr {
-            RirExpr::Receive { arms } => {
+            LambdaExpr::Receive { arms } => {
                 ops.push(ActorFrameOp::Receive { arms: arms.clone() });
             }
             expr => ops.push(ActorFrameOp::Expr(expr.clone())),

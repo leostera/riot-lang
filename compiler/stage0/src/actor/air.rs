@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::signature::RsigType;
 
-use crate::lambda::ir::{RirExpr, RirReceiveArm};
+use crate::lambda::ir::{LambdaExpr, LambdaReceiveArm};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorIrProgram {
@@ -91,10 +91,10 @@ pub(crate) enum ActorStateNext {
 pub(crate) enum ActorFrameOp {
     Let {
         name: ActorFrameSlotName,
-        value: RirExpr,
+        value: LambdaExpr,
     },
     Receive {
-        arms: Vec<RirReceiveArm>,
+        arms: Vec<LambdaReceiveArm>,
     },
-    Expr(RirExpr),
+    Expr(LambdaExpr),
 }
