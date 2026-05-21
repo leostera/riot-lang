@@ -270,7 +270,7 @@ fn eval_expr(
         RirExpr::Char(value) => Some(StaticValue::Char(*value)),
         RirExpr::Float(value) => Some(StaticValue::Float(value.clone())),
         RirExpr::Int(value) => Some(StaticValue::Int(*value)),
-        RirExpr::Path(path) => resolve_path(path, bindings),
+        RirExpr::Path(path) => resolve_path(path.as_slice(), bindings),
         RirExpr::String(value) => Some(StaticValue::String(value.clone())),
         RirExpr::Apply { .. }
         | RirExpr::Lambda { .. }

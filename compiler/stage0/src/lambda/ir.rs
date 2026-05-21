@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -97,6 +99,37 @@ pub(crate) struct RirReceiveArm {
     pub(crate) body: RirExpr,
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct RirPath(Vec<String>);
+
+impl RirPath {
+    pub(crate) fn from_segments(segments: Vec<String>) -> Self {
+        Self(segments)
+    }
+
+    pub(crate) fn singleton(name: impl Into<String>) -> Self {
+        Self(vec![name.into()])
+    }
+
+    pub(crate) fn as_slice(&self) -> &[String] {
+        &self.0
+    }
+
+    pub(crate) fn first(&self) -> Option<&String> {
+        self.0.first()
+    }
+
+    pub(crate) fn into_segments(self) -> Vec<String> {
+        self.0
+    }
+}
+
+impl fmt::Debug for RirPath {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum RirPattern {
     Wildcard,
@@ -185,7 +218,7 @@ pub(crate) enum RirExpr {
     Char(char),
     Float(String),
     Int(i64),
-    Path(Vec<String>),
+    Path(RirPath),
     String(String),
     Spawn {
         actor_id: usize,

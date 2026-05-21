@@ -647,7 +647,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 .transpose()?
                 .ok_or_else(|| miette::miette!("unsupported non-scalar expression")),
             RirExpr::Int(value) => Ok(CgValue::I64(self.i64_const(*value))),
-            RirExpr::Path(path) => self.emit_path(path, env),
+            RirExpr::Path(path) => self.emit_path(path.as_slice(), env),
             RirExpr::String(value) => {
                 let (ptr, len) = self.string_literal(value)?;
                 Ok(CgValue::Value(self.call_runtime_value(
@@ -3431,7 +3431,7 @@ fn codegen_externals(program: &RirProgram) -> miette::Result<BTreeMap<String, Ri
 #[cfg(test)]
 mod tests {
     use crate::lambda::ir::{
-        BindingKey, Capture, Param, RirBlock, RirExpr, RirFunction, RirProgram, RirStmt,
+        BindingKey, Capture, Param, RirBlock, RirExpr, RirFunction, RirPath, RirProgram, RirStmt,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
@@ -3458,7 +3458,7 @@ mod tests {
                         captures: vec![Capture::new("n")],
                         body: Box::new(RirBlock {
                             statements: Vec::new(),
-                            tail: Some(RirExpr::Path(vec!["n".to_owned()])),
+                            tail: Some(RirExpr::Path(RirPath::singleton("n"))),
                         }),
                     }),
                 },
@@ -3498,7 +3498,7 @@ mod tests {
                             body: Box::new(RirBlock {
                                 statements: Vec::new(),
                                 tail: Some(RirExpr::Add(
-                                    Box::new(RirExpr::Path(vec!["x".to_owned()])),
+                                    Box::new(RirExpr::Path(RirPath::singleton("x"))),
                                     Box::new(RirExpr::Int(1)),
                                 )),
                             }),

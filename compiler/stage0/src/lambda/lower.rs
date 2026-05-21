@@ -9,8 +9,8 @@ use crate::signature::TypeName;
 use super::closure::closure_convert_program;
 
 use super::ir::{
-    BindingKey, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm, RirPattern,
-    RirProgram, RirReceiveArm, RirStmt,
+    BindingKey, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm, RirPath,
+    RirPattern, RirProgram, RirReceiveArm, RirStmt,
 };
 
 #[derive(Debug, Default)]
@@ -248,7 +248,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             }
         }
         TypedExprKind::Entity(ident) => RirExpr::Path(lower_entity_path(ident, context)),
-        TypedExprKind::Local(binding) => RirExpr::Path(vec![binding.key_name()]),
+        TypedExprKind::Local(binding) => RirExpr::Path(RirPath::singleton(binding.key_name())),
     }
 }
 
@@ -261,8 +261,8 @@ fn lower_call(callee: EntityId, args: Vec<TypedExpr>, context: &mut LowerContext
     lower_prelude_operator(callee, args)
 }
 
-fn lower_prelude_operator(callee: Vec<String>, args: Vec<RirExpr>) -> RirExpr {
-    let operator = callee.last().map(String::as_str);
+fn lower_prelude_operator(callee: RirPath, args: Vec<RirExpr>) -> RirExpr {
+    let operator = callee.as_slice().last().map(String::as_str);
     match (operator, args.as_slice()) {
         (Some("(+)"), [_, _]) => RirExpr::Add(Box::new(args[0].clone()), Box::new(args[1].clone())),
         (Some("(-)"), [_, _]) => RirExpr::Sub(Box::new(args[0].clone()), Box::new(args[1].clone())),
@@ -277,12 +277,15 @@ fn lower_prelude_operator(callee: Vec<String>, args: Vec<RirExpr>) -> RirExpr {
         }
         (Some("(||)"), [_, _]) => RirExpr::Or(Box::new(args[0].clone()), Box::new(args[1].clone())),
         (Some("(!)"), [_]) => RirExpr::Not(Box::new(args[0].clone())),
-        _ => RirExpr::Call { callee, args },
+        _ => RirExpr::Call {
+            callee: callee.into_segments(),
+            args,
+        },
     }
 }
 
-fn lower_entity_path(entity: EntityId, _context: &LowerContext) -> Vec<String> {
-    entity.as_strings()
+fn lower_entity_path(entity: EntityId, _context: &LowerContext) -> RirPath {
+    RirPath::from_segments(entity.as_strings())
 }
 
 fn lower_literal(literal: TypedLiteral) -> RirExpr {
