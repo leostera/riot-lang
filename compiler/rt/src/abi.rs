@@ -556,6 +556,20 @@ pub extern "C" fn riot_rt_result_unwrap_or(value: RtValue, fallback: RtValue) ->
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_result_exit_code(value: RtValue) -> i32 {
+    if riot_rt_result_is_ok(value) {
+        return 0;
+    }
+    if riot_rt_result_is_err(value) {
+        let payload = riot_rt_value_variant_get_payload(value);
+        return value_i64_payload(payload).unwrap_or_else(|| {
+            runtime_abort("Result error exit code must be an i32-compatible integer")
+        }) as i32;
+    }
+    runtime_abort("main returned a value that is not a Result");
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_lt(lhs: RtValue, rhs: RtValue) -> bool {
     with_scheduler_mut(|scheduler| scheduler.values_less_than(lhs, rhs))
 }
