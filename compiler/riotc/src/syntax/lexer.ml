@@ -17,10 +17,22 @@ fn lex_empty(_input: String) -> List<Token.Token> {
   [Token.Eof]
 }
 
+fn identifier_or_keyword(input: String) -> Token.Token {
+  if input == "fn" {
+    Token.Fn
+  } else {
+    if input == "let" {
+      Token.Let
+    } else {
+      Token.Identifier(input)
+    }
+  }
+}
+
 fn lex(input: String) -> List<Token.Token> {
   if input == "" {
     lex_empty(input)
   } else {
-    [Token.Eof]
+    [identifier_or_keyword(input), Token.Eof]
   }
 }
