@@ -1,5 +1,5 @@
-mod ast;
 mod actor;
+mod ast;
 mod backend;
 mod checker;
 mod cli;
@@ -7,8 +7,8 @@ mod command;
 mod diagnostic;
 mod driver;
 mod infer;
-mod lambda;
 mod ir;
+mod lambda;
 mod lexer;
 mod linker;
 mod parser;

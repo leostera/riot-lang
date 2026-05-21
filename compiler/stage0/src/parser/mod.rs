@@ -145,7 +145,7 @@ impl<'src> Parser<'src> {
 
     fn parse_external_decl(&mut self) -> Result<AstExternalDecl, ParseError> {
         let start = self.expect(TokenKind::External, "expected `external`")?;
-        let (name, name_span) = self.expect_lower_ident()?;
+        let (name, name_span) = self.parse_external_name()?;
         self.expect(TokenKind::Colon, "expected `:` after external name")?;
         let type_start = self.current().span;
         while !self.at(TokenKind::Eq) {
@@ -178,6 +178,22 @@ impl<'src> Parser<'src> {
             abi,
             span: start.span.join(abi_token.span),
         })
+    }
+
+    fn parse_external_name(&mut self) -> Result<(String, TextSpan), ParseError> {
+        if !self.at(TokenKind::LParen) {
+            return self.expect_lower_ident();
+        }
+        let start = self.expect(TokenKind::LParen, "expected `(` before operator external")?;
+        if !is_operator_token(self.current().kind) {
+            return Err(
+                self.error_at_current("expected operator name inside external `(op)`", None)
+            );
+        }
+        let operator = self.bump();
+        let end = self.expect(TokenKind::RParen, "expected `)` after operator external")?;
+        let span = start.span.join(end.span);
+        Ok((format!("({})", self.text(operator.span)), span))
     }
 
     fn parse_type_decl(&mut self) -> Result<AstTypeDecl, ParseError> {
@@ -1436,6 +1452,22 @@ fn is_upper_ident(ident: &str) -> bool {
         .is_some_and(|ch| ch.is_ascii_uppercase())
 }
 
+fn is_operator_token(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Plus
+            | TokenKind::Minus
+            | TokenKind::Star
+            | TokenKind::Slash
+            | TokenKind::Percent
+            | TokenKind::EqEq
+            | TokenKind::Lt
+            | TokenKind::AndAnd
+            | TokenKind::OrOr
+            | TokenKind::Bang
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use camino::Utf8Path;
@@ -1480,6 +1512,22 @@ mod tests {
             panic!("expected dbg call");
         };
         assert!(matches!(args.first(), Some(AstExpr::Apply { .. })));
+    }
+
+    #[test]
+    fn parses_operator_external_names() {
+        let program = parse_source(
+            Utf8Path::new("operators.ml"),
+            "external (+) : 'a -> 'a -> 'a = \"riot_rt_prim_add\"\n",
+        )
+        .unwrap();
+
+        let AstDecl::External(external) = &program.decls[0] else {
+            panic!("expected external declaration");
+        };
+
+        assert_eq!(external.name, "(+)");
+        assert_eq!(external.type_text, "'a -> 'a -> 'a");
     }
 
     #[test]

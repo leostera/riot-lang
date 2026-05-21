@@ -188,6 +188,7 @@ mod tests {
 
         assert_eq!(rsig.module.as_str(), "Prelude");
         assert!(names.contains(&"dbg".to_owned()));
+        assert!(names.contains(&"(+)".to_owned()));
         assert!(names.contains(&"send".to_owned()));
         assert!(names.contains(&"string_concat".to_owned()));
         assert!(

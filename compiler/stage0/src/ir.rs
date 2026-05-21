@@ -1135,47 +1135,39 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
 
 fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
     match expr {
-        AstExpr::Add { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Add, *lhs, *rhs, context),
-        AstExpr::Sub { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Sub, *lhs, *rhs, context),
-        AstExpr::Mul { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Mul, *lhs, *rhs, context),
-        AstExpr::Div { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Div, *lhs, *rhs, context),
-        AstExpr::Mod { lhs, rhs, .. } => typed_binary_i64(TypedExprKind::Mod, *lhs, *rhs, context),
-        AstExpr::Neg { expr, .. } => TypedExpr {
-            type_: RsigType::I64,
-            kind: TypedExprKind::Neg(Box::new(type_expr(*expr, context))),
-        },
-        AstExpr::Eq { lhs, rhs, .. } => TypedExpr {
-            type_: RsigType::Bool,
-            kind: TypedExprKind::Eq(
-                Box::new(type_expr(*lhs, context)),
-                Box::new(type_expr(*rhs, context)),
-            ),
-        },
-        AstExpr::Lt { lhs, rhs, .. } => TypedExpr {
-            type_: RsigType::Bool,
-            kind: TypedExprKind::Lt(
-                Box::new(type_expr(*lhs, context)),
-                Box::new(type_expr(*rhs, context)),
-            ),
-        },
-        AstExpr::And { lhs, rhs, .. } => TypedExpr {
-            type_: RsigType::Bool,
-            kind: TypedExprKind::And(
-                Box::new(type_expr(*lhs, context)),
-                Box::new(type_expr(*rhs, context)),
-            ),
-        },
-        AstExpr::Or { lhs, rhs, .. } => TypedExpr {
-            type_: RsigType::Bool,
-            kind: TypedExprKind::Or(
-                Box::new(type_expr(*lhs, context)),
-                Box::new(type_expr(*rhs, context)),
-            ),
-        },
-        AstExpr::Not { expr, .. } => TypedExpr {
-            type_: RsigType::Bool,
-            kind: TypedExprKind::Not(Box::new(type_expr(*expr, context))),
-        },
+        AstExpr::Add { lhs, rhs, .. } => {
+            typed_operator_call("(+)", vec![*lhs, *rhs], RsigType::I64, context)
+        }
+        AstExpr::Sub { lhs, rhs, .. } => {
+            typed_operator_call("(-)", vec![*lhs, *rhs], RsigType::I64, context)
+        }
+        AstExpr::Mul { lhs, rhs, .. } => {
+            typed_operator_call("(*)", vec![*lhs, *rhs], RsigType::I64, context)
+        }
+        AstExpr::Div { lhs, rhs, .. } => {
+            typed_operator_call("(/)", vec![*lhs, *rhs], RsigType::I64, context)
+        }
+        AstExpr::Mod { lhs, rhs, .. } => {
+            typed_operator_call("(%)", vec![*lhs, *rhs], RsigType::I64, context)
+        }
+        AstExpr::Neg { expr, .. } => {
+            typed_operator_call("(-)", vec![*expr], RsigType::I64, context)
+        }
+        AstExpr::Eq { lhs, rhs, .. } => {
+            typed_operator_call("(==)", vec![*lhs, *rhs], RsigType::Bool, context)
+        }
+        AstExpr::Lt { lhs, rhs, .. } => {
+            typed_operator_call("(<)", vec![*lhs, *rhs], RsigType::Bool, context)
+        }
+        AstExpr::And { lhs, rhs, .. } => {
+            typed_operator_call("(&&)", vec![*lhs, *rhs], RsigType::Bool, context)
+        }
+        AstExpr::Or { lhs, rhs, .. } => {
+            typed_operator_call("(||)", vec![*lhs, *rhs], RsigType::Bool, context)
+        }
+        AstExpr::Not { expr, .. } => {
+            typed_operator_call("(!)", vec![*expr], RsigType::Bool, context)
+        }
         AstExpr::If {
             condition,
             then_branch,
@@ -1226,7 +1218,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
         }
         AstExpr::Bool { value, .. } => TypedExpr {
             type_: RsigType::Bool,
-            kind: TypedExprKind::Bool(value),
+            kind: TypedExprKind::Literal(TyLiteral::Bool(value)),
         },
         AstExpr::Call { callee, args, .. } => {
             let callee_path = callee.segments;
@@ -1243,8 +1235,8 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     .unwrap_or_else(|| ConstructorName::new("_"));
                 return TypedExpr {
                     type_: RsigType::Variant(signature.type_name.clone()),
-                    kind: TypedExprKind::Variant {
-                        type_name: signature.type_name,
+                    kind: TypedExprKind::Constructor {
+                        type_name: Some(signature.type_name),
                         constructor,
                         payload: args,
                     },
@@ -1260,7 +1252,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 TypedExpr {
                     type_,
                     kind: TypedExprKind::Call {
-                        callee: callee_path,
+                        callee: TyIdent::Path(TyPath::new(callee_path)),
                         args,
                     },
                 }
@@ -1347,7 +1339,11 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
         },
         AstExpr::Unit { .. } => TypedExpr {
             type_: RsigType::Unit,
-            kind: TypedExprKind::Unit,
+            kind: TypedExprKind::Constructor {
+                type_name: None,
+                constructor: ConstructorName::new("()"),
+                payload: Vec::new(),
+            },
         },
         AstExpr::Tuple { items, .. } => {
             let items = items
@@ -1385,7 +1381,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             TypedExpr {
                 type_: RsigType::Record(type_name),
                 kind: TypedExprKind::Record {
-                    path: path.segments,
+                    path: TyPath::new(path.segments),
                     fields,
                 },
             }
@@ -1414,20 +1410,20 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
         }
         AstExpr::Char { value, .. } => TypedExpr {
             type_: RsigType::Char,
-            kind: TypedExprKind::Char(value),
+            kind: TypedExprKind::Literal(TyLiteral::Char(value)),
         },
         AstExpr::Float { value, .. } => TypedExpr {
             type_: RsigType::F64,
-            kind: TypedExprKind::Float(value),
+            kind: TypedExprKind::Literal(TyLiteral::Float(value)),
         },
         AstExpr::Int { value, .. } => TypedExpr {
             type_: RsigType::I64,
-            kind: TypedExprKind::Int(value),
+            kind: TypedExprKind::Literal(TyLiteral::Int(value)),
         },
         AstExpr::Path { path, .. } => type_path_expr(path.segments, context),
         AstExpr::String { value, .. } => TypedExpr {
             type_: RsigType::String,
-            kind: TypedExprKind::String(value),
+            kind: TypedExprKind::Literal(TyLiteral::String(value)),
         },
     }
 }
@@ -1439,7 +1435,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     {
         return TypedExpr {
             type_,
-            kind: TypedExprKind::Local(binding.binding.clone()),
+            kind: TypedExprKind::Ident(TyIdent::Local(binding.binding.clone())),
         };
     }
     if let Some((params, result)) = call_signature(&path, context) {
@@ -1448,8 +1444,8 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     if let Some((type_name, constructor)) = nullary_constructor_type(&path, context) {
         return TypedExpr {
             type_: RsigType::Variant(type_name.clone()),
-            kind: TypedExprKind::Variant {
-                type_name,
+            kind: TypedExprKind::Constructor {
+                type_name: Some(type_name),
                 constructor,
                 payload: Vec::new(),
             },
@@ -1457,7 +1453,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     }
     TypedExpr {
         type_,
-        kind: TypedExprKind::Path(path),
+        kind: TypedExprKind::Ident(TyIdent::Path(TyPath::new(path))),
     }
 }
 
@@ -1527,12 +1523,12 @@ fn partial_call_lambda(
         .collect::<Vec<_>>();
     supplied_args.extend(typed_params.iter().map(|param| TypedExpr {
         type_: param.type_.clone(),
-        kind: TypedExprKind::Local(param.binding.clone()),
+        kind: TypedExprKind::Ident(TyIdent::Local(param.binding.clone())),
     }));
     let call = TypedExpr {
         type_: result.clone(),
         kind: TypedExprKind::Call {
-            callee,
+            callee: TyIdent::Path(TyPath::new(callee)),
             args: supplied_args,
         },
     };
@@ -1788,18 +1784,25 @@ fn pattern_constructor_signature(
     }
 }
 
-fn typed_binary_i64(
-    build: fn(Box<TypedExpr>, Box<TypedExpr>) -> TypedExprKind,
-    lhs: AstExpr,
-    rhs: AstExpr,
+fn typed_operator_call(
+    operator: &str,
+    args: Vec<AstExpr>,
+    result: RsigType,
     context: &mut TypeContext<'_>,
 ) -> TypedExpr {
     TypedExpr {
-        type_: RsigType::I64,
-        kind: build(
-            Box::new(type_expr(lhs, context)),
-            Box::new(type_expr(rhs, context)),
-        ),
+        type_: result,
+        kind: TypedExprKind::Call {
+            callee: TyIdent::Path(TyPath::new(vec![
+                "Std".to_owned(),
+                "Prelude".to_owned(),
+                operator.to_owned(),
+            ])),
+            args: args
+                .into_iter()
+                .map(|arg| type_expr(arg, context))
+                .collect(),
+        },
     }
 }
 
@@ -2769,44 +2772,6 @@ fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
 fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
     let expr_type = expr.type_;
     match expr.kind {
-        TypedExprKind::Add(lhs, rhs) => RirExpr::Add(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Sub(lhs, rhs) => RirExpr::Sub(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Mul(lhs, rhs) => RirExpr::Mul(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Div(lhs, rhs) => RirExpr::Div(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Mod(lhs, rhs) => RirExpr::Mod(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Neg(expr) => RirExpr::Neg(Box::new(lower_expr(*expr, context))),
-        TypedExprKind::Eq(lhs, rhs) => RirExpr::Eq(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Lt(lhs, rhs) => RirExpr::Lt(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::And(lhs, rhs) => RirExpr::And(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Or(lhs, rhs) => RirExpr::Or(
-            Box::new(lower_expr(*lhs, context)),
-            Box::new(lower_expr(*rhs, context)),
-        ),
-        TypedExprKind::Not(expr) => RirExpr::Not(Box::new(lower_expr(*expr, context))),
         TypedExprKind::If {
             condition,
             then_branch,
@@ -2834,14 +2799,8 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             }
         }
         TypedExprKind::Block(block) => RirExpr::Block(Box::new(lower_block(*block, context))),
-        TypedExprKind::Bool(value) => RirExpr::Bool(value),
-        TypedExprKind::Call { callee, args } => RirExpr::Call {
-            callee,
-            args: args
-                .into_iter()
-                .map(|arg| lower_expr(arg, context))
-                .collect(),
-        },
+        TypedExprKind::Literal(literal) => lower_literal(literal),
+        TypedExprKind::Call { callee, args } => lower_call(callee, args, context),
         TypedExprKind::Apply { callee, args } => RirExpr::Apply {
             callee: Box::new(lower_expr(*callee, context)),
             args: args
@@ -2880,7 +2839,6 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 })
                 .collect(),
         },
-        TypedExprKind::Unit => RirExpr::Unit,
         TypedExprKind::Tuple(items) => RirExpr::Tuple(
             items
                 .into_iter()
@@ -2894,7 +2852,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 .collect(),
         ),
         TypedExprKind::Record { path, fields } => RirExpr::Record {
-            path,
+            path: path.as_strings(),
             fields: fields
                 .into_iter()
                 .map(|(name, value)| (name, lower_expr(value, context)))
@@ -2908,31 +2866,79 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             base: Box::new(lower_expr(*base, context)),
             index,
         },
-        TypedExprKind::Variant {
+        TypedExprKind::Constructor {
             type_name,
             constructor,
             payload,
-        } => RirExpr::Variant {
-            type_name,
-            constructor,
-            payload: payload
-                .into_iter()
-                .map(|payload| lower_expr(payload, context))
-                .collect(),
-        },
-        TypedExprKind::Char(value) => RirExpr::Char(value),
-        TypedExprKind::Float(value) => RirExpr::Float(value),
-        TypedExprKind::Int(value) => RirExpr::Int(value),
-        TypedExprKind::Local(binding) => RirExpr::Path(vec![binding.key_name()]),
-        TypedExprKind::Path(path) => {
+        } => {
+            if type_name.is_none() && constructor.as_str() == "()" && payload.is_empty() {
+                RirExpr::Unit
+            } else {
+                RirExpr::Variant {
+                    type_name: type_name.unwrap_or_else(|| TypeName::new("unit")),
+                    constructor,
+                    payload: payload
+                        .into_iter()
+                        .map(|payload| lower_expr(payload, context))
+                        .collect(),
+                }
+            }
+        }
+        TypedExprKind::Ident(ident) => RirExpr::Path(lower_ident_path(ident, context)),
+    }
+}
+
+fn lower_call(callee: TyIdent, args: Vec<TypedExpr>, context: &mut LowerContext) -> RirExpr {
+    let callee = lower_ident_path(callee, context);
+    let args = args
+        .into_iter()
+        .map(|arg| lower_expr(arg, context))
+        .collect::<Vec<_>>();
+    lower_prelude_operator(callee, args)
+}
+
+fn lower_prelude_operator(callee: Vec<String>, args: Vec<RirExpr>) -> RirExpr {
+    let operator = callee.last().map(String::as_str);
+    match (operator, args.as_slice()) {
+        (Some("(+)"), [_, _]) => RirExpr::Add(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(-)"), [_, _]) => RirExpr::Sub(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(-)"), [_]) => RirExpr::Neg(Box::new(args[0].clone())),
+        (Some("(*)"), [_, _]) => RirExpr::Mul(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(/)"), [_, _]) => RirExpr::Div(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(%)"), [_, _]) => RirExpr::Mod(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(==)"), [_, _]) => RirExpr::Eq(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(<)"), [_, _]) => RirExpr::Lt(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(&&)"), [_, _]) => {
+            RirExpr::And(Box::new(args[0].clone()), Box::new(args[1].clone()))
+        }
+        (Some("(||)"), [_, _]) => RirExpr::Or(Box::new(args[0].clone()), Box::new(args[1].clone())),
+        (Some("(!)"), [_]) => RirExpr::Not(Box::new(args[0].clone())),
+        _ => RirExpr::Call { callee, args },
+    }
+}
+
+fn lower_ident_path(ident: TyIdent, context: &LowerContext) -> Vec<String> {
+    match ident {
+        TyIdent::Local(binding) => vec![binding.key_name()],
+        TyIdent::Path(path) => {
+            let path = path.as_strings();
             if let [name] = path.as_slice()
                 && let Some(binding) = context.resolve(name)
             {
-                return RirExpr::Path(vec![binding.as_str().to_owned()]);
+                return vec![binding.as_str().to_owned()];
             }
-            RirExpr::Path(path)
+            path
         }
-        TypedExprKind::String(value) => RirExpr::String(value),
+    }
+}
+
+fn lower_literal(literal: TyLiteral) -> RirExpr {
+    match literal {
+        TyLiteral::Bool(value) => RirExpr::Bool(value),
+        TyLiteral::Char(value) => RirExpr::Char(value),
+        TyLiteral::Float(value) => RirExpr::Float(value),
+        TyLiteral::Int(value) => RirExpr::Int(value),
+        TyLiteral::String(value) => RirExpr::String(value),
     }
 }
 
@@ -2992,7 +2998,7 @@ mod tests {
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{
-        Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
+        Capture, RirExpr, RirStmt, TyIdent, TypedExprKind, TypedStmt, lower_typed_to_rir,
         typed_program_from_ast,
     };
 
@@ -3228,7 +3234,7 @@ mod tests {
         let Some(tail) = &body.tail else {
             panic!("expected lambda tail");
         };
-        let TypedExprKind::Local(captured_a) = &tail.kind else {
+        let TypedExprKind::Ident(TyIdent::Local(captured_a)) = &tail.kind else {
             panic!("expected lambda tail to resolve a local");
         };
 

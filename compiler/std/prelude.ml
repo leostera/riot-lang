@@ -18,6 +18,36 @@ type Option<'value> = Some('value) | None
 /// Fallible results.
 type Result<'value, 'err> = Ok('value) | Err('err)
 
+/// Add two values with the target primitive implementation.
+external (+) : 'a -> 'a -> 'a = "riot_rt_prim_add"
+
+/// Subtract two values with the target primitive implementation.
+external (-) : 'a -> 'a -> 'a = "riot_rt_prim_sub"
+
+/// Multiply two values with the target primitive implementation.
+external (*) : 'a -> 'a -> 'a = "riot_rt_prim_mul"
+
+/// Divide two values with the target primitive implementation.
+external (/) : 'a -> 'a -> 'a = "riot_rt_prim_div"
+
+/// Compute the remainder of two values with the target primitive implementation.
+external (%) : 'a -> 'a -> 'a = "riot_rt_prim_mod"
+
+/// Compare two values for equality.
+external (==) : 'a -> 'a -> bool = "riot_rt_prim_eq"
+
+/// Compare two ordered values.
+external (<) : 'a -> 'a -> bool = "riot_rt_prim_lt"
+
+/// Combine two boolean values.
+external (&&) : bool -> bool -> bool = "riot_rt_prim_and"
+
+/// Combine two boolean values.
+external (||) : bool -> bool -> bool = "riot_rt_prim_or"
+
+/// Negate a boolean value.
+external (!) : bool -> bool = "riot_rt_prim_not"
+
 /// Print a debug representation of any boxed runtime value.
 external dbg : 'msg -> unit = "riot_rt_dbg_value"
 

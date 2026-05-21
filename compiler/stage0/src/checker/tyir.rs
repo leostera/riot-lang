@@ -23,6 +23,65 @@ impl HirBinding {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct TyPathSegment(String);
+
+impl TyPathSegment {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct TyPath {
+    segments: Vec<TyPathSegment>,
+}
+
+impl TyPath {
+    pub(crate) fn new(segments: Vec<String>) -> Self {
+        Self {
+            segments: segments.into_iter().map(TyPathSegment::new).collect(),
+        }
+    }
+
+    pub(crate) fn unqualified(name: impl Into<String>) -> Self {
+        Self::new(vec![name.into()])
+    }
+
+    pub(crate) fn as_strings(&self) -> Vec<String> {
+        self.segments
+            .iter()
+            .map(|segment| segment.as_str().to_owned())
+            .collect()
+    }
+
+    pub(crate) fn as_unqualified_name(&self) -> Option<&str> {
+        match self.segments.as_slice() {
+            [segment] => Some(segment.as_str()),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum TyIdent {
+    Local(HirBinding),
+    Path(TyPath),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum TyLiteral {
+    Bool(bool),
+    Char(char),
+    Float(String),
+    Int(i64),
+    String(String),
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct CheckedProgram {
     pub(crate) typed_tree: TypedProgram,
@@ -163,17 +222,6 @@ pub(crate) enum TypedPattern {
 
 #[derive(Debug, Clone)]
 pub(crate) enum TypedExprKind {
-    Add(Box<TypedExpr>, Box<TypedExpr>),
-    Sub(Box<TypedExpr>, Box<TypedExpr>),
-    Mul(Box<TypedExpr>, Box<TypedExpr>),
-    Div(Box<TypedExpr>, Box<TypedExpr>),
-    Mod(Box<TypedExpr>, Box<TypedExpr>),
-    Neg(Box<TypedExpr>),
-    Eq(Box<TypedExpr>, Box<TypedExpr>),
-    Lt(Box<TypedExpr>, Box<TypedExpr>),
-    And(Box<TypedExpr>, Box<TypedExpr>),
-    Or(Box<TypedExpr>, Box<TypedExpr>),
-    Not(Box<TypedExpr>),
     If {
         condition: Box<TypedExpr>,
         then_branch: Box<TypedExpr>,
@@ -184,9 +232,9 @@ pub(crate) enum TypedExprKind {
         arms: Vec<TypedMatchArm>,
     },
     Block(Box<TypedBlock>),
-    Bool(bool),
+    Literal(TyLiteral),
     Call {
-        callee: Vec<String>,
+        callee: TyIdent,
         args: Vec<TypedExpr>,
     },
     Apply {
@@ -197,11 +245,10 @@ pub(crate) enum TypedExprKind {
         params: Vec<TypedParam>,
         body: Box<TypedBlock>,
     },
-    Unit,
     Tuple(Vec<TypedExpr>),
     List(Vec<TypedExpr>),
     Record {
-        path: Vec<String>,
+        path: TyPath,
         fields: Vec<(String, TypedExpr)>,
     },
     Field {
@@ -212,17 +259,12 @@ pub(crate) enum TypedExprKind {
         base: Box<TypedExpr>,
         index: usize,
     },
-    Variant {
-        type_name: TypeName,
+    Constructor {
+        type_name: Option<TypeName>,
         constructor: ConstructorName,
         payload: Vec<TypedExpr>,
     },
-    Char(char),
-    Float(String),
-    Int(i64),
-    Local(HirBinding),
-    Path(Vec<String>),
-    String(String),
+    Ident(TyIdent),
     Spawn {
         body: Box<TypedBlock>,
     },
