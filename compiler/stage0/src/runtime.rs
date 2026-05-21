@@ -75,10 +75,10 @@ impl RuntimeBuilder {
             repo.join("compiler/rt/Cargo.toml"),
             repo.join("compiler/rt/Cargo.lock"),
         ] {
-            if let Some(time) = Self::modified_time(&path)? {
-                if time > lib_modified {
-                    return Ok(false);
-                }
+            if let Some(time) = Self::modified_time(&path)?
+                && time > lib_modified
+            {
+                return Ok(false);
             }
         }
 

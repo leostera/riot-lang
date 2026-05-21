@@ -599,7 +599,7 @@ fn constructor_types(
                                     .payload
                                     .iter()
                                     .map(|payload| {
-                                        parse_type_with_variants(&payload.text, &declared_variants)
+                                        parse_type_with_variants(&payload.text, declared_variants)
                                     })
                                     .collect(),
                             },
@@ -965,21 +965,21 @@ fn validate_expr(
             match name.as_str() {
                 "dbg" => {
                     if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "dbg", 1, args.len()).into());
+                        return Err(call_arity_error(ctx, *span, "dbg", 1, args.len()));
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     Ok(ExprCategory::Output)
                 }
                 "println" => {
                     if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "println", 1, args.len()).into());
+                        return Err(call_arity_error(ctx, *span, "println", 1, args.len()));
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     Ok(ExprCategory::Output)
                 }
                 "send" => {
                     if args.len() != 2 {
-                        return Err(call_arity_error(ctx, *span, "send", 2, args.len()).into());
+                        return Err(call_arity_error(ctx, *span, "send", 2, args.len()));
                     }
                     validate_actor_target(ctx, &args[0], bindings, *span, "send")?;
                     validate_expr(ctx, &args[1], bindings, in_actor)?;
@@ -987,14 +987,14 @@ fn validate_expr(
                 }
                 "monitor" | "link" => {
                     if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, name, 1, args.len()).into());
+                        return Err(call_arity_error(ctx, *span, name, 1, args.len()));
                     }
                     validate_actor_target(ctx, &args[0], bindings, *span, name)?;
                     Ok(ExprCategory::Actor)
                 }
                 "list_len" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 1 {
-                        return Err(call_arity_error(ctx, *span, "list_len", 1, args.len()).into());
+                        return Err(call_arity_error(ctx, *span, "list_len", 1, args.len()));
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     validate_call_arg_type(
@@ -1010,7 +1010,7 @@ fn validate_expr(
                 }
                 "list_get" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 2 {
-                        return Err(call_arity_error(ctx, *span, "list_get", 2, args.len()).into());
+                        return Err(call_arity_error(ctx, *span, "list_get", 2, args.len()));
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     validate_expr(ctx, &args[1], bindings, in_actor)?;
@@ -1037,9 +1037,7 @@ fn validate_expr(
                 }
                 "string_len" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 1 {
-                        return Err(
-                            call_arity_error(ctx, *span, "string_len", 1, args.len()).into()
-                        );
+                        return Err(call_arity_error(ctx, *span, "string_len", 1, args.len()));
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     validate_call_arg_type(
@@ -1055,9 +1053,7 @@ fn validate_expr(
                 }
                 "string_concat" if !ctx.declared_external_names.contains(name) => {
                     if args.len() != 2 {
-                        return Err(
-                            call_arity_error(ctx, *span, "string_concat", 2, args.len()).into()
-                        );
+                        return Err(call_arity_error(ctx, *span, "string_concat", 2, args.len()));
                     }
                     validate_expr(ctx, &args[0], bindings, in_actor)?;
                     validate_expr(ctx, &args[1], bindings, in_actor)?;
@@ -2012,8 +2008,7 @@ fn validate_constructor_call(
             constructor_name,
             constructor.payload.len(),
             args.len(),
-        )
-        .into());
+        ));
     }
     for (arg, expected) in args.iter().zip(&constructor.payload) {
         validate_expr(ctx, arg, bindings, in_actor)?;
@@ -2673,12 +2668,12 @@ fn infer_annotation_expr_type(
             [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
             [name] if name == "list_len" || name == "string_len" => Some(RsigType::I64),
             [name] if name == "string_concat" => Some(RsigType::String),
-            [name] if name == "list_get" => args.first().and_then(|list| {
-                match infer_annotation_expr_type(ctx, list, bindings) {
-                    Some(RsigType::List(item)) => Some(*item),
-                    _ => Some(RsigType::Unknown),
-                }
-            }),
+            [name] if name == "list_get" => args.first().map(
+                |list| match infer_annotation_expr_type(ctx, list, bindings) {
+                    Some(RsigType::List(item)) => *item,
+                    _ => RsigType::Unknown,
+                },
+            ),
             [name] => ctx
                 .constructor_types
                 .get(name)
@@ -2961,9 +2956,9 @@ fn simple_expr_type(
             [name] if name == "string_concat" => Some(RsigType::String),
             [name] if name == "list_get" => {
                 args.first()
-                    .and_then(|list| match simple_expr_type(ctx, list, bindings) {
-                        Some(RsigType::List(item)) => Some(*item),
-                        _ => Some(RsigType::Unknown),
+                    .map(|list| match simple_expr_type(ctx, list, bindings) {
+                        Some(RsigType::List(item)) => *item,
+                        _ => RsigType::Unknown,
                     })
             }
             [name] => ctx

@@ -132,16 +132,16 @@ pub(crate) fn typed_program_from_ast(
             .return_type
             .as_ref()
             .map(|annotation| parse_type_with_variants(&annotation.text, &declared_variants));
-        let mut context = TypeContext::new(
+        let mut context = TypeContext::new(TypeContextInputs {
             function_types,
-            &external_types,
+            externals: &external_types,
             imports,
-            &constructors,
-            &records,
-            &record_fields,
-            &declared_variants,
+            constructors: &constructors,
+            records: &records,
+            record_fields: &record_fields,
+            declared_variants: &declared_variants,
             expression_types,
-        );
+        });
         let params = function
             .params
             .iter()
@@ -353,28 +353,30 @@ struct TypeContext<'a> {
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
 }
 
+struct TypeContextInputs<'a> {
+    function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    imports: &'a ImportedSignatures,
+    constructors: &'a BTreeMap<String, ConstructorSignature>,
+    records: &'a BTreeMap<String, TypeName>,
+    record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
+    declared_variants: &'a BTreeSet<TypeName>,
+    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+}
+
 impl<'a> TypeContext<'a> {
-    fn new(
-        functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-        externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-        imports: &'a ImportedSignatures,
-        constructors: &'a BTreeMap<String, ConstructorSignature>,
-        records: &'a BTreeMap<String, TypeName>,
-        record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
-        declared_variants: &'a BTreeSet<TypeName>,
-        expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
-    ) -> Self {
+    fn new(inputs: TypeContextInputs<'a>) -> Self {
         Self {
             next_binding_id: 0,
             scopes: vec![BTreeMap::new()],
-            functions,
-            externals,
-            imports,
-            constructors,
-            records,
-            record_fields,
-            declared_variants,
-            expression_types,
+            functions: inputs.function_types,
+            externals: inputs.externals,
+            imports: inputs.imports,
+            constructors: inputs.constructors,
+            records: inputs.records,
+            record_fields: inputs.record_fields,
+            declared_variants: inputs.declared_variants,
+            expression_types: inputs.expression_types,
         }
     }
 

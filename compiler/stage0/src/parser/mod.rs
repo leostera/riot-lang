@@ -1097,10 +1097,10 @@ impl<'src> Parser<'src> {
 
     fn parse_block_expr(&mut self) -> Result<AstExpr, ParseError> {
         let block = self.parse_block()?;
-        if block.statements.is_empty() {
-            if let Some(tail) = block.tail {
-                return Ok(tail);
-            }
+        if block.statements.is_empty()
+            && let Some(tail) = block.tail
+        {
+            return Ok(tail);
         }
 
         let span = block.span;

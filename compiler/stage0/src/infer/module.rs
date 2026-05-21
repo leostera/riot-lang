@@ -334,7 +334,7 @@ fn infer_function(
         .iter()
         .enumerate()
         .map(|(index, _param)| {
-            let type_ = function
+            function
                 .param_types
                 .get(index)
                 .and_then(|annotation| annotation.as_ref())
@@ -344,8 +344,7 @@ fn infer_function(
                         state,
                     )
                 })
-                .unwrap_or_else(|| state.fresh_var());
-            type_
+                .unwrap_or_else(|| state.fresh_var())
         })
         .collect::<Vec<_>>();
     let result_constraint = function
@@ -641,7 +640,7 @@ fn infer_expr_kind(
                         (name == field)
                             .then(|| infer_expr(state, value, declared_variants, expression_types))
                     })
-                    .unwrap_or_else(|| Err(InferError::Unsupported("record field")))
+                    .unwrap_or(Err(InferError::Unsupported("record field")))
             } else {
                 infer_expr(state, base, declared_variants, expression_types)?;
                 Ok(state.fresh_var())

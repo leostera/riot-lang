@@ -30,7 +30,7 @@ pub(crate) fn to_source_diagnostic(
     help: Option<&'static str>,
 ) -> SourceDiagnostic {
     SourceDiagnostic {
-        src: NamedSource::new(source_path.to_string(), source.to_owned()),
+        src: NamedSource::new(source_path, source.to_owned()),
         span: to_miette_span(span),
         message: message.into(),
         label: label.into(),
