@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::signature::RsigType;
 
 use crate::lambda::ir::{RirExpr, RirReceiveArm};
@@ -24,9 +26,28 @@ pub(crate) struct ActorFrameLayout {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorFrameSlot {
-    pub(crate) name: String,
+    pub(crate) name: ActorFrameSlotName,
     pub(crate) type_: ActorSlotType,
     pub(crate) field_index: u32,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct ActorFrameSlotName(String);
+
+impl ActorFrameSlotName {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Debug for ActorFrameSlotName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

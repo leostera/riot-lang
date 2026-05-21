@@ -1698,7 +1698,7 @@ fn collect_actors_from_expr(
                 .frame
                 .slots
                 .iter()
-                .map(|slot| (slot.name.clone(), Some(slot.type_)))
+                .map(|slot| (slot.name.as_str().to_owned(), Some(slot.type_)))
                 .collect::<BTreeMap<_, _>>();
             actors.push(actor);
             collect_actors_from_block(body, &mut actor_locals, context, actors);
@@ -1822,7 +1822,7 @@ fn actor_frame_from_block(
     for name in free {
         if let Some(Some(type_)) = outer_locals.get(&name) {
             slots.push(ActorFrameSlot {
-                name,
+                name: ActorFrameSlotName::new(name),
                 type_: *type_,
                 field_index: slots.len() as u32 + 1,
             });
@@ -1832,14 +1832,14 @@ fn actor_frame_from_block(
 
     let mut local_types = slots
         .iter()
-        .map(|slot| (slot.name.clone(), Some(slot.type_)))
+        .map(|slot| (slot.name.as_str().to_owned(), Some(slot.type_)))
         .collect::<BTreeMap<_, _>>();
     for op in &ops {
         if let ActorFrameOp::Let { name, value } = op {
             let type_ = infer_actor_slot_type(value, &local_types, context);
             if let Some(type_) = type_ {
                 slots.push(ActorFrameSlot {
-                    name: name.clone(),
+                    name: ActorFrameSlotName::new(name.clone()),
                     type_,
                     field_index: slots.len() as u32 + 1,
                 });

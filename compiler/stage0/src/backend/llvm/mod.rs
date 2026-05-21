@@ -2933,7 +2933,7 @@ fn actor_shape_from_ir(actor: &ActorIrActor) -> ActorShape {
 
 fn frame_slot_from_actor_ir(slot: &ActorFrameSlot) -> FrameSlot {
     FrameSlot {
-        name: slot.name.clone(),
+        name: slot.name.as_str().to_owned(),
         abi: AbiType::from_actor_slot(slot.type_),
         field_index: slot.field_index,
     }
