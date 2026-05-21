@@ -2521,7 +2521,7 @@ mod tests {
     use crate::parser::SourceParser;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use crate::lambda::RirLowerer;
+    use crate::lambda::lower::RirLowerer;
 
     use super::{Capture, RirExpr, RirStmt, TyIrBuilder, TypedExprKind, TypedStmt};
 
