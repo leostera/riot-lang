@@ -97,6 +97,22 @@ core. Stage0 should not require annotations for ordinary lambdas or helper
 functions. Type annotations remain useful as constraints and interface
 documentation, but inference should do the default work.
 
+## Pipeline Ownership Checkpoint
+
+Stage0 now keeps one lambda middle IR rather than separate LIR/RIR models. The
+source pass names can still say `emit ir` for user-facing continuity, but the
+Rust ownership is:
+
+- `checker` owns typed HIR construction and `.rsig` projection.
+- `lambda` owns the single lambda IR model, typed-tree lowering, simplification,
+  and closure conversion.
+- `actor` owns AIR, actor discovery, frame layout, and actor slot typing.
+- `backend::llvm` consumes lambda IR plus AIR and emits LLVM/object artifacts.
+
+This means future cleanup should avoid creating another intermediate lambda IR
+unless it has a distinct invariant. If a pass is just simplifying typed HIR into
+callable, closure-aware lambda code, it belongs in `lambda`.
+
 Agreed source syntax:
 
 ```riot
