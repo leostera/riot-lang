@@ -1815,7 +1815,7 @@ fn actor_frame_from_block(
         match &op {
             ActorFrameOp::Let { name, value } => {
                 collect_free_expr(value, &bound, &mut free);
-                bound.insert(name.clone());
+                bound.insert(name.as_str().to_owned());
             }
             ActorFrameOp::Expr(expr) => collect_free_expr(expr, &bound, &mut free),
             ActorFrameOp::Receive { arms } => {
@@ -1849,13 +1849,13 @@ fn actor_frame_from_block(
             let type_ = infer_actor_slot_type(value, &local_types, context);
             if let Some(type_) = type_ {
                 slots.push(ActorFrameSlot {
-                    name: ActorFrameSlotName::new(name.clone()),
+                    name: name.clone(),
                     type_,
                     field_index: slots.len() as u32 + 1,
                 });
-                local_types.insert(name.clone(), Some(type_));
+                local_types.insert(name.as_str().to_owned(), Some(type_));
             } else {
-                local_types.insert(name.clone(), None);
+                local_types.insert(name.as_str().to_owned(), None);
             }
         }
     }
@@ -1891,7 +1891,7 @@ fn actor_ops(block: &RirBlock) -> Vec<ActorFrameOp> {
     for stmt in &block.statements {
         match stmt {
             RirStmt::Let { name, value } => ops.push(ActorFrameOp::Let {
-                name: name.as_str().to_owned(),
+                name: ActorFrameSlotName::new(name.as_str()),
                 value: value.clone(),
             }),
             RirStmt::Expr(RirExpr::Receive { arms }) => {

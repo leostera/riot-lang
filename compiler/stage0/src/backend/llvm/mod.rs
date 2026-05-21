@@ -2070,8 +2070,8 @@ impl<'ctx> Codegen<'ctx, '_> {
                     let slot = shape
                         .slots
                         .iter()
-                        .find(|slot| slot.name == *name)
-                        .ok_or_else(|| miette::miette!("missing actor slot `{name}`"))?;
+                        .find(|slot| slot.name == name.as_str())
+                        .ok_or_else(|| miette::miette!("missing actor slot `{}`", name.as_str()))?;
                     self.store_frame_value(frame_type, frame, slot, value)?;
                     self.store_frame_i64(
                         frame_type,

@@ -89,7 +89,12 @@ pub(crate) enum ActorStateNext {
 
 #[derive(Debug, Clone)]
 pub(crate) enum ActorFrameOp {
-    Let { name: String, value: RirExpr },
-    Receive { arms: Vec<RirReceiveArm> },
+    Let {
+        name: ActorFrameSlotName,
+        value: RirExpr,
+    },
+    Receive {
+        arms: Vec<RirReceiveArm>,
+    },
     Expr(RirExpr),
 }
