@@ -1,7 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use crate::lambda::ir::{
-    LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaPattern, LambdaStmt,
+    LambdaBlock, LambdaExpr, LambdaExternalTable, LambdaFunction, LambdaPattern, LambdaStmt,
 };
 use crate::signature::{ConstructorName, TypeName};
 use crate::stdlib::Stdlib;
@@ -99,13 +99,13 @@ impl StaticValue {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StaticEvaluator<'a> {
     functions: &'a HashMap<&'a str, &'a LambdaFunction>,
-    externals: &'a BTreeMap<String, LambdaExternal>,
+    externals: &'a LambdaExternalTable,
 }
 
 impl<'a> StaticEvaluator<'a> {
     pub(crate) fn new(
         functions: &'a HashMap<&'a str, &'a LambdaFunction>,
-        externals: &'a BTreeMap<String, LambdaExternal>,
+        externals: &'a LambdaExternalTable,
     ) -> Self {
         Self {
             functions,
@@ -143,7 +143,7 @@ fn eval_expr(
     expr: &LambdaExpr,
     bindings: &HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
     if depth > 64 {
@@ -421,7 +421,7 @@ fn eval_call(
     args: &[LambdaExpr],
     bindings: &HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
     if let Some(external) = externals.get(name) {
@@ -453,7 +453,7 @@ fn eval_external_call(
     args: &[LambdaExpr],
     bindings: &HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
     let eval_arg =
@@ -523,7 +523,7 @@ fn eval_block(
     block: &LambdaBlock,
     bindings: &mut HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
     for stmt in &block.statements {
@@ -560,9 +560,9 @@ fn resolve_path(path: &[String], bindings: &HashMap<String, StaticValue>) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::HashMap;
 
-    use crate::lambda::ir::{LambdaExpr, LambdaExternal};
+    use crate::lambda::ir::{LambdaExpr, LambdaExternal, LambdaExternalTable};
     use crate::signature::RsigType;
 
     use super::{StaticEvaluator, StaticValue};
@@ -570,15 +570,13 @@ mod tests {
     #[test]
     fn static_equality_is_structural_not_rendered_text() {
         let functions = HashMap::new();
-        let externals = BTreeMap::from([(
-            "(==)".to_owned(),
-            LambdaExternal {
-                name: "(==)".to_owned(),
-                params: vec![RsigType::Var("'a".into()), RsigType::Var("'a".into())],
-                result: RsigType::Bool,
-                abi: "riot_rt_prim_eq".into(),
-            },
-        )]);
+        let mut externals = LambdaExternalTable::new();
+        externals.insert(LambdaExternal {
+            name: "(==)".to_owned(),
+            params: vec![RsigType::Var("'a".into()), RsigType::Var("'a".into())],
+            result: RsigType::Bool,
+            abi: "riot_rt_prim_eq".into(),
+        });
         let evaluator = StaticEvaluator::new(&functions, &externals);
 
         let result = evaluator.eval_call(

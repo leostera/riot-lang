@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use camino::Utf8Path;
 use inkwell::basic_block::BasicBlock;
@@ -20,8 +20,8 @@ use crate::actor::air::{
     ActorFrameOp, ActorFrameSlot, ActorFrameState, ActorIrActor, ActorIrProgram, ActorStateNext,
 };
 use crate::lambda::ir::{
-    Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaMatchArm,
-    LambdaPattern, LambdaProgram, LambdaStmt, Param,
+    Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaExternalTable, LambdaFunction,
+    LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
 };
 use crate::signature::{ConstructorName, ImportedSignatures, RsigExport, RsigType, TypeName};
 use crate::stdlib::Stdlib;
@@ -257,7 +257,7 @@ struct Codegen<'ctx, 'a> {
     functions: HashMap<String, FunctionValue<'ctx>>,
     function_abis: HashMap<String, FunctionAbi>,
     function_map: HashMap<&'a str, &'a LambdaFunction>,
-    externals: BTreeMap<String, LambdaExternal>,
+    externals: LambdaExternalTable,
     actor_ir: ActorIrProgram,
     string_counter: usize,
 }
@@ -1551,8 +1551,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             if let Some(static_value) = self.static_eval_call(name, args, &env.statics) {
                 return Ok(CgValue::Static(static_value));
             }
-            if self.externals.contains_key(name) {
-                let external = self.externals.get(name).unwrap().clone();
+            if let Some(external) = self.externals.get(name).cloned() {
                 let value = self.emit_external_call(
                     &external.abi,
                     &external.params,
@@ -2763,7 +2762,7 @@ fn is_result_unit_i32(type_: &RsigType) -> bool {
 
 fn infer_function_abis(
     program: &LambdaProgram,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
 ) -> HashMap<String, FunctionAbi> {
     let mut abis = program
         .functions
@@ -2829,7 +2828,7 @@ fn infer_block_abi(
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
 ) -> AbiType {
     for stmt in &block.statements {
         match stmt {
@@ -2854,7 +2853,7 @@ fn infer_expr_abi(
     expr: &LambdaExpr,
     locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
 ) -> AbiType {
     match expr {
         LambdaExpr::Int(_) => AbiType::I64,
@@ -2901,7 +2900,7 @@ fn infer_match_arm_abi(
     arm: &LambdaMatchArm,
     outer_locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
     bind_pattern_abis(&arm.pattern, &mut locals);
@@ -2943,7 +2942,7 @@ fn infer_block_expr_abi(
     block: &LambdaBlock,
     outer_locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
     let mut param_types = Vec::new();
@@ -2963,7 +2962,7 @@ fn mark_expr_constraints(
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
-    externals: &BTreeMap<String, LambdaExternal>,
+    externals: &LambdaExternalTable,
 ) {
     match expr {
         LambdaExpr::If {
@@ -3131,29 +3130,22 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
     }
 }
 
-fn codegen_externals(program: &LambdaProgram) -> miette::Result<BTreeMap<String, LambdaExternal>> {
-    let mut externals = crate::stdlib::Stdlib::new()
-        .prelude_signature()?
-        .exports
-        .into_iter()
-        .filter_map(|export| {
-            let crate::signature::RsigExport::External(external) = export else {
-                return None;
-            };
-            Some((
-                external.name.clone(),
-                LambdaExternal {
-                    name: external.name,
-                    params: external.params,
-                    result: external.result,
-                    abi: external.abi,
-                },
-            ))
-        })
-        .collect::<BTreeMap<_, _>>();
+fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTable> {
+    let mut externals = LambdaExternalTable::new();
+    for export in crate::stdlib::Stdlib::new().prelude_signature()?.exports {
+        let crate::signature::RsigExport::External(external) = export else {
+            continue;
+        };
+        externals.insert(LambdaExternal {
+            name: external.name,
+            params: external.params,
+            result: external.result,
+            abi: external.abi,
+        });
+    }
 
     for external in &program.externals {
-        externals.insert(external.name.clone(), external.clone());
+        externals.insert(external.clone());
     }
 
     Ok(externals)

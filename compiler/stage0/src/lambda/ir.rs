@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 
 use crate::signature::{AbiSymbol, ConstructorName, ModuleName, RsigType, TypeName};
@@ -91,6 +92,25 @@ pub(crate) struct LambdaExternal {
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) abi: AbiSymbol,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct LambdaExternalTable {
+    externals: BTreeMap<String, LambdaExternal>,
+}
+
+impl LambdaExternalTable {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn insert(&mut self, external: LambdaExternal) {
+        self.externals.insert(external.name.clone(), external);
+    }
+
+    pub(crate) fn get(&self, name: &str) -> Option<&LambdaExternal> {
+        self.externals.get(name)
+    }
 }
 
 #[derive(Debug, Clone)]
