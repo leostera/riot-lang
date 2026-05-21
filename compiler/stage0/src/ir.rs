@@ -15,7 +15,11 @@ use crate::actor::air::{
     ActorFrameLayout, ActorFrameOp, ActorFrameSlot, ActorFrameSlotName, ActorFrameState,
     ActorIrActor, ActorIrProgram, ActorSlotType, ActorStateNext,
 };
-pub(crate) use crate::checker::tyir::*;
+use crate::checker::tyir::{
+    BindingId, EntityId, TypedBlock, TypedExpr, TypedExprKind, TypedExternal, TypedFunction,
+    TypedLiteral, TypedMatchArm, TypedParam, TypedPattern, TypedProgram, TypedReceiveArm,
+    TypedRecordField, TypedStmt, TypedTypeBody, TypedTypeDecl, TypedUse, TypedVariantConstructor,
+};
 use crate::lambda::ir::{
     BindingKey, Capture, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm,
     RirPattern, RirProgram, RirReceiveArm, RirStmt,
@@ -2523,13 +2527,14 @@ mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
+    use crate::checker::tyir::TyIrBuilder;
     use crate::infer::module::ModuleInferencer;
     use crate::parser::SourceParser;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use crate::lambda::lower::RirLowerer;
 
-    use super::{Capture, RirExpr, RirStmt, TyIrBuilder, TypedExprKind, TypedStmt};
+    use super::{Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
