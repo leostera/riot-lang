@@ -41,6 +41,14 @@ impl InferError {
         }
     }
 
+    pub(crate) fn unknown_value_name(&self) -> Option<&str> {
+        match self {
+            InferError::UnknownValue(name) => Some(name.as_str()),
+            InferError::At { error, .. } => error.unknown_value_name(),
+            InferError::Unsupported(_) | InferError::Unify(_) => None,
+        }
+    }
+
     fn at(self, span: TextSpan) -> Self {
         match self {
             InferError::At { .. } => self,

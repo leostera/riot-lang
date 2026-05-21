@@ -37,7 +37,7 @@ use crate::ast::{
 use crate::checker::tyir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
 use crate::imported_types::{imported_type_name, qualify_imported_type};
-use crate::infer::module::{ExpressionTypeTable, ModuleInferencer};
+use crate::infer::module::{ExpressionTypeTable, InferError, ModuleInferencer};
 use crate::signature::{
     FunctionSignature, FunctionTable, ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType,
     RsigTypeDeclKind, TypeName, TypeVarName,
@@ -80,18 +80,7 @@ impl<'a> Checker<'a> {
             .validate(&program)?;
         let inferred = ModuleInferencer::new(&program, self.imports)
             .infer()
-            .map_err(|error| {
-                let span = error
-                    .span()
-                    .or_else(|| first_decl_span(&program))
-                    .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
-                SourceDiagnostics::new(self.source_path, self.source).at(
-                    span,
-                    "type inference failed",
-                    error.to_string(),
-                    Some("fix the type error before lowering"),
-                )
-            })?;
+            .map_err(|error| self.infer_diagnostic(&program, error))?;
         let expression_types = inferred.expression_rsig_types();
         ProgramValidator::new(
             self.source_path,
@@ -114,6 +103,32 @@ impl<'a> Checker<'a> {
             typed_tree,
             signature,
         })
+    }
+
+    fn infer_diagnostic(&self, program: &AstProgram, error: InferError) -> SourceDiagnostic {
+        let span = error
+            .span()
+            .or_else(|| first_decl_span(program))
+            .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
+        let diagnostics = SourceDiagnostics::new(self.source_path, self.source);
+        if let Some(name) = error.unknown_value_name()
+            && program.decls.iter().any(|decl| {
+                matches!(decl, AstDecl::Function(function) if function.name == name)
+            })
+        {
+            return diagnostics.at(
+                span,
+                "top-level function used before definition",
+                format!("`{name}` is declared later in this module, but stage0 resolves functions top-to-bottom"),
+                Some("move the callee above this function or add a future mutual-recursion slice"),
+            );
+        }
+        diagnostics.at(
+            span,
+            "type inference failed",
+            error.to_string(),
+            Some("fix the type error before lowering"),
+        )
     }
 }
 
