@@ -21,7 +21,32 @@ pub(crate) struct SourceDiagnostic {
     help: Option<String>,
 }
 
-pub(crate) fn to_source_diagnostic(
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SourceDiagnostics<'a> {
+    source_path: &'a Utf8Path,
+    source: &'a str,
+}
+
+impl<'a> SourceDiagnostics<'a> {
+    pub(crate) fn new(source_path: &'a Utf8Path, source: &'a str) -> Self {
+        Self {
+            source_path,
+            source,
+        }
+    }
+
+    pub(crate) fn at(
+        &self,
+        span: TextSpan,
+        message: impl Into<String>,
+        label: impl Into<String>,
+        help: Option<&'static str>,
+    ) -> SourceDiagnostic {
+        to_source_diagnostic(self.source_path, self.source, span, message, label, help)
+    }
+}
+
+fn to_source_diagnostic(
     source_path: &Utf8Path,
     source: &str,
     span: TextSpan,

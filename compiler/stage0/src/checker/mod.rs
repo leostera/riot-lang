@@ -15,7 +15,7 @@ use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeAnnotation,
     AstTypeBody, TextSpan,
 };
-use crate::diagnostic::to_source_diagnostic;
+use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
 use crate::infer::module::ModuleInferencer;
 use crate::ir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::signature::{
@@ -69,9 +69,7 @@ impl<'a> Checker<'a> {
                     .span()
                     .or_else(|| first_decl_span(&program))
                     .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
-                to_source_diagnostic(
-                    self.source_path,
-                    self.source,
+                SourceDiagnostics::new(self.source_path, self.source).at(
                     span,
                     "type inference failed",
                     error.to_string(),
@@ -115,6 +113,18 @@ struct ValidationContext<'a> {
     record_shapes: HashMap<String, RecordShape>,
     record_shapes_by_type: BTreeMap<TypeName, RecordShape>,
     imports: &'a ImportedSignatures,
+}
+
+impl<'a> ValidationContext<'a> {
+    fn diagnostic(
+        &self,
+        span: TextSpan,
+        message: impl Into<String>,
+        label: impl Into<String>,
+        help: Option<&'static str>,
+    ) -> SourceDiagnostic {
+        SourceDiagnostics::new(self.source_path, self.source).at(span, message, label, help)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -172,58 +182,54 @@ fn validate_program(
 
     if main_decls.len() > 1 {
         let duplicate = main_decls[1];
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            duplicate.span,
-            "duplicate main function",
-            "stage0 requires a single main function per file",
-            Some("keep only one `fn main() { ... }`"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                duplicate.span,
+                "duplicate main function",
+                "stage0 requires a single main function per file",
+                Some("keep only one `fn main() { ... }`"),
+            )
+            .into());
     }
 
     if mode == CheckMode::Executable && main_decls.is_empty() {
         let span =
             first_decl_span(program).unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            span,
-            "missing main function",
-            "stage0 compile requires one entrypoint named main",
-            Some("add: fn main() { dbg(\"hello world\") }"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                span,
+                "missing main function",
+                "stage0 compile requires one entrypoint named main",
+                Some("add: fn main() { dbg(\"hello world\") }"),
+            )
+            .into());
     }
 
     for decl in &program.decls {
         match decl {
             AstDecl::Use(use_) => {
                 if !imports.contains_key(use_.name.as_str()) {
-                    return Err(to_source_diagnostic(
-                        source_path,
-                        source,
-                        use_.name_span,
-                        "missing imported signature",
-                        format!("`use {}` did not resolve to a signature", use_.name),
-                        Some("pass --sig-dir with the directory containing the .rsig file"),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            use_.name_span,
+                            "missing imported signature",
+                            format!("`use {}` did not resolve to a signature", use_.name),
+                            Some("pass --sig-dir with the directory containing the .rsig file"),
+                        )
+                        .into());
                 }
             }
             AstDecl::Module(_) | AstDecl::Include(_) => {}
             AstDecl::External(external) => {
                 if external.type_text.trim().is_empty() {
-                    return Err(to_source_diagnostic(
-                        source_path,
-                        source,
-                        external.type_span,
-                        "empty external type",
-                        "external declarations need a source-level type",
-                        Some("try: external println : string -> unit = \"riot_prim_println\""),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            external.type_span,
+                            "empty external type",
+                            "external declarations need a source-level type",
+                            Some("try: external println : string -> unit = \"riot_prim_println\""),
+                        )
+                        .into());
                 }
                 validate_source_type_spelling(
                     ctx.source_path,
@@ -235,15 +241,14 @@ fn validate_program(
             AstDecl::Type(type_) => {
                 if matches!(&type_.body, AstTypeBody::Variant { constructors } if constructors.is_empty())
                 {
-                    return Err(to_source_diagnostic(
-                        source_path,
-                        source,
-                        type_.name_span,
-                        "empty variant type",
-                        "variant types need at least one constructor",
-                        Some("try: type color = Red | Green | Blue"),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            type_.name_span,
+                            "empty variant type",
+                            "variant types need at least one constructor",
+                            Some("try: type color = Red | Green | Blue"),
+                        )
+                        .into());
                 }
                 validate_type_decl_spelling(&ctx, type_)?;
             }
@@ -303,27 +308,26 @@ fn validate_source_type_spelling(
     span: TextSpan,
     text: &str,
 ) -> miette::Result<()> {
+    let diagnostics = SourceDiagnostics::new(source_path, source);
     if type_text_has_token(text, "string") {
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            span,
-            "invalid type spelling",
-            "`string` is not a source-level type name",
-            Some("use `String`"),
-        )
-        .into());
+        return Err(diagnostics
+            .at(
+                span,
+                "invalid type spelling",
+                "`string` is not a source-level type name",
+                Some("use `String`"),
+            )
+            .into());
     }
     if text.contains(" list") {
-        return Err(to_source_diagnostic(
-            source_path,
-            source,
-            span,
-            "invalid list type spelling",
-            "postfix `list` types are not supported",
-            Some("use `List<T>`"),
-        )
-        .into());
+        return Err(diagnostics
+            .at(
+                span,
+                "invalid list type spelling",
+                "postfix `list` types are not supported",
+                Some("use `List<T>`"),
+            )
+            .into());
     }
     Ok(())
 }
@@ -359,43 +363,40 @@ fn validate_main_function_signature(
         [] => {}
         [_] => {
             let Some(Some(annotation)) = function.param_types.first() else {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    function.name_span,
-                    "main argument type is missing",
-                    "main arguments must be annotated as `List<String>`",
-                    Some("try: fn main(args: List<String>) -> i32 { 0 }"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        function.name_span,
+                        "main argument type is missing",
+                        "main arguments must be annotated as `List<String>`",
+                        Some("try: fn main(args: List<String>) -> i32 { 0 }"),
+                    )
+                    .into());
             };
             let actual = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
             let expected = RsigType::List(Box::new(RsigType::String));
             if actual != expected {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    annotation.span,
-                    "invalid main argument type",
-                    format!(
-                        "expected `List<String>`, but found `{}`",
-                        actual.canonical()
-                    ),
-                    Some("try: fn main(args: List<String>) -> i32 { 0 }"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        annotation.span,
+                        "invalid main argument type",
+                        format!(
+                            "expected `List<String>`, but found `{}`",
+                            actual.canonical()
+                        ),
+                        Some("try: fn main(args: List<String>) -> i32 { 0 }"),
+                    )
+                    .into());
             }
         }
         _ => {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                function.name_span,
-                "main function has too many parameters",
-                "stage0 supports at most one main argument list",
-                Some("try: fn main(args: List<String>) -> i32 { 0 }"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    function.name_span,
+                    "main function has too many parameters",
+                    "stage0 supports at most one main argument list",
+                    Some("try: fn main(args: List<String>) -> i32 { 0 }"),
+                )
+                .into());
         }
     }
 
@@ -407,18 +408,17 @@ fn validate_main_function_signature(
         return Ok(());
     }
 
-    Err(to_source_diagnostic(
-        ctx.source_path,
-        ctx.source,
-        annotation.span,
-        "invalid main return type",
-        format!(
-            "main can return `unit`, `i32`, or `Result<(), i32>`, but this annotation is `{}`",
-            result.canonical()
-        ),
-        Some("use `-> i32` when main should control the process exit code"),
-    )
-    .into())
+    Err(ctx
+        .diagnostic(
+            annotation.span,
+            "invalid main return type",
+            format!(
+                "main can return `unit`, `i32`, or `Result<(), i32>`, but this annotation is `{}`",
+                result.canonical()
+            ),
+            Some("use `-> i32` when main should control the process exit code"),
+        )
+        .into())
 }
 
 fn is_main_result_exit_type(type_: &RsigType) -> bool {
@@ -807,15 +807,14 @@ fn validate_block(
     }
 
     if is_main && output_actions == 0 && actor_actions == 0 {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            block.span,
-            "unsupported main body",
-            "stage0 expects main to produce output or actor actions",
-            Some("try: fn main() { dbg(\"hello world\") }"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                block.span,
+                "unsupported main body",
+                "stage0 expects main to produce output or actor actions",
+                Some("try: fn main() { dbg(\"hello world\") }"),
+            )
+            .into());
     }
 
     Ok(())
@@ -897,36 +896,33 @@ fn validate_expr(
         AstExpr::Call { callee, args, span } => {
             if let [module, name] = callee.segments.as_slice() {
                 let Some(rsig) = ctx.imports.get(module.as_str()) else {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *span,
-                        "unknown imported module",
-                        format!("`{module}` has not been brought into scope with `use {module}`"),
-                        Some("add a top-level `use` declaration and pass --sig-dir"),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            *span,
+                            "unknown imported module",
+                            format!(
+                                "`{module}` has not been brought into scope with `use {module}`"
+                            ),
+                            Some("add a top-level `use` declaration and pass --sig-dir"),
+                        )
+                        .into());
                 };
                 if let Some(shape) = imported_constructor_shape(ctx, module, name) {
                     validate_constructor_call(ctx, *span, name, &shape, args, bindings, in_actor)?;
                     return Ok(ExprCategory::Other);
                 }
                 let Some(export) = rsig.find(name) else {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *span,
-                        "unknown imported value",
-                        format!("module `{module}` does not export `{name}`"),
-                        Some("check the producer .rsig"),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            *span,
+                            "unknown imported value",
+                            format!("module `{module}` does not export `{name}`"),
+                            Some("check the producer .rsig"),
+                        )
+                        .into());
                 };
                 if export_has_unknown_abi(export) {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *span,
+                    return Err(ctx.diagnostic(*span,
                         "imported value has unknown ABI",
                         format!(
                             "module `{module}` exports `{name}`, but its .rsig type is not concrete enough to call"
@@ -942,15 +938,14 @@ fn validate_expr(
             }
 
             let [name] = callee.segments.as_slice() else {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "unsupported path call",
-                    "stage0 only supports local calls and qualified module calls",
-                    Some("try: Module.value(...)"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "unsupported path call",
+                        "stage0 only supports local calls and qualified module calls",
+                        Some("try: Module.value(...)"),
+                    )
+                    .into());
             };
 
             match name.as_str() {
@@ -1088,15 +1083,14 @@ fn validate_expr(
                     }
                     Ok(ExprCategory::Other)
                 }
-                _ => Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "unsupported function call",
-                    format!("stage0 does not know `{name}`"),
-                    Some("try: dbg(\"hello world\")"),
-                )
-                .into()),
+                _ => Err(ctx
+                    .diagnostic(
+                        *span,
+                        "unsupported function call",
+                        format!("stage0 does not know `{name}`"),
+                        Some("try: dbg(\"hello world\")"),
+                    )
+                    .into()),
             }
         }
         AstExpr::Apply { callee, args, .. } => {
@@ -1120,15 +1114,14 @@ fn validate_expr(
             validate_actor_block(ctx, body, bindings)?;
             Ok(ExprCategory::Actor)
         }
-        AstExpr::Receive { span, .. } if !in_actor => Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            *span,
-            "receive outside spawn",
-            "`receive` is only valid inside an actor body",
-            Some("wrap the receive in `spawn { ... }`"),
-        )
-        .into()),
+        AstExpr::Receive { span, .. } if !in_actor => Err(ctx
+            .diagnostic(
+                *span,
+                "receive outside spawn",
+                "`receive` is only valid inside an actor body",
+                Some("wrap the receive in `spawn { ... }`"),
+            )
+            .into()),
         AstExpr::Receive { arms, .. } => {
             validate_receive_arms(ctx, arms, bindings)?;
             Ok(ExprCategory::Actor)
@@ -1141,19 +1134,18 @@ fn validate_expr(
             if let (Some(lhs_type), Some(rhs_type)) = (lhs_type, rhs_type)
                 && !type_matches(&lhs_type, &rhs_type)
             {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "equality operands have different types",
-                    format!(
-                        "left side has type `{}`, but right side has type `{}`",
-                        lhs_type.canonical(),
-                        rhs_type.canonical()
-                    ),
-                    Some("compare values with the same type"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "equality operands have different types",
+                        format!(
+                            "left side has type `{}`, but right side has type `{}`",
+                            lhs_type.canonical(),
+                            rhs_type.canonical()
+                        ),
+                        Some("compare values with the same type"),
+                    )
+                    .into());
             }
             Ok(ExprCategory::Other)
         }
@@ -1167,10 +1159,7 @@ fn validate_expr(
                     && matches!(rhs_type, RsigType::I64 | RsigType::String)
                     && type_matches(&lhs_type, &rhs_type);
                 if !comparable {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *span,
+                    return Err(ctx.diagnostic(*span,
                         "ordering operands are not comparable",
                         format!(
                             "left side has type `{}`, but right side has type `{}`",
@@ -1217,27 +1206,25 @@ fn validate_expr(
         } => {
             validate_expr(ctx, scrutinee, bindings, in_actor)?;
             if arms.is_empty() {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "empty match expression",
-                    "match expressions need at least one arm",
-                    Some("add a wildcard arm like `_ -> value`"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "empty match expression",
+                        "match expressions need at least one arm",
+                        Some("add a wildcard arm like `_ -> value`"),
+                    )
+                    .into());
             };
             let scrutinee_type = simple_expr_type(ctx, scrutinee, bindings);
             if !match_is_exhaustive(ctx, arms, scrutinee_type.as_ref()) {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "non-exhaustive match expression",
-                    "the match arms do not cover every value of the scrutinee type",
-                    Some("add the missing constructors, list cases, or a final `_ -> ...` arm"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "non-exhaustive match expression",
+                        "the match arms do not cover every value of the scrutinee type",
+                        Some("add the missing constructors, list cases, or a final `_ -> ...` arm"),
+                    )
+                    .into());
             }
             for arm in arms {
                 validate_pattern(ctx, &arm.pattern, scrutinee_type.as_ref())?;
@@ -1270,18 +1257,17 @@ fn validate_expr(
             if let AstExpr::Tuple { items, .. } = base.as_ref()
                 && *index >= items.len()
             {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "tuple projection is out of bounds",
-                    format!(
-                        "tuple has {} item(s), but projection requested index {index}",
-                        items.len()
-                    ),
-                    Some("use a tuple projection index that exists"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "tuple projection is out of bounds",
+                        format!(
+                            "tuple has {} item(s), but projection requested index {index}",
+                            items.len()
+                        ),
+                        Some("use a tuple projection index that exists"),
+                    )
+                    .into());
             }
             Ok(ExprCategory::Other)
         }
@@ -1297,17 +1283,16 @@ fn validate_expr(
                             .is_some_and(|constructor| constructor.payload.is_empty()) => {}
                 [module, name] => {
                     let Some(rsig) = ctx.imports.get(module.as_str()) else {
-                        return Err(to_source_diagnostic(
-                            ctx.source_path,
-                            ctx.source,
-                            *span,
-                            "unknown imported module",
-                            format!(
-                                "`{module}` has not been brought into scope with `use {module}`"
-                            ),
-                            Some("add a top-level `use` declaration and pass --sig-dir"),
-                        )
-                        .into());
+                        return Err(ctx
+                            .diagnostic(
+                                *span,
+                                "unknown imported module",
+                                format!(
+                                    "`{module}` has not been brought into scope with `use {module}`"
+                                ),
+                                Some("add a top-level `use` declaration and pass --sig-dir"),
+                            )
+                            .into());
                     };
                     let Some(export) = rsig.find(name) else {
                         if imported_constructor_shape(ctx, module, name)
@@ -1315,21 +1300,17 @@ fn validate_expr(
                         {
                             return Ok(ExprCategory::Other);
                         }
-                        return Err(to_source_diagnostic(
-                            ctx.source_path,
-                            ctx.source,
-                            *span,
-                            "unknown imported value",
-                            format!("module `{module}` does not export `{name}`"),
-                            Some("check the producer .rsig"),
-                        )
-                        .into());
+                        return Err(ctx
+                            .diagnostic(
+                                *span,
+                                "unknown imported value",
+                                format!("module `{module}` does not export `{name}`"),
+                                Some("check the producer .rsig"),
+                            )
+                            .into());
                     };
                     if export_has_unknown_abi(export) {
-                        return Err(to_source_diagnostic(
-                            ctx.source_path,
-                            ctx.source,
-                            *span,
+                        return Err(ctx.diagnostic(*span,
                             "imported value has unknown ABI",
                             format!(
                                 "module `{module}` exports `{name}`, but its .rsig type is not concrete enough to use as a value"
@@ -1340,15 +1321,14 @@ fn validate_expr(
                     }
                 }
                 [head, ..] => {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        *span,
-                        "unknown value",
-                        format!("`{head}` is not bound in this scope"),
-                        Some("bind the value with `let` before using it"),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            *span,
+                            "unknown value",
+                            format!("`{head}` is not bound in this scope"),
+                            Some("bind the value with `let` before using it"),
+                        )
+                        .into());
                 }
                 [] => {}
             }
@@ -1541,31 +1521,29 @@ fn validate_pattern(
     } = pattern
     {
         let Some(constructor) = pattern_constructor_shape(ctx, path) else {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                *span,
-                "unknown variant constructor",
-                format!("`{}` is not a known constructor", path.segments.join(".")),
-                Some("declare the constructor with a top-level `type` declaration"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    *span,
+                    "unknown variant constructor",
+                    format!("`{}` is not a known constructor", path.segments.join(".")),
+                    Some("declare the constructor with a top-level `type` declaration"),
+                )
+                .into());
         };
         if payload.len() != constructor.payload.len() {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                *span,
-                "variant payload pattern arity mismatch",
-                format!(
-                    "`{}` carries {} payload value(s), but this pattern has {}",
-                    path.segments.join("."),
-                    constructor.payload.len(),
-                    payload.len()
-                ),
-                Some("match the constructor with the same number of payload patterns"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    *span,
+                    "variant payload pattern arity mismatch",
+                    format!(
+                        "`{}` carries {} payload value(s), but this pattern has {}",
+                        path.segments.join("."),
+                        constructor.payload.len(),
+                        payload.len()
+                    ),
+                    Some("match the constructor with the same number of payload patterns"),
+                )
+                .into());
         }
         for (payload_pattern, payload_type) in payload.iter().zip(&constructor.payload) {
             validate_simple_payload_pattern(
@@ -1581,19 +1559,18 @@ fn validate_pattern(
         && let Some(RsigType::Tuple(types)) = scrutinee_type
     {
         if items.len() != types.len() {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                *span,
-                "tuple pattern arity mismatch",
-                format!(
-                    "matched tuple has {} item(s), but this pattern has {}",
-                    types.len(),
-                    items.len()
-                ),
-                Some("match the tuple with the same number of item patterns"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    *span,
+                    "tuple pattern arity mismatch",
+                    format!(
+                        "matched tuple has {} item(s), but this pattern has {}",
+                        types.len(),
+                        items.len()
+                    ),
+                    Some("match the tuple with the same number of item patterns"),
+                )
+                .into());
         }
         for (item, type_) in items.iter().zip(types) {
             validate_simple_payload_pattern(
@@ -1619,18 +1596,17 @@ fn validate_pattern(
         let item_type = match scrutinee_type {
             Some(RsigType::List(item)) => item.as_ref().clone(),
             Some(other) => {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    *span,
-                    "match pattern has incompatible type",
-                    format!(
-                        "list pattern expects a list, but the matched value has type `{}`",
-                        other.canonical()
-                    ),
-                    Some("match lists with `[]` or `[head, ..tail]`"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "match pattern has incompatible type",
+                        format!(
+                            "list pattern expects a list, but the matched value has type `{}`",
+                            other.canonical()
+                        ),
+                        Some("match lists with `[]` or `[head, ..tail]`"),
+                    )
+                    .into());
             }
             None => RsigType::Unknown,
         };
@@ -1647,15 +1623,14 @@ fn validate_pattern(
     }
     if let AstPattern::Record { path, fields, span } = pattern {
         let Some(shape) = record_shape_for_pattern(ctx, path) else {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                *span,
-                "unknown record pattern",
-                format!("`{}` is not a known record type", path.segments.join(".")),
-                Some("declare the record with a top-level `type` declaration"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    *span,
+                    "unknown record pattern",
+                    format!("`{}` is not a known record type", path.segments.join(".")),
+                    Some("declare the record with a top-level `type` declaration"),
+                )
+                .into());
         };
         let expected = shape
             .fields
@@ -1665,29 +1640,27 @@ fn validate_pattern(
         let mut seen = HashSet::new();
         for (field, field_pattern) in fields {
             if !seen.insert(field.as_str()) {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    pattern_span(field_pattern),
-                    "duplicate record pattern field",
-                    format!(
-                        "field `{field}` appears more than once in `{}`",
-                        shape.type_name
-                    ),
-                    Some("keep one pattern for each matched field"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        pattern_span(field_pattern),
+                        "duplicate record pattern field",
+                        format!(
+                            "field `{field}` appears more than once in `{}`",
+                            shape.type_name
+                        ),
+                        Some("keep one pattern for each matched field"),
+                    )
+                    .into());
             }
             let Some(expected_type) = expected.get(field.as_str()) else {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    pattern_span(field_pattern),
-                    "unknown record pattern field",
-                    format!("`{}` has no field named `{field}`", shape.type_name),
-                    Some("use one of the fields declared on this record type"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        pattern_span(field_pattern),
+                        "unknown record pattern field",
+                        format!("`{}` has no field named `{field}`", shape.type_name),
+                        Some("use one of the fields declared on this record type"),
+                    )
+                    .into());
             };
             validate_simple_payload_pattern(
                 ctx,
@@ -1707,19 +1680,18 @@ fn validate_pattern(
     if type_matches(&expected, actual) {
         return Ok(());
     }
-    Err(to_source_diagnostic(
-        ctx.source_path,
-        ctx.source,
-        pattern_span(pattern),
-        "match pattern has incompatible type",
-        format!(
-            "pattern has type `{}`, but the matched value has type `{}`",
-            expected.canonical(),
-            actual.canonical()
-        ),
-        Some("use patterns with the same type as the matched value"),
-    )
-    .into())
+    Err(ctx
+        .diagnostic(
+            pattern_span(pattern),
+            "match pattern has incompatible type",
+            format!(
+                "pattern has type `{}`, but the matched value has type `{}`",
+                expected.canonical(),
+                actual.canonical()
+            ),
+            Some("use patterns with the same type as the matched value"),
+        )
+        .into())
 }
 
 fn bind_pattern(
@@ -1899,10 +1871,7 @@ fn validate_simple_payload_pattern(
 ) -> miette::Result<()> {
     match pattern {
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => Ok(()),
-        _ => Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            pattern_span(pattern),
+        _ => Err(ctx.diagnostic(pattern_span(pattern),
             format!("unsupported {subject} pattern"),
             format!(
                 "stage0 can bind {subject}s of type `{}`, but cannot destructure nested {subject} patterns yet",
@@ -1969,18 +1938,17 @@ fn validate_call_arg_type(
     if accepts(&actual) {
         return Ok(());
     }
-    Err(to_source_diagnostic(
-        ctx.source_path,
-        ctx.source,
-        expr_span(arg),
-        format!("invalid {function_name} argument"),
-        format!(
-            "`{function_name}` expects `{expected}`, but this argument has type `{}`",
-            actual.canonical()
-        ),
-        Some("pass a value with the expected type"),
-    )
-    .into())
+    Err(ctx
+        .diagnostic(
+            expr_span(arg),
+            format!("invalid {function_name} argument"),
+            format!(
+                "`{function_name}` expects `{expected}`, but this argument has type `{}`",
+                actual.canonical()
+            ),
+            Some("pass a value with the expected type"),
+        )
+        .into())
 }
 
 fn validate_constructor_call(
@@ -2006,19 +1974,18 @@ fn validate_constructor_call(
         if let Some(actual) = simple_expr_type(ctx, arg, bindings)
             && !type_matches(expected, &actual)
         {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                expr_span(arg),
-                "variant payload type mismatch",
-                format!(
-                    "`{constructor_name}` expects `{}`, but this payload has type `{}`",
-                    expected.canonical(),
-                    actual.canonical()
-                ),
-                Some("construct the variant with a payload of the declared type"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    expr_span(arg),
+                    "variant payload type mismatch",
+                    format!(
+                        "`{constructor_name}` expects `{}`, but this payload has type `{}`",
+                        expected.canonical(),
+                        actual.canonical()
+                    ),
+                    Some("construct the variant with a payload of the declared type"),
+                )
+                .into());
         }
     }
     Ok(())
@@ -2145,31 +2112,29 @@ fn validate_static_list_index(
         return Ok(());
     };
     if index_value < 0 {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            expr_span(index),
-            format!("{function_name} index is negative"),
-            "`list_get` indexes start at 0",
-            Some("use a non-negative index"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                expr_span(index),
+                format!("{function_name} index is negative"),
+                "`list_get` indexes start at 0",
+                Some("use a non-negative index"),
+            )
+            .into());
     }
     if let AstExpr::List { items, .. } = list
         && index_value as usize >= items.len()
     {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            span,
-            format!("{function_name} index out of bounds"),
-            format!(
-                "`list_get` index {index_value} is outside this list of length {}",
-                items.len()
-            ),
-            Some("use an index that exists in the list"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                span,
+                format!("{function_name} index out of bounds"),
+                format!(
+                    "`list_get` index {index_value} is outside this list of length {}",
+                    items.len()
+                ),
+                Some("use an index that exists in the list"),
+            )
+            .into());
     }
     Ok(())
 }
@@ -2193,59 +2158,55 @@ fn validate_record_literal_shape(
     let mut seen = HashSet::new();
     for (name, value) in fields {
         if !seen.insert(name.as_str()) {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                expr_span(value),
-                "duplicate record field",
-                format!(
-                    "field `{name}` appears more than once in `{}`",
-                    shape.type_name
-                ),
-                Some("keep one value for each declared field"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    expr_span(value),
+                    "duplicate record field",
+                    format!(
+                        "field `{name}` appears more than once in `{}`",
+                        shape.type_name
+                    ),
+                    Some("keep one value for each declared field"),
+                )
+                .into());
         }
         let Some(expected_type) = expected.get(name.as_str()) else {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                expr_span(value),
-                "unknown record field",
-                format!("`{}` has no field named `{name}`", shape.type_name),
-                Some("use one of the fields declared on the record type"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    expr_span(value),
+                    "unknown record field",
+                    format!("`{}` has no field named `{name}`", shape.type_name),
+                    Some("use one of the fields declared on the record type"),
+                )
+                .into());
         };
         if let Some(actual_type) = simple_expr_type(ctx, value, bindings)
             && !type_matches(expected_type, &actual_type)
         {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                expr_span(value),
-                "record field type mismatch",
-                format!(
-                    "field `{name}` expects `{}`, but this value has type `{}`",
-                    expected_type.canonical(),
-                    actual_type.canonical()
-                ),
-                Some("provide a value with the declared field type"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    expr_span(value),
+                    "record field type mismatch",
+                    format!(
+                        "field `{name}` expects `{}`, but this value has type `{}`",
+                        expected_type.canonical(),
+                        actual_type.canonical()
+                    ),
+                    Some("provide a value with the declared field type"),
+                )
+                .into());
         }
     }
     for (name, _type_) in &shape.fields {
         if !seen.contains(name.as_str()) {
-            return Err(to_source_diagnostic(
-                ctx.source_path,
-                ctx.source,
-                span,
-                "missing record field",
-                format!("`{}` requires field `{name}`", shape.type_name),
-                Some("initialize every field declared on the record type"),
-            )
-            .into());
+            return Err(ctx
+                .diagnostic(
+                    span,
+                    "missing record field",
+                    format!("`{}` requires field `{name}`", shape.type_name),
+                    Some("initialize every field declared on the record type"),
+                )
+                .into());
         }
     }
     Ok(())
@@ -2271,15 +2232,14 @@ fn validate_declared_record_field(
     {
         return Ok(());
     }
-    Err(to_source_diagnostic(
-        ctx.source_path,
-        ctx.source,
-        span,
-        "unknown record field",
-        format!("`{}` has no field named `{field}`", shape.type_name),
-        Some("use one of the fields declared on the record type"),
-    )
-    .into())
+    Err(ctx
+        .diagnostic(
+            span,
+            "unknown record field",
+            format!("`{}` has no field named `{field}`", shape.type_name),
+            Some("use one of the fields declared on the record type"),
+        )
+        .into())
 }
 
 fn record_literal_type(ctx: &ValidationContext<'_>, path: &AstPath) -> RsigType {
@@ -2315,15 +2275,14 @@ fn validate_actor_block(
                 ..
             } => {
                 if type_annotation.is_some() {
-                    return Err(to_source_diagnostic(
-                        ctx.source_path,
-                        ctx.source,
-                        expr_span(value),
-                        "unsupported actor local annotation",
-                        "stage0 actor locals do not support type annotations yet",
-                        Some("omit the annotation"),
-                    )
-                    .into());
+                    return Err(ctx
+                        .diagnostic(
+                            expr_span(value),
+                            "unsupported actor local annotation",
+                            "stage0 actor locals do not support type annotations yet",
+                            Some("omit the annotation"),
+                        )
+                        .into());
                 }
                 if let AstExpr::Spawn { body, .. } = value {
                     validate_actor_block(ctx, body, &bindings)?;
@@ -2355,15 +2314,14 @@ fn validate_actor_block(
     }
 
     if !has_receive {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            block.span,
-            "actor body never receives",
-            "stage0 actors must contain at least one receive point",
-            Some("try: spawn { receive { msg -> dbg(msg) } }"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                block.span,
+                "actor body never receives",
+                "stage0 actors must contain at least one receive point",
+                Some("try: spawn { receive { msg -> dbg(msg) } }"),
+            )
+            .into());
     }
 
     Ok(())
@@ -2397,26 +2355,24 @@ fn validate_actor_target(
         match bindings.get(name) {
             Some(BindingKind::Actor) => return Ok(()),
             None => {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    span,
-                    format!("{operation} target is unknown"),
-                    format!("`{name}` is not bound in this scope"),
-                    Some("send to the result of `spawn { ... }`"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        span,
+                        format!("{operation} target is unknown"),
+                        format!("`{name}` is not bound in this scope"),
+                        Some("send to the result of `spawn { ... }`"),
+                    )
+                    .into());
             }
             Some(BindingKind::Value(_)) => {
-                return Err(to_source_diagnostic(
-                    ctx.source_path,
-                    ctx.source,
-                    span,
-                    format!("{operation} target is not an actor"),
-                    format!("`{name}` is a value, not an actor id"),
-                    Some("send to the result of `spawn { ... }`"),
-                )
-                .into());
+                return Err(ctx
+                    .diagnostic(
+                        span,
+                        format!("{operation} target is not an actor"),
+                        format!("`{name}` is a value, not an actor id"),
+                        Some("send to the result of `spawn { ... }`"),
+                    )
+                    .into());
             }
         }
     }
@@ -2438,15 +2394,14 @@ fn validate_type_annotation(
     )?;
     if annotation.text == "float" {
         let error = parse_primitive_type(&annotation.text).unwrap_err();
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            annotation.span,
-            "unsupported type annotation",
-            error.message,
-            error.help,
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                annotation.span,
+                "unsupported type annotation",
+                error.message,
+                error.help,
+            )
+            .into());
     }
 
     if parse_primitive_type(&annotation.text).is_err()
@@ -2463,19 +2418,18 @@ fn validate_type_annotation(
         if type_matches(&expected, &value_type) {
             return Ok(());
         }
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            annotation.span,
-            "type annotation does not match value",
-            format!(
-                "expected `{}`, but this binding has type `{}`",
-                expected.canonical(),
-                value_type.canonical()
-            ),
-            Some("change the annotation or the value"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                annotation.span,
+                "type annotation does not match value",
+                format!(
+                    "expected `{}`, but this binding has type `{}`",
+                    expected.canonical(),
+                    value_type.canonical()
+                ),
+                Some("change the annotation or the value"),
+            )
+            .into());
     }
 
     Ok(())
@@ -2509,19 +2463,18 @@ fn validate_function_annotations(
     if let Some(actual) = actual
         && !type_matches(&expected, &actual)
     {
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            return_annotation.span,
-            "function return type does not match body",
-            format!(
-                "expected `{}`, but this function body has type `{}`",
-                expected.canonical(),
-                actual.canonical()
-            ),
-            Some("change the return annotation or the function body"),
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                return_annotation.span,
+                "function return type does not match body",
+                format!(
+                    "expected `{}`, but this function body has type `{}`",
+                    expected.canonical(),
+                    actual.canonical()
+                ),
+                Some("change the return annotation or the function body"),
+            )
+            .into());
     }
 
     Ok(())
@@ -2539,15 +2492,14 @@ fn validate_function_abi_annotation(
     )?;
     if annotation.text == "float" {
         let error = parse_primitive_type(&annotation.text).unwrap_err();
-        return Err(to_source_diagnostic(
-            ctx.source_path,
-            ctx.source,
-            annotation.span,
-            "unsupported function ABI annotation",
-            error.message,
-            error.help,
-        )
-        .into());
+        return Err(ctx
+            .diagnostic(
+                annotation.span,
+                "unsupported function ABI annotation",
+                error.message,
+                error.help,
+            )
+            .into());
     }
 
     let type_ = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
@@ -2569,10 +2521,7 @@ fn validate_function_abi_annotation(
         return Ok(());
     }
 
-    Err(to_source_diagnostic(
-        ctx.source_path,
-        ctx.source,
-        annotation.span,
+    Err(ctx.diagnostic(annotation.span,
         "unsupported function ABI annotation",
         format!(
             "`{}` is not supported for native Riot function parameters or returns yet",
@@ -3068,9 +3017,7 @@ fn call_arity_error(
     expected: usize,
     actual: usize,
 ) -> miette::Report {
-    to_source_diagnostic(
-        ctx.source_path,
-        ctx.source,
+    ctx.diagnostic(
         span,
         format!("{name} expects {expected} argument(s)"),
         format!("found {actual} argument(s)"),

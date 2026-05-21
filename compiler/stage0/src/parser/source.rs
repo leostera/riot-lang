@@ -1,7 +1,7 @@
 use camino::Utf8Path;
 
 use crate::ast::AstProgram;
-use crate::diagnostic::to_source_diagnostic;
+use crate::diagnostic::SourceDiagnostics;
 use crate::lexer::Lexer;
 
 use super::Parser;
@@ -15,10 +15,9 @@ impl SourceParser {
     }
 
     pub(crate) fn parse(&self, source_path: &Utf8Path, source: &str) -> miette::Result<AstProgram> {
+        let diagnostics = SourceDiagnostics::new(source_path, source);
         let tokens = Lexer::new().lex(source).map_err(|error| {
-            to_source_diagnostic(
-                source_path,
-                source,
+            diagnostics.at(
                 error.span,
                 "could not lex Riot ML source",
                 error.message,
@@ -29,15 +28,14 @@ impl SourceParser {
         Parser::new(source, tokens)
             .parse_program()
             .map_err(|error| {
-                to_source_diagnostic(
-                    source_path,
-                    source,
-                    error.span,
-                    "could not parse Riot ML source",
-                    error.message,
-                    error.help,
-                )
-                .into()
+                diagnostics
+                    .at(
+                        error.span,
+                        "could not parse Riot ML source",
+                        error.message,
+                        error.help,
+                    )
+                    .into()
             })
     }
 }
