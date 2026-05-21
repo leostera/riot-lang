@@ -246,7 +246,10 @@ impl<'src> Parser<'src> {
                     help: Some("type parameters start with `'`, for example `'value`"),
                 });
             }
-            params.push(AstTypeParam { name });
+            params.push(AstTypeParam {
+                name,
+                span: token.span,
+            });
             if self.match_kind(TokenKind::Comma).is_none() {
                 break;
             }

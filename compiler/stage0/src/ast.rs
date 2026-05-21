@@ -71,6 +71,7 @@ pub(crate) struct AstTypeDecl {
 #[derive(Debug, Clone)]
 pub(crate) struct AstTypeParam {
     pub(crate) name: String,
+    pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]

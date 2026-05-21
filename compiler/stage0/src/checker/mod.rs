@@ -373,6 +373,18 @@ fn validate_unique_top_level_names(
                     "this type name is already declared in this module",
                     "choose a unique type name for each type declaration",
                 )?;
+                let mut type_params = HashMap::<String, TextSpan>::new();
+                for param in &type_.params {
+                    reject_duplicate_name(
+                        diagnostics,
+                        &mut type_params,
+                        param.name.clone(),
+                        param.span,
+                        "duplicate type parameter",
+                        "this type parameter name is already used by this type",
+                        "choose a unique name for each type parameter",
+                    )?;
+                }
                 match &type_.body {
                     AstTypeBody::Variant { constructors: variant_constructors } => {
                         for constructor in variant_constructors {
