@@ -18,10 +18,250 @@ use crate::runtime::{build_runtime, find_repo_root};
 use crate::signature::{ImportedSignatures, ModuleName, resolve_rsig, write_rsig};
 
 pub(crate) fn run(cli: Cli) -> miette::Result<()> {
-    match cli.command {
-        Command::Compile(args) => compile(args),
-        Command::CompileLib(args) => compile_lib(args),
-        Command::Emit(args) => emit(args),
+    Stage0Driver::new().run(cli)
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct Stage0Driver;
+
+impl Stage0Driver {
+    pub(crate) fn new() -> Self {
+        Self
+    }
+
+    pub(crate) fn run(&self, cli: Cli) -> miette::Result<()> {
+        match cli.command {
+            Command::Compile(args) => self.compile(args),
+            Command::CompileLib(args) => self.compile_lib(args),
+            Command::Emit(args) => self.emit(args),
+        }
+    }
+
+    fn compile(&self, args: CompileArgs) -> miette::Result<()> {
+        let units = parse_source_units(&args.inputs)?;
+        if units.len() > 1 && args.emit_llvm.is_some() {
+            bail!("--emit-llvm is only supported with a single compile input for now");
+        }
+        let main_index = if units.len() == 1 {
+            0
+        } else {
+            executable_unit_index(&units)?
+        };
+        if units.len() > 1 {
+            ensure_no_module_depends_on_entrypoint(&units, main_index)?;
+        }
+        let order = topological_source_order(&units)?;
+
+        let repo = find_repo_root()?;
+        let runtime = build_runtime(&repo)?;
+        let temps = TempDir::new()
+            .into_diagnostic()
+            .wrap_err("failed to create stage0 temp directory")?;
+        let temp_dir = Utf8PathBuf::from_path_buf(temps.path().to_path_buf())
+            .map_err(|path| miette::miette!("temp path is not utf-8: {}", path.display()))?;
+        let mut compiled = ImportedSignatures::new();
+        let mut compiled_objects = BTreeMap::new();
+
+        for index in order {
+            if index == main_index {
+                continue;
+            }
+            let artifact = self.compile_module_unit(
+                &units[index],
+                &compiled,
+                &args.sig_dirs,
+                &temp_dir,
+                None,
+            )?;
+            compiled_objects.insert(units[index].module_name.clone(), artifact.object);
+            compiled.insert(units[index].module_name.clone(), artifact.signature);
+        }
+
+        let main_imports = resolve_imports(
+            &units[main_index].path,
+            &units[main_index].ast,
+            &args.sig_dirs,
+            &compiled,
+        )?;
+        let checked = Checker::new(
+            &units[main_index].path,
+            &units[main_index].source,
+            units[main_index].module_name.clone(),
+            &main_imports,
+            CheckMode::Executable,
+        )
+        .check(units[main_index].ast.clone())?;
+        let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+
+        let object = temp_dir.join("main.o");
+        emit_executable_object(&rir, &main_imports, &object, args.emit_llvm.as_deref())?;
+
+        let imported_objects = resolve_imported_objects(
+            &rir.uses,
+            &main_imports,
+            &compiled_objects,
+            &args.objects,
+            &args.object_dirs,
+        )?;
+        let imported_objects = Self::with_compiled_objects(imported_objects, &compiled_objects);
+        link_executable(&object, &imported_objects, &runtime, &args.output)?;
+
+        Ok(())
+    }
+
+    fn with_compiled_objects(
+        mut objects: Vec<Utf8PathBuf>,
+        compiled_objects: &BTreeMap<ModuleName, Utf8PathBuf>,
+    ) -> Vec<Utf8PathBuf> {
+        for object in compiled_objects.values() {
+            if !objects.iter().any(|existing| existing == object) {
+                objects.push(object.clone());
+            }
+        }
+        objects
+    }
+
+    fn compile_lib(&self, args: CompileLibArgs) -> miette::Result<()> {
+        let units = parse_source_units(&args.inputs)?;
+        if units.len() > 1 && args.emit_llvm.is_some() {
+            bail!("--emit-llvm is only supported with a single compile-lib input for now");
+        }
+        std::fs::create_dir_all(args.out_dir.as_std_path())
+            .into_diagnostic()
+            .wrap_err_with(|| format!("failed to create {}", args.out_dir))?;
+        let order = topological_source_order(&units)?;
+        let mut compiled = ImportedSignatures::new();
+        for index in order {
+            let artifact = self.compile_module_unit(
+                &units[index],
+                &compiled,
+                &args.sig_dirs,
+                &args.out_dir,
+                args.emit_llvm.as_deref(),
+            )?;
+            compiled.insert(units[index].module_name.clone(), artifact.signature);
+        }
+
+        Ok(())
+    }
+
+    fn compile_module_unit(
+        &self,
+        unit: &SourceUnit,
+        available: &ImportedSignatures,
+        sig_dirs: &[Utf8PathBuf],
+        out_dir: &Utf8Path,
+        emit_llvm: Option<&Utf8Path>,
+    ) -> miette::Result<CompiledModule> {
+        let imports = resolve_imports(&unit.path, &unit.ast, sig_dirs, available)?;
+        let checked = Checker::new(
+            &unit.path,
+            &unit.source,
+            unit.module_name.clone(),
+            &imports,
+            CheckMode::Interface,
+        )
+        .check(unit.ast.clone())?;
+        let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+        let rsig_path = out_dir.join(format!("{}.rsig", unit.module_name));
+        let object_path = out_dir.join(format!("{}.o", unit.module_name));
+        write_rsig(&rsig_path, &checked.signature)?;
+        emit_module_object(&rir, &imports, &object_path, emit_llvm)?;
+
+        Ok(CompiledModule {
+            signature: checked.signature,
+            object: object_path,
+        })
+    }
+
+    fn emit(&self, args: EmitArgs) -> miette::Result<()> {
+        let source = load_source(&args.input)?;
+        let ast = parse_source(&args.input, &source)?;
+        let imports = resolve_imports(
+            &args.input,
+            &ast,
+            &args.sig_dirs,
+            &ImportedSignatures::new(),
+        )?;
+        let module_name = module_name_from_path(&args.input)?;
+        let checked = Checker::new(
+            &args.input,
+            &source,
+            module_name,
+            &imports,
+            CheckMode::Interface,
+        )
+        .check(ast.clone())?;
+
+        match args.pass {
+            EmitPass::Cst => write_text(args.output.as_deref(), &format!("{ast:#?}")),
+            EmitPass::Typed => write_text(
+                args.output.as_deref(),
+                &format!("{:#?}", checked.typed_tree),
+            ),
+            EmitPass::Rsig => {
+                let output = args
+                    .output
+                    .unwrap_or_else(|| args.input.with_extension("rsig"));
+                write_rsig(&output, &checked.signature)
+            }
+            EmitPass::Ir => {
+                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                write_text(args.output.as_deref(), &format!("{rir:#?}"))
+            }
+            EmitPass::ActorIr => {
+                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
+                write_text(args.output.as_deref(), &format!("{actor_ir:#?}"))
+            }
+            EmitPass::Llvm => {
+                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                write_text(
+                    args.output.as_deref(),
+                    &emit_llvm_text(&rir, &imports, Self::emit_mode_for(&rir))?,
+                )
+            }
+            EmitPass::Assembly => {
+                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                write_text(
+                    args.output.as_deref(),
+                    &emit_assembly_text(&rir, &imports, Self::emit_mode_for(&rir))?,
+                )
+            }
+            EmitPass::Object => {
+                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let output = args
+                    .output
+                    .unwrap_or_else(|| args.input.with_extension("o"));
+                emit_module_object(&rir, &imports, &output, None)
+            }
+            EmitPass::All => {
+                let rir = LambdaSimplifier::new().simplify(checked.typed_tree.clone());
+                let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
+                let mut text = String::new();
+                text.push_str("== cst ==\n");
+                text.push_str(&format!("{ast:#?}\n"));
+                text.push_str("== typed ==\n");
+                text.push_str(&format!("{:#?}\n", checked.typed_tree));
+                text.push_str("== rsig ==\n");
+                text.push_str(&checked.signature.canonical_text());
+                text.push_str("== ir ==\n");
+                text.push_str(&format!("{rir:#?}\n"));
+                text.push_str("== actor-ir ==\n");
+                text.push_str(&format!("{actor_ir:#?}\n"));
+                text.push_str("== llvm ==\n");
+                text.push_str(&emit_llvm_text(&rir, &imports, Self::emit_mode_for(&rir))?);
+                write_text(args.output.as_deref(), &text)
+            }
+        }
+    }
+
+    fn emit_mode_for(rir: &crate::lambda::ir::RirProgram) -> CodegenMode {
+        if rir.functions.iter().any(|function| function.name == "main") {
+            CodegenMode::Executable
+        } else {
+            CodegenMode::Module
+        }
     }
 }
 
@@ -36,227 +276,6 @@ struct SourceUnit {
 struct CompiledModule {
     signature: crate::signature::Rsig,
     object: Utf8PathBuf,
-}
-
-fn compile(args: CompileArgs) -> miette::Result<()> {
-    let units = parse_source_units(&args.inputs)?;
-    if units.len() > 1 && args.emit_llvm.is_some() {
-        bail!("--emit-llvm is only supported with a single compile input for now");
-    }
-    let main_index = if units.len() == 1 {
-        0
-    } else {
-        executable_unit_index(&units)?
-    };
-    if units.len() > 1 {
-        ensure_no_module_depends_on_entrypoint(&units, main_index)?;
-    }
-    let order = topological_source_order(&units)?;
-
-    let repo = find_repo_root()?;
-    let runtime = build_runtime(&repo)?;
-    let temps = TempDir::new()
-        .into_diagnostic()
-        .wrap_err("failed to create stage0 temp directory")?;
-    let temp_dir = Utf8PathBuf::from_path_buf(temps.path().to_path_buf())
-        .map_err(|path| miette::miette!("temp path is not utf-8: {}", path.display()))?;
-    let mut compiled = ImportedSignatures::new();
-    let mut compiled_objects = BTreeMap::new();
-
-    for index in order {
-        if index == main_index {
-            continue;
-        }
-        let artifact =
-            compile_module_unit(&units[index], &compiled, &args.sig_dirs, &temp_dir, None)?;
-        compiled_objects.insert(units[index].module_name.clone(), artifact.object);
-        compiled.insert(units[index].module_name.clone(), artifact.signature);
-    }
-
-    let main_imports = resolve_imports(
-        &units[main_index].path,
-        &units[main_index].ast,
-        &args.sig_dirs,
-        &compiled,
-    )?;
-    let checked = Checker::new(
-        &units[main_index].path,
-        &units[main_index].source,
-        units[main_index].module_name.clone(),
-        &main_imports,
-        CheckMode::Executable,
-    )
-    .check(units[main_index].ast.clone())?;
-    let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-
-    let object = temp_dir.join("main.o");
-    emit_executable_object(&rir, &main_imports, &object, args.emit_llvm.as_deref())?;
-
-    let imported_objects = resolve_imported_objects(
-        &rir.uses,
-        &main_imports,
-        &compiled_objects,
-        &args.objects,
-        &args.object_dirs,
-    )?;
-    let imported_objects = with_compiled_objects(imported_objects, &compiled_objects);
-    link_executable(&object, &imported_objects, &runtime, &args.output)?;
-
-    Ok(())
-}
-
-fn with_compiled_objects(
-    mut objects: Vec<Utf8PathBuf>,
-    compiled_objects: &BTreeMap<ModuleName, Utf8PathBuf>,
-) -> Vec<Utf8PathBuf> {
-    for object in compiled_objects.values() {
-        if !objects.iter().any(|existing| existing == object) {
-            objects.push(object.clone());
-        }
-    }
-    objects
-}
-
-fn compile_lib(args: CompileLibArgs) -> miette::Result<()> {
-    let units = parse_source_units(&args.inputs)?;
-    if units.len() > 1 && args.emit_llvm.is_some() {
-        bail!("--emit-llvm is only supported with a single compile-lib input for now");
-    }
-    std::fs::create_dir_all(args.out_dir.as_std_path())
-        .into_diagnostic()
-        .wrap_err_with(|| format!("failed to create {}", args.out_dir))?;
-    let order = topological_source_order(&units)?;
-    let mut compiled = ImportedSignatures::new();
-    for index in order {
-        let artifact = compile_module_unit(
-            &units[index],
-            &compiled,
-            &args.sig_dirs,
-            &args.out_dir,
-            args.emit_llvm.as_deref(),
-        )?;
-        compiled.insert(units[index].module_name.clone(), artifact.signature);
-    }
-
-    Ok(())
-}
-
-fn compile_module_unit(
-    unit: &SourceUnit,
-    available: &ImportedSignatures,
-    sig_dirs: &[Utf8PathBuf],
-    out_dir: &Utf8Path,
-    emit_llvm: Option<&Utf8Path>,
-) -> miette::Result<CompiledModule> {
-    let imports = resolve_imports(&unit.path, &unit.ast, sig_dirs, available)?;
-    let checked = Checker::new(
-        &unit.path,
-        &unit.source,
-        unit.module_name.clone(),
-        &imports,
-        CheckMode::Interface,
-    )
-    .check(unit.ast.clone())?;
-    let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-    let rsig_path = out_dir.join(format!("{}.rsig", unit.module_name));
-    let object_path = out_dir.join(format!("{}.o", unit.module_name));
-    write_rsig(&rsig_path, &checked.signature)?;
-    emit_module_object(&rir, &imports, &object_path, emit_llvm)?;
-
-    Ok(CompiledModule {
-        signature: checked.signature,
-        object: object_path,
-    })
-}
-
-fn emit(args: EmitArgs) -> miette::Result<()> {
-    let source = load_source(&args.input)?;
-    let ast = parse_source(&args.input, &source)?;
-    let imports = resolve_imports(
-        &args.input,
-        &ast,
-        &args.sig_dirs,
-        &ImportedSignatures::new(),
-    )?;
-    let module_name = module_name_from_path(&args.input)?;
-    let checked = Checker::new(
-        &args.input,
-        &source,
-        module_name,
-        &imports,
-        CheckMode::Interface,
-    )
-    .check(ast.clone())?;
-
-    match args.pass {
-        EmitPass::Cst => write_text(args.output.as_deref(), &format!("{ast:#?}")),
-        EmitPass::Typed => write_text(
-            args.output.as_deref(),
-            &format!("{:#?}", checked.typed_tree),
-        ),
-        EmitPass::Rsig => {
-            let output = args
-                .output
-                .unwrap_or_else(|| args.input.with_extension("rsig"));
-            write_rsig(&output, &checked.signature)
-        }
-        EmitPass::Ir => {
-            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-            write_text(args.output.as_deref(), &format!("{rir:#?}"))
-        }
-        EmitPass::ActorIr => {
-            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-            let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
-            write_text(args.output.as_deref(), &format!("{actor_ir:#?}"))
-        }
-        EmitPass::Llvm => {
-            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-            write_text(
-                args.output.as_deref(),
-                &emit_llvm_text(&rir, &imports, emit_mode_for(&rir))?,
-            )
-        }
-        EmitPass::Assembly => {
-            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-            write_text(
-                args.output.as_deref(),
-                &emit_assembly_text(&rir, &imports, emit_mode_for(&rir))?,
-            )
-        }
-        EmitPass::Object => {
-            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-            let output = args
-                .output
-                .unwrap_or_else(|| args.input.with_extension("o"));
-            emit_module_object(&rir, &imports, &output, None)
-        }
-        EmitPass::All => {
-            let rir = LambdaSimplifier::new().simplify(checked.typed_tree.clone());
-            let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
-            let mut text = String::new();
-            text.push_str("== cst ==\n");
-            text.push_str(&format!("{ast:#?}\n"));
-            text.push_str("== typed ==\n");
-            text.push_str(&format!("{:#?}\n", checked.typed_tree));
-            text.push_str("== rsig ==\n");
-            text.push_str(&checked.signature.canonical_text());
-            text.push_str("== ir ==\n");
-            text.push_str(&format!("{rir:#?}\n"));
-            text.push_str("== actor-ir ==\n");
-            text.push_str(&format!("{actor_ir:#?}\n"));
-            text.push_str("== llvm ==\n");
-            text.push_str(&emit_llvm_text(&rir, &imports, emit_mode_for(&rir))?);
-            write_text(args.output.as_deref(), &text)
-        }
-    }
-}
-
-fn emit_mode_for(rir: &crate::lambda::ir::RirProgram) -> CodegenMode {
-    if rir.functions.iter().any(|function| function.name == "main") {
-        CodegenMode::Executable
-    } else {
-        CodegenMode::Module
-    }
 }
 
 fn load_source(input: &Utf8Path) -> miette::Result<String> {
