@@ -14,6 +14,43 @@ Commit every value-adding slice with a conventional commit. If a slice exposes
 a better name while implementing it, keep the message conventional and keep the
 scope narrow.
 
+## Riotc Bootstrap Target
+
+`compiler/riotc` is the first Riot ML compiler written in Riot ML. It should be
+the home for the real compiler architecture: command-line flow, source loading,
+diagnostics, syntax, checking, interface modeling, lambda lowering, actor IR,
+and backend orchestration. Stage0 remains a bootstrap compiler whose job is to
+compile enough Riot ML to build and iterate on riotc.
+
+The first self-hosted milestone is intentionally small and executable:
+
+1. Compile a `compiler/riotc/src/main.ml` with stage0.
+2. Accept `fn main(args: List<String>) -> i32` as the entrypoint shape.
+3. Run deterministically and return `0`.
+4. Grow to classify or print tokens from a hardcoded source string.
+5. Then parse a tiny AST from that hardcoded source before adding real file I/O.
+
+Riotc development should use small vertical slices. Add stage0 features only
+when the next riotc slice immediately needs them, and record discovered gaps
+here rather than turning stage0 into the final package-aware compiler. The
+near-term riotc path is: hello main -> token model -> hardcoded lexer ->
+minimal parser -> source file model -> real file read -> tiny checker.
+
+Planned riotc source boundaries:
+
+- `src/main.ml`: executable entrypoint and exit-code handling.
+- `src/cli.ml`: argument interpretation and top-level command selection.
+- `src/pipeline.ml`: source loading, lexing, parsing, checking, and later codegen
+  orchestration.
+- `src/source.ml`: source path/content model.
+- `src/diagnostic.ml`: structured diagnostics and rendering.
+- `src/syntax/*`: tokens, lexer, parser, and surface AST.
+- `src/check/*`: environments, type representation, inference, and typed tree.
+- `src/interface/rsig.ml`: structured interface model compatible with binary
+  `.rsig` concepts.
+- `src/lambda/*`, `src/actor/*`, and `src/backend/*`: later compiler boundaries
+  once syntax and checking are useful.
+
 ## Current Baseline
 
 Stage0 currently has:
