@@ -112,15 +112,23 @@ impl<'a> Checker<'a> {
             .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
         let diagnostics = SourceDiagnostics::new(self.source_path, self.source);
         if let Some(name) = error.unknown_value_name()
-            && program.decls.iter().any(|decl| {
-                matches!(decl, AstDecl::Function(function) if function.name == name)
+            && let Some(function) = program.decls.iter().find_map(|decl| match decl {
+                AstDecl::Function(function) if function.name == name => Some(function),
+                _ => None,
             })
         {
+            let hint = if function.return_type.is_some()
+                && function.param_types.iter().all(|annotation| annotation.is_some())
+            {
+                "move the callee above this function or check that every function in the recursion cycle is fully annotated"
+            } else {
+                "move the callee above this function or add parameter and return type annotations to every function in the recursion cycle"
+            };
             return diagnostics.at(
                 span,
                 "top-level function used before definition",
-                format!("`{name}` is declared later in this module, but stage0 resolves functions top-to-bottom"),
-                Some("move the callee above this function or add a future mutual-recursion slice"),
+                format!("`{name}` is declared later in this module, but stage0 resolves functions top-to-bottom unless a recursion cycle is fully annotated"),
+                Some(hint),
             );
         }
         diagnostics.at(
