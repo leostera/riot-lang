@@ -231,10 +231,6 @@ impl<'a> ProgramValidator<'a> {
     }
 
     fn validate(&self, program: &AstProgram) -> miette::Result<()> {
-        validate_unique_top_level_names(
-            &SourceDiagnostics::new(self.source_path, self.source),
-            program,
-        )?;
         let functions = const_functions(program);
         let mut function_names = FunctionNameSet::new();
         for name in functions.names() {
@@ -277,6 +273,10 @@ impl<'a> ProgramValidator<'a> {
         let entrypoint_validator = EntrypointValidator::new(&ctx, self.mode);
         let import_validator = ImportValidator::new(&ctx);
         entrypoint_validator.validate_program(program, &main_decls)?;
+        validate_unique_top_level_names(
+            &SourceDiagnostics::new(self.source_path, self.source),
+            program,
+        )?;
 
         for decl in &program.decls {
             match decl {
