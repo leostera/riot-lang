@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 1344
 expression: contents
 ---
 ActorIrProgram {
@@ -60,7 +61,7 @@ ActorIrProgram {
                                                                     arg_types: [
                                                                         Var(
                                                                             TypeVarName(
-                                                                                "'t20",
+                                                                                "'t21",
                                                                             ),
                                                                         ),
                                                                     ],
@@ -104,13 +105,13 @@ ActorIrProgram {
                                                         ActorId(
                                                             Var(
                                                                 TypeVarName(
-                                                                    "'t26",
+                                                                    "'t27",
                                                                 ),
                                                             ),
                                                         ),
                                                         Var(
                                                             TypeVarName(
-                                                                "'t24",
+                                                                "'t25",
                                                             ),
                                                         ),
                                                     ],
@@ -157,13 +158,13 @@ ActorIrProgram {
                                         ActorId(
                                             Var(
                                                 TypeVarName(
-                                                    "'t32",
+                                                    "'t33",
                                                 ),
                                             ),
                                         ),
                                         Var(
                                             TypeVarName(
-                                                "'t30",
+                                                "'t31",
                                             ),
                                         ),
                                     ],
@@ -224,7 +225,7 @@ ActorIrProgram {
                                                     arg_types: [
                                                         Var(
                                                             TypeVarName(
-                                                                "'t20",
+                                                                "'t21",
                                                             ),
                                                         ),
                                                     ],
@@ -271,13 +272,13 @@ ActorIrProgram {
                                         ActorId(
                                             Var(
                                                 TypeVarName(
-                                                    "'t26",
+                                                    "'t27",
                                                 ),
                                             ),
                                         ),
                                         Var(
                                             TypeVarName(
-                                                "'t24",
+                                                "'t25",
                                             ),
                                         ),
                                     ],
@@ -323,7 +324,7 @@ ActorIrProgram {
                                     arg_types: [
                                         Var(
                                             TypeVarName(
-                                                "'t20",
+                                                "'t21",
                                             ),
                                         ),
                                     ],
