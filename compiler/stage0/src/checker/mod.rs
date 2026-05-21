@@ -215,17 +215,7 @@ fn validate_program(
             }
             AstDecl::Function(function) => {
                 validate_function_annotations(&ctx, function)?;
-                if function.name == "main" && !function.params.is_empty() {
-                    return Err(to_source_diagnostic(
-                        source_path,
-                        source,
-                        function.name_span,
-                        "main function cannot have parameters",
-                        "stage0 requires main to have no parameters",
-                        Some("try: fn main() { dbg(\"hello world\") }"),
-                    )
-                    .into());
-                }
+                validate_main_function_signature(&ctx, function)?;
                 validate_block(
                     &ctx,
                     &function.body,
@@ -238,6 +228,80 @@ fn validate_program(
     }
 
     Ok(())
+}
+
+fn validate_main_function_signature(
+    ctx: &ValidationContext<'_>,
+    function: &crate::ast::AstFnDecl,
+) -> miette::Result<()> {
+    if function.name != "main" {
+        return Ok(());
+    }
+
+    match function.params.as_slice() {
+        [] => {}
+        [_] => {
+            let Some(Some(annotation)) = function.param_types.first() else {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    function.name_span,
+                    "main argument type is missing",
+                    "main arguments must be annotated as `List<String>`",
+                    Some("try: fn main(args: List<String>) -> i32 { 0 }"),
+                )
+                .into());
+            };
+            let actual = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
+            let expected = RsigType::List(Box::new(RsigType::String));
+            if actual != expected {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    annotation.span,
+                    "invalid main argument type",
+                    format!(
+                        "expected `List<String>`, but found `{}`",
+                        actual.canonical()
+                    ),
+                    Some("try: fn main(args: List<String>) -> i32 { 0 }"),
+                )
+                .into());
+            }
+        }
+        _ => {
+            return Err(to_source_diagnostic(
+                ctx.source_path,
+                ctx.source,
+                function.name_span,
+                "main function has too many parameters",
+                "stage0 supports at most one main argument list",
+                Some("try: fn main(args: List<String>) -> i32 { 0 }"),
+            )
+            .into());
+        }
+    }
+
+    let Some(annotation) = &function.return_type else {
+        return Ok(());
+    };
+    let result = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
+    if matches!(result, RsigType::Unit | RsigType::I32) {
+        return Ok(());
+    }
+
+    Err(to_source_diagnostic(
+        ctx.source_path,
+        ctx.source,
+        annotation.span,
+        "invalid main return type",
+        format!(
+            "main can return `unit` or `i32`, but this annotation is `{}`",
+            result.canonical()
+        ),
+        Some("use `-> i32` when main should control the process exit code"),
+    )
+    .into())
 }
 
 fn function_results(

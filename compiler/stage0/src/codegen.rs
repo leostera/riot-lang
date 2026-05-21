@@ -306,20 +306,59 @@ impl<'ctx> Codegen<'ctx, '_> {
         };
 
         let i32_type = self.context.i32_type();
-        let main_fn = self
-            .module
-            .add_function("main", i32_type.fn_type(&[], false), None);
+        let main_type = match main.params.as_slice() {
+            [] => i32_type.fn_type(&[], false),
+            [_] => i32_type.fn_type(&[i32_type.into(), self.ptr_type().into()], false),
+            _ => bail!("stage0 main supports at most one argument list"),
+        };
+        let main_fn = self.module.add_function("main", main_type, None);
         let entry = self.context.append_basic_block(main_fn, "entry");
         self.builder.position_at_end(entry);
 
         self.call_void_runtime("riot_rt_init", &[])?;
         let mut env = Env::default();
-        self.emit_block(&main.body, &mut env)?;
+        if let [args] = main.params.as_slice() {
+            let argc = main_fn
+                .get_nth_param(0)
+                .ok_or_else(|| miette::miette!("missing argc parameter"))?
+                .into_int_value();
+            let argv = main_fn
+                .get_nth_param(1)
+                .ok_or_else(|| miette::miette!("missing argv parameter"))?
+                .into_pointer_value();
+            let args_value =
+                self.call_runtime_value("riot_rt_argv", &[argc.into(), argv.into()])?;
+            env.values
+                .insert(args.as_str().to_owned(), CgValue::Value(args_value));
+        }
+        let result = self.emit_block(&main.body, &mut env)?;
+        let exit_code = self.emit_main_exit_code(result, &main.result)?;
         self.call_void_runtime("riot_rt_shutdown", &[])?;
         self.builder
-            .build_return(Some(&i32_type.const_zero()))
+            .build_return(Some(&exit_code))
             .map_err(|error| miette::miette!("failed to emit main return: {error}"))?;
         Ok(())
+    }
+
+    fn emit_main_exit_code(
+        &mut self,
+        result: CgValue<'ctx>,
+        result_type: &RsigType,
+    ) -> miette::Result<IntValue<'ctx>> {
+        let i32_type = self.context.i32_type();
+        match result_type {
+            RsigType::Unit | RsigType::Unknown => Ok(i32_type.const_zero()),
+            RsigType::I32 | RsigType::I64 => {
+                let value = self.value_as_i64(result)?;
+                self.builder
+                    .build_int_truncate(value, i32_type, "main_exit_code")
+                    .map_err(|error| miette::miette!("failed to emit main exit code: {error}"))
+            }
+            other => bail!(
+                "unsupported main return type `{}` for executable codegen",
+                other.canonical()
+            ),
+        }
     }
 
     fn emit_block(
@@ -2423,6 +2462,9 @@ impl<'ctx> Codegen<'ctx, '_> {
         let ptr_type = self.ptr_type();
         Ok(match symbol {
             "riot_rt_init" | "riot_rt_shutdown" => void_type.fn_type(&[], false),
+            "riot_rt_argv" => {
+                i64_type.fn_type(&[self.context.i32_type().into(), ptr_type.into()], false)
+            }
             "riot_rt_root_push" | "riot_rt_root_pop" => {
                 void_type.fn_type(&[i64_type.into()], false)
             }

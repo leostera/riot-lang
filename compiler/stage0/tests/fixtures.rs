@@ -177,6 +177,48 @@ fn mixed_case_file_name_is_rejected() -> FixtureResult {
 }
 
 #[test]
+fn main_receives_argv_and_returns_i32_status() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let source = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &source,
+        "fn main(args: List<String>) -> i32 { dbg(list_get(args, 1)); 7 }\n",
+    )?;
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected argv main to compile:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).arg("hello").output()?;
+    if run.status.code() != Some(7) {
+        return fail(format!(
+            "expected exit status 7, got {}",
+            status_label(&run)
+        ));
+    }
+    if run.stdout != b"hello\n" {
+        return fail(format!(
+            "unexpected argv main stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_object_links_imported_function_from_object_dir() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");
