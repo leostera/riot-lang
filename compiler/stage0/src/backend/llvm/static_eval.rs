@@ -271,6 +271,7 @@ fn eval_expr(
         LambdaExpr::Float(value) => Some(StaticValue::Float(value.clone())),
         LambdaExpr::Int(value) => Some(StaticValue::Int(*value)),
         LambdaExpr::Path(path) => resolve_path(path.as_slice(), bindings),
+        LambdaExpr::Local(binding) => bindings.get(binding.as_str()).cloned(),
         LambdaExpr::String(value) => Some(StaticValue::String(value.clone())),
         LambdaExpr::Apply { .. }
         | LambdaExpr::Lambda { .. }

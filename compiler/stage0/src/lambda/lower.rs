@@ -103,7 +103,7 @@ impl LowerContext {
         if self.scopes.is_empty() {
             self.push_scope();
         }
-        let key = BindingKey::new(binding.key_name());
+        let key = BindingKey::resolved(binding.name.clone(), binding.id);
         self.scopes
             .last_mut()
             .expect("lowering always has a lexical scope")
@@ -250,7 +250,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> LambdaExpr {
         }
         TypedExprKind::Entity(ident) => LambdaExpr::Path(lower_entity_path(ident, context)),
         TypedExprKind::Local(binding) => {
-            LambdaExpr::Path(LambdaPath::singleton(binding.key_name()))
+            LambdaExpr::Local(BindingKey::resolved(binding.name.clone(), binding.id))
         }
     }
 }

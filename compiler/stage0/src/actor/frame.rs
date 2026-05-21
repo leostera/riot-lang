@@ -149,6 +149,7 @@ pub(crate) fn infer_actor_slot_type(
             .and_then(|name| locals.get(name))
             .copied()
             .flatten(),
+        LambdaExpr::Local(binding) => locals.get(binding.as_str()).copied().flatten(),
         LambdaExpr::Spawn { .. } => Some(ActorSlotType::ActorId),
         LambdaExpr::Tuple(_)
         | LambdaExpr::List(_)
@@ -213,7 +214,7 @@ pub(crate) fn actor_frame_from_block(
         match &op {
             ActorFrameOp::Let { name, value } => {
                 collect_free_expr(value, &bound, &mut free);
-                bound.insert(name.as_str().to_owned());
+                bound.insert(name.clone());
             }
             ActorFrameOp::Expr(expr) => collect_free_expr(expr, &bound, &mut free),
             ActorFrameOp::Receive { arms } => {
@@ -228,9 +229,9 @@ pub(crate) fn actor_frame_from_block(
 
     let mut slots = Vec::new();
     for name in free {
-        if let Some(Some(type_)) = outer_locals.get(&name) {
+        if let Some(Some(type_)) = outer_locals.get(name.as_str()) {
             slots.push(ActorFrameSlot {
-                name: ActorFrameSlotName::new(name),
+                name: ActorFrameSlotName::new(name.as_str()),
                 type_: *type_,
                 field_index: slots.len() as u32 + 1,
             });
@@ -247,7 +248,7 @@ pub(crate) fn actor_frame_from_block(
             let type_ = infer_actor_slot_type(value, &local_types, context);
             if let Some(type_) = type_ {
                 slots.push(ActorFrameSlot {
-                    name: name.clone(),
+                    name: ActorFrameSlotName::new(name.as_str()),
                     type_,
                     field_index: slots.len() as u32 + 1,
                 });
@@ -289,7 +290,7 @@ fn actor_ops(block: &LambdaBlock) -> Vec<ActorFrameOp> {
     for stmt in &block.statements {
         match stmt {
             LambdaStmt::Let { name, value } => ops.push(ActorFrameOp::Let {
-                name: ActorFrameSlotName::new(name.as_str()),
+                name: name.clone(),
                 value: value.clone(),
             }),
             LambdaStmt::Expr(LambdaExpr::Receive { arms }) => {

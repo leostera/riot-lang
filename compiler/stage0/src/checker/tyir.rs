@@ -65,10 +65,6 @@ impl BindingId {
             id,
         }
     }
-
-    pub(crate) fn key_name(&self) -> String {
-        format!("{}${}", self.name, self.id)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

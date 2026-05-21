@@ -28,10 +28,10 @@ ActorIrProgram {
                                         "dbg",
                                     ],
                                     args: [
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "msg$0",
-                                            ],
+                                            ),
                                         ),
                                     ],
                                 },
@@ -78,10 +78,10 @@ ActorIrProgram {
                                         "send",
                                     ],
                                     args: [
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "out$1",
-                                            ],
+                                            ),
                                         ),
                                         Call {
                                             callee: [

@@ -2,16 +2,48 @@ use std::fmt;
 
 use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct BindingKey(String);
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct BindingKey {
+    source_name: String,
+    generation: Option<usize>,
+    rendered: String,
+}
 
 impl BindingKey {
+    #[cfg(test)]
     pub(crate) fn new(name: impl Into<String>) -> Self {
-        Self(name.into())
+        let source_name = name.into();
+        Self {
+            rendered: source_name.clone(),
+            source_name,
+            generation: None,
+        }
+    }
+
+    pub(crate) fn resolved(name: impl Into<String>, generation: usize) -> Self {
+        let source_name = name.into();
+        Self {
+            rendered: format!("{source_name}${generation}"),
+            source_name,
+            generation: Some(generation),
+        }
     }
 
     pub(crate) fn as_str(&self) -> &str {
-        &self.0
+        &self.rendered
+    }
+}
+
+impl fmt::Debug for BindingKey {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let rendered = match self.generation {
+            Some(generation) => format!("{}${generation}", self.source_name),
+            None => self.source_name.clone(),
+        };
+        formatter
+            .debug_tuple("BindingKey")
+            .field(&rendered)
+            .finish()
     }
 }
 
@@ -36,10 +68,6 @@ impl Param {
 pub(crate) struct Capture(BindingKey);
 
 impl Capture {
-    pub(crate) fn new(name: impl Into<String>) -> Self {
-        Self(BindingKey::new(name))
-    }
-
     pub(crate) fn from_key(key: BindingKey) -> Self {
         Self(key)
     }
@@ -105,10 +133,6 @@ pub(crate) struct LambdaPath(Vec<String>);
 impl LambdaPath {
     pub(crate) fn from_segments(segments: Vec<String>) -> Self {
         Self(segments)
-    }
-
-    pub(crate) fn singleton(name: impl Into<String>) -> Self {
-        Self(vec![name.into()])
     }
 
     pub(crate) fn as_slice(&self) -> &[String] {
@@ -219,6 +243,7 @@ pub(crate) enum LambdaExpr {
     Float(String),
     Int(i64),
     Path(LambdaPath),
+    Local(BindingKey),
     String(String),
     Spawn {
         actor_id: usize,

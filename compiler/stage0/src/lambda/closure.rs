@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
-use super::ir::{Capture, LambdaBlock, LambdaExpr, LambdaPattern, LambdaProgram, LambdaStmt};
+use super::ir::{
+    BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaPattern, LambdaProgram, LambdaStmt,
+};
 
 pub(crate) fn closure_convert_program(mut program: LambdaProgram) -> LambdaProgram {
     for function in &mut program.functions {
@@ -70,11 +72,11 @@ fn closure_convert_expr(expr: &mut LambdaExpr) {
             closure_convert_block(body);
             let bound = params
                 .iter()
-                .map(|param| param.as_str().to_owned())
+                .map(|param| param.key().clone())
                 .collect::<BTreeSet<_>>();
             let mut free = BTreeSet::new();
             collect_free_block(body, &bound, &mut free);
-            *captures = free.into_iter().map(Capture::new).collect();
+            *captures = free.into_iter().map(Capture::from_key).collect();
         }
         LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
@@ -101,21 +103,20 @@ fn closure_convert_expr(expr: &mut LambdaExpr) {
         | LambdaExpr::Float(_)
         | LambdaExpr::Int(_)
         | LambdaExpr::Path(_)
+        | LambdaExpr::Local(_)
         | LambdaExpr::String(_) => {}
     }
 }
 
 pub(crate) fn collect_free_expr(
     expr: &LambdaExpr,
-    bound: &BTreeSet<String>,
-    free: &mut BTreeSet<String>,
+    bound: &BTreeSet<BindingKey>,
+    free: &mut BTreeSet<BindingKey>,
 ) {
     match expr {
-        LambdaExpr::Path(path) => {
-            if let [name] = path.as_slice()
-                && !bound.contains(name)
-            {
-                free.insert(name.clone());
+        LambdaExpr::Local(binding) => {
+            if !bound.contains(binding) {
+                free.insert(binding.clone());
             }
         }
         LambdaExpr::Add(lhs, rhs)
@@ -163,7 +164,7 @@ pub(crate) fn collect_free_expr(
         LambdaExpr::Lambda { params, body, .. } => {
             let mut nested = bound.clone();
             for param in params {
-                nested.insert(param.as_str().to_owned());
+                nested.insert(param.key().clone());
             }
             collect_free_block(body, &nested, free);
         }
@@ -193,21 +194,22 @@ pub(crate) fn collect_free_expr(
         | LambdaExpr::Char(_)
         | LambdaExpr::Float(_)
         | LambdaExpr::Int(_)
+        | LambdaExpr::Path(_)
         | LambdaExpr::String(_) => {}
     }
 }
 
 pub(crate) fn collect_free_block(
     block: &LambdaBlock,
-    outer_bound: &BTreeSet<String>,
-    free: &mut BTreeSet<String>,
+    outer_bound: &BTreeSet<BindingKey>,
+    free: &mut BTreeSet<BindingKey>,
 ) {
     let mut bound = outer_bound.clone();
     for stmt in &block.statements {
         match stmt {
             LambdaStmt::Let { name, value } => {
                 collect_free_expr(value, &bound, free);
-                bound.insert(name.as_str().to_owned());
+                bound.insert(name.clone());
             }
             LambdaStmt::Expr(expr) => collect_free_expr(expr, &bound, free),
         }
@@ -217,10 +219,10 @@ pub(crate) fn collect_free_block(
     }
 }
 
-pub(crate) fn bind_pattern_names(pattern: &LambdaPattern, bound: &mut BTreeSet<String>) {
+pub(crate) fn bind_pattern_names(pattern: &LambdaPattern, bound: &mut BTreeSet<BindingKey>) {
     match pattern {
         LambdaPattern::Bind { binding, .. } => {
-            bound.insert(binding.as_str().to_owned());
+            bound.insert(binding.clone());
         }
         LambdaPattern::Constructor { payload, .. } | LambdaPattern::Tuple(payload) => {
             for pattern in payload {

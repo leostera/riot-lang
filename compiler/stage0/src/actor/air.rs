@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::signature::RsigType;
 
-use crate::lambda::ir::{LambdaExpr, LambdaReceiveArm};
+use crate::lambda::ir::{BindingKey, LambdaExpr, LambdaReceiveArm};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorIrProgram {
@@ -89,12 +89,7 @@ pub(crate) enum ActorStateNext {
 
 #[derive(Debug, Clone)]
 pub(crate) enum ActorFrameOp {
-    Let {
-        name: ActorFrameSlotName,
-        value: LambdaExpr,
-    },
-    Receive {
-        arms: Vec<LambdaReceiveArm>,
-    },
+    Let { name: BindingKey, value: LambdaExpr },
+    Receive { arms: Vec<LambdaReceiveArm> },
     Expr(LambdaExpr),
 }

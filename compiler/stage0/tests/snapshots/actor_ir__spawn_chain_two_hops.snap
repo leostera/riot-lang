@@ -21,7 +21,9 @@ ActorIrProgram {
             states: [
                 ActorFrameState {
                     op: Let {
-                        name: "middle$3",
+                        name: BindingKey(
+                            "middle$3",
+                        ),
                         value: Spawn {
                             actor_id: 1,
                             body: LambdaBlock {
@@ -49,10 +51,10 @@ ActorIrProgram {
                                                                         "dbg",
                                                                     ],
                                                                     args: [
-                                                                        Path(
-                                                                            [
+                                                                        Local(
+                                                                            BindingKey(
                                                                                 "msg$0",
-                                                                            ],
+                                                                            ),
                                                                         ),
                                                                     ],
                                                                 },
@@ -79,15 +81,15 @@ ActorIrProgram {
                                                         "send",
                                                     ],
                                                     args: [
-                                                        Path(
-                                                            [
+                                                        Local(
+                                                            BindingKey(
                                                                 "leaf$1",
-                                                            ],
+                                                            ),
                                                         ),
-                                                        Path(
-                                                            [
+                                                        Local(
+                                                            BindingKey(
                                                                 "msg$2",
-                                                            ],
+                                                            ),
                                                         ),
                                                     ],
                                                 },
@@ -117,15 +119,15 @@ ActorIrProgram {
                                         "send",
                                     ],
                                     args: [
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "middle$3",
-                                            ],
+                                            ),
                                         ),
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "msg$4",
-                                            ],
+                                            ),
                                         ),
                                     ],
                                 },
@@ -153,7 +155,9 @@ ActorIrProgram {
             states: [
                 ActorFrameState {
                     op: Let {
-                        name: "leaf$1",
+                        name: BindingKey(
+                            "leaf$1",
+                        ),
                         value: Spawn {
                             actor_id: 2,
                             body: LambdaBlock {
@@ -173,10 +177,10 @@ ActorIrProgram {
                                                         "dbg",
                                                     ],
                                                     args: [
-                                                        Path(
-                                                            [
+                                                        Local(
+                                                            BindingKey(
                                                                 "msg$0",
-                                                            ],
+                                                            ),
                                                         ),
                                                     ],
                                                 },
@@ -206,15 +210,15 @@ ActorIrProgram {
                                         "send",
                                     ],
                                     args: [
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "leaf$1",
-                                            ],
+                                            ),
                                         ),
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "msg$2",
-                                            ],
+                                            ),
                                         ),
                                     ],
                                 },
@@ -249,10 +253,10 @@ ActorIrProgram {
                                         "dbg",
                                     ],
                                     args: [
-                                        Path(
-                                            [
+                                        Local(
+                                            BindingKey(
                                                 "msg$0",
-                                            ],
+                                            ),
                                         ),
                                     ],
                                 },

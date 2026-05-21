@@ -174,6 +174,7 @@ fn collect_actors_from_expr(
         | LambdaExpr::Float(_)
         | LambdaExpr::Int(_)
         | LambdaExpr::Path(_)
+        | LambdaExpr::Local(_)
         | LambdaExpr::String(_) => {}
     }
 }

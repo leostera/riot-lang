@@ -1459,7 +1459,7 @@ mod tests {
 
     use crate::lambda::lower::LambdaLowerer;
 
-    use crate::lambda::ir::{Capture, LambdaExpr, LambdaStmt};
+    use crate::lambda::ir::{BindingKey, Capture, LambdaExpr, LambdaStmt};
 
     use super::{TypedExprKind, TypedStmt};
 
@@ -1536,7 +1536,10 @@ mod tests {
             panic!("expected lowered lambda");
         };
 
-        assert_eq!(captures.as_slice(), &[Capture::new("n$0")]);
+        assert_eq!(
+            captures.as_slice(),
+            &[Capture::from_key(BindingKey::resolved("n", 0))]
+        );
     }
 
     #[test]
@@ -1604,7 +1607,10 @@ mod tests {
             panic!("expected second statement to bind a lambda");
         };
 
-        assert_eq!(captures.as_slice(), &[Capture::new("a$0")]);
+        assert_eq!(
+            captures.as_slice(),
+            &[Capture::from_key(BindingKey::resolved("a", 0))]
+        );
     }
 
     #[test]

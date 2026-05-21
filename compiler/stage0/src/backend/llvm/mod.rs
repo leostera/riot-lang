@@ -652,6 +652,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 .ok_or_else(|| miette::miette!("unsupported non-scalar expression")),
             LambdaExpr::Int(value) => Ok(CgValue::I64(self.i64_const(*value))),
             LambdaExpr::Path(path) => self.emit_path(path.as_slice(), env),
+            LambdaExpr::Local(binding) => self.emit_path(&[binding.as_str().to_owned()], env),
             LambdaExpr::String(value) => {
                 let (ptr, len) = self.string_literal(value)?;
                 Ok(CgValue::Value(self.call_runtime_value(
@@ -3168,6 +3169,10 @@ fn infer_expr_abi(
             .and_then(|name| locals.get(name))
             .copied()
             .unwrap_or(AbiType::Unknown),
+        LambdaExpr::Local(binding) => locals
+            .get(binding.as_str())
+            .copied()
+            .unwrap_or(AbiType::Unknown),
         LambdaExpr::Tuple(_)
         | LambdaExpr::List(_)
         | LambdaExpr::Record { .. }
@@ -3378,6 +3383,7 @@ fn mark_expr_constraints(
         | LambdaExpr::Float(_)
         | LambdaExpr::Int(_)
         | LambdaExpr::Path(_)
+        | LambdaExpr::Local(_)
         | LambdaExpr::String(_) => {}
     }
 }
@@ -3396,13 +3402,20 @@ fn mark_expr_as(
         return;
     }
 
-    if let LambdaExpr::Path(path) = expr
-        && let [name] = path.as_slice()
-    {
-        locals.insert(name.clone(), abi);
-        if let Some(index) = params.iter().position(|param| param.as_str() == name) {
-            param_types[index] = unify_abi(param_types[index], abi);
+    let name = match expr {
+        LambdaExpr::Path(path) => {
+            let [name] = path.as_slice() else {
+                return;
+            };
+            name.as_str()
         }
+        LambdaExpr::Local(binding) => binding.as_str(),
+        _ => return,
+    };
+
+    locals.insert(name.to_owned(), abi);
+    if let Some(index) = params.iter().position(|param| param.as_str() == name) {
+        param_types[index] = unify_abi(param_types[index], abi);
     }
 }
 
@@ -3448,8 +3461,8 @@ fn codegen_externals(program: &LambdaProgram) -> miette::Result<BTreeMap<String,
 #[cfg(test)]
 mod tests {
     use crate::lambda::ir::{
-        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaFunction, LambdaPath, LambdaProgram,
-        LambdaStmt, Param,
+        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaFunction, LambdaProgram, LambdaStmt,
+        Param,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
@@ -3457,6 +3470,8 @@ mod tests {
 
     #[test]
     fn lambda_values_lower_to_runtime_closure_calls() {
+        let n = BindingKey::new("n");
+        let x = BindingKey::new("x");
         let program = LambdaProgram {
             module_name: ModuleName::new("ClosureTest"),
             uses: Vec::new(),
@@ -3468,15 +3483,15 @@ mod tests {
                 result: RsigType::Unknown,
                 body: LambdaBlock {
                     statements: vec![LambdaStmt::Let {
-                        name: BindingKey::new("n"),
+                        name: n.clone(),
                         value: LambdaExpr::Int(1),
                     }],
                     tail: Some(LambdaExpr::Lambda {
-                        params: vec![Param::from_key(crate::lambda::ir::BindingKey::new("x"))],
-                        captures: vec![Capture::new("n")],
+                        params: vec![Param::from_key(x)],
+                        captures: vec![Capture::from_key(n.clone())],
                         body: Box::new(LambdaBlock {
                             statements: Vec::new(),
-                            tail: Some(LambdaExpr::Path(LambdaPath::singleton("n"))),
+                            tail: Some(LambdaExpr::Local(n)),
                         }),
                     }),
                 },
@@ -3498,6 +3513,7 @@ mod tests {
 
     #[test]
     fn lambda_apply_lowers_to_runtime_apply_function() {
+        let x = BindingKey::new("x");
         let program = LambdaProgram {
             module_name: ModuleName::new("ClosureApplyTest"),
             uses: Vec::new(),
@@ -3511,12 +3527,12 @@ mod tests {
                     statements: Vec::new(),
                     tail: Some(LambdaExpr::Apply {
                         callee: Box::new(LambdaExpr::Lambda {
-                            params: vec![Param::from_key(crate::lambda::ir::BindingKey::new("x"))],
+                            params: vec![Param::from_key(x.clone())],
                             captures: Vec::new(),
                             body: Box::new(LambdaBlock {
                                 statements: Vec::new(),
                                 tail: Some(LambdaExpr::Add(
-                                    Box::new(LambdaExpr::Path(LambdaPath::singleton("x"))),
+                                    Box::new(LambdaExpr::Local(x)),
                                     Box::new(LambdaExpr::Int(1)),
                                 )),
                             }),
