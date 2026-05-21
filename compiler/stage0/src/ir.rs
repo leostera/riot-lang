@@ -2983,7 +2983,7 @@ mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
-    use crate::infer::module::infer_function_signatures;
+    use crate::infer::module::ModuleInferencer;
     use crate::parser::parse_source;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
@@ -3007,7 +3007,9 @@ mod tests {
 
     fn typed_program(module: &str, program: AstProgram) -> super::TypedProgram {
         let imports = ImportedSignatures::new();
-        let function_types = infer_function_signatures(&program, &imports).unwrap();
+        let function_types = ModuleInferencer::new(&program, &imports)
+            .infer_function_signatures()
+            .unwrap();
         typed_program_from_ast(
             ModuleName::new(module),
             program,
@@ -3022,7 +3024,7 @@ mod tests {
         let path = camino::Utf8Path::new("test.ml");
         let program = parse_source(path, source).unwrap();
         let imports = ImportedSignatures::new();
-        let inferred = crate::infer::module::infer_program(&program, &imports).unwrap();
+        let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
         let function_types = inferred.function_signatures(&program);
         let expression_types = inferred.expression_rsig_types();
         let binding_schemes = inferred.binding_rsig_schemes();

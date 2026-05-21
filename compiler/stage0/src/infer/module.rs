@@ -63,30 +63,46 @@ pub(crate) struct InferredModule {
     pub(crate) binding_schemes: BTreeMap<TextSpan, TypeScheme>,
 }
 
-pub(crate) fn infer_program(
-    program: &AstProgram,
-    imports: &ImportedSignatures,
-) -> Result<InferredModule, InferError> {
-    let mut state = State::default();
-    let mut expression_types = BTreeMap::new();
-    let mut binding_schemes = BTreeMap::new();
-    let declared_variants = declared_variant_names(program, imports);
-    install_prelude(&mut state);
-    install_imports(&mut state, program, imports);
-    for decl in &program.decls {
-        infer_decl(
-            &mut state,
-            decl,
-            &declared_variants,
-            &mut expression_types,
-            &mut binding_schemes,
-        )?;
+#[derive(Debug)]
+pub(crate) struct ModuleInferencer<'a> {
+    program: &'a AstProgram,
+    imports: &'a ImportedSignatures,
+}
+
+impl<'a> ModuleInferencer<'a> {
+    pub(crate) fn new(program: &'a AstProgram, imports: &'a ImportedSignatures) -> Self {
+        Self { program, imports }
     }
-    Ok(InferredModule {
-        env: state.into_env(),
-        expression_types,
-        binding_schemes,
-    })
+
+    pub(crate) fn infer(&self) -> Result<InferredModule, InferError> {
+        let mut state = State::default();
+        let mut expression_types = BTreeMap::new();
+        let mut binding_schemes = BTreeMap::new();
+        let declared_variants = declared_variant_names(self.program, self.imports);
+        install_prelude(&mut state);
+        install_imports(&mut state, self.program, self.imports);
+        for decl in &self.program.decls {
+            infer_decl(
+                &mut state,
+                decl,
+                &declared_variants,
+                &mut expression_types,
+                &mut binding_schemes,
+            )?;
+        }
+        Ok(InferredModule {
+            env: state.into_env(),
+            expression_types,
+            binding_schemes,
+        })
+    }
+
+    pub(crate) fn infer_function_signatures(
+        &self,
+    ) -> Result<BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
+        let inferred = self.infer()?;
+        Ok(inferred.function_signatures(self.program))
+    }
 }
 
 impl InferredModule {
@@ -133,14 +149,6 @@ impl InferredModule {
             .map(|(span, scheme)| (*span, infer_scheme_to_rsig_scheme(scheme)))
             .collect()
     }
-}
-
-pub(crate) fn infer_function_signatures(
-    program: &AstProgram,
-    imports: &ImportedSignatures,
-) -> Result<BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
-    let inferred = infer_program(program, imports)?;
-    Ok(inferred.function_signatures(program))
 }
 
 fn declared_variant_names(
@@ -1341,9 +1349,7 @@ mod tests {
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstPattern, AstProgram, AstReceiveArm,
         AstStmt, TextSpan,
     };
-    use crate::infer::module::{
-        InferError, InferredModule, infer_function_signatures, infer_program,
-    };
+    use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
     use crate::signature::{ImportedSignatures, RsigType};
@@ -1452,13 +1458,13 @@ mod tests {
     }
 
     fn infer(program: &AstProgram) -> Result<InferredModule, InferError> {
-        infer_program(program, &ImportedSignatures::new())
+        ModuleInferencer::new(program, &ImportedSignatures::new()).infer()
     }
 
     fn signatures(
         program: &AstProgram,
     ) -> Result<std::collections::BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
-        infer_function_signatures(program, &ImportedSignatures::new())
+        ModuleInferencer::new(program, &ImportedSignatures::new()).infer_function_signatures()
     }
 
     #[test]

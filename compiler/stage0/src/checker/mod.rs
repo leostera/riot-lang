@@ -16,7 +16,7 @@ use crate::ast::{
     AstTypeBody, TextSpan,
 };
 use crate::diagnostic::to_source_diagnostic;
-use crate::infer::module::infer_program;
+use crate::infer::module::ModuleInferencer;
 use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
 use crate::signature::{
     ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
@@ -75,20 +75,22 @@ pub(crate) fn typecheck(
     mode: CheckMode,
 ) -> miette::Result<CheckedProgram> {
     validate_program(source_path, source, &program, imports, mode)?;
-    let inferred = infer_program(&program, imports).map_err(|error| {
-        let span = error
-            .span()
-            .or_else(|| first_decl_span(&program))
-            .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
-        to_source_diagnostic(
-            source_path,
-            source,
-            span,
-            "type inference failed",
-            error.to_string(),
-            Some("fix the type error before lowering"),
-        )
-    })?;
+    let inferred = ModuleInferencer::new(&program, imports)
+        .infer()
+        .map_err(|error| {
+            let span = error
+                .span()
+                .or_else(|| first_decl_span(&program))
+                .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
+            to_source_diagnostic(
+                source_path,
+                source,
+                span,
+                "type inference failed",
+                error.to_string(),
+                Some("fix the type error before lowering"),
+            )
+        })?;
     let expression_types = inferred.expression_rsig_types();
     let function_types = inferred.function_signatures(&program);
     let binding_schemes = inferred.binding_rsig_schemes();
