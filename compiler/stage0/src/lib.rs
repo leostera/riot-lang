@@ -7,6 +7,7 @@ mod command;
 mod diagnostic;
 mod driver;
 mod fingerprint;
+mod imported_types;
 mod infer;
 mod lambda;
 mod lexer;

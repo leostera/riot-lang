@@ -33,6 +33,7 @@ use crate::ast::{
 };
 use crate::checker::tyir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
+use crate::imported_types::{imported_type_name, qualify_imported_type};
 use crate::infer::module::ModuleInferencer;
 use crate::signature::{
     ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
@@ -500,10 +501,6 @@ fn prelude_variant_names() -> BTreeSet<TypeName> {
                 .collect()
         })
         .unwrap_or_default()
-}
-
-fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
-    TypeName::new(format!("{module_name}.{}", type_name.as_str()))
 }
 
 fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
@@ -1924,54 +1921,6 @@ fn imported_constructor_shape(
                         .collect(),
                 })
         })
-}
-
-fn qualify_imported_type(module: &str, type_: &RsigType) -> RsigType {
-    match type_ {
-        RsigType::ActorId(message) => {
-            RsigType::ActorId(Box::new(qualify_imported_type(module, message)))
-        }
-        RsigType::Arrow { parameter, result } => RsigType::Arrow {
-            parameter: Box::new(qualify_imported_type(module, parameter)),
-            result: Box::new(qualify_imported_type(module, result)),
-        },
-        RsigType::List(item) => RsigType::List(Box::new(qualify_imported_type(module, item))),
-        RsigType::Tuple(items) => RsigType::Tuple(
-            items
-                .iter()
-                .map(|item| qualify_imported_type(module, item))
-                .collect(),
-        ),
-        RsigType::Record(name) => {
-            RsigType::Record(TypeName::new(format!("{module}.{}", name.as_str())))
-        }
-        RsigType::Variant(name) => {
-            if is_prelude_type_name(name) {
-                RsigType::Variant(name.clone())
-            } else {
-                RsigType::Variant(TypeName::new(format!("{module}.{}", name.as_str())))
-            }
-        }
-        RsigType::VariantApp { name, args } => {
-            let name = if is_prelude_type_name(name) {
-                name.clone()
-            } else {
-                TypeName::new(format!("{module}.{}", name.as_str()))
-            };
-            RsigType::VariantApp {
-                name,
-                args: args
-                    .iter()
-                    .map(|arg| qualify_imported_type(module, arg))
-                    .collect(),
-            }
-        }
-        other => other.clone(),
-    }
-}
-
-fn is_prelude_type_name(type_name: &TypeName) -> bool {
-    crate::stdlib::Stdlib::new().is_prelude_type_name(type_name)
 }
 
 fn validate_static_list_index(
