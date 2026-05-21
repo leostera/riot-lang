@@ -43,8 +43,8 @@ impl<'a> StacklessActorLowerer<'a> {
         Self { imports }
     }
 
-    pub(crate) fn lower(&self, lir: &RirProgram) -> ActorIrProgram {
-        ActorIrLowerer::new(self.imports).lower(lir)
+    pub(crate) fn lower(&self, lambda_ir: &RirProgram) -> ActorIrProgram {
+        ActorIrLowerer::new(self.imports).lower(lambda_ir)
     }
 }
 

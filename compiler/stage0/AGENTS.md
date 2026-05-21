@@ -19,7 +19,7 @@
 - Multi-source `compile` and `compile-lib` parse every input before lowering,
   build a small module graph from `use`, `pub mod`/`mod`, and `include`
   declarations, and process inputs in topological order.
-- Keep the pipeline compiler-shaped: parse, typed HIR/signature, RIR,
+- Keep the pipeline compiler-shaped: parse, typed HIR/signature, lambda IR,
   actor-frame IR, LLVM codegen, link.
 - Treat `emit actor-ir` as a compiler boundary snapshot: it should expose actor
   frame layout, captures, resume states, receive points, and terminal states.

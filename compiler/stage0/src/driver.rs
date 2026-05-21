@@ -95,11 +95,11 @@ impl Stage0Driver {
             CheckMode::Executable,
         )
         .check(units[main_index].ast.clone())?;
-        let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+        let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
 
         let object = temp_dir.join("main.o");
         self.llvm_backend.emit_executable_object(
-            &rir,
+            &lambda_ir,
             &main_imports,
             &object,
             args.emit_llvm.as_deref(),
@@ -111,7 +111,7 @@ impl Stage0Driver {
             &args.objects,
             &args.object_dirs,
         )
-        .resolve(&rir.uses)?;
+        .resolve(&lambda_ir.uses)?;
         let imported_objects = Self::with_compiled_objects(imported_objects, &compiled_objects);
         self.linker
             .link_executable(&object, &imported_objects, &runtime, &args.output)?;
@@ -173,12 +173,12 @@ impl Stage0Driver {
             CheckMode::Interface,
         )
         .check(unit.ast.clone())?;
-        let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+        let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
         let rsig_path = out_dir.join(format!("{}.rsig", unit.module_name));
         let object_path = out_dir.join(format!("{}.o", unit.module_name));
         self.rsig_store.write(&rsig_path, &checked.signature)?;
         self.llvm_backend
-            .emit_module_object(&rir, &imports, &object_path, emit_llvm)?;
+            .emit_module_object(&lambda_ir, &imports, &object_path, emit_llvm)?;
 
         Ok(CompiledModule {
             signature: checked.signature,
@@ -217,47 +217,49 @@ impl Stage0Driver {
                 self.rsig_store.write(&output, &checked.signature)
             }
             EmitPass::Ir => {
-                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 self.output_writer
-                    .write_text(args.output.as_deref(), &format!("{rir:#?}"))
+                    .write_text(args.output.as_deref(), &format!("{lambda_ir:#?}"))
             }
             EmitPass::ActorIr => {
-                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-                let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
+                let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let actor_ir = StacklessActorLowerer::new(&imports).lower(&lambda_ir);
                 self.output_writer
                     .write_text(args.output.as_deref(), &format!("{actor_ir:#?}"))
             }
             EmitPass::Llvm => {
-                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 self.output_writer.write_text(
                     args.output.as_deref(),
-                    &self
-                        .llvm_backend
-                        .emit_llvm_text(&rir, &imports, Self::emit_mode_for(&rir))?,
+                    &self.llvm_backend.emit_llvm_text(
+                        &lambda_ir,
+                        &imports,
+                        Self::emit_mode_for(&lambda_ir),
+                    )?,
                 )
             }
             EmitPass::Assembly => {
-                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 self.output_writer.write_text(
                     args.output.as_deref(),
                     &self.llvm_backend.emit_assembly_text(
-                        &rir,
+                        &lambda_ir,
                         &imports,
-                        Self::emit_mode_for(&rir),
+                        Self::emit_mode_for(&lambda_ir),
                     )?,
                 )
             }
             EmitPass::Object => {
-                let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+                let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 let output = args
                     .output
                     .unwrap_or_else(|| args.input.with_extension("o"));
                 self.llvm_backend
-                    .emit_module_object(&rir, &imports, &output, None)
+                    .emit_module_object(&lambda_ir, &imports, &output, None)
             }
             EmitPass::All => {
-                let rir = LambdaSimplifier::new().simplify(checked.typed_tree.clone());
-                let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
+                let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree.clone());
+                let actor_ir = StacklessActorLowerer::new(&imports).lower(&lambda_ir);
                 let mut text = String::new();
                 text.push_str("== cst ==\n");
                 text.push_str(&format!("{ast:#?}\n"));
@@ -266,22 +268,26 @@ impl Stage0Driver {
                 text.push_str("== rsig ==\n");
                 text.push_str(&checked.signature.canonical_text());
                 text.push_str("== ir ==\n");
-                text.push_str(&format!("{rir:#?}\n"));
+                text.push_str(&format!("{lambda_ir:#?}\n"));
                 text.push_str("== actor-ir ==\n");
                 text.push_str(&format!("{actor_ir:#?}\n"));
                 text.push_str("== llvm ==\n");
                 text.push_str(&self.llvm_backend.emit_llvm_text(
-                    &rir,
+                    &lambda_ir,
                     &imports,
-                    Self::emit_mode_for(&rir),
+                    Self::emit_mode_for(&lambda_ir),
                 )?);
                 self.output_writer.write_text(args.output.as_deref(), &text)
             }
         }
     }
 
-    fn emit_mode_for(rir: &crate::lambda::ir::RirProgram) -> CodegenMode {
-        if rir.functions.iter().any(|function| function.name == "main") {
+    fn emit_mode_for(lambda_ir: &crate::lambda::ir::RirProgram) -> CodegenMode {
+        if lambda_ir
+            .functions
+            .iter()
+            .any(|function| function.name == "main")
+        {
             CodegenMode::Executable
         } else {
             CodegenMode::Module

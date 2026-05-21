@@ -7,8 +7,8 @@ that can support real Riot programs and, eventually, the self-hosted compiler.
 The core working style is vertical: every useful language feature should travel
 through the whole compiler shape in one small, reviewable commit:
 
-source syntax -> AST -> typed HIR/.rsig -> RIR -> Actor IR where relevant ->
-LLVM/codegen -> runtime ABI where relevant -> fixtures/snapshots.
+source syntax -> AST -> typed HIR/.rsig -> lambda IR -> Actor IR where
+relevant -> LLVM/codegen -> runtime ABI where relevant -> fixtures/snapshots.
 
 Commit every value-adding slice with a conventional commit. If a slice exposes
 a better name while implementing it, keep the message conventional and keep the
@@ -20,7 +20,7 @@ Stage0 currently has:
 
 - A handwritten lexer/parser for a small Riot ML surface.
 - `use Module` resolution through binary `.rsig` files.
-- A typed HIR boundary, RIR boundary, Actor IR boundary, LLVM text/object
+- A typed HIR boundary, lambda IR boundary, Actor IR boundary, LLVM text/object
   emission, and native linking.
 - A runtime value ABI (`RtValue`) for scalars, actor ids, strings, tuples,
   lists, and records.
@@ -32,7 +32,7 @@ Stage0 currently has:
 - Thread-local scheduler state, FIFO mailboxes, monitor/link stubs, and a
   mark/sweep GC scaffold. Stage0 still executes actors on one scheduler worker;
   true cross-core work stealing/migration is not implemented yet.
-- Snapshot-driven fixture coverage for parser/typed/RIR/Actor IR/LLVM/object
+- Snapshot-driven fixture coverage for parser/typed/lambda IR/Actor IR/LLVM/object
   and runtime output.
 
 The most important missing capability is no longer one isolated feature. It is
