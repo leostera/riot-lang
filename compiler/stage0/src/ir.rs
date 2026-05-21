@@ -11,19 +11,16 @@ use crate::signature::{
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
-use crate::actor::air::{
-    ActorFrameLayout, ActorFrameOp, ActorFrameSlot, ActorFrameSlotName, ActorFrameState,
-    ActorIrActor, ActorIrProgram, ActorSlotType, ActorStateNext,
-};
+use crate::actor::air::{ActorIrActor, ActorIrProgram, ActorSlotType};
 use crate::actor::frame::{
-    ActorSlotTypeContext, bind_pattern_actor_slot_types, infer_actor_slot_type,
+    ActorSlotTypeContext, actor_frame_from_block, bind_pattern_actor_slot_types,
+    infer_actor_slot_type,
 };
 use crate::checker::tyir::{
     BindingId, EntityId, TypedBlock, TypedExpr, TypedExprKind, TypedExternal, TypedFunction,
     TypedLiteral, TypedMatchArm, TypedParam, TypedPattern, TypedProgram, TypedReceiveArm,
     TypedRecordField, TypedStmt, TypedTypeBody, TypedTypeDecl, TypedUse, TypedVariantConstructor,
 };
-use crate::lambda::closure::{bind_pattern_names, collect_free_expr};
 use crate::lambda::ir::{
     BindingKey, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm, RirPattern,
     RirProgram, RirReceiveArm, RirStmt,
@@ -1761,115 +1758,6 @@ fn collect_actors_from_expr(
         | RirExpr::Path(_)
         | RirExpr::String(_) => {}
     }
-}
-
-fn actor_frame_from_block(
-    actor_id: usize,
-    block: &RirBlock,
-    outer_locals: &BTreeMap<String, Option<ActorSlotType>>,
-    context: &ActorSlotTypeContext<'_>,
-) -> ActorIrActor {
-    let ops = actor_ops(block);
-    let mut bound = BTreeSet::new();
-    let mut free = BTreeSet::new();
-    for op in &ops {
-        match &op {
-            ActorFrameOp::Let { name, value } => {
-                collect_free_expr(value, &bound, &mut free);
-                bound.insert(name.as_str().to_owned());
-            }
-            ActorFrameOp::Expr(expr) => collect_free_expr(expr, &bound, &mut free),
-            ActorFrameOp::Receive { arms } => {
-                for arm in arms {
-                    let mut receive_bound = bound.clone();
-                    bind_pattern_names(&arm.pattern, &mut receive_bound);
-                    collect_free_expr(&arm.body, &receive_bound, &mut free);
-                }
-            }
-        }
-    }
-
-    let mut slots = Vec::new();
-    for name in free {
-        if let Some(Some(type_)) = outer_locals.get(&name) {
-            slots.push(ActorFrameSlot {
-                name: ActorFrameSlotName::new(name),
-                type_: *type_,
-                field_index: slots.len() as u32 + 1,
-            });
-        }
-    }
-    let captures = slots.clone();
-
-    let mut local_types = slots
-        .iter()
-        .map(|slot| (slot.name.as_str().to_owned(), Some(slot.type_)))
-        .collect::<BTreeMap<_, _>>();
-    for op in &ops {
-        if let ActorFrameOp::Let { name, value } = op {
-            let type_ = infer_actor_slot_type(value, &local_types, context);
-            if let Some(type_) = type_ {
-                slots.push(ActorFrameSlot {
-                    name: name.clone(),
-                    type_,
-                    field_index: slots.len() as u32 + 1,
-                });
-                local_types.insert(name.as_str().to_owned(), Some(type_));
-            } else {
-                local_types.insert(name.as_str().to_owned(), None);
-            }
-        }
-    }
-
-    let op_count = ops.len();
-    let states = ops
-        .into_iter()
-        .enumerate()
-        .map(|(index, op)| {
-            let next = if index + 1 >= op_count {
-                ActorStateNext::Done
-            } else {
-                ActorStateNext::State(index + 1)
-            };
-            ActorFrameState { op, next }
-        })
-        .collect::<Vec<_>>();
-
-    ActorIrActor {
-        id: actor_id,
-        frame: ActorFrameLayout {
-            size_bytes: (slots.len() + 1) * 8,
-            align: 8,
-            slots,
-            captures,
-        },
-        states,
-    }
-}
-
-fn actor_ops(block: &RirBlock) -> Vec<ActorFrameOp> {
-    let mut ops = Vec::new();
-    for stmt in &block.statements {
-        match stmt {
-            RirStmt::Let { name, value } => ops.push(ActorFrameOp::Let {
-                name: ActorFrameSlotName::new(name.as_str()),
-                value: value.clone(),
-            }),
-            RirStmt::Expr(RirExpr::Receive { arms }) => {
-                ops.push(ActorFrameOp::Receive { arms: arms.clone() });
-            }
-            RirStmt::Expr(expr) => ops.push(ActorFrameOp::Expr(expr.clone())),
-        }
-    }
-    if let Some(expr) = &block.tail {
-        match expr {
-            RirExpr::Receive { arms } => {
-                ops.push(ActorFrameOp::Receive { arms: arms.clone() });
-            }
-            expr => ops.push(ActorFrameOp::Expr(expr.clone())),
-        }
-    }
-    ops
 }
 
 fn lower_block(block: TypedBlock, context: &mut LowerContext) -> RirBlock {
