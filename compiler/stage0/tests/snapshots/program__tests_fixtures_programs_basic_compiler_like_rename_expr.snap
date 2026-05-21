@@ -15,6 +15,6 @@ stderr:
 run:
 status: success
 stdout:
-let x$1 = input; print(x)
+let x$1 = input; println(x$1)
 stderr:
 <empty>
