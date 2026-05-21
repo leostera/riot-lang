@@ -1131,6 +1131,13 @@ impl<'src> Parser<'src> {
             args.push(self.parse_expr()?);
 
             if self.match_kind(TokenKind::Comma).is_none() {
+                if !self.at(TokenKind::RParen) {
+                    return Err(ParseError {
+                        span: self.current().span,
+                        message: "expected `,` between function arguments".to_owned(),
+                        help: Some("insert a comma before the next argument"),
+                    });
+                }
                 break;
             }
 
