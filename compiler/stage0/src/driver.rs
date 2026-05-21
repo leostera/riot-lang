@@ -22,11 +22,15 @@ pub(crate) fn run(cli: Cli) -> miette::Result<()> {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct Stage0Driver;
+pub(crate) struct Stage0Driver {
+    source_loader: SourceLoader,
+}
 
 impl Stage0Driver {
     pub(crate) fn new() -> Self {
-        Self
+        Self {
+            source_loader: SourceLoader::new(),
+        }
     }
 
     pub(crate) fn run(&self, cli: Cli) -> miette::Result<()> {
@@ -38,7 +42,7 @@ impl Stage0Driver {
     }
 
     fn compile(&self, args: CompileArgs) -> miette::Result<()> {
-        let units = parse_source_units(&args.inputs)?;
+        let units = self.source_loader.parse_units(&args.inputs)?;
         if units.len() > 1 && args.emit_llvm.is_some() {
             bail!("--emit-llvm is only supported with a single compile input for now");
         }
@@ -122,7 +126,7 @@ impl Stage0Driver {
     }
 
     fn compile_lib(&self, args: CompileLibArgs) -> miette::Result<()> {
-        let units = parse_source_units(&args.inputs)?;
+        let units = self.source_loader.parse_units(&args.inputs)?;
         if units.len() > 1 && args.emit_llvm.is_some() {
             bail!("--emit-llvm is only supported with a single compile-lib input for now");
         }
@@ -175,7 +179,7 @@ impl Stage0Driver {
     }
 
     fn emit(&self, args: EmitArgs) -> miette::Result<()> {
-        let source = load_source(&args.input)?;
+        let source = self.source_loader.load(&args.input)?;
         let ast = parse_source(&args.input, &source)?;
         let imports = resolve_imports(
             &args.input,
@@ -183,7 +187,7 @@ impl Stage0Driver {
             &args.sig_dirs,
             &ImportedSignatures::new(),
         )?;
-        let module_name = module_name_from_path(&args.input)?;
+        let module_name = self.source_loader.module_name_from_path(&args.input)?;
         let checked = Checker::new(
             &args.input,
             &source,
@@ -278,37 +282,99 @@ struct CompiledModule {
     object: Utf8PathBuf,
 }
 
-fn load_source(input: &Utf8Path) -> miette::Result<String> {
-    std::fs::read_to_string(input.as_std_path())
-        .into_diagnostic()
-        .wrap_err_with(|| format!("failed to read {input}"))
-}
+#[derive(Debug, Default)]
+struct SourceLoader;
 
-fn parse_source_units(inputs: &[Utf8PathBuf]) -> miette::Result<Vec<SourceUnit>> {
-    if inputs.is_empty() {
-        bail!("expected at least one source file");
+impl SourceLoader {
+    fn new() -> Self {
+        Self
     }
-    let mut units = Vec::new();
-    let mut modules = BTreeMap::new();
-    for input in inputs {
-        let source = load_source(input)?;
-        let ast = parse_source(input, &source)?;
-        let module_name = module_name_from_path(input)?;
-        if let Some(previous) = modules.insert(module_name.clone(), input.clone()) {
+
+    fn load(&self, input: &Utf8Path) -> miette::Result<String> {
+        std::fs::read_to_string(input.as_std_path())
+            .into_diagnostic()
+            .wrap_err_with(|| format!("failed to read {input}"))
+    }
+
+    fn parse_units(&self, inputs: &[Utf8PathBuf]) -> miette::Result<Vec<SourceUnit>> {
+        if inputs.is_empty() {
+            bail!("expected at least one source file");
+        }
+        let mut units = Vec::new();
+        let mut modules = BTreeMap::new();
+        for input in inputs {
+            let source = self.load(input)?;
+            let ast = parse_source(input, &source)?;
+            let module_name = self.module_name_from_path(input)?;
+            if let Some(previous) = modules.insert(module_name.clone(), input.clone()) {
+                bail!(
+                    "duplicate module {module_name}\n{} and {} both compile to module {module_name}",
+                    previous,
+                    input
+                );
+            }
+            units.push(SourceUnit {
+                path: input.clone(),
+                source,
+                ast,
+                module_name,
+            });
+        }
+        Ok(units)
+    }
+
+    fn module_name_from_path(&self, path: &Utf8Path) -> miette::Result<ModuleName> {
+        let stem = path.file_stem().unwrap_or("Main");
+        if !Self::is_lower_module_stem(stem) {
             bail!(
-                "duplicate module {module_name}\n{} and {} both compile to module {module_name}",
-                previous,
-                input
+                "invalid module file name `{stem}`\nfile stems must be lowercase, for example `hello.ml` or `hello_world.ml`"
             );
         }
-        units.push(SourceUnit {
-            path: input.clone(),
-            source,
-            ast,
-            module_name,
-        });
+        let mut output = String::new();
+        let mut capitalize = true;
+        for ch in stem.chars() {
+            if ch == '_' || ch == '-' {
+                capitalize = true;
+            } else if ch.is_ascii_alphanumeric() {
+                if output.is_empty() && ch.is_ascii_digit() {
+                    output.push('M');
+                }
+                if capitalize && ch.is_ascii_lowercase() {
+                    output.push(ch.to_ascii_uppercase());
+                } else {
+                    output.push(ch);
+                }
+                capitalize = false;
+            } else {
+                capitalize = true;
+            }
+        }
+        if output.is_empty() {
+            Ok(ModuleName::new("Main"))
+        } else {
+            Ok(ModuleName::new(output))
+        }
     }
-    Ok(units)
+
+    fn is_lower_module_stem(stem: &str) -> bool {
+        if stem.is_empty()
+            || stem.starts_with('_')
+            || stem.starts_with('-')
+            || stem.ends_with('_')
+            || stem.ends_with('-')
+        {
+            return false;
+        }
+        let mut previous_separator = false;
+        for ch in stem.chars() {
+            match ch {
+                'a'..='z' | '0'..='9' => previous_separator = false,
+                '_' | '-' if !previous_separator => previous_separator = true,
+                _ => return false,
+            }
+        }
+        true
+    }
 }
 
 fn executable_unit_index(units: &[SourceUnit]) -> miette::Result<usize> {
@@ -516,62 +582,9 @@ fn write_text(path: Option<&Utf8Path>, text: &str) -> miette::Result<()> {
     }
 }
 
-pub(crate) fn module_name_from_path(path: &Utf8Path) -> miette::Result<ModuleName> {
-    let stem = path.file_stem().unwrap_or("Main");
-    if !is_lower_module_stem(stem) {
-        bail!(
-            "invalid module file name `{stem}`\nfile stems must be lowercase, for example `hello.ml` or `hello_world.ml`"
-        );
-    }
-    let mut output = String::new();
-    let mut capitalize = true;
-    for ch in stem.chars() {
-        if ch == '_' || ch == '-' {
-            capitalize = true;
-        } else if ch.is_ascii_alphanumeric() {
-            if output.is_empty() && ch.is_ascii_digit() {
-                output.push('M');
-            }
-            if capitalize && ch.is_ascii_lowercase() {
-                output.push(ch.to_ascii_uppercase());
-            } else {
-                output.push(ch);
-            }
-            capitalize = false;
-        } else {
-            capitalize = true;
-        }
-    }
-    if output.is_empty() {
-        Ok(ModuleName::new("Main"))
-    } else {
-        Ok(ModuleName::new(output))
-    }
-}
-
-fn is_lower_module_stem(stem: &str) -> bool {
-    if stem.is_empty()
-        || stem.starts_with('_')
-        || stem.starts_with('-')
-        || stem.ends_with('_')
-        || stem.ends_with('-')
-    {
-        return false;
-    }
-    let mut previous_separator = false;
-    for ch in stem.chars() {
-        match ch {
-            'a'..='z' | '0'..='9' => previous_separator = false,
-            '_' | '-' if !previous_separator => previous_separator = true,
-            _ => return false,
-        }
-    }
-    true
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{SourceUnit, module_name_from_path, topological_source_order};
+    use super::{SourceLoader, SourceUnit, topological_source_order};
     use crate::parser::parse_source;
     use camino::Utf8PathBuf;
 
@@ -614,8 +627,9 @@ mod tests {
 
     fn source_unit(path: &str, source: &str) -> SourceUnit {
         let path = Utf8PathBuf::from(path);
+        let source_loader = SourceLoader::new();
         SourceUnit {
-            module_name: module_name_from_path(&path).unwrap(),
+            module_name: source_loader.module_name_from_path(&path).unwrap(),
             ast: parse_source(&path, source).unwrap(),
             source: source.to_owned(),
             path,
