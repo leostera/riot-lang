@@ -224,6 +224,29 @@ fn value_roots_preserve_nested_children() {
 }
 
 #[test]
+fn value_roots_preserve_variant_payload_children() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let payload = unsafe { riot_rt_value_string(b"payload".as_ptr(), 7) };
+    let variant = unsafe {
+        riot_rt_value_variant_payload(b"result".as_ptr(), 6, b"Ok".as_ptr(), 2, payload)
+    };
+    riot_rt_root_push(variant);
+
+    assert_eq!(riot_rt_gc_collect(), 0);
+    assert_eq!(riot_rt_gc_heap_len(), 2);
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(variant)),
+        "Ok(payload)"
+    );
+
+    riot_rt_root_pop(1);
+    assert_eq!(riot_rt_gc_collect(), 2);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
 fn closure_values_apply_and_trace_captures() {
     let _guard = runtime_test_guard();
     riot_rt_init();
