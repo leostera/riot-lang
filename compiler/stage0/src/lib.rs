@@ -22,5 +22,5 @@ pub fn run_cli() -> miette::Result<()> {
     use clap::Parser as _;
 
     let cli = cli::Cli::parse();
-    driver::run(cli)
+    driver::Stage0Driver::new().run(cli)
 }

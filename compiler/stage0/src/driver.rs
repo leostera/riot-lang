@@ -15,10 +15,6 @@ use crate::parser::SourceParser;
 use crate::runtime::RuntimeBuilder;
 use crate::signature::{ImportedSignatures, ModuleName, RsigStore};
 
-pub(crate) fn run(cli: Cli) -> miette::Result<()> {
-    Stage0Driver::new().run(cli)
-}
-
 #[derive(Debug, Default)]
 pub(crate) struct Stage0Driver {
     source_loader: SourceLoader,
