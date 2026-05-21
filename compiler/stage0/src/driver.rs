@@ -12,7 +12,7 @@ use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, 
 use crate::lambda::LambdaSimplifier;
 use crate::linker::link_executable;
 use crate::parser::parse_source;
-use crate::runtime::{build_runtime, find_repo_root};
+use crate::runtime::RuntimeBuilder;
 use crate::signature::{ImportedSignatures, ModuleName, resolve_rsig, write_rsig};
 
 pub(crate) fn run(cli: Cli) -> miette::Result<()> {
@@ -23,6 +23,7 @@ pub(crate) fn run(cli: Cli) -> miette::Result<()> {
 pub(crate) struct Stage0Driver {
     source_loader: SourceLoader,
     llvm_backend: LlvmBackend,
+    runtime_builder: RuntimeBuilder,
 }
 
 impl Stage0Driver {
@@ -30,6 +31,7 @@ impl Stage0Driver {
         Self {
             source_loader: SourceLoader::new(),
             llvm_backend: LlvmBackend::new(),
+            runtime_builder: RuntimeBuilder::new(),
         }
     }
 
@@ -57,8 +59,7 @@ impl Stage0Driver {
         }
         let order = graph.topological_order()?;
 
-        let repo = find_repo_root()?;
-        let runtime = build_runtime(&repo)?;
+        let runtime = self.runtime_builder.build()?;
         let temps = TempDir::new()
             .into_diagnostic()
             .wrap_err("failed to create stage0 temp directory")?;
