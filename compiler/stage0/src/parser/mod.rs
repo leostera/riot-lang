@@ -1255,7 +1255,8 @@ impl<'src> Parser<'src> {
 
         match (self.peek_kind(1), self.peek_kind(2)) {
             (Some(TokenKind::RBrace), _) => path_allows_empty_record,
-            (Some(TokenKind::Ident), Some(TokenKind::Colon | TokenKind::Comma | TokenKind::RBrace)) => true,
+            (Some(TokenKind::Ident), Some(TokenKind::Colon)) => true,
+            (Some(TokenKind::Ident), Some(TokenKind::Comma | TokenKind::RBrace)) => path_allows_empty_record,
             _ => false,
         }
     }
