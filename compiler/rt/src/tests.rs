@@ -11,8 +11,8 @@ use crate::abi::{
     riot_rt_result_is_ok, riot_rt_result_unwrap_or, riot_rt_root_pop, riot_rt_root_push,
     riot_rt_send, riot_rt_send_i64, riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_apply,
     riot_rt_value_as_bool, riot_rt_value_as_i64, riot_rt_value_bool, riot_rt_value_closure,
-    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_drop,
-    riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
+    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_cons,
+    riot_rt_value_list_drop, riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
     riot_rt_value_record_get, riot_rt_value_record_is, riot_rt_value_record_set,
     riot_rt_value_string, riot_rt_value_string_concat, riot_rt_value_string_len,
     riot_rt_value_tuple, riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
@@ -219,6 +219,31 @@ fn value_roots_preserve_nested_children() {
     assert_eq!(riot_rt_gc_heap_len(), 2);
 
     riot_rt_root_pop(1);
+    assert_eq!(riot_rt_gc_collect(), 2);
+    assert_eq!(riot_rt_gc_heap_len(), 0);
+}
+
+#[test]
+fn list_cons_prepends_items_and_preserves_tail() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+
+    let tail_values = [riot_rt_value_i64(2), riot_rt_value_i64(3)];
+    let tail = unsafe { riot_rt_value_list(tail_values.as_ptr(), tail_values.len()) };
+    riot_rt_root_push(tail);
+    let values = riot_rt_value_list_cons(riot_rt_value_i64(1), tail);
+    riot_rt_root_push(values);
+
+    assert_eq!(riot_rt_value_list_len(values), 3);
+    assert_eq!(riot_rt_value_as_i64(riot_rt_value_list_get(values, 0)), 1);
+    assert_eq!(riot_rt_value_as_i64(riot_rt_value_list_get(values, 1)), 2);
+    assert_eq!(riot_rt_value_as_i64(riot_rt_value_list_get(values, 2)), 3);
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(values)),
+        "[1, 2, 3]"
+    );
+
+    riot_rt_root_pop(2);
     assert_eq!(riot_rt_gc_collect(), 2);
     assert_eq!(riot_rt_gc_heap_len(), 0);
 }
