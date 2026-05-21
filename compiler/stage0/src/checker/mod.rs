@@ -2204,7 +2204,7 @@ fn validate_callable_call(
     }
 
     for (index, arg) in args.iter().enumerate() {
-        if is_actor_operation(signature) && index == 0 {
+        if signature.is_actor_operation() && index == 0 {
             validate_actor_target(ctx, arg, bindings, span, &name)?;
         } else {
             validate_expr(ctx, arg, bindings, in_actor)?;
@@ -2218,9 +2218,9 @@ fn validate_callable_call(
     if args.len() < signature.params.len() {
         return Ok(ExprCategory::Other);
     }
-    if is_output_operation(signature) {
+    if signature.is_output_operation() {
         Ok(ExprCategory::Output)
-    } else if is_actor_operation(signature) {
+    } else if signature.is_actor_operation() {
         Ok(ExprCategory::Actor)
     } else {
         Ok(ExprCategory::Other)
@@ -2301,27 +2301,13 @@ fn validate_static_callable_facts(
     signature: &CallableSignature,
     args: &[AstExpr],
 ) -> miette::Result<()> {
-    if signature.abi.as_deref() == Some("riot_rt_value_list_get")
+    if signature.is_static_list_get()
         && !ctx.declared_external_names.contains("list_get")
         && let [list, index] = args
     {
         validate_static_list_index(ctx, span, "list_get", list, index)?;
     }
     Ok(())
-}
-
-fn is_output_operation(signature: &CallableSignature) -> bool {
-    matches!(
-        signature.abi.as_deref(),
-        Some("riot_rt_dbg_value" | "riot_rt_println" | "riot_prim_println")
-    )
-}
-
-fn is_actor_operation(signature: &CallableSignature) -> bool {
-    matches!(
-        signature.abi.as_deref(),
-        Some("riot_rt_send_value" | "riot_rt_monitor" | "riot_rt_link")
-    )
 }
 
 fn callee_display_name(callee: &[String]) -> String {

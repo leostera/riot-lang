@@ -37,6 +37,26 @@ impl ExternalSignature {
     }
 }
 
+impl CallableSignature {
+    pub(crate) fn is_output_operation(&self) -> bool {
+        matches!(
+            self.abi.as_deref(),
+            Some("riot_rt_dbg_value" | "riot_rt_println" | "riot_prim_println")
+        )
+    }
+
+    pub(crate) fn is_actor_operation(&self) -> bool {
+        matches!(
+            self.abi.as_deref(),
+            Some("riot_rt_send_value" | "riot_rt_monitor" | "riot_rt_link")
+        )
+    }
+
+    pub(crate) fn is_static_list_get(&self) -> bool {
+        self.abi.as_deref() == Some("riot_rt_value_list_get")
+    }
+}
+
 pub(crate) struct CallableResolver<'a> {
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
     externals: &'a BTreeMap<String, ExternalSignature>,
@@ -157,6 +177,8 @@ mod tests {
         assert_eq!(signature.result, RsigType::Unit);
         assert_eq!(signature.params.len(), 2);
         assert_eq!(signature.abi.as_deref(), Some("riot_rt_send_value"));
+        assert!(signature.is_actor_operation());
+        assert!(!signature.is_output_operation());
     }
 
     #[test]
@@ -177,5 +199,6 @@ mod tests {
         assert_eq!(signature.params, vec![RsigType::String]);
         assert_eq!(signature.result, RsigType::String);
         assert_eq!(signature.abi.as_deref(), Some("user_dbg"));
+        assert!(!signature.is_output_operation());
     }
 }
