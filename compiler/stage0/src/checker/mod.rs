@@ -5,6 +5,7 @@ use camino::Utf8Path;
 mod blocks;
 mod const_eval;
 mod entrypoint;
+mod imports;
 mod patterns;
 mod shapes;
 mod span;
@@ -15,6 +16,7 @@ mod types;
 use blocks::BlockValidator;
 use const_eval::{ConstFunction, ConstValue};
 use entrypoint::EntrypointValidator;
+use imports::ImportValidator;
 use patterns::PatternValidator;
 use shapes::TypeShapeCollector;
 use span::expr_span;
@@ -191,21 +193,13 @@ impl<'a> ProgramValidator<'a> {
             .collect::<Vec<_>>();
 
         let entrypoint_validator = EntrypointValidator::new(&ctx, self.mode);
+        let import_validator = ImportValidator::new(&ctx);
         entrypoint_validator.validate_program(program, &main_decls)?;
 
         for decl in &program.decls {
             match decl {
                 AstDecl::Use(use_) => {
-                    if !self.imports.contains_key(use_.name.as_str()) {
-                        return Err(ctx
-                            .diagnostic(
-                                use_.name_span,
-                                "missing imported signature",
-                                format!("`use {}` did not resolve to a signature", use_.name),
-                                Some("pass --sig-dir with the directory containing the .rsig file"),
-                            )
-                            .into());
-                    }
+                    import_validator.validate_use(use_)?;
                 }
                 AstDecl::Module(_) | AstDecl::Include(_) => {}
                 AstDecl::External(external) => {
