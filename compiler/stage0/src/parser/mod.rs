@@ -1164,7 +1164,20 @@ impl<'src> Parser<'src> {
             });
         }
 
+        let mut tail = None;
         loop {
+            if self.match_kind(TokenKind::DotDot).is_some() {
+                let tail_expr = self.parse_expr()?;
+                tail = Some(tail_expr);
+                if self.match_kind(TokenKind::Comma).is_some() && !self.at(TokenKind::RBracket) {
+                    return Err(self.error_at_current(
+                        "list spread must be last",
+                        Some("put `..tail` at the end of the list expression"),
+                    ));
+                }
+                break;
+            }
+
             items.push(self.parse_expr()?);
 
             if self.match_kind(TokenKind::Comma).is_none() {
@@ -1177,10 +1190,11 @@ impl<'src> Parser<'src> {
         }
 
         let end = self.expect(TokenKind::RBracket, "expected `]` after list")?;
-        Ok(AstExpr::List {
-            items,
-            span: start.span.join(end.span),
-        })
+        let span = start.span.join(end.span);
+        if let Some(tail) = tail {
+            return Ok(list_cons_expr(items, tail, span));
+        }
+        Ok(AstExpr::List { items, span })
     }
 
     fn parse_record(&mut self, path: AstPath, path_span: TextSpan) -> Result<AstExpr, ParseError> {
@@ -1421,6 +1435,16 @@ fn is_lower_ident(ident: &str) -> bool {
         .chars()
         .next()
         .is_some_and(|ch| ch == '_' || ch.is_ascii_lowercase())
+}
+
+fn list_cons_expr(items: Vec<AstExpr>, tail: AstExpr, span: TextSpan) -> AstExpr {
+    items.into_iter().rev().fold(tail, |tail, item| AstExpr::Call {
+        callee: AstPath {
+            segments: vec!["list_cons".to_owned()],
+        },
+        args: vec![item, tail],
+        span,
+    })
 }
 
 fn is_upper_ident(ident: &str) -> bool {

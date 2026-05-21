@@ -69,6 +69,9 @@ external link : actor_id<'msg> -> unit = "riot_rt_link"
 /// Return the length of a list.
 external list_len : List<'item> -> i64 = "riot_rt_value_list_len"
 
+/// Return a list with one item prepended.
+external list_cons : 'item -> List<'item> -> List<'item> = "riot_rt_value_list_cons"
+
 /// Return the list item at an index.
 external list_get : List<'item> -> i64 -> 'item = "riot_rt_value_list_get"
 

@@ -404,6 +404,30 @@ pub extern "C" fn riot_rt_value_string_concat(lhs: RtValue, rhs: RtValue) -> RtV
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_list_cons(item: RtValue, list: RtValue) -> RtValue {
+    with_scheduler_mut(|scheduler| {
+        let Some(index) = heap_index(list) else {
+            runtime_abort("list_cons expected a list value");
+        };
+        let Some(object) = scheduler.heap.get(index).and_then(Option::as_ref) else {
+            runtime_abort("list_cons received a stale list value");
+        };
+        let mut items = match &object.kind {
+            HeapObjectKind::List(items) => Vec::with_capacity(items.len() + 1),
+            _ => runtime_abort("list_cons expected a list value"),
+        };
+        items.push(item);
+        if let HeapObjectKind::List(tail) = &object.kind {
+            items.extend_from_slice(tail);
+        }
+        scheduler.alloc_value(
+            HeapObjectKind::List(items),
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_list_len(list: RtValue) -> i64 {
     with_scheduler_mut(|scheduler| {
         let Some(index) = heap_index(list) else {

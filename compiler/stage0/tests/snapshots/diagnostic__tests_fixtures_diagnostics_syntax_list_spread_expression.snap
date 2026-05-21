@@ -13,11 +13,11 @@ stderr:
 Error: stage0::source
 
   × could not parse Riot ML source
-   ╭─[tests/fixtures/diagnostics/syntax/list_spread_expression.ml:3:11]
+   ╭─[tests/fixtures/diagnostics/syntax/list_spread_expression.ml:3:17]
  2 │   let xs = [1, 2];
- 3 │   dbg([0, ..xs])
-   ·           ─┬
-   ·            ╰── list spread is not an expression
+ 3 │   dbg([0, ..xs, 3])
+   ·                 ┬
+   ·                 ╰── list spread must be last
  4 │ }
    ╰────
-  help: `..tail` is only supported in list patterns like `[head, ..tail]`
+  help: put `..tail` at the end of the list expression

@@ -2580,7 +2580,10 @@ impl<'ctx> Codegen<'ctx, '_> {
                 bool_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_variant_get_payload" => i64_type.fn_type(&[i64_type.into()], false),
-            "riot_rt_value_tuple_get" | "riot_rt_value_list_get" | "riot_rt_value_list_drop" => {
+            "riot_rt_value_tuple_get"
+            | "riot_rt_value_list_get"
+            | "riot_rt_value_list_drop"
+            | "riot_rt_value_list_cons" => {
                 i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_tuple_arity_is" => {
