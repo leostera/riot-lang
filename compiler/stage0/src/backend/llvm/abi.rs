@@ -54,3 +54,73 @@ impl FunctionAbi {
                 .all(|param| *param != AbiType::Unknown && *param != AbiType::Unit)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ExternalAbi<'a> {
+    symbol: &'a str,
+}
+
+impl<'a> ExternalAbi<'a> {
+    pub(crate) fn new(symbol: &'a str) -> Self {
+        Self { symbol }
+    }
+
+    pub(crate) fn param_is_boxed(&self, type_: &RsigType) -> bool {
+        matches!(type_, RsigType::String) && self.symbol.starts_with("riot_rt_value_")
+            || external_type_is_boxed(type_)
+    }
+
+    pub(crate) fn result_abi(&self, type_: &RsigType) -> AbiType {
+        if external_type_is_boxed_with_string(type_) {
+            AbiType::Value
+        } else {
+            AbiType::from_rsig(type_)
+        }
+    }
+}
+
+fn external_type_is_boxed(type_: &RsigType) -> bool {
+    matches!(
+        type_,
+        RsigType::Arrow { .. }
+            | RsigType::List(_)
+            | RsigType::Record(_)
+            | RsigType::Tuple(_)
+            | RsigType::Unknown
+            | RsigType::Var(_)
+            | RsigType::Variant(_)
+            | RsigType::VariantApp { .. }
+    )
+}
+
+fn external_type_is_boxed_with_string(type_: &RsigType) -> bool {
+    matches!(type_, RsigType::String) || external_type_is_boxed(type_)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::signature::RsigType;
+
+    use super::{AbiType, ExternalAbi};
+
+    #[test]
+    fn runtime_value_abi_takes_string_as_boxed_value() {
+        let abi = ExternalAbi::new("riot_rt_value_string_len");
+
+        assert!(abi.param_is_boxed(&RsigType::String));
+    }
+
+    #[test]
+    fn raw_println_abi_takes_string_as_pointer_len() {
+        let abi = ExternalAbi::new("riot_rt_println");
+
+        assert!(!abi.param_is_boxed(&RsigType::String));
+    }
+
+    #[test]
+    fn external_string_results_are_boxed_runtime_values() {
+        let abi = ExternalAbi::new("riot_rt_value_string_concat");
+
+        assert_eq!(abi.result_abi(&RsigType::String), AbiType::Value);
+    }
+}

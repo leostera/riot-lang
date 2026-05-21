@@ -29,7 +29,7 @@ use crate::stdlib::Stdlib;
 mod abi;
 mod static_eval;
 
-use abi::{AbiType, FunctionAbi};
+use abi::{AbiType, ExternalAbi, FunctionAbi};
 use static_eval::{StaticEvaluator, StaticValue};
 
 const POLL_CONSUMED: u32 = 1;
@@ -1713,7 +1713,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             .map_err(|error| miette::miette!("failed to emit external call `{symbol}`: {error}"))?;
         let result = self.call_result(
             call.try_as_basic_value().basic(),
-            external_result_abi(result),
+            ExternalAbi::new(symbol).result_abi(result),
         );
         self.pop_runtime_roots(rooted_values)?;
         result
@@ -2203,7 +2203,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         env: &mut Env<'ctx>,
     ) -> miette::Result<usize> {
         match type_ {
-            type_ if external_param_is_boxed(symbol, type_) => {
+            type_ if ExternalAbi::new(symbol).param_is_boxed(type_) => {
                 let value = self.emit_expr(arg, env)?;
                 let value = self.value_as_runtime(value)?;
                 self.push_runtime_root(value)?;
@@ -2603,7 +2603,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         let mut llvm_params = Vec::new();
         for param in params {
             match param {
-                type_ if external_param_is_boxed(symbol, type_) => {
+                type_ if ExternalAbi::new(symbol).param_is_boxed(type_) => {
                     llvm_params.push(self.context.i64_type().into())
                 }
                 RsigType::String => {
@@ -2620,10 +2620,11 @@ impl<'ctx> Codegen<'ctx, '_> {
                 ),
             }
         }
-        match external_result_abi(result) {
+        let result_abi = ExternalAbi::new(symbol).result_abi(result);
+        match result_abi {
             AbiType::Unit => Ok(self.context.void_type().fn_type(&llvm_params, false)),
             AbiType::I64 | AbiType::ActorId | AbiType::Bool | AbiType::Value => Ok(self
-                .basic_type_for_abi(external_result_abi(result))?
+                .basic_type_for_abi(result_abi)?
                 .fn_type(&llvm_params, false)),
             AbiType::Unknown => bail!("unsupported external result type `{}`", result.canonical()),
         }
@@ -2751,11 +2752,6 @@ fn pattern_is_irrefutable(pattern: &LambdaPattern) -> bool {
     )
 }
 
-fn external_param_is_boxed(symbol: &str, type_: &RsigType) -> bool {
-    matches!(type_, RsigType::String) && symbol.starts_with("riot_rt_value_")
-        || external_param_type_is_boxed(type_)
-}
-
 fn is_result_unit_i32(type_: &RsigType) -> bool {
     match type_ {
         RsigType::VariantApp { name, args } if name.as_str() == "Result" => {
@@ -2763,43 +2759,6 @@ fn is_result_unit_i32(type_: &RsigType) -> bool {
         }
         _ => false,
     }
-}
-
-fn external_param_type_is_boxed(type_: &RsigType) -> bool {
-    matches!(
-        type_,
-        RsigType::Arrow { .. }
-            | RsigType::List(_)
-            | RsigType::Record(_)
-            | RsigType::Tuple(_)
-            | RsigType::Unknown
-            | RsigType::Var(_)
-            | RsigType::Variant(_)
-            | RsigType::VariantApp { .. }
-    )
-}
-
-fn external_result_abi(type_: &RsigType) -> AbiType {
-    if external_result_is_boxed(type_) {
-        AbiType::Value
-    } else {
-        AbiType::from_rsig(type_)
-    }
-}
-
-fn external_result_is_boxed(type_: &RsigType) -> bool {
-    matches!(
-        type_,
-        RsigType::Arrow { .. }
-            | RsigType::List(_)
-            | RsigType::Record(_)
-            | RsigType::String
-            | RsigType::Tuple(_)
-            | RsigType::Unknown
-            | RsigType::Var(_)
-            | RsigType::Variant(_)
-            | RsigType::VariantApp { .. }
-    )
 }
 
 fn infer_function_abis(
