@@ -1,0 +1,23 @@
+---
+source: tests/fixtures.rs
+assertion_line: 1335
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/syntax/list_spread_expression.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/syntax/list_spread_expression.ml:3:11]
+ 2 │   let xs = [1, 2];
+ 3 │   dbg([0, ..xs])
+   ·           ─┬
+   ·            ╰── list spread is not an expression
+ 4 │ }
+   ╰────
+  help: `..tail` is only supported in list patterns like `[head, ..tail]`

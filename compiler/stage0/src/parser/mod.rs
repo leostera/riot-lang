@@ -727,6 +727,10 @@ impl<'src> Parser<'src> {
             TokenKind::LBrace => self.parse_block_expr(),
             TokenKind::LParen => self.parse_paren_or_tuple_or_unit(),
             TokenKind::LBracket => self.parse_list(),
+            TokenKind::DotDot => Err(self.error_at_current(
+                "list spread is not an expression",
+                Some("`..tail` is only supported in list patterns like `[head, ..tail]`"),
+            )),
             _ => Err(self.error_at_current("expected expression", None)),
         }
     }
