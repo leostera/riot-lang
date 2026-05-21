@@ -1252,7 +1252,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 TypedExpr {
                     type_,
                     kind: TypedExprKind::Call {
-                        callee: Ident::from_segments(callee_path),
+                        callee: EntityId::from_segments(callee_path),
                         args,
                     },
                 }
@@ -1381,7 +1381,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             TypedExpr {
                 type_: RsigType::Record(type_name),
                 kind: TypedExprKind::Record {
-                    path: Ident::from_segments(path.segments),
+                    path: EntityId::from_segments(path.segments),
                     fields,
                 },
             }
@@ -1453,7 +1453,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     }
     TypedExpr {
         type_,
-        kind: TypedExprKind::Ident(Ident::from_segments(path)),
+        kind: TypedExprKind::Entity(EntityId::from_segments(path)),
     }
 }
 
@@ -1528,7 +1528,7 @@ fn partial_call_lambda(
     let call = TypedExpr {
         type_: result.clone(),
         kind: TypedExprKind::Call {
-            callee: Ident::from_segments(callee),
+            callee: EntityId::from_segments(callee),
             args: supplied_args,
         },
     };
@@ -1793,7 +1793,7 @@ fn typed_operator_call(
     TypedExpr {
         type_: result,
         kind: TypedExprKind::Call {
-            callee: Ident::from_segments(vec![
+            callee: EntityId::from_segments(vec![
                 "Std".to_owned(),
                 "Prelude".to_owned(),
                 operator.to_owned(),
@@ -2884,13 +2884,13 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
                 }
             }
         }
-        TypedExprKind::Ident(ident) => RirExpr::Path(lower_ident_path(ident, context)),
+        TypedExprKind::Entity(ident) => RirExpr::Path(lower_entity_path(ident, context)),
         TypedExprKind::Local(binding) => RirExpr::Path(vec![binding.key_name()]),
     }
 }
 
-fn lower_call(callee: Ident, args: Vec<TypedExpr>, context: &mut LowerContext) -> RirExpr {
-    let callee = lower_ident_path(callee, context);
+fn lower_call(callee: EntityId, args: Vec<TypedExpr>, context: &mut LowerContext) -> RirExpr {
+    let callee = lower_entity_path(callee, context);
     let args = args
         .into_iter()
         .map(|arg| lower_expr(arg, context))
@@ -2918,14 +2918,8 @@ fn lower_prelude_operator(callee: Vec<String>, args: Vec<RirExpr>) -> RirExpr {
     }
 }
 
-fn lower_ident_path(ident: Ident, context: &LowerContext) -> Vec<String> {
-    let path = ident.as_strings();
-    if let [name] = path.as_slice()
-        && let Some(binding) = context.resolve(name)
-    {
-        return vec![binding.as_str().to_owned()];
-    }
-    path
+fn lower_entity_path(entity: EntityId, _context: &LowerContext) -> Vec<String> {
+    entity.as_strings()
 }
 
 fn lower_literal(literal: TypedLiteral) -> RirExpr {
@@ -2994,7 +2988,7 @@ mod tests {
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{
-        Capture, Ident, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
+        Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
         typed_program_from_ast,
     };
 
@@ -3319,7 +3313,7 @@ mod tests {
     }
 
     #[test]
-    fn typed_names_are_not_binding_ids() {
+    fn typed_entities_carry_surface_paths() {
         let typed = typed_program_with_inference_facts(
             "NamedCall",
             "fn helper() { 1 }\nfn main() { helper() }",
@@ -3331,7 +3325,8 @@ mod tests {
             panic!("expected a named call");
         };
 
-        assert!(matches!(callee, Ident::Name(name) if name == "helper"));
+        assert_eq!(callee.as_strings(), vec!["helper".to_owned()]);
+        assert_eq!(callee.binding_id.name, "helper");
     }
 }
 

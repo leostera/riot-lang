@@ -24,36 +24,47 @@ impl BindingId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) enum Ident {
-    Name(String),
-    Qualified(String, Box<Ident>),
+pub(crate) struct SurfacePath {
+    segments: Vec<String>,
 }
 
-impl Ident {
+impl SurfacePath {
     pub(crate) fn from_segments(segments: Vec<String>) -> Self {
-        Self::from_segment_slice(&segments)
-    }
-
-    fn from_segment_slice(segments: &[String]) -> Self {
-        let Some((first, rest)) = segments.split_first() else {
-            return Self::Name("_".to_owned());
-        };
-        if rest.is_empty() {
-            Self::Name(first.clone())
+        if segments.is_empty() {
+            Self {
+                segments: vec!["_".to_owned()],
+            }
         } else {
-            Self::Qualified(first.clone(), Box::new(Self::from_segment_slice(rest)))
+            Self { segments }
         }
     }
 
     pub(crate) fn as_strings(&self) -> Vec<String> {
-        match self {
-            Ident::Name(name) => vec![name.clone()],
-            Ident::Qualified(prefix, rest) => {
-                let mut segments = vec![prefix.clone()];
-                segments.extend(rest.as_strings());
-                segments
-            }
+        self.segments.clone()
+    }
+
+    pub(crate) fn as_string(&self) -> String {
+        self.segments.join(".")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct EntityId {
+    pub(crate) binding_id: BindingId,
+    pub(crate) surface_path: SurfacePath,
+}
+
+impl EntityId {
+    pub(crate) fn from_segments(segments: Vec<String>) -> Self {
+        let surface_path = SurfacePath::from_segments(segments);
+        Self {
+            binding_id: BindingId::new(surface_path.as_string(), usize::MAX),
+            surface_path,
         }
+    }
+
+    pub(crate) fn as_strings(&self) -> Vec<String> {
+        self.surface_path.as_strings()
     }
 }
 
@@ -218,7 +229,7 @@ pub(crate) enum TypedExprKind {
     Block(Box<TypedBlock>),
     Literal(TypedLiteral),
     Call {
-        callee: Ident,
+        callee: EntityId,
         args: Vec<TypedExpr>,
     },
     Apply {
@@ -232,7 +243,7 @@ pub(crate) enum TypedExprKind {
     Tuple(Vec<TypedExpr>),
     List(Vec<TypedExpr>),
     Record {
-        path: Ident,
+        path: EntityId,
         fields: Vec<(String, TypedExpr)>,
     },
     Field {
@@ -248,7 +259,7 @@ pub(crate) enum TypedExprKind {
         constructor: ConstructorName,
         payload: Vec<TypedExpr>,
     },
-    Ident(Ident),
+    Entity(EntityId),
     Local(BindingId),
     Spawn {
         body: Box<TypedBlock>,
