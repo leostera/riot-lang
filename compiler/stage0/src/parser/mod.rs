@@ -1181,6 +1181,13 @@ impl<'src> Parser<'src> {
             items.push(self.parse_expr()?);
 
             if self.match_kind(TokenKind::Comma).is_none() {
+                if !self.at(TokenKind::RBracket) {
+                    return Err(ParseError {
+                        span: self.current().span,
+                        message: "expected `,` between list items".to_owned(),
+                        help: Some("insert a comma before the next item"),
+                    });
+                }
                 break;
             }
 
