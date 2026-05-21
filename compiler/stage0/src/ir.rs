@@ -15,19 +15,6 @@ pub(crate) use crate::actor::air::*;
 pub(crate) use crate::checker::tyir::*;
 pub(crate) use crate::lambda::ir::*;
 
-#[derive(Debug, Default)]
-pub(crate) struct RirLowerer;
-
-impl RirLowerer {
-    pub(crate) fn new() -> Self {
-        Self
-    }
-
-    pub(crate) fn lower(&self, program: TypedProgram) -> RirProgram {
-        lower_typed_to_rir(program)
-    }
-}
-
 pub(crate) struct ActorIrLowerer<'a> {
     imports: &'a ImportedSignatures,
 }
@@ -291,7 +278,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
     Rsig::with_dependencies(program.module_name.clone(), dependencies, types, exports)
 }
 
-fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
+pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
     let mut context = LowerContext::default();
     let lowered = RirProgram {
         module_name: program.module_name,
@@ -2545,7 +2532,9 @@ mod tests {
     use crate::parser::SourceParser;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use super::{Capture, RirExpr, RirLowerer, RirStmt, TyIrBuilder, TypedExprKind, TypedStmt};
+    use crate::lambda::RirLowerer;
+
+    use super::{Capture, RirExpr, RirStmt, TyIrBuilder, TypedExprKind, TypedStmt};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
