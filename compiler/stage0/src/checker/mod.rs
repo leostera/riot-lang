@@ -17,7 +17,7 @@ mod type_annotation;
 mod types;
 
 use blocks::BlockValidator;
-use const_eval::{ConstFunction, ConstValue};
+use const_eval::{ConstFunction, ConstFunctionTable, ConstValue};
 use entrypoint::EntrypointValidator;
 use imports::ImportValidator;
 use patterns::PatternValidator;
@@ -119,7 +119,7 @@ enum BindingKind {
 struct ValidationContext<'a> {
     source_path: &'a Utf8Path,
     source: &'a str,
-    functions: HashMap<String, ConstFunction>,
+    functions: ConstFunctionTable,
     function_signatures: FunctionTable,
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
@@ -182,7 +182,7 @@ impl<'a> ProgramValidator<'a> {
 
     fn validate(&self, program: &AstProgram) -> miette::Result<()> {
         let functions = const_functions(program);
-        let function_names = functions.keys().cloned().collect::<HashSet<_>>();
+        let function_names = functions.names().cloned().collect::<HashSet<_>>();
         let type_shapes = TypeShapeCollector::new(self.imports).collect(program);
         let function_signatures = function_signatures(program, &type_shapes.declared_variants);
         let function_results = function_results(program, &type_shapes.declared_variants);
@@ -506,21 +506,22 @@ fn prelude_variant_names() -> BTreeSet<TypeName> {
         .unwrap_or_default()
 }
 
-fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
-    program
-        .decls
-        .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::Function(function) if function.name != "main" => Some((
+fn const_functions(program: &AstProgram) -> ConstFunctionTable {
+    let mut functions = ConstFunctionTable::new();
+    for decl in &program.decls {
+        if let AstDecl::Function(function) = decl
+            && function.name != "main"
+        {
+            functions.insert(
                 function.name.clone(),
                 ConstFunction {
                     params: function.params.clone(),
                     body: function.body.clone(),
                 },
-            )),
-            _ => None,
-        })
-        .collect()
+            );
+        }
+    }
+    functions
 }
 
 fn external_names(program: &AstProgram) -> HashSet<String> {

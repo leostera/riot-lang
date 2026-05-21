@@ -8,6 +8,29 @@ pub(super) struct ConstFunction {
     pub(super) body: AstBlock,
 }
 
+#[derive(Debug, Clone, Default)]
+pub(super) struct ConstFunctionTable {
+    functions: HashMap<String, ConstFunction>,
+}
+
+impl ConstFunctionTable {
+    pub(super) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(super) fn insert(&mut self, name: impl Into<String>, function: ConstFunction) {
+        self.functions.insert(name.into(), function);
+    }
+
+    fn get(&self, name: &str) -> Option<&ConstFunction> {
+        self.functions.get(name)
+    }
+
+    pub(super) fn names(&self) -> impl Iterator<Item = &String> {
+        self.functions.keys()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ConstValue {
     Bool(bool),
@@ -27,7 +50,7 @@ pub(super) enum ConstValue {
 pub(super) fn resolve_const_value(
     expr: &AstExpr,
     bindings: &HashMap<String, ConstValue>,
-    functions: &HashMap<String, ConstFunction>,
+    functions: &ConstFunctionTable,
 ) -> Option<ConstValue> {
     match expr {
         AstExpr::Add { lhs, rhs, span: _ } => match (
@@ -203,7 +226,7 @@ pub(super) fn resolve_const_value(
 fn resolve_const_block(
     block: &AstBlock,
     bindings: &HashMap<String, ConstValue>,
-    functions: &HashMap<String, ConstFunction>,
+    functions: &ConstFunctionTable,
 ) -> Option<ConstValue> {
     let mut bindings = bindings.clone();
     for stmt in &block.statements {
@@ -372,7 +395,7 @@ fn resolve_call_value(
     callee: &[String],
     args: &[AstExpr],
     bindings: &HashMap<String, ConstValue>,
-    functions: &HashMap<String, ConstFunction>,
+    functions: &ConstFunctionTable,
 ) -> Option<ConstValue> {
     let [name] = callee else {
         return None;
