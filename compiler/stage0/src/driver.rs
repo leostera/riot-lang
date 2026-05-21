@@ -6,9 +6,7 @@ use tempfile::TempDir;
 
 use crate::actor::StacklessActorLowerer;
 use crate::ast::{AstDecl, AstProgram};
-use crate::backend::llvm::{
-    CodegenMode, emit_assembly_text, emit_executable_object, emit_llvm_text, emit_module_object,
-};
+use crate::backend::llvm::{CodegenMode, LlvmBackend};
 use crate::checker::{CheckMode, Checker};
 use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, ObjectMapping};
 use crate::lambda::LambdaSimplifier;
@@ -24,12 +22,14 @@ pub(crate) fn run(cli: Cli) -> miette::Result<()> {
 #[derive(Debug, Default)]
 pub(crate) struct Stage0Driver {
     source_loader: SourceLoader,
+    llvm_backend: LlvmBackend,
 }
 
 impl Stage0Driver {
     pub(crate) fn new() -> Self {
         Self {
             source_loader: SourceLoader::new(),
+            llvm_backend: LlvmBackend::new(),
         }
     }
 
@@ -95,7 +95,12 @@ impl Stage0Driver {
         let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
 
         let object = temp_dir.join("main.o");
-        emit_executable_object(&rir, &main_imports, &object, args.emit_llvm.as_deref())?;
+        self.llvm_backend.emit_executable_object(
+            &rir,
+            &main_imports,
+            &object,
+            args.emit_llvm.as_deref(),
+        )?;
 
         let imported_objects = ImportedObjectResolver::new(
             &main_imports,
@@ -168,7 +173,8 @@ impl Stage0Driver {
         let rsig_path = out_dir.join(format!("{}.rsig", unit.module_name));
         let object_path = out_dir.join(format!("{}.o", unit.module_name));
         write_rsig(&rsig_path, &checked.signature)?;
-        emit_module_object(&rir, &imports, &object_path, emit_llvm)?;
+        self.llvm_backend
+            .emit_module_object(&rir, &imports, &object_path, emit_llvm)?;
 
         Ok(CompiledModule {
             signature: checked.signature,
@@ -217,14 +223,20 @@ impl Stage0Driver {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 write_text(
                     args.output.as_deref(),
-                    &emit_llvm_text(&rir, &imports, Self::emit_mode_for(&rir))?,
+                    &self
+                        .llvm_backend
+                        .emit_llvm_text(&rir, &imports, Self::emit_mode_for(&rir))?,
                 )
             }
             EmitPass::Assembly => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 write_text(
                     args.output.as_deref(),
-                    &emit_assembly_text(&rir, &imports, Self::emit_mode_for(&rir))?,
+                    &self.llvm_backend.emit_assembly_text(
+                        &rir,
+                        &imports,
+                        Self::emit_mode_for(&rir),
+                    )?,
                 )
             }
             EmitPass::Object => {
@@ -232,7 +244,8 @@ impl Stage0Driver {
                 let output = args
                     .output
                     .unwrap_or_else(|| args.input.with_extension("o"));
-                emit_module_object(&rir, &imports, &output, None)
+                self.llvm_backend
+                    .emit_module_object(&rir, &imports, &output, None)
             }
             EmitPass::All => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree.clone());
@@ -249,7 +262,11 @@ impl Stage0Driver {
                 text.push_str("== actor-ir ==\n");
                 text.push_str(&format!("{actor_ir:#?}\n"));
                 text.push_str("== llvm ==\n");
-                text.push_str(&emit_llvm_text(&rir, &imports, Self::emit_mode_for(&rir))?);
+                text.push_str(&self.llvm_backend.emit_llvm_text(
+                    &rir,
+                    &imports,
+                    Self::emit_mode_for(&rir),
+                )?);
                 write_text(args.output.as_deref(), &text)
             }
         }

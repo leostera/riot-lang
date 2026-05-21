@@ -45,135 +45,149 @@ pub(crate) enum CodegenMode {
     Module,
 }
 
-pub(crate) fn emit_executable_object(
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-    object_path: &Utf8Path,
-    llvm_ir_path: Option<&Utf8Path>,
-) -> miette::Result<()> {
-    emit_object_with_mode(
-        program,
-        imports,
-        object_path,
-        llvm_ir_path,
-        CodegenMode::Executable,
-    )
-}
+#[derive(Debug, Default)]
+pub(crate) struct LlvmBackend;
 
-pub(crate) fn emit_module_object(
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-    object_path: &Utf8Path,
-    llvm_ir_path: Option<&Utf8Path>,
-) -> miette::Result<()> {
-    emit_object_with_mode(
-        program,
-        imports,
-        object_path,
-        llvm_ir_path,
-        CodegenMode::Module,
-    )
-}
-
-pub(crate) fn emit_llvm_text(
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-    mode: CodegenMode,
-) -> miette::Result<String> {
-    let context = Context::create();
-    let target_machine = create_target_machine()?;
-    let module = build_program_module(&context, &target_machine, program, imports, mode)?;
-    Ok(module.print_to_string().to_string())
-}
-
-pub(crate) fn emit_assembly_text(
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-    mode: CodegenMode,
-) -> miette::Result<String> {
-    let context = Context::create();
-    let target_machine = create_target_machine()?;
-    let module = build_program_module(&context, &target_machine, program, imports, mode)?;
-    let buffer = target_machine
-        .write_to_memory_buffer(&module, FileType::Assembly)
-        .map_err(|error| miette::miette!("failed to emit assembly: {error}"))?;
-    Ok(String::from_utf8_lossy(buffer.as_slice()).into_owned())
-}
-
-fn emit_object_with_mode(
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-    object_path: &Utf8Path,
-    llvm_ir_path: Option<&Utf8Path>,
-    mode: CodegenMode,
-) -> miette::Result<()> {
-    let context = Context::create();
-    let target_machine = create_target_machine()?;
-    let module = build_program_module(&context, &target_machine, program, imports, mode)?;
-
-    if let Some(path) = llvm_ir_path {
-        module
-            .print_to_file(path.as_std_path())
-            .map_err(|error| miette::miette!("failed to write LLVM IR: {error}"))?;
+impl LlvmBackend {
+    pub(crate) fn new() -> Self {
+        Self
     }
 
-    target_machine
-        .write_to_file(&module, FileType::Object, object_path.as_std_path())
-        .map_err(|error| miette::miette!("failed to emit object file: {error}"))?;
-
-    Ok(())
-}
-
-fn create_target_machine() -> miette::Result<TargetMachine> {
-    Target::initialize_native(&InitializationConfig::default())
-        .map_err(|error| miette::miette!("failed to initialize native LLVM target: {error}"))?;
-
-    let triple = TargetMachine::get_default_triple();
-    let target = Target::from_triple(&triple)
-        .map_err(|error| miette::miette!("failed to load LLVM target: {error}"))?;
-    target
-        .create_target_machine(
-            &triple,
-            "generic",
-            "",
-            OptimizationLevel::Default,
-            RelocMode::Default,
-            CodeModel::Default,
+    pub(crate) fn emit_executable_object(
+        &self,
+        program: &RirProgram,
+        imports: &ImportedSignatures,
+        object_path: &Utf8Path,
+        llvm_ir_path: Option<&Utf8Path>,
+    ) -> miette::Result<()> {
+        self.emit_object_with_mode(
+            program,
+            imports,
+            object_path,
+            llvm_ir_path,
+            CodegenMode::Executable,
         )
-        .ok_or_else(|| miette::miette!("failed to create LLVM target machine"))
-}
+    }
 
-fn build_program_module<'ctx>(
-    context: &'ctx Context,
-    target_machine: &TargetMachine,
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-    mode: CodegenMode,
-) -> miette::Result<Module<'ctx>> {
-    let triple = TargetMachine::get_default_triple();
-    let module = context.create_module(program.module_name.as_str());
-    module.set_triple(&triple);
-    module.set_data_layout(&target_machine.get_target_data().get_data_layout());
+    pub(crate) fn emit_module_object(
+        &self,
+        program: &RirProgram,
+        imports: &ImportedSignatures,
+        object_path: &Utf8Path,
+        llvm_ir_path: Option<&Utf8Path>,
+    ) -> miette::Result<()> {
+        self.emit_object_with_mode(
+            program,
+            imports,
+            object_path,
+            llvm_ir_path,
+            CodegenMode::Module,
+        )
+    }
 
-    let externals = codegen_externals(program)?;
-    let codegen = Codegen {
-        context,
-        module,
-        builder: context.create_builder(),
-        program,
-        imports,
-        functions: HashMap::new(),
-        function_abis: infer_function_abis(program, &externals),
-        function_map: program
-            .functions
-            .iter()
-            .map(|function| (function.name.as_str(), function))
-            .collect(),
-        externals,
-        actor_ir: StacklessActorLowerer::new(imports).lower(program),
-        string_counter: 0,
-    };
-    codegen.emit_program(mode)
+    pub(crate) fn emit_llvm_text(
+        &self,
+        program: &RirProgram,
+        imports: &ImportedSignatures,
+        mode: CodegenMode,
+    ) -> miette::Result<String> {
+        let context = Context::create();
+        let target_machine = Self::create_target_machine()?;
+        let module = Self::build_program_module(&context, &target_machine, program, imports, mode)?;
+        Ok(module.print_to_string().to_string())
+    }
+
+    pub(crate) fn emit_assembly_text(
+        &self,
+        program: &RirProgram,
+        imports: &ImportedSignatures,
+        mode: CodegenMode,
+    ) -> miette::Result<String> {
+        let context = Context::create();
+        let target_machine = Self::create_target_machine()?;
+        let module = Self::build_program_module(&context, &target_machine, program, imports, mode)?;
+        let buffer = target_machine
+            .write_to_memory_buffer(&module, FileType::Assembly)
+            .map_err(|error| miette::miette!("failed to emit assembly: {error}"))?;
+        Ok(String::from_utf8_lossy(buffer.as_slice()).into_owned())
+    }
+
+    fn emit_object_with_mode(
+        &self,
+        program: &RirProgram,
+        imports: &ImportedSignatures,
+        object_path: &Utf8Path,
+        llvm_ir_path: Option<&Utf8Path>,
+        mode: CodegenMode,
+    ) -> miette::Result<()> {
+        let context = Context::create();
+        let target_machine = Self::create_target_machine()?;
+        let module = Self::build_program_module(&context, &target_machine, program, imports, mode)?;
+
+        if let Some(path) = llvm_ir_path {
+            module
+                .print_to_file(path.as_std_path())
+                .map_err(|error| miette::miette!("failed to write LLVM IR: {error}"))?;
+        }
+
+        target_machine
+            .write_to_file(&module, FileType::Object, object_path.as_std_path())
+            .map_err(|error| miette::miette!("failed to emit object file: {error}"))?;
+
+        Ok(())
+    }
+
+    fn create_target_machine() -> miette::Result<TargetMachine> {
+        Target::initialize_native(&InitializationConfig::default())
+            .map_err(|error| miette::miette!("failed to initialize native LLVM target: {error}"))?;
+
+        let triple = TargetMachine::get_default_triple();
+        let target = Target::from_triple(&triple)
+            .map_err(|error| miette::miette!("failed to load LLVM target: {error}"))?;
+        target
+            .create_target_machine(
+                &triple,
+                "generic",
+                "",
+                OptimizationLevel::Default,
+                RelocMode::Default,
+                CodeModel::Default,
+            )
+            .ok_or_else(|| miette::miette!("failed to create LLVM target machine"))
+    }
+
+    fn build_program_module<'ctx>(
+        context: &'ctx Context,
+        target_machine: &TargetMachine,
+        program: &RirProgram,
+        imports: &ImportedSignatures,
+        mode: CodegenMode,
+    ) -> miette::Result<Module<'ctx>> {
+        let triple = TargetMachine::get_default_triple();
+        let module = context.create_module(program.module_name.as_str());
+        module.set_triple(&triple);
+        module.set_data_layout(&target_machine.get_target_data().get_data_layout());
+
+        let externals = codegen_externals(program)?;
+        let codegen = Codegen {
+            context,
+            module,
+            builder: context.create_builder(),
+            program,
+            imports,
+            functions: HashMap::new(),
+            function_abis: infer_function_abis(program, &externals),
+            function_map: program
+                .functions
+                .iter()
+                .map(|function| (function.name.as_str(), function))
+                .collect(),
+            externals,
+            actor_ir: StacklessActorLowerer::new(imports).lower(program),
+            string_counter: 0,
+        };
+        codegen.emit_program(mode)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -3421,7 +3435,7 @@ mod tests {
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use super::{CodegenMode, emit_llvm_text};
+    use super::{CodegenMode, LlvmBackend};
 
     #[test]
     fn lambda_values_lower_to_runtime_closure_calls() {
@@ -3452,12 +3466,13 @@ mod tests {
             }],
         };
 
-        let llvm = emit_llvm_text(
-            &program,
-            &ImportedSignatures::new(),
-            CodegenMode::Executable,
-        )
-        .unwrap();
+        let llvm = LlvmBackend::new()
+            .emit_llvm_text(
+                &program,
+                &ImportedSignatures::new(),
+                CodegenMode::Executable,
+            )
+            .unwrap();
 
         assert!(llvm.contains("riot_rt_value_closure"));
         assert!(llvm.contains("riot_lambda_apply_"));
@@ -3496,12 +3511,13 @@ mod tests {
             }],
         };
 
-        let llvm = emit_llvm_text(
-            &program,
-            &ImportedSignatures::new(),
-            CodegenMode::Executable,
-        )
-        .unwrap();
+        let llvm = LlvmBackend::new()
+            .emit_llvm_text(
+                &program,
+                &ImportedSignatures::new(),
+                CodegenMode::Executable,
+            )
+            .unwrap();
 
         assert!(llvm.contains("riot_rt_value_apply"));
         assert!(llvm.contains("riot_rt_value_as_i64"));
