@@ -6,8 +6,7 @@ use crate::ast::{
 use crate::signature::{
     ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
     RsigExternal, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
-    RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName,
-    parse_type_signature_with_variants, parse_type_with_variants,
+    RsigTypeParser, RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName,
 };
 
 pub(crate) use crate::actor::air::*;
@@ -135,7 +134,7 @@ fn typed_program_from_ast(
                                         .payload
                                         .into_iter()
                                         .map(|payload| {
-                                            parse_type_with_variants(
+                                            RsigTypeParser::new().parse_with_variants(
                                                 &payload.text,
                                                 &predeclared_variants,
                                             )
@@ -149,7 +148,7 @@ fn typed_program_from_ast(
                                 .into_iter()
                                 .map(|field| TypedRecordField {
                                     name: FieldName::new(field.name),
-                                    type_: parse_type_with_variants(
+                                    type_: RsigTypeParser::new().parse_with_variants(
                                         &field.type_annotation.text,
                                         &predeclared_variants,
                                     ),
@@ -166,8 +165,8 @@ fn typed_program_from_ast(
     let externals = raw_externals
         .into_iter()
         .map(|external| {
-            let (params, result) =
-                parse_type_signature_with_variants(&external.type_text, &declared_variants);
+            let (params, result) = RsigTypeParser::new()
+                .parse_signature_with_variants(&external.type_text, &declared_variants);
             TypedExternal {
                 name: external.name,
                 params,
@@ -201,10 +200,9 @@ fn typed_program_from_ast(
                     RsigType::Unknown,
                 )
             });
-        let annotated_result = function
-            .return_type
-            .as_ref()
-            .map(|annotation| parse_type_with_variants(&annotation.text, &declared_variants));
+        let annotated_result = function.return_type.as_ref().map(|annotation| {
+            RsigTypeParser::new().parse_with_variants(&annotation.text, &declared_variants)
+        });
         let mut context = TypeContext::new(TypeContextInputs {
             function_types,
             externals: &external_types,
@@ -724,8 +722,8 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
             } => {
                 let mut value = type_expr(value, context);
                 if let Some(annotation) = type_annotation {
-                    value.type_ =
-                        parse_type_with_variants(&annotation.text, context.declared_variants);
+                    value.type_ = RsigTypeParser::new()
+                        .parse_with_variants(&annotation.text, context.declared_variants);
                 }
                 let binding = context.bind(&name, value.type_.clone());
                 statements.push(TypedStmt::Let { binding, value });
@@ -907,7 +905,8 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         .get(index)
                         .and_then(|annotation| annotation.as_ref())
                         .map(|annotation| {
-                            parse_type_with_variants(&annotation.text, context.declared_variants)
+                            RsigTypeParser::new()
+                                .parse_with_variants(&annotation.text, context.declared_variants)
                         })
                         .unwrap_or(RsigType::Unknown);
                     let binding = context.bind(name, type_.clone());

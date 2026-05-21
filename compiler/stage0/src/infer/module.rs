@@ -11,8 +11,8 @@ use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstFnDecl, AstPattern, AstProgram, AstStmt, AstTypeBody, TextSpan,
 };
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeDeclKind, RsigTypeScheme, TypeName,
-    parse_type_signature_with_variants, parse_type_with_variants,
+    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeDeclKind, RsigTypeParser,
+    RsigTypeScheme, TypeName,
 };
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -303,7 +303,10 @@ fn infer_decl(
                     let payload = constructor
                         .payload
                         .iter()
-                        .map(|payload| parse_type_with_variants(&payload.text, declared_variants))
+                        .map(|payload| {
+                            RsigTypeParser::new()
+                                .parse_with_variants(&payload.text, declared_variants)
+                        })
                         .collect::<Vec<_>>();
                     let type_ = constructor_type(&payload, Type::Variant(type_name.clone()), state);
                     state.add_value(constructor.name.clone(), TypeScheme::monomorphic(type_));
@@ -312,8 +315,8 @@ fn infer_decl(
             Ok(())
         }
         AstDecl::External(external) => {
-            let (params, result) =
-                parse_type_signature_with_variants(&external.type_text, declared_variants);
+            let (params, result) = RsigTypeParser::new()
+                .parse_signature_with_variants(&external.type_text, declared_variants);
             let type_ = rsig_signature_to_infer_type(&params, &result, state);
             state.add_value(external.name.clone(), state.generalize(type_));
             Ok(())
@@ -343,7 +346,8 @@ fn infer_function(
                 .and_then(|annotation| annotation.as_ref())
                 .map(|annotation| {
                     rsig_type_to_infer_type(
-                        &parse_type_with_variants(&annotation.text, declared_variants),
+                        &RsigTypeParser::new()
+                            .parse_with_variants(&annotation.text, declared_variants),
                         state,
                     )
                 })
@@ -355,7 +359,7 @@ fn infer_function(
         .as_ref()
         .map(|annotation| {
             rsig_type_to_infer_type(
-                &parse_type_with_variants(&annotation.text, declared_variants),
+                &RsigTypeParser::new().parse_with_variants(&annotation.text, declared_variants),
                 state,
             )
         })
@@ -391,7 +395,8 @@ fn infer_block(
                 let inferred = infer_expr(state, value, declared_variants, expression_types)?;
                 let type_ = if let Some(annotation) = type_annotation {
                     let expected = rsig_type_to_infer_type(
-                        &parse_type_with_variants(&annotation.text, declared_variants),
+                        &RsigTypeParser::new()
+                            .parse_with_variants(&annotation.text, declared_variants),
                         state,
                     );
                     state.unify(&expected, &inferred)?;
@@ -457,7 +462,8 @@ fn infer_expr_kind(
                         .and_then(|annotation| annotation.as_ref())
                         .map(|annotation| {
                             rsig_type_to_infer_type(
-                                &parse_type_with_variants(&annotation.text, declared_variants),
+                                &RsigTypeParser::new()
+                                    .parse_with_variants(&annotation.text, declared_variants),
                                 state,
                             )
                         })

@@ -1,10 +1,12 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::{Cursor, Read};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
+
+pub(crate) use crate::signature_type_parser::RsigTypeParser;
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
 const VERSION: u16 = 9;
@@ -785,165 +787,6 @@ fn resolve_rsig(
     )
 }
 
-pub(crate) fn parse_type_signature_with_variants(
-    text: &str,
-    variants: &BTreeSet<TypeName>,
-) -> (Vec<RsigType>, RsigType) {
-    let mut parts = split_top_level_arrows(text);
-    if parts.len() < 2 {
-        return (Vec::new(), parse_type_with_variants(text, variants));
-    }
-    let result = parse_type_with_variants(parts.pop().unwrap_or("_"), variants);
-    let params = parts
-        .into_iter()
-        .map(|part| parse_type_with_variants(part, variants))
-        .collect();
-    (params, result)
-}
-
-pub(crate) fn parse_type(text: &str) -> RsigType {
-    let text = text.trim();
-    if text == "()" {
-        return RsigType::Unit;
-    }
-    if let Some(inner) = strip_wrapping_parens(text)
-        && split_top_level_arrows(inner).len() > 1
-    {
-        return parse_type(inner);
-    }
-    let mut arrow_parts = split_top_level_arrows(text);
-    if arrow_parts.len() > 1 {
-        let result = parse_type(arrow_parts.pop().unwrap_or("_"));
-        return arrow_parts
-            .into_iter()
-            .rev()
-            .fold(result, |result, parameter| RsigType::Arrow {
-                parameter: Box::new(parse_type(parameter)),
-                result: Box::new(result),
-            });
-    }
-    if let Some((name, args)) = parse_named_type_app(text)
-        && name == "List"
-    {
-        let args = split_top_level_commas(args);
-        if let [item] = args.as_slice() {
-            return RsigType::List(Box::new(parse_type(item)));
-        }
-    }
-    match text {
-        "bool" => RsigType::Bool,
-        "char" => RsigType::Char,
-        "f64" | "float" => RsigType::F64,
-        "i32" => RsigType::I32,
-        "i64" | "int" => RsigType::I64,
-        "String" => RsigType::String,
-        "unit" => RsigType::Unit,
-        "_" | "" => RsigType::Unknown,
-        _ if text.starts_with('\'') => RsigType::Var(text.to_owned()),
-        _ if text.starts_with("actor_id<") && text.ends_with('>') => {
-            let inner = &text[9..text.len() - 1];
-            RsigType::ActorId(Box::new(parse_type(inner)))
-        }
-        _ if text.starts_with('(') && text.ends_with(')') && text.contains(',') => {
-            let inner = &text[1..text.len() - 1];
-            RsigType::Tuple(
-                split_top_level_commas(inner)
-                    .into_iter()
-                    .map(parse_type)
-                    .collect(),
-            )
-        }
-        _ => RsigType::Record(TypeName::new(text)),
-    }
-}
-
-pub(crate) fn parse_type_with_variants(text: &str, variants: &BTreeSet<TypeName>) -> RsigType {
-    let text = text.trim();
-    if let Some((name, args)) = parse_named_type_app(text)
-        && name == "List"
-    {
-        let args = split_top_level_commas(args);
-        if let [item] = args.as_slice() {
-            return RsigType::List(Box::new(parse_type_with_variants(item, variants)));
-        }
-    }
-    if let Some((name, args)) = parse_named_type_app(text) {
-        let name = TypeName::new(name);
-        let args = split_top_level_commas(args)
-            .into_iter()
-            .map(|arg| parse_type_with_variants(arg, variants))
-            .collect::<Vec<_>>();
-        if variants.contains(&name) {
-            return RsigType::VariantApp { name, args };
-        }
-    }
-    resolve_declared_variants(parse_type(text), variants)
-}
-
-fn resolve_declared_variants(type_: RsigType, variants: &BTreeSet<TypeName>) -> RsigType {
-    match type_ {
-        RsigType::ActorId(message) => {
-            RsigType::ActorId(Box::new(resolve_declared_variants(*message, variants)))
-        }
-        RsigType::Arrow { parameter, result } => RsigType::Arrow {
-            parameter: Box::new(resolve_declared_variants(*parameter, variants)),
-            result: Box::new(resolve_declared_variants(*result, variants)),
-        },
-        RsigType::List(element) => {
-            RsigType::List(Box::new(resolve_declared_variants(*element, variants)))
-        }
-        RsigType::Tuple(items) => RsigType::Tuple(
-            items
-                .into_iter()
-                .map(|item| resolve_declared_variants(item, variants))
-                .collect(),
-        ),
-        RsigType::VariantApp { name, args } => RsigType::VariantApp {
-            name,
-            args: args
-                .into_iter()
-                .map(|arg| resolve_declared_variants(arg, variants))
-                .collect(),
-        },
-        RsigType::Record(name) => {
-            if variants.contains(&name) {
-                RsigType::Variant(name)
-            } else {
-                RsigType::Record(name)
-            }
-        }
-        other => other,
-    }
-}
-
-fn strip_wrapping_parens(text: &str) -> Option<&str> {
-    let inner = text.strip_prefix('(')?.strip_suffix(')')?;
-    let mut depth = 0_i32;
-    for (index, ch) in text.char_indices() {
-        match ch {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 && index + ch.len_utf8() < text.len() {
-                    return None;
-                }
-            }
-            _ => {}
-        }
-    }
-    Some(inner)
-}
-
-fn parse_named_type_app(text: &str) -> Option<(&str, &str)> {
-    let (name, rest) = text.split_once('<')?;
-    let args = rest.strip_suffix('>')?;
-    let name = name.trim();
-    if name.is_empty() || name == "actor_id" {
-        return None;
-    }
-    Some((name, args))
-}
-
 pub(crate) fn stable_hash(text: &str) -> u64 {
     const OFFSET: u64 = 0xcbf29ce484222325;
     const PRIME: u64 = 0x100000001b3;
@@ -953,50 +796,6 @@ pub(crate) fn stable_hash(text: &str) -> u64 {
         hash = hash.wrapping_mul(PRIME);
     }
     hash
-}
-
-fn split_top_level_arrows(text: &str) -> Vec<&str> {
-    let bytes = text.as_bytes();
-    let mut depth = 0_i32;
-    let mut start = 0;
-    let mut parts = Vec::new();
-    let mut index = 0;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'(' | b'<' => depth += 1,
-            b')' => depth -= 1,
-            b'>' if index == 0 || bytes[index - 1] != b'-' => depth -= 1,
-            b'-' if depth == 0 && bytes.get(index + 1) == Some(&b'>') => {
-                parts.push(text[start..index].trim());
-                index += 2;
-                start = index;
-                continue;
-            }
-            _ => {}
-        }
-        index += 1;
-    }
-    parts.push(text[start..].trim());
-    parts
-}
-
-fn split_top_level_commas(text: &str) -> Vec<&str> {
-    let mut depth = 0_i32;
-    let mut start = 0;
-    let mut parts = Vec::new();
-    for (index, ch) in text.char_indices() {
-        match ch {
-            '(' | '<' => depth += 1,
-            ')' | '>' => depth -= 1,
-            ',' if depth == 0 => {
-                parts.push(text[start..index].trim());
-                start = index + ch.len_utf8();
-            }
-            _ => {}
-        }
-    }
-    parts.push(text[start..].trim());
-    parts
 }
 
 fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
@@ -1331,16 +1130,15 @@ pub(crate) type ImportedSignatures = BTreeMap<ModuleName, Rsig>;
 mod tests {
     use super::{
         ConstructorName, FieldName, Rsig, RsigDependency, RsigExport, RsigFunction,
-        RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme,
+        RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeParser, RsigTypeScheme,
         RsigVariantConstructor, TypeName, TypeParamName, decode_rsig, encode_rsig,
-        parse_type_signature_with_variants,
     };
     use std::collections::BTreeSet;
 
     #[test]
     fn parses_parenthesized_arrow_parameter_types() {
-        let (params, result) =
-            parse_type_signature_with_variants("(i64 -> i64) -> i64 -> i64", &BTreeSet::new());
+        let (params, result) = RsigTypeParser::new()
+            .parse_signature_with_variants("(i64 -> i64) -> i64 -> i64", &BTreeSet::new());
 
         assert_eq!(
             params,
@@ -1359,8 +1157,8 @@ mod tests {
     fn parses_declared_variants_in_type_signatures() {
         let declared = BTreeSet::from([TypeName::new("color"), TypeName::new("Palette.color")]);
 
-        let (params, result) =
-            parse_type_signature_with_variants("color -> List<Palette.color>", &declared);
+        let (params, result) = RsigTypeParser::new()
+            .parse_signature_with_variants("color -> List<Palette.color>", &declared);
 
         assert_eq!(params, vec![RsigType::Variant(TypeName::new("color"))]);
         assert_eq!(

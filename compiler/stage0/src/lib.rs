@@ -14,6 +14,7 @@ mod linker;
 mod parser;
 mod runtime;
 mod signature;
+mod signature_type_parser;
 mod stdlib;
 
 pub fn run_cli() -> miette::Result<()> {

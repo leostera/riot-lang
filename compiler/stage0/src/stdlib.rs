@@ -7,8 +7,8 @@ use crate::ast::{AstDecl, AstProgram, AstTypeBody};
 use crate::parser::SourceParser;
 use crate::signature::{
     ConstructorName, FieldName, ModuleName, Rsig, RsigExport, RsigExternal, RsigRecordField,
-    RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme, RsigVariantConstructor, TypeName,
-    TypeParamName, parse_type_signature_with_variants, parse_type_with_variants,
+    RsigTypeDecl, RsigTypeDeclKind, RsigTypeParser, RsigTypeScheme, RsigVariantConstructor,
+    TypeName, TypeParamName,
 };
 
 const STD_SOURCE: &str = include_str!("../../std/std.ml");
@@ -128,7 +128,7 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                                         .payload
                                         .into_iter()
                                         .map(|payload| {
-                                            parse_type_with_variants(
+                                            RsigTypeParser::new().parse_with_variants(
                                                 &payload.text,
                                                 &declared_variants,
                                             )
@@ -142,7 +142,7 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                                 .into_iter()
                                 .map(|field| RsigRecordField {
                                     name: FieldName::new(field.name),
-                                    type_: parse_type_with_variants(
+                                    type_: RsigTypeParser::new().parse_with_variants(
                                         &field.type_annotation.text,
                                         &declared_variants,
                                     ),
@@ -154,8 +154,8 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                 });
             }
             AstDecl::External(external) => {
-                let (params, result) =
-                    parse_type_signature_with_variants(&external.type_text, &declared_variants);
+                let (params, result) = RsigTypeParser::new()
+                    .parse_signature_with_variants(&external.type_text, &declared_variants);
                 let scheme = RsigTypeScheme::from_signature(&params, &result);
                 exports.push(RsigExport::External(RsigExternal {
                     name: external.name,
