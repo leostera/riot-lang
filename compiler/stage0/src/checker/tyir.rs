@@ -1,17 +1,17 @@
+use crate::infer::module::ExpressionTypeTable;
 use crate::signature::{
     AbiSymbol, ConstructorName, FieldName, FunctionTable, ModuleName, Rsig, RsigType, TypeName,
     TypeParamName,
 };
-use std::collections::BTreeMap;
 
-use crate::ast::{AstProgram, TextSpan};
+use crate::ast::AstProgram;
 use crate::signature::ImportedSignatures;
 
 pub(crate) struct TyIrBuilder<'a> {
     module_name: ModuleName,
     imports: &'a ImportedSignatures,
     function_types: &'a FunctionTable,
-    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+    expression_types: Option<&'a ExpressionTypeTable>,
 }
 
 impl<'a> TyIrBuilder<'a> {
@@ -19,7 +19,7 @@ impl<'a> TyIrBuilder<'a> {
         module_name: ModuleName,
         imports: &'a ImportedSignatures,
         function_types: &'a FunctionTable,
-        expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+        expression_types: Option<&'a ExpressionTypeTable>,
     ) -> Self {
         Self {
             module_name,

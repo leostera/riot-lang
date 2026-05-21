@@ -5,6 +5,7 @@ use crate::ast::{
     TextSpan,
 };
 use crate::imported_types::{imported_type_name, qualify_imported_type};
+use crate::infer::module::ExpressionTypeTable;
 use crate::signature::{
     ConstructorName, FieldName, FunctionSignature, FunctionTable, ImportedSignatures, ModuleName,
     Rsig, RsigType, RsigTypeDeclKind, TypeName, TypeParamName,
@@ -27,7 +28,7 @@ pub(crate) fn typed_program_from_ast(
     ast: AstProgram,
     imports: &ImportedSignatures,
     function_types: &FunctionTable,
-    expression_types: Option<&BTreeMap<TextSpan, RsigType>>,
+    expression_types: Option<&ExpressionTypeTable>,
 ) -> TypedProgram {
     let mut uses = Vec::new();
     let mut raw_externals = Vec::new();
@@ -221,7 +222,7 @@ struct TypeContext<'a> {
     records: &'a BTreeMap<String, TypeName>,
     record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
     declared_variants: &'a BTreeSet<TypeName>,
-    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+    expression_types: Option<&'a ExpressionTypeTable>,
 }
 
 struct TypeContextInputs<'a> {
@@ -232,7 +233,7 @@ struct TypeContextInputs<'a> {
     records: &'a BTreeMap<String, TypeName>,
     record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
     declared_variants: &'a BTreeSet<TypeName>,
-    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+    expression_types: Option<&'a ExpressionTypeTable>,
 }
 
 impl<'a> TypeContext<'a> {
@@ -284,7 +285,7 @@ impl<'a> TypeContext<'a> {
 
     fn expression_type(&self, span: TextSpan) -> Option<RsigType> {
         self.expression_types
-            .and_then(|types| types.get(&span))
+            .and_then(|types| types.get(span))
             .cloned()
     }
 }

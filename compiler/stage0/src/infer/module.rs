@@ -58,6 +58,25 @@ pub(crate) struct InferredModule {
     pub(crate) expression_types: BTreeMap<TextSpan, Type>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct ExpressionTypeTable {
+    types: BTreeMap<TextSpan, RsigType>,
+}
+
+impl ExpressionTypeTable {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn insert(&mut self, span: TextSpan, type_: RsigType) {
+        self.types.insert(span, type_);
+    }
+
+    pub(crate) fn get(&self, span: TextSpan) -> Option<&RsigType> {
+        self.types.get(&span)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct ModuleInferencer<'a> {
     program: &'a AstProgram,
@@ -113,11 +132,12 @@ impl InferredModule {
         signatures
     }
 
-    pub(crate) fn expression_rsig_types(&self) -> BTreeMap<TextSpan, RsigType> {
-        self.expression_types
-            .iter()
-            .map(|(span, type_)| (*span, infer_type_to_rsig_type(type_)))
-            .collect()
+    pub(crate) fn expression_rsig_types(&self) -> ExpressionTypeTable {
+        let mut types = ExpressionTypeTable::new();
+        for (span, type_) in &self.expression_types {
+            types.insert(*span, infer_type_to_rsig_type(type_));
+        }
+        types
     }
 }
 
