@@ -1131,7 +1131,10 @@ impl<'src> Parser<'src> {
             args.push(self.parse_expr()?);
 
             if self.match_kind(TokenKind::Comma).is_none() {
-                if !self.at(TokenKind::RParen) {
+                if !self.at(TokenKind::RParen)
+                    && !self.at(TokenKind::RBrace)
+                    && !self.at(TokenKind::Eof)
+                {
                     return Err(ParseError {
                         span: self.current().span,
                         message: "expected `,` between function arguments".to_owned(),
