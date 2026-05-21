@@ -16,18 +16,36 @@ pub(crate) struct CallableSignature {
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) kind: CallableKind,
+    pub(crate) abi: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ExternalSignature {
+    pub(crate) params: Vec<RsigType>,
+    pub(crate) result: RsigType,
+    pub(crate) abi: String,
+}
+
+impl ExternalSignature {
+    pub(crate) fn new(params: Vec<RsigType>, result: RsigType, abi: impl Into<String>) -> Self {
+        Self {
+            params,
+            result,
+            abi: abi.into(),
+        }
+    }
 }
 
 pub(crate) struct CallableResolver<'a> {
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-    externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    externals: &'a BTreeMap<String, ExternalSignature>,
     imports: &'a ImportedSignatures,
 }
 
 impl<'a> CallableResolver<'a> {
     pub(crate) fn new(
         functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-        externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+        externals: &'a BTreeMap<String, ExternalSignature>,
         imports: &'a ImportedSignatures,
     ) -> Self {
         Self {
@@ -39,11 +57,12 @@ impl<'a> CallableResolver<'a> {
 
     pub(crate) fn resolve(&self, callee: &[String]) -> Option<CallableSignature> {
         if let Some(name) = local_or_prelude_name(callee) {
-            if let Some((params, result)) = self.externals.get(name) {
+            if let Some(external) = self.externals.get(name) {
                 return Some(CallableSignature {
-                    params: params.clone(),
-                    result: result.clone(),
+                    params: external.params.clone(),
+                    result: external.result.clone(),
                     kind: CallableKind::External,
+                    abi: Some(external.abi.clone()),
                 });
             }
             if let Some((params, result)) = self.functions.get(name) {
@@ -51,6 +70,7 @@ impl<'a> CallableResolver<'a> {
                     params: params.clone(),
                     result: result.clone(),
                     kind: CallableKind::Function,
+                    abi: None,
                 });
             }
             return None;
@@ -74,6 +94,7 @@ impl<'a> CallableResolver<'a> {
                     kind: CallableKind::ImportedFunction {
                         module: module_name,
                     },
+                    abi: None,
                 },
                 RsigExport::External(external) => CallableSignature {
                     params: external
@@ -85,12 +106,13 @@ impl<'a> CallableResolver<'a> {
                     kind: CallableKind::ImportedExternal {
                         module: module_name,
                     },
+                    abi: Some(external.abi.clone()),
                 },
             })
     }
 }
 
-pub(crate) fn prelude_external_signatures() -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+pub(crate) fn prelude_external_signatures() -> BTreeMap<String, ExternalSignature> {
     crate::stdlib::Stdlib::new()
         .prelude_signature()
         .ok()
@@ -101,7 +123,10 @@ pub(crate) fn prelude_external_signatures() -> BTreeMap<String, (Vec<RsigType>, 
                     let RsigExport::External(external) = export else {
                         return None;
                     };
-                    Some((external.name, (external.params, external.result)))
+                    Some((
+                        external.name,
+                        ExternalSignature::new(external.params, external.result, external.abi),
+                    ))
                 })
                 .collect()
         })
@@ -122,7 +147,7 @@ mod tests {
 
     use crate::signature::{ImportedSignatures, RsigType};
 
-    use super::{CallableKind, CallableResolver, prelude_external_signatures};
+    use super::{CallableKind, CallableResolver, ExternalSignature, prelude_external_signatures};
 
     #[test]
     fn resolves_prelude_externals_from_std_source() {
@@ -138,13 +163,17 @@ mod tests {
         assert_eq!(signature.kind, CallableKind::External);
         assert_eq!(signature.result, RsigType::Unit);
         assert_eq!(signature.params.len(), 2);
+        assert_eq!(signature.abi.as_deref(), Some("riot_rt_send_value"));
     }
 
     #[test]
     fn user_externals_override_prelude_signatures() {
         let functions = BTreeMap::new();
         let mut externals = prelude_external_signatures();
-        externals.insert("dbg".to_owned(), (vec![RsigType::String], RsigType::String));
+        externals.insert(
+            "dbg".to_owned(),
+            ExternalSignature::new(vec![RsigType::String], RsigType::String, "user_dbg"),
+        );
         let imports = ImportedSignatures::new();
         let resolver = CallableResolver::new(&functions, &externals, &imports);
 
@@ -154,5 +183,6 @@ mod tests {
 
         assert_eq!(signature.params, vec![RsigType::String]);
         assert_eq!(signature.result, RsigType::String);
+        assert_eq!(signature.abi.as_deref(), Some("user_dbg"));
     }
 }

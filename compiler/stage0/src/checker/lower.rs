@@ -17,7 +17,7 @@ use crate::checker::tyir::{
     TypedRecordField, TypedStmt, TypedTypeBody, TypedTypeDecl, TypedUse, TypedVariantConstructor,
 };
 
-use super::callable::{CallableResolver, prelude_external_signatures};
+use super::callable::{CallableResolver, ExternalSignature, prelude_external_signatures};
 
 pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
@@ -113,7 +113,11 @@ pub(crate) fn typed_program_from_ast(
     for external in &externals {
         external_types.insert(
             external.name.clone(),
-            (external.params.clone(), external.result.clone()),
+            ExternalSignature::new(
+                external.params.clone(),
+                external.result.clone(),
+                external.abi.clone(),
+            ),
         );
     }
     let mut functions = Vec::new();
@@ -209,7 +213,7 @@ struct TypeContext<'a> {
     next_binding_id: usize,
     scopes: Vec<BTreeMap<String, TypedBindingInfo>>,
     functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-    externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    externals: &'a BTreeMap<String, ExternalSignature>,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,
@@ -220,7 +224,7 @@ struct TypeContext<'a> {
 
 struct TypeContextInputs<'a> {
     function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-    externals: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    externals: &'a BTreeMap<String, ExternalSignature>,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,

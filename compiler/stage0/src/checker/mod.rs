@@ -25,7 +25,10 @@ use shapes::TypeShapeCollector;
 use span::expr_span;
 use type_annotation::TypeAnnotationChecker;
 
-use callable::{CallableKind, CallableResolver, CallableSignature, prelude_external_signatures};
+use callable::{
+    CallableKind, CallableResolver, CallableSignature, ExternalSignature,
+    prelude_external_signatures,
+};
 
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeAnnotation,
@@ -121,7 +124,7 @@ struct ValidationContext<'a> {
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
-    external_signatures: BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    external_signatures: BTreeMap<String, ExternalSignature>,
     external_names: HashSet<String>,
     constructor_types: HashMap<String, ConstructorShape>,
     declared_variants: BTreeSet<TypeName>,
@@ -539,13 +542,16 @@ fn external_names(program: &AstProgram) -> HashSet<String> {
 fn external_signatures(
     program: &AstProgram,
     declared_variants: &BTreeSet<TypeName>,
-) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+) -> BTreeMap<String, ExternalSignature> {
     let mut signatures = prelude_external_signatures();
     for decl in &program.decls {
         if let AstDecl::External(external) = decl {
             let (params, result) = RsigTypeLowerer::new()
                 .lower_signature(&external.type_annotation.syntax, declared_variants);
-            signatures.insert(external.name.clone(), (params, result));
+            signatures.insert(
+                external.name.clone(),
+                ExternalSignature::new(params, result, external.abi.clone()),
+            );
         }
     }
     signatures
@@ -2198,7 +2204,7 @@ fn validate_callable_call(
     }
 
     for (index, arg) in args.iter().enumerate() {
-        if is_actor_operation(callee) && index == 0 {
+        if is_actor_operation(signature) && index == 0 {
             validate_actor_target(ctx, arg, bindings, span, &name)?;
         } else {
             validate_expr(ctx, arg, bindings, in_actor)?;
@@ -2207,14 +2213,14 @@ fn validate_callable_call(
             validate_signature_arg_type(ctx, &name, arg, expected, bindings)?;
         }
     }
-    validate_static_callable_facts(ctx, span, callee, args)?;
+    validate_static_callable_facts(ctx, span, signature, args)?;
 
     if args.len() < signature.params.len() {
         return Ok(ExprCategory::Other);
     }
-    if is_output_operation(callee) {
+    if is_output_operation(signature) {
         Ok(ExprCategory::Output)
-    } else if is_actor_operation(callee) {
+    } else if is_actor_operation(signature) {
         Ok(ExprCategory::Actor)
     } else {
         Ok(ExprCategory::Other)
@@ -2292,10 +2298,10 @@ fn signature_arg_needs_static_check(type_: &RsigType) -> bool {
 fn validate_static_callable_facts(
     ctx: &ValidationContext<'_>,
     span: TextSpan,
-    callee: &[String],
+    signature: &CallableSignature,
     args: &[AstExpr],
 ) -> miette::Result<()> {
-    if matches!(callable_leaf_name(callee), Some("list_get"))
+    if signature.abi.as_deref() == Some("riot_rt_value_list_get")
         && !ctx.declared_external_names.contains("list_get")
         && let [list, index] = args
     {
@@ -2304,24 +2310,18 @@ fn validate_static_callable_facts(
     Ok(())
 }
 
-fn is_output_operation(callee: &[String]) -> bool {
-    matches!(callable_leaf_name(callee), Some("dbg" | "println"))
-}
-
-fn is_actor_operation(callee: &[String]) -> bool {
+fn is_output_operation(signature: &CallableSignature) -> bool {
     matches!(
-        callable_leaf_name(callee),
-        Some("send" | "monitor" | "link")
+        signature.abi.as_deref(),
+        Some("riot_rt_dbg_value" | "riot_rt_println" | "riot_prim_println")
     )
 }
 
-fn callable_leaf_name(callee: &[String]) -> Option<&str> {
-    match callee {
-        [name] => Some(name.as_str()),
-        [_, _, name] => Some(name.as_str()),
-        [_, name] => Some(name.as_str()),
-        _ => None,
-    }
+fn is_actor_operation(signature: &CallableSignature) -> bool {
+    matches!(
+        signature.abi.as_deref(),
+        Some("riot_rt_send_value" | "riot_rt_monitor" | "riot_rt_link")
+    )
 }
 
 fn callee_display_name(callee: &[String]) -> String {
@@ -2547,7 +2547,7 @@ fn infer_annotation_tuple_index_type(
 fn external_result_type(ctx: &ValidationContext<'_>, name: &str) -> Option<RsigType> {
     ctx.external_signatures
         .get(name)
-        .map(|(_params, result)| result.clone())
+        .map(|external| external.result.clone())
 }
 
 fn merge_annotation_types(lhs: RsigType, rhs: RsigType) -> RsigType {
