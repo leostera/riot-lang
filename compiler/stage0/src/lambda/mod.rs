@@ -1,6 +1,7 @@
 pub(crate) mod ir;
 
 use crate::checker::tyir::TypedProgram;
+use crate::ir::RirLowerer;
 
 pub(crate) use ir::*;
 
@@ -12,6 +13,6 @@ impl LambdaSimplifier {
     }
 
     pub(crate) fn simplify(&self, tyir: TypedProgram) -> RirProgram {
-        crate::ir::lower_typed_to_rir(tyir)
+        RirLowerer::new().lower(tyir)
     }
 }

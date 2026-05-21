@@ -14,7 +14,80 @@ pub(crate) use crate::actor::air::*;
 pub(crate) use crate::checker::tyir::*;
 pub(crate) use crate::lambda::ir::*;
 
-pub(crate) fn typed_program_from_ast(
+pub(crate) struct TyIrBuilder<'a> {
+    module_name: ModuleName,
+    imports: &'a ImportedSignatures,
+    function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+}
+
+impl<'a> TyIrBuilder<'a> {
+    pub(crate) fn new(
+        module_name: ModuleName,
+        imports: &'a ImportedSignatures,
+        function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+        expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+    ) -> Self {
+        Self {
+            module_name,
+            imports,
+            function_types,
+            expression_types,
+        }
+    }
+
+    pub(crate) fn build(self, ast: AstProgram) -> TypedProgram {
+        typed_program_from_ast(
+            self.module_name,
+            ast,
+            self.imports,
+            self.function_types,
+            self.expression_types,
+        )
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct RsigBuilder;
+
+impl RsigBuilder {
+    pub(crate) fn new() -> Self {
+        Self
+    }
+
+    pub(crate) fn build(&self, program: &TypedProgram) -> Rsig {
+        signature_for(program)
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct RirLowerer;
+
+impl RirLowerer {
+    pub(crate) fn new() -> Self {
+        Self
+    }
+
+    pub(crate) fn lower(&self, program: TypedProgram) -> RirProgram {
+        lower_typed_to_rir(program)
+    }
+}
+
+pub(crate) struct ActorIrLowerer<'a> {
+    imports: &'a ImportedSignatures,
+}
+
+impl<'a> ActorIrLowerer<'a> {
+    pub(crate) fn new(imports: &'a ImportedSignatures) -> Self {
+        Self { imports }
+    }
+
+    pub(crate) fn lower(&self, program: &RirProgram) -> ActorIrProgram {
+        lower_rir_to_actor_ir(program, self.imports)
+    }
+}
+
+fn typed_program_from_ast(
     module_name: ModuleName,
     ast: AstProgram,
     imports: &ImportedSignatures,
@@ -175,7 +248,7 @@ pub(crate) fn typed_program_from_ast(
     }
 }
 
-pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
+fn signature_for(program: &TypedProgram) -> Rsig {
     let types = program
         .types
         .iter()
@@ -252,7 +325,7 @@ pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
     Rsig::with_dependencies(program.module_name.clone(), dependencies, types, exports)
 }
 
-pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
+fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
     let mut context = LowerContext::default();
     let lowered = RirProgram {
         module_name: program.module_name,
@@ -295,17 +368,14 @@ pub(crate) fn lower_typed_to_rir(program: TypedProgram) -> RirProgram {
     closure_convert_rir(lowered)
 }
 
-pub(crate) fn closure_convert_rir(mut program: RirProgram) -> RirProgram {
+fn closure_convert_rir(mut program: RirProgram) -> RirProgram {
     for function in &mut program.functions {
         closure_convert_block(&mut function.body);
     }
     program
 }
 
-pub(crate) fn lower_rir_to_actor_ir(
-    program: &RirProgram,
-    imports: &ImportedSignatures,
-) -> ActorIrProgram {
+fn lower_rir_to_actor_ir(program: &RirProgram, imports: &ImportedSignatures) -> ActorIrProgram {
     let mut actors = Vec::new();
     let context = ActorLowerContext {
         functions: function_type_map(program),
@@ -324,7 +394,7 @@ pub(crate) fn lower_rir_to_actor_ir(
     ActorIrProgram { actors }
 }
 
-pub(crate) fn module_function_symbol(module: &ModuleName, name: &str) -> String {
+fn module_function_symbol(module: &ModuleName, name: &str) -> String {
     format!("riot_mod_{module}_{name}")
 }
 
@@ -2508,10 +2578,7 @@ mod tests {
     use crate::parser::parse_source;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use super::{
-        Capture, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
-        typed_program_from_ast,
-    };
+    use super::{Capture, RirExpr, RirLowerer, RirStmt, TyIrBuilder, TypedExprKind, TypedStmt};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -2530,13 +2597,7 @@ mod tests {
         let imports = ImportedSignatures::new();
         let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
         let function_types = inferred.function_signatures(&program);
-        typed_program_from_ast(
-            ModuleName::new(module),
-            program,
-            &imports,
-            &function_types,
-            None,
-        )
+        TyIrBuilder::new(ModuleName::new(module), &imports, &function_types, None).build(program)
     }
 
     fn typed_program_with_inference_facts(module: &str, source: &str) -> super::TypedProgram {
@@ -2546,13 +2607,13 @@ mod tests {
         let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
         let function_types = inferred.function_signatures(&program);
         let expression_types = inferred.expression_rsig_types();
-        typed_program_from_ast(
+        TyIrBuilder::new(
             ModuleName::new(module),
-            program,
             &imports,
             &function_types,
             Some(&expression_types),
         )
+        .build(program)
     }
 
     #[test]
@@ -2587,7 +2648,7 @@ mod tests {
         };
 
         let typed = typed_program("LambdaTest", program);
-        let rir = lower_typed_to_rir(typed);
+        let rir = RirLowerer::new().lower(typed);
         let Some(RirExpr::Lambda { captures, .. }) = &rir.functions[0].body.tail else {
             panic!("expected lowered lambda");
         };
@@ -2651,7 +2712,7 @@ mod tests {
         };
 
         let typed = typed_program("ShadowTest", program);
-        let rir = lower_typed_to_rir(typed);
+        let rir = RirLowerer::new().lower(typed);
         let Some(RirStmt::Let {
             value: RirExpr::Lambda { captures, .. },
             ..
@@ -2780,7 +2841,7 @@ mod tests {
         };
 
         let typed = typed_program("ApplyTest", program);
-        let rir = lower_typed_to_rir(typed);
+        let rir = RirLowerer::new().lower(typed);
         let Some(RirExpr::Add(lhs, _)) = &rir.functions[0].body.tail else {
             panic!("expected add tail");
         };

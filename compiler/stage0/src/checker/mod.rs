@@ -17,7 +17,7 @@ use crate::ast::{
 };
 use crate::diagnostic::to_source_diagnostic;
 use crate::infer::module::ModuleInferencer;
-use crate::ir::{CheckedProgram, signature_for, typed_program_from_ast};
+use crate::ir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::signature::{
     ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
     parse_type_with_variants,
@@ -93,14 +93,14 @@ pub(crate) fn typecheck(
         })?;
     let expression_types = inferred.expression_rsig_types();
     let function_types = inferred.function_signatures(&program);
-    let typed_tree = typed_program_from_ast(
+    let typed_tree = TyIrBuilder::new(
         module_name,
-        program,
         imports,
         &function_types,
         Some(&expression_types),
-    );
-    let signature = signature_for(&typed_tree);
+    )
+    .build(program);
+    let signature = RsigBuilder::new().build(&typed_tree);
     Ok(CheckedProgram {
         typed_tree,
         signature,
