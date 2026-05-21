@@ -4,6 +4,7 @@ use camino::Utf8Path;
 
 mod const_eval;
 mod patterns;
+mod shapes;
 mod span;
 pub(crate) mod tyir;
 mod type_annotation;
@@ -11,6 +12,7 @@ mod types;
 
 use const_eval::{ConstFunction, ConstValue};
 use patterns::PatternValidator;
+use shapes::TypeShapeCollector;
 use span::expr_span;
 use type_annotation::TypeAnnotationChecker;
 
@@ -155,13 +157,11 @@ impl<'a> ProgramValidator<'a> {
     fn validate(&self, program: &AstProgram) -> miette::Result<()> {
         let functions = const_functions(program);
         let function_names = functions.keys().cloned().collect::<HashSet<_>>();
-        let declared_variants = declared_variant_names(program, self.imports);
-        let function_results = function_results(program, &declared_variants);
+        let type_shapes = TypeShapeCollector::new(self.imports).collect(program);
+        let function_results = function_results(program, &type_shapes.declared_variants);
         let declared_external_names = declared_external_names(program);
         let external_names = external_names(program);
-        let constructor_types = constructor_types(program, &declared_variants);
-        let (record_shapes, record_shapes_by_type) =
-            record_shapes(program, self.imports, &declared_variants);
+        let declared_variants = type_shapes.declared_variants;
         let ctx = ValidationContext {
             source_path: self.source_path,
             source: self.source,
@@ -170,10 +170,10 @@ impl<'a> ProgramValidator<'a> {
             function_results,
             declared_external_names,
             external_names,
-            constructor_types,
+            constructor_types: type_shapes.constructor_types,
             declared_variants,
-            record_shapes,
-            record_shapes_by_type,
+            record_shapes: type_shapes.record_shapes,
+            record_shapes_by_type: type_shapes.record_shapes_by_type,
             imports: self.imports,
         };
 
