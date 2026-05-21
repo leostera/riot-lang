@@ -155,6 +155,7 @@ fn build_program_module<'ctx>(
     module.set_triple(&triple);
     module.set_data_layout(&target_machine.get_target_data().get_data_layout());
 
+    let externals = codegen_externals(program)?;
     let codegen = Codegen {
         context,
         module,
@@ -162,13 +163,13 @@ fn build_program_module<'ctx>(
         program,
         imports,
         functions: HashMap::new(),
-        function_abis: infer_function_abis(program),
+        function_abis: infer_function_abis(program, &externals),
         function_map: program
             .functions
             .iter()
             .map(|function| (function.name.as_str(), function))
             .collect(),
-        externals: codegen_externals(program)?,
+        externals,
         actor_ir: StacklessActorLowerer::new(imports).lower(program),
         string_counter: 0,
     };
@@ -208,12 +209,31 @@ impl<'ctx> CgValue<'ctx> {
             _ => None,
         }
     }
+
+    fn abi(&self) -> AbiType {
+        match self {
+            CgValue::Unit => AbiType::Unit,
+            CgValue::I64(_) => AbiType::I64,
+            CgValue::Bool(_) => AbiType::Bool,
+            CgValue::ActorId(_) => AbiType::ActorId,
+            CgValue::Value(_) | CgValue::Static(_) => AbiType::Value,
+        }
+    }
 }
 
 #[derive(Clone, Default)]
 struct Env<'ctx> {
     values: HashMap<String, CgValue<'ctx>>,
     statics: HashMap<String, StaticValue>,
+}
+
+impl Env<'_> {
+    fn value_abis(&self) -> HashMap<String, AbiType> {
+        self.values
+            .iter()
+            .map(|(name, value)| (name.clone(), value.abi()))
+            .collect()
+    }
 }
 
 struct Codegen<'ctx, 'a> {
@@ -694,9 +714,20 @@ impl<'ctx> Codegen<'ctx, '_> {
         let Some(parent) = self.current_function() else {
             bail!("if expression emitted without an active function");
         };
+        let local_abis = env.value_abis();
         let result_abi = unify_abi(
-            infer_expr_abi(then_branch, &HashMap::new(), &self.function_abis),
-            infer_expr_abi(else_branch, &HashMap::new(), &self.function_abis),
+            infer_expr_abi(
+                then_branch,
+                &local_abis,
+                &self.function_abis,
+                &self.externals,
+            ),
+            infer_expr_abi(
+                else_branch,
+                &local_abis,
+                &self.function_abis,
+                &self.externals,
+            ),
         );
         if result_abi == AbiType::Unknown {
             return self
@@ -795,9 +826,10 @@ impl<'ctx> Codegen<'ctx, '_> {
         let Some(parent) = self.current_function() else {
             bail!("match expression emitted without an active function");
         };
+        let local_abis = env.value_abis();
         let result_abi = arms
             .iter()
-            .map(|arm| infer_expr_abi(&arm.body, &HashMap::new(), &self.function_abis))
+            .map(|arm| infer_match_arm_abi(arm, &local_abis, &self.function_abis, &self.externals))
             .fold(AbiType::Unknown, unify_abi);
         if result_abi == AbiType::Unknown {
             bail!("cannot lower match expression with unknown result ABI");
@@ -824,7 +856,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
         for (index, arm) in arms.iter().enumerate() {
             self.builder.position_at_end(test_blocks[index]);
-            if pattern_is_irrefutable(&arm.pattern) {
+            if index + 1 == arms.len() || pattern_is_irrefutable(&arm.pattern) {
                 self.builder
                     .build_unconditional_branch(arm_blocks[index])
                     .map_err(|error| miette::miette!("failed to emit match arm: {error}"))?;
@@ -2966,7 +2998,10 @@ fn external_result_is_boxed(type_: &RsigType) -> bool {
     )
 }
 
-fn infer_function_abis(program: &RirProgram) -> HashMap<String, FunctionAbi> {
+fn infer_function_abis(
+    program: &RirProgram,
+    externals: &BTreeMap<String, RirExternal>,
+) -> HashMap<String, FunctionAbi> {
     let mut abis = program
         .functions
         .iter()
@@ -3002,6 +3037,7 @@ fn infer_function_abis(program: &RirProgram) -> HashMap<String, FunctionAbi> {
                 &mut locals,
                 &mut params,
                 &previous,
+                externals,
             );
             abis.insert(
                 function.name.clone(),
@@ -3030,21 +3066,22 @@ fn infer_block_abi(
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
+    externals: &BTreeMap<String, RirExternal>,
 ) -> AbiType {
     for stmt in &block.statements {
         match stmt {
             RirStmt::Let { name, value } => {
-                let abi = infer_expr_abi(value, locals, functions);
+                let abi = infer_expr_abi(value, locals, functions, externals);
                 locals.insert(name.as_str().to_owned(), abi);
             }
             RirStmt::Expr(expr) => {
-                mark_expr_constraints(expr, params, locals, param_types, functions);
+                mark_expr_constraints(expr, params, locals, param_types, functions, externals);
             }
         }
     }
     if let Some(tail) = &block.tail {
-        mark_expr_constraints(tail, params, locals, param_types, functions);
-        infer_expr_abi(tail, locals, functions)
+        mark_expr_constraints(tail, params, locals, param_types, functions, externals);
+        infer_expr_abi(tail, locals, functions, externals)
     } else {
         AbiType::Unit
     }
@@ -3054,6 +3091,7 @@ fn infer_expr_abi(
     expr: &RirExpr,
     locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
+    externals: &BTreeMap<String, RirExternal>,
 ) -> AbiType {
     match expr {
         RirExpr::Add(_, _)
@@ -3074,20 +3112,21 @@ fn infer_expr_abi(
             else_branch,
             ..
         } => unify_abi(
-            infer_expr_abi(then_branch, locals, functions),
-            infer_expr_abi(else_branch, locals, functions),
+            infer_expr_abi(then_branch, locals, functions, externals),
+            infer_expr_abi(else_branch, locals, functions, externals),
         ),
         RirExpr::Match { arms, .. } => arms
             .iter()
-            .map(|arm| infer_expr_abi(&arm.body, locals, functions))
+            .map(|arm| infer_match_arm_abi(arm, locals, functions, externals))
             .fold(AbiType::Unknown, unify_abi),
-        RirExpr::Block(block) => infer_block_expr_abi(block, locals, functions),
+        RirExpr::Block(block) => infer_block_expr_abi(block, locals, functions, externals),
         RirExpr::Call { callee, .. } => match callee.as_slice() {
             [name] if name == "dbg" || name == "println" => AbiType::Unit,
             [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
-            [name] => functions
+            [name] => externals
                 .get(name)
-                .map(|abi| abi.result)
+                .map(|external| AbiType::from_rsig(&external.result))
+                .or_else(|| functions.get(name).map(|abi| abi.result))
                 .unwrap_or(AbiType::Unknown),
             _ => AbiType::Unknown,
         },
@@ -3111,14 +3150,64 @@ fn infer_expr_abi(
     }
 }
 
+fn infer_match_arm_abi(
+    arm: &RirMatchArm,
+    outer_locals: &HashMap<String, AbiType>,
+    functions: &HashMap<String, FunctionAbi>,
+    externals: &BTreeMap<String, RirExternal>,
+) -> AbiType {
+    let mut locals = outer_locals.clone();
+    bind_pattern_abis(&arm.pattern, &mut locals);
+    infer_expr_abi(&arm.body, &locals, functions, externals)
+}
+
+fn bind_pattern_abis(pattern: &RirPattern, locals: &mut HashMap<String, AbiType>) {
+    match pattern {
+        RirPattern::Bind { binding, type_ } => {
+            locals.insert(binding.as_str().to_owned(), AbiType::from_rsig(type_));
+        }
+        RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
+            for pattern in payload {
+                bind_pattern_abis(pattern, locals);
+            }
+        }
+        RirPattern::List { prefix, tail } => {
+            for pattern in prefix {
+                bind_pattern_abis(pattern, locals);
+            }
+            if let Some(tail) = tail {
+                bind_pattern_abis(tail, locals);
+            }
+        }
+        RirPattern::Record { fields, .. } => {
+            for (_, pattern) in fields {
+                bind_pattern_abis(pattern, locals);
+            }
+        }
+        RirPattern::Wildcard
+        | RirPattern::Unit
+        | RirPattern::Bool(_)
+        | RirPattern::Int(_)
+        | RirPattern::String(_) => {}
+    }
+}
+
 fn infer_block_expr_abi(
     block: &RirBlock,
     outer_locals: &HashMap<String, AbiType>,
     functions: &HashMap<String, FunctionAbi>,
+    externals: &BTreeMap<String, RirExternal>,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
     let mut param_types = Vec::new();
-    infer_block_abi(block, &[], &mut locals, &mut param_types, functions)
+    infer_block_abi(
+        block,
+        &[],
+        &mut locals,
+        &mut param_types,
+        functions,
+        externals,
+    )
 }
 
 fn mark_expr_constraints(
@@ -3127,6 +3216,7 @@ fn mark_expr_constraints(
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
     functions: &HashMap<String, FunctionAbi>,
+    externals: &BTreeMap<String, RirExternal>,
 ) {
     match expr {
         RirExpr::Add(lhs, rhs)
@@ -3144,14 +3234,28 @@ fn mark_expr_constraints(
             then_branch,
             else_branch,
         } => {
-            mark_expr_constraints(condition, params, locals, param_types, functions);
-            mark_expr_constraints(then_branch, params, locals, param_types, functions);
-            mark_expr_constraints(else_branch, params, locals, param_types, functions);
+            mark_expr_constraints(condition, params, locals, param_types, functions, externals);
+            mark_expr_constraints(
+                then_branch,
+                params,
+                locals,
+                param_types,
+                functions,
+                externals,
+            );
+            mark_expr_constraints(
+                else_branch,
+                params,
+                locals,
+                param_types,
+                functions,
+                externals,
+            );
         }
         RirExpr::Match { scrutinee, arms } => {
-            mark_expr_constraints(scrutinee, params, locals, param_types, functions);
+            mark_expr_constraints(scrutinee, params, locals, param_types, functions, externals);
             for arm in arms {
-                mark_expr_constraints(&arm.body, params, locals, param_types, functions);
+                mark_expr_constraints(&arm.body, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Block(block) => {
@@ -3163,17 +3267,18 @@ fn mark_expr_constraints(
                 &mut nested_locals,
                 &mut nested_params,
                 functions,
+                externals,
             );
         }
         RirExpr::Call { args, .. } => {
             for arg in args {
-                mark_expr_constraints(arg, params, locals, param_types, functions);
+                mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Apply { callee, args, .. } => {
-            mark_expr_constraints(callee, params, locals, param_types, functions);
+            mark_expr_constraints(callee, params, locals, param_types, functions, externals);
             for arg in args {
-                mark_expr_constraints(arg, params, locals, param_types, functions);
+                mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Lambda {
@@ -3192,41 +3297,49 @@ fn mark_expr_constraints(
                 &mut nested_locals,
                 &mut nested_params,
                 functions,
+                externals,
             );
         }
         RirExpr::Tuple(items) | RirExpr::List(items) => {
             for item in items {
-                mark_expr_constraints(item, params, locals, param_types, functions);
+                mark_expr_constraints(item, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Record { fields, .. } => {
             for (_, value) in fields {
-                mark_expr_constraints(value, params, locals, param_types, functions);
+                mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
-            mark_expr_constraints(base, params, locals, param_types, functions);
+            mark_expr_constraints(base, params, locals, param_types, functions, externals);
         }
         RirExpr::And(lhs, rhs) | RirExpr::Or(lhs, rhs) | RirExpr::Eq(lhs, rhs) => {
-            mark_expr_constraints(lhs, params, locals, param_types, functions);
-            mark_expr_constraints(rhs, params, locals, param_types, functions);
+            mark_expr_constraints(lhs, params, locals, param_types, functions, externals);
+            mark_expr_constraints(rhs, params, locals, param_types, functions, externals);
         }
         RirExpr::Not(value) => {
-            mark_expr_constraints(value, params, locals, param_types, functions);
+            mark_expr_constraints(value, params, locals, param_types, functions, externals);
         }
         RirExpr::Receive { arms } => {
             for arm in arms {
-                mark_expr_constraints(&arm.body, params, locals, param_types, functions);
+                mark_expr_constraints(&arm.body, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Spawn { body, .. } => {
             let mut nested_locals = HashMap::new();
             let mut nested_params = Vec::new();
-            infer_block_abi(body, &[], &mut nested_locals, &mut nested_params, functions);
+            infer_block_abi(
+                body,
+                &[],
+                &mut nested_locals,
+                &mut nested_params,
+                functions,
+                externals,
+            );
         }
         RirExpr::Variant { payload, .. } => {
             for value in payload {
-                mark_expr_constraints(value, params, locals, param_types, functions);
+                mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
         RirExpr::Bool(_)

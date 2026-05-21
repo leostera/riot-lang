@@ -138,6 +138,7 @@ struct RecordShape {
 #[derive(Debug, Clone)]
 struct ConstructorShape {
     type_name: TypeName,
+    type_params: Vec<String>,
     payload: Vec<RsigType>,
 }
 
@@ -589,6 +590,11 @@ fn constructor_types(
                             constructor.name.clone(),
                             ConstructorShape {
                                 type_name: type_name.clone(),
+                                type_params: type_
+                                    .params
+                                    .iter()
+                                    .map(|param| param.name.clone())
+                                    .collect(),
                                 payload: constructor
                                     .payload
                                     .iter()
@@ -625,6 +631,11 @@ fn constructor_types_from_rsig(
                         constructor.name.as_str().to_owned(),
                         ConstructorShape {
                             type_name: type_name.clone(),
+                            type_params: type_
+                                .params
+                                .iter()
+                                .map(|param| param.as_str().to_owned())
+                                .collect(),
                             payload: constructor.payload.clone(),
                         },
                     )
@@ -1220,7 +1231,7 @@ fn validate_expr(
             span,
         } => {
             validate_expr(ctx, scrutinee, bindings, in_actor)?;
-            let Some(last) = arms.last() else {
+            if arms.is_empty() {
                 return Err(to_source_diagnostic(
                     ctx.source_path,
                     ctx.source,
@@ -1231,18 +1242,18 @@ fn validate_expr(
                 )
                 .into());
             };
-            if !pattern_is_irrefutable(&last.pattern) {
+            let scrutinee_type = simple_expr_type(ctx, scrutinee, bindings);
+            if !match_is_exhaustive(ctx, arms, scrutinee_type.as_ref()) {
                 return Err(to_source_diagnostic(
                     ctx.source_path,
                     ctx.source,
                     *span,
                     "non-exhaustive match expression",
-                    "stage0 match lowering currently requires a final wildcard or binder arm",
-                    Some("add a final `_ -> ...` arm"),
+                    "the match arms do not cover every value of the scrutinee type",
+                    Some("add the missing constructors, list cases, or a final `_ -> ...` arm"),
                 )
                 .into());
             }
-            let scrutinee_type = simple_expr_type(ctx, scrutinee, bindings);
             for arm in arms {
                 validate_pattern(ctx, &arm.pattern, scrutinee_type.as_ref())?;
                 let mut arm_bindings = bindings.clone();
@@ -1446,6 +1457,91 @@ fn pattern_is_irrefutable(pattern: &AstPattern) -> bool {
         pattern,
         AstPattern::Wildcard { .. } | AstPattern::Bind { .. }
     )
+}
+
+fn match_is_exhaustive(
+    ctx: &ValidationContext<'_>,
+    arms: &[crate::ast::AstMatchArm],
+    scrutinee_type: Option<&RsigType>,
+) -> bool {
+    if arms.iter().any(|arm| pattern_is_irrefutable(&arm.pattern)) {
+        return true;
+    }
+    match scrutinee_type {
+        Some(RsigType::List(_)) => list_patterns_are_exhaustive(arms),
+        Some(type_) => variant_patterns_are_exhaustive(ctx, arms, type_),
+        None => false,
+    }
+}
+
+fn list_patterns_are_exhaustive(arms: &[crate::ast::AstMatchArm]) -> bool {
+    let mut covers_empty = false;
+    let mut covers_non_empty = false;
+    for arm in arms {
+        let AstPattern::List { prefix, tail, .. } = &arm.pattern else {
+            continue;
+        };
+        if prefix.is_empty() && tail.is_none() {
+            covers_empty = true;
+        }
+        if prefix.is_empty() && tail.as_deref().is_some_and(pattern_is_irrefutable) {
+            return true;
+        }
+        if prefix.len() == 1 && tail.as_deref().is_some_and(pattern_is_irrefutable) {
+            covers_non_empty = true;
+        }
+    }
+    covers_empty && covers_non_empty
+}
+
+fn variant_patterns_are_exhaustive(
+    ctx: &ValidationContext<'_>,
+    arms: &[crate::ast::AstMatchArm],
+    scrutinee_type: &RsigType,
+) -> bool {
+    let Some(type_name) = variant_type_name(scrutinee_type) else {
+        return false;
+    };
+    let expected = ctx
+        .constructor_types
+        .iter()
+        .filter_map(|(name, shape)| {
+            (shape.type_name == *type_name).then_some(name.as_str().to_owned())
+        })
+        .collect::<BTreeSet<_>>();
+    if expected.is_empty() {
+        return false;
+    }
+    let covered = arms
+        .iter()
+        .filter_map(|arm| covered_constructor_name(ctx, &arm.pattern, type_name))
+        .collect::<BTreeSet<_>>();
+    expected.is_subset(&covered)
+}
+
+fn variant_type_name(type_: &RsigType) -> Option<&TypeName> {
+    match type_ {
+        RsigType::Variant(name) | RsigType::VariantApp { name, .. } => Some(name),
+        _ => None,
+    }
+}
+
+fn covered_constructor_name(
+    ctx: &ValidationContext<'_>,
+    pattern: &AstPattern,
+    type_name: &TypeName,
+) -> Option<String> {
+    let AstPattern::Constructor { path, payload, .. } = pattern else {
+        return None;
+    };
+    if !payload.iter().all(pattern_is_irrefutable) {
+        return None;
+    }
+    let shape = pattern_constructor_shape(ctx, path)?;
+    if shape.type_name != *type_name {
+        return None;
+    }
+    path.segments.last().cloned()
 }
 
 fn validate_pattern(
@@ -1653,7 +1749,9 @@ fn bind_pattern(
         }
         AstPattern::Constructor { path, payload, .. } => {
             let payload_types = pattern_constructor_shape(ctx, path)
-                .map(|constructor| constructor.payload)
+                .map(|constructor| {
+                    instantiate_constructor_payload(&constructor, scrutinee_type.as_ref())
+                })
                 .unwrap_or_default();
             for (index, nested) in payload.iter().enumerate() {
                 if let AstPattern::Bind { name, .. } = nested {
@@ -1713,6 +1811,60 @@ fn bind_pattern(
         | AstPattern::Bool { .. }
         | AstPattern::Int { .. }
         | AstPattern::String { .. } => {}
+    }
+}
+
+fn instantiate_constructor_payload(
+    constructor: &ConstructorShape,
+    scrutinee_type: Option<&RsigType>,
+) -> Vec<RsigType> {
+    let Some(RsigType::VariantApp { name, args }) = scrutinee_type else {
+        return constructor.payload.clone();
+    };
+    if *name != constructor.type_name || args.len() != constructor.type_params.len() {
+        return constructor.payload.clone();
+    }
+    let substitutions = constructor
+        .type_params
+        .iter()
+        .cloned()
+        .zip(args.iter().cloned())
+        .collect::<BTreeMap<_, _>>();
+    constructor
+        .payload
+        .iter()
+        .map(|type_| substitute_type_vars(type_, &substitutions))
+        .collect()
+}
+
+fn substitute_type_vars(type_: &RsigType, substitutions: &BTreeMap<String, RsigType>) -> RsigType {
+    match type_ {
+        RsigType::Var(name) => substitutions
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| RsigType::Var(name.clone())),
+        RsigType::ActorId(message) => {
+            RsigType::ActorId(Box::new(substitute_type_vars(message, substitutions)))
+        }
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(substitute_type_vars(parameter, substitutions)),
+            result: Box::new(substitute_type_vars(result, substitutions)),
+        },
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| substitute_type_vars(item, substitutions))
+                .collect(),
+        ),
+        RsigType::List(item) => RsigType::List(Box::new(substitute_type_vars(item, substitutions))),
+        RsigType::VariantApp { name, args } => RsigType::VariantApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| substitute_type_vars(arg, substitutions))
+                .collect(),
+        },
+        other => other.clone(),
     }
 }
 
@@ -1933,6 +2085,11 @@ fn imported_constructor_shape(
                 .find(|candidate| candidate.name.as_str() == constructor)
                 .map(|candidate| ConstructorShape {
                     type_name: TypeName::new(format!("{module}.{}", type_.name.as_str())),
+                    type_params: type_
+                        .params
+                        .iter()
+                        .map(|param| param.as_str().to_owned())
+                        .collect(),
                     payload: candidate
                         .payload
                         .iter()
@@ -2812,6 +2969,11 @@ fn simple_expr_type(
                         _ => Some(RsigType::Unknown),
                     })
             }
+            [name] => ctx
+                .constructor_types
+                .get(name)
+                .map(|constructor| RsigType::Variant(constructor.type_name.clone()))
+                .or_else(|| ctx.function_results.get(name).cloned()),
             [module, name] => ctx
                 .imports
                 .get(module.as_str())
@@ -2819,6 +2981,10 @@ fn simple_expr_type(
                 .map(|export| match export {
                     RsigExport::Function(function) => function.result.clone(),
                     RsigExport::External(external) => external.result.clone(),
+                })
+                .or_else(|| {
+                    imported_constructor_shape(ctx, module, name)
+                        .map(|constructor| RsigType::Variant(constructor.type_name))
                 }),
             _ => None,
         },
