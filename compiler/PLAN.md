@@ -14,42 +14,41 @@ Commit every value-adding slice with a conventional commit. If a slice exposes
 a better name while implementing it, keep the message conventional and keep the
 scope narrow.
 
-## Riotc Bootstrap Target
+## Stage0 Reference-Compiler Hardening Target
 
-`compiler/riotc` is the first Riot ML compiler written in Riot ML. It should be
-the home for the real compiler architecture: command-line flow, source loading,
-diagnostics, syntax, checking, interface modeling, lambda lowering, actor IR,
-and backend orchestration. Stage0 remains a bootstrap compiler whose job is to
-compile enough Riot ML to build and iterate on riotc.
+Before self-hosting, stage0 should become a reliable reference compiler for Riot
+ML. The near-term goal is not to bootstrap `riotc`; it is to make stage0 correct,
+fast enough to iterate on, and pleasant to extend. Each slice should improve a
+clear compiler boundary and prove the improvement with visible fixtures,
+snapshots, examples, or runtime tests.
 
-The first self-hosted milestone is intentionally small and executable:
+Hardening priorities:
 
-1. Compile a `compiler/riotc/src/main.ml` with stage0.
-2. Accept `fn main(args: List<String>) -> i32` as the entrypoint shape.
-3. Run deterministically and return `0`.
-4. Grow to classify or print tokens from a hardcoded source string.
-5. Then parse a tiny AST from that hardcoded source before adding real file I/O.
+1. Parser quality: clearer grammar boundaries, better recovery diagnostics, and
+   examples for every accepted surface form.
+2. Type checker quality: fewer `Unknown` fallbacks, better source spans, richer
+   inference constraints, and explicit diagnostics for unsupported cases.
+3. Lowering quality: stable typed HIR/lambda/AIR snapshots, fewer ad hoc codegen
+   decisions, and small simplification passes with tests.
+4. Runtime/codegen reliability: root/value lifetime tests, actor scheduling
+   semantics, and deterministic behavior under GC pressure.
+5. Performance hygiene: keep hot lookup tables named and deterministic, avoid
+   repeated stringly resolution in later passes, and add focused benchmarks only
+   after behavior is covered.
 
-Riotc development should use small vertical slices. Add stage0 features only
-when the next riotc slice immediately needs them, and record discovered gaps
-here rather than turning stage0 into the final package-aware compiler. The
-near-term riotc path is: hello main -> token model -> hardcoded lexer ->
-minimal parser -> source file model -> real file read -> tiny checker.
+Useful fixtures should look like small real programs: compiler-shaped token
+classification, recursive list/tree walks, closure-heavy helper functions,
+variant/record transformations, multi-module interface checks, actor protocols,
+and diagnostics that demonstrate the exact failure mode.
 
-Planned riotc source boundaries:
+Known hardening gap discovered while adding fixtures: pre-inference validation
+checks match exhaustiveness before lambda parameter types have been inferred.
+For now, lambda matches over variants need explicit parameter annotations; a
+future checker slice should either run that validation with inferred expression
+types or defer exhaustiveness checks until the typed HIR boundary.
 
-- `src/main.ml`: executable entrypoint and exit-code handling.
-- `src/cli.ml`: argument interpretation and top-level command selection.
-- `src/pipeline.ml`: source loading, lexing, parsing, checking, and later codegen
-  orchestration.
-- `src/source.ml`: source path/content model.
-- `src/diagnostic.ml`: structured diagnostics and rendering.
-- `src/syntax/*`: tokens, lexer, parser, and surface AST.
-- `src/check/*`: environments, type representation, inference, and typed tree.
-- `src/interface/rsig.ml`: structured interface model compatible with binary
-  `.rsig` concepts.
-- `src/lambda/*`, `src/actor/*`, and `src/backend/*`: later compiler boundaries
-  once syntax and checking are useful.
+`compiler/riotc` may remain as an eventual consumer, but it should not drive the
+loop until stage0 is sturdy enough to serve as the reference implementation.
 
 ## Current Baseline
 
