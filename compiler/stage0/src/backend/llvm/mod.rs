@@ -3454,7 +3454,7 @@ mod tests {
                         value: RirExpr::Int(1),
                     }],
                     tail: Some(RirExpr::Lambda {
-                        params: vec![Param::new("x")],
+                        params: vec![Param::from_key(crate::lambda::ir::BindingKey::new("x"))],
                         captures: vec![Capture::new("n")],
                         body: Box::new(RirBlock {
                             statements: Vec::new(),
@@ -3493,7 +3493,7 @@ mod tests {
                     statements: Vec::new(),
                     tail: Some(RirExpr::Apply {
                         callee: Box::new(RirExpr::Lambda {
-                            params: vec![Param::new("x")],
+                            params: vec![Param::from_key(crate::lambda::ir::BindingKey::new("x"))],
                             captures: Vec::new(),
                             body: Box::new(RirBlock {
                                 statements: Vec::new(),

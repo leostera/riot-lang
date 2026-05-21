@@ -3,11 +3,9 @@ source: tests/fixtures.rs
 expression: contents
 ---
 ActorIrProgram {
-    module_name: "SpawnChainTwoHops",
     actors: [
         ActorIrActor {
             id: 0,
-            owner: "main",
             frame: ActorFrameLayout {
                 size_bytes: 16,
                 align: 8,
@@ -22,7 +20,6 @@ ActorIrProgram {
             },
             states: [
                 ActorFrameState {
-                    index: 0,
                     op: Let {
                         name: "middle$3",
                         value: Spawn {
@@ -106,7 +103,6 @@ ActorIrProgram {
                     ),
                 },
                 ActorFrameState {
-                    index: 1,
                     op: Receive {
                         arms: [
                             RirReceiveArm {
@@ -142,7 +138,6 @@ ActorIrProgram {
         },
         ActorIrActor {
             id: 1,
-            owner: "main",
             frame: ActorFrameLayout {
                 size_bytes: 16,
                 align: 8,
@@ -157,7 +152,6 @@ ActorIrProgram {
             },
             states: [
                 ActorFrameState {
-                    index: 0,
                     op: Let {
                         name: "leaf$1",
                         value: Spawn {
@@ -198,7 +192,6 @@ ActorIrProgram {
                     ),
                 },
                 ActorFrameState {
-                    index: 1,
                     op: Receive {
                         arms: [
                             RirReceiveArm {
@@ -234,7 +227,6 @@ ActorIrProgram {
         },
         ActorIrActor {
             id: 2,
-            owner: "main",
             frame: ActorFrameLayout {
                 size_bytes: 8,
                 align: 8,
@@ -243,7 +235,6 @@ ActorIrProgram {
             },
             states: [
                 ActorFrameState {
-                    index: 0,
                     op: Receive {
                         arms: [
                             RirReceiveArm {

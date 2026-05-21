@@ -382,7 +382,6 @@ fn infer_block(
         match stmt {
             AstStmt::Let {
                 name,
-                name_span: _,
                 type_annotation,
                 value,
                 ..
@@ -1268,17 +1267,13 @@ mod tests {
                 vec![
                     AstStmt::Let {
                         name: "a".to_owned(),
-                        name_span: span(),
                         type_annotation: None,
                         value: int(0),
-                        span: span(),
                     },
                     AstStmt::Let {
                         name: "a".to_owned(),
-                        name_span: span(),
                         type_annotation: None,
                         value: bool_(true),
-                        span: span(),
                     },
                 ],
                 path("a"),
@@ -1363,10 +1358,8 @@ mod tests {
                 vec![],
                 vec![AstStmt::Let {
                     name: "id".to_owned(),
-                    name_span: span(),
                     type_annotation: None,
                     value: lambda(vec!["x"], path("x")),
-                    span: span(),
                 }],
                 call("id", vec![int(1)]),
             )],
@@ -1390,10 +1383,8 @@ mod tests {
                 vec![
                     AstStmt::Let {
                         name: "id".to_owned(),
-                        name_span: span(),
                         type_annotation: None,
                         value: lambda(vec!["x"], path("x")),
-                        span: span(),
                     },
                     AstStmt::Expr(call("id", vec![int(1)])),
                 ],

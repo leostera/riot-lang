@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -19,10 +17,6 @@ impl BindingKey {
 pub(crate) struct Param(BindingKey);
 
 impl Param {
-    pub(crate) fn new(name: impl Into<String>) -> Self {
-        Self(BindingKey::new(name))
-    }
-
     pub(crate) fn from_key(key: BindingKey) -> Self {
         Self(key)
     }
@@ -50,10 +44,6 @@ impl Capture {
 
     pub(crate) fn as_str(&self) -> &str {
         self.0.as_str()
-    }
-
-    pub(crate) fn key(&self) -> &BindingKey {
-        &self.0
     }
 }
 

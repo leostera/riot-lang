@@ -73,7 +73,7 @@ impl<'src> Parser<'src> {
         match self.current().kind {
             TokenKind::Use => self.parse_use_decl().map(AstDecl::Use),
             TokenKind::Pub => self.parse_pub_decl(),
-            TokenKind::Mod => self.parse_module_decl(false).map(AstDecl::Module),
+            TokenKind::Mod => self.parse_module_decl().map(AstDecl::Module),
             TokenKind::Include => self.parse_include_decl().map(AstDecl::Include),
             TokenKind::External => self.parse_external_decl().map(AstDecl::External),
             TokenKind::Type => self.parse_type_decl().map(AstDecl::Type),
@@ -115,20 +115,18 @@ impl<'src> Parser<'src> {
     fn parse_pub_decl(&mut self) -> Result<AstDecl, ParseError> {
         self.expect(TokenKind::Pub, "expected `pub`")?;
         match self.current().kind {
-            TokenKind::Mod => self.parse_module_decl(true).map(AstDecl::Module),
+            TokenKind::Mod => self.parse_module_decl().map(AstDecl::Module),
             _ => {
                 Err(self.error_at_current("expected `mod` after `pub`", Some("try: pub mod List")))
             }
         }
     }
 
-    fn parse_module_decl(&mut self, public: bool) -> Result<AstModuleDecl, ParseError> {
+    fn parse_module_decl(&mut self) -> Result<AstModuleDecl, ParseError> {
         let start = self.expect(TokenKind::Mod, "expected `mod`")?;
         let (name, name_span) = self.expect_module_name()?;
         Ok(AstModuleDecl {
             name,
-            name_span,
-            public,
             span: start.span.join(name_span),
         })
     }
@@ -138,14 +136,13 @@ impl<'src> Parser<'src> {
         let (name, name_span) = self.expect_module_name()?;
         Ok(AstIncludeDecl {
             name,
-            name_span,
             span: start.span.join(name_span),
         })
     }
 
     fn parse_external_decl(&mut self) -> Result<AstExternalDecl, ParseError> {
         let start = self.expect(TokenKind::External, "expected `external`")?;
-        let (name, name_span) = self.parse_external_name()?;
+        let (name, _) = self.parse_external_name()?;
         self.expect(TokenKind::Colon, "expected `:` after external name")?;
         let type_start = self.current().span;
         while !self.at(TokenKind::Eq) {
@@ -172,7 +169,6 @@ impl<'src> Parser<'src> {
         })?;
         Ok(AstExternalDecl {
             name,
-            name_span,
             type_text: self.text(type_span).trim().to_owned(),
             type_span,
             abi,
@@ -290,10 +286,7 @@ impl<'src> Parser<'src> {
                     help: Some("type parameters start with `'`, for example `'value`"),
                 });
             }
-            params.push(AstTypeParam {
-                name,
-                span: token.span,
-            });
+            params.push(AstTypeParam { name });
             if self.match_kind(TokenKind::Comma).is_none() {
                 break;
             }
@@ -312,7 +305,7 @@ impl<'src> Parser<'src> {
         self.expect(TokenKind::LBrace, "expected `{` in record type")?;
         let mut fields = Vec::new();
         while !self.at(TokenKind::RBrace) {
-            let (field, field_span) = self.expect_lower_ident()?;
+            let (field, _) = self.expect_lower_ident()?;
             self.expect(TokenKind::Colon, "expected `:` after record field name")?;
             let type_annotation = self.parse_type_annotation_until(
                 &[TokenKind::Comma, TokenKind::RBrace],
@@ -320,7 +313,6 @@ impl<'src> Parser<'src> {
             )?;
             fields.push(AstRecordTypeField {
                 name: field,
-                name_span: field_span,
                 type_annotation,
             });
 
@@ -446,8 +438,8 @@ impl<'src> Parser<'src> {
     }
 
     fn parse_let_stmt(&mut self) -> Result<AstStmt, ParseError> {
-        let start = self.expect(TokenKind::Let, "expected `let`")?;
-        let (name, name_span) = self.expect_lower_ident()?;
+        self.expect(TokenKind::Let, "expected `let`")?;
+        let (name, _) = self.expect_lower_ident()?;
 
         let type_annotation = if self.match_kind(TokenKind::Colon).is_some() {
             Some(self.parse_type_annotation()?)
@@ -457,14 +449,12 @@ impl<'src> Parser<'src> {
 
         self.expect(TokenKind::Eq, "expected `=` in let binding")?;
         let value = self.parse_expr()?;
-        let end = self.expect(TokenKind::Semicolon, "expected `;` after let binding")?;
+        self.expect(TokenKind::Semicolon, "expected `;` after let binding")?;
 
         Ok(AstStmt::Let {
             name,
-            name_span,
             type_annotation,
             value,
-            span: start.span.join(end.span),
         })
     }
 

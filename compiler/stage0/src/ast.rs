@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct TextSpan {
     pub(crate) start: usize,
@@ -44,22 +42,18 @@ pub(crate) struct AstUseDecl {
 #[derive(Debug, Clone)]
 pub(crate) struct AstModuleDecl {
     pub(crate) name: String,
-    pub(crate) name_span: TextSpan,
-    pub(crate) public: bool,
     pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct AstIncludeDecl {
     pub(crate) name: String,
-    pub(crate) name_span: TextSpan,
     pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct AstExternalDecl {
     pub(crate) name: String,
-    pub(crate) name_span: TextSpan,
     pub(crate) type_text: String,
     pub(crate) type_span: TextSpan,
     pub(crate) abi: String,
@@ -78,7 +72,6 @@ pub(crate) struct AstTypeDecl {
 #[derive(Debug, Clone)]
 pub(crate) struct AstTypeParam {
     pub(crate) name: String,
-    pub(crate) span: TextSpan,
 }
 
 #[derive(Debug, Clone)]
@@ -102,7 +95,6 @@ pub(crate) struct AstVariantConstructor {
 #[derive(Debug, Clone)]
 pub(crate) struct AstRecordTypeField {
     pub(crate) name: String,
-    pub(crate) name_span: TextSpan,
     pub(crate) type_annotation: AstTypeAnnotation,
 }
 
@@ -185,10 +177,8 @@ pub(crate) enum AstPattern {
 pub(crate) enum AstStmt {
     Let {
         name: String,
-        name_span: TextSpan,
         type_annotation: Option<AstTypeAnnotation>,
         value: AstExpr,
-        span: TextSpan,
     },
     Expr(AstExpr),
 }

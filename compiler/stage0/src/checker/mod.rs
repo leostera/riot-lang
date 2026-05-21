@@ -770,10 +770,8 @@ fn validate_block(
         match stmt {
             AstStmt::Let {
                 name,
-                name_span: _,
                 type_annotation,
                 value,
-                span: _,
             } => {
                 if let Some(annotation) = type_annotation {
                     validate_type_annotation(ctx, annotation, value, &bindings)?;
@@ -2326,7 +2324,6 @@ fn validate_actor_block(
         match stmt {
             AstStmt::Let {
                 name,
-                name_span: _,
                 value,
                 type_annotation,
                 ..

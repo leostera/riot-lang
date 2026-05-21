@@ -319,18 +319,9 @@ pub(crate) fn lower_rir_to_actor_ir(
             .zip(&function.param_types)
             .map(|(name, type_)| (name.as_str().to_owned(), ActorSlotType::from_rsig(type_)))
             .collect::<BTreeMap<_, _>>();
-        collect_actors_from_block(
-            &function.name,
-            &function.body,
-            &mut locals,
-            &context,
-            &mut actors,
-        );
+        collect_actors_from_block(&function.body, &mut locals, &context, &mut actors);
     }
-    ActorIrProgram {
-        module_name: program.module_name.clone(),
-        actors,
-    }
+    ActorIrProgram { actors }
 }
 
 pub(crate) fn module_function_symbol(module: &ModuleName, name: &str) -> String {
@@ -653,7 +644,6 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
         match stmt {
             AstStmt::Let {
                 name,
-                name_span: _,
                 type_annotation,
                 value,
                 ..
@@ -1658,7 +1648,6 @@ fn external_type_map(program: &RirProgram) -> BTreeMap<String, (Vec<RsigType>, R
 }
 
 fn collect_actors_from_block(
-    owner: &str,
     block: &RirBlock,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorLowerContext<'_>,
@@ -1667,22 +1656,21 @@ fn collect_actors_from_block(
     for stmt in &block.statements {
         match stmt {
             RirStmt::Let { name, value } => {
-                collect_actors_from_expr(owner, value, locals, context, actors);
+                collect_actors_from_expr(value, locals, context, actors);
                 locals.insert(
                     name.as_str().to_owned(),
                     infer_actor_slot_type(value, locals, context),
                 );
             }
-            RirStmt::Expr(expr) => collect_actors_from_expr(owner, expr, locals, context, actors),
+            RirStmt::Expr(expr) => collect_actors_from_expr(expr, locals, context, actors),
         }
     }
     if let Some(tail) = &block.tail {
-        collect_actors_from_expr(owner, tail, locals, context, actors);
+        collect_actors_from_expr(tail, locals, context, actors);
     }
 }
 
 fn collect_actors_from_expr(
-    owner: &str,
     expr: &RirExpr,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorLowerContext<'_>,
@@ -1690,7 +1678,7 @@ fn collect_actors_from_expr(
 ) {
     match expr {
         RirExpr::Spawn { actor_id, body } => {
-            let actor = actor_frame_from_block(*actor_id, owner, body, locals, context);
+            let actor = actor_frame_from_block(*actor_id, body, locals, context);
             let mut actor_locals = actor
                 .frame
                 .slots
@@ -1698,7 +1686,7 @@ fn collect_actors_from_expr(
                 .map(|slot| (slot.name.clone(), Some(slot.type_)))
                 .collect::<BTreeMap<_, _>>();
             actors.push(actor);
-            collect_actors_from_block(owner, body, &mut actor_locals, context, actors);
+            collect_actors_from_block(body, &mut actor_locals, context, actors);
         }
         RirExpr::Add(lhs, rhs)
         | RirExpr::Sub(lhs, rhs)
@@ -1709,43 +1697,43 @@ fn collect_actors_from_expr(
         | RirExpr::Lt(lhs, rhs)
         | RirExpr::And(lhs, rhs)
         | RirExpr::Or(lhs, rhs) => {
-            collect_actors_from_expr(owner, lhs, locals, context, actors);
-            collect_actors_from_expr(owner, rhs, locals, context, actors);
+            collect_actors_from_expr(lhs, locals, context, actors);
+            collect_actors_from_expr(rhs, locals, context, actors);
         }
         RirExpr::Neg(value) | RirExpr::Not(value) => {
-            collect_actors_from_expr(owner, value, locals, context, actors);
+            collect_actors_from_expr(value, locals, context, actors);
         }
         RirExpr::If {
             condition,
             then_branch,
             else_branch,
         } => {
-            collect_actors_from_expr(owner, condition, locals, context, actors);
-            collect_actors_from_expr(owner, then_branch, locals, context, actors);
-            collect_actors_from_expr(owner, else_branch, locals, context, actors);
+            collect_actors_from_expr(condition, locals, context, actors);
+            collect_actors_from_expr(then_branch, locals, context, actors);
+            collect_actors_from_expr(else_branch, locals, context, actors);
         }
         RirExpr::Match { scrutinee, arms } => {
-            collect_actors_from_expr(owner, scrutinee, locals, context, actors);
+            collect_actors_from_expr(scrutinee, locals, context, actors);
             let scrutinee_type = infer_actor_slot_type(scrutinee, locals, context);
             for arm in arms {
                 let mut arm_locals = locals.clone();
                 bind_pattern_actor_slot_types(&arm.pattern, scrutinee_type, &mut arm_locals);
-                collect_actors_from_expr(owner, &arm.body, &mut arm_locals, context, actors);
+                collect_actors_from_expr(&arm.body, &mut arm_locals, context, actors);
             }
         }
         RirExpr::Block(block) => {
             let mut block_locals = locals.clone();
-            collect_actors_from_block(owner, block, &mut block_locals, context, actors);
+            collect_actors_from_block(block, &mut block_locals, context, actors);
         }
         RirExpr::Call { args, .. } | RirExpr::Tuple(args) | RirExpr::List(args) => {
             for arg in args {
-                collect_actors_from_expr(owner, arg, locals, context, actors);
+                collect_actors_from_expr(arg, locals, context, actors);
             }
         }
         RirExpr::Apply { callee, args, .. } => {
-            collect_actors_from_expr(owner, callee, locals, context, actors);
+            collect_actors_from_expr(callee, locals, context, actors);
             for arg in args {
-                collect_actors_from_expr(owner, arg, locals, context, actors);
+                collect_actors_from_expr(arg, locals, context, actors);
             }
         }
         RirExpr::Lambda { params, body, .. } => {
@@ -1753,15 +1741,15 @@ fn collect_actors_from_expr(
             for param in params {
                 lambda_locals.insert(param.as_str().to_owned(), None);
             }
-            collect_actors_from_block(owner, body, &mut lambda_locals, context, actors);
+            collect_actors_from_block(body, &mut lambda_locals, context, actors);
         }
         RirExpr::Record { fields, .. } => {
             for (_, value) in fields {
-                collect_actors_from_expr(owner, value, locals, context, actors);
+                collect_actors_from_expr(value, locals, context, actors);
             }
         }
         RirExpr::Field { base, .. } | RirExpr::TupleIndex { base, .. } => {
-            collect_actors_from_expr(owner, base, locals, context, actors);
+            collect_actors_from_expr(base, locals, context, actors);
         }
         RirExpr::Receive { arms } => {
             for arm in arms {
@@ -1771,12 +1759,12 @@ fn collect_actors_from_expr(
                     Some(ActorSlotType::Value),
                     &mut arm_locals,
                 );
-                collect_actors_from_expr(owner, &arm.body, &mut arm_locals, context, actors);
+                collect_actors_from_expr(&arm.body, &mut arm_locals, context, actors);
             }
         }
         RirExpr::Variant { payload, .. } => {
             for value in payload {
-                collect_actors_from_expr(owner, value, locals, context, actors);
+                collect_actors_from_expr(value, locals, context, actors);
             }
         }
         RirExpr::Bool(_)
@@ -1791,7 +1779,6 @@ fn collect_actors_from_expr(
 
 fn actor_frame_from_block(
     actor_id: usize,
-    owner: &str,
     block: &RirBlock,
     outer_locals: &BTreeMap<String, Option<ActorSlotType>>,
     context: &ActorLowerContext<'_>,
@@ -1858,13 +1845,12 @@ fn actor_frame_from_block(
             } else {
                 ActorStateNext::State(index + 1)
             };
-            ActorFrameState { index, op, next }
+            ActorFrameState { op, next }
         })
         .collect::<Vec<_>>();
 
     ActorIrActor {
         id: actor_id,
-        owner: owner.to_owned(),
         frame: ActorFrameLayout {
             size_bytes: (slots.len() + 1) * 8,
             align: 8,
@@ -2620,17 +2606,14 @@ mod tests {
                     statements: vec![
                         AstStmt::Let {
                             name: "a".to_owned(),
-                            name_span: span(),
                             type_annotation: None,
                             value: AstExpr::Int {
                                 value: 1,
                                 span: span(),
                             },
-                            span: span(),
                         },
                         AstStmt::Let {
                             name: "f".to_owned(),
-                            name_span: span(),
                             type_annotation: None,
                             value: AstExpr::Lambda {
                                 params: vec!["ignored".to_owned()],
@@ -2642,17 +2625,14 @@ mod tests {
                                 }),
                                 span: span(),
                             },
-                            span: span(),
                         },
                         AstStmt::Let {
                             name: "a".to_owned(),
-                            name_span: span(),
                             type_annotation: None,
                             value: AstExpr::Int {
                                 value: 2,
                                 span: span(),
                             },
-                            span: span(),
                         },
                     ],
                     tail: Some(AstExpr::Call {
@@ -2694,17 +2674,14 @@ mod tests {
                     statements: vec![
                         AstStmt::Let {
                             name: "a".to_owned(),
-                            name_span: span(),
                             type_annotation: None,
                             value: AstExpr::Int {
                                 value: 1,
                                 span: span(),
                             },
-                            span: span(),
                         },
                         AstStmt::Let {
                             name: "f".to_owned(),
-                            name_span: span(),
                             type_annotation: None,
                             value: AstExpr::Lambda {
                                 params: vec!["ignored".to_owned()],
@@ -2716,17 +2693,14 @@ mod tests {
                                 }),
                                 span: span(),
                             },
-                            span: span(),
                         },
                         AstStmt::Let {
                             name: "a".to_owned(),
-                            name_span: span(),
                             type_annotation: None,
                             value: AstExpr::Int {
                                 value: 2,
                                 span: span(),
                             },
-                            span: span(),
                         },
                     ],
                     tail: Some(path("f")),

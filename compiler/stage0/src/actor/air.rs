@@ -1,19 +1,15 @@
-#![allow(dead_code)]
-
-use crate::signature::{ModuleName, RsigType};
+use crate::signature::RsigType;
 
 use crate::lambda::ir::{RirExpr, RirReceiveArm};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorIrProgram {
-    pub(crate) module_name: ModuleName,
     pub(crate) actors: Vec<ActorIrActor>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorIrActor {
     pub(crate) id: usize,
-    pub(crate) owner: String,
     pub(crate) frame: ActorFrameLayout,
     pub(crate) states: Vec<ActorFrameState>,
 }
@@ -60,7 +56,6 @@ impl ActorSlotType {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorFrameState {
-    pub(crate) index: usize,
     pub(crate) op: ActorFrameOp,
     pub(crate) next: ActorStateNext,
 }

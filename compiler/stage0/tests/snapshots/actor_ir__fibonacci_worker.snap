@@ -3,11 +3,9 @@ source: tests/fixtures.rs
 expression: contents
 ---
 ActorIrProgram {
-    module_name: "FibonacciWorker",
     actors: [
         ActorIrActor {
             id: 0,
-            owner: "main",
             frame: ActorFrameLayout {
                 size_bytes: 8,
                 align: 8,
@@ -16,7 +14,6 @@ ActorIrProgram {
             },
             states: [
                 ActorFrameState {
-                    index: 0,
                     op: Receive {
                         arms: [
                             RirReceiveArm {
@@ -47,7 +44,6 @@ ActorIrProgram {
         },
         ActorIrActor {
             id: 1,
-            owner: "main",
             frame: ActorFrameLayout {
                 size_bytes: 16,
                 align: 8,
@@ -68,7 +64,6 @@ ActorIrProgram {
             },
             states: [
                 ActorFrameState {
-                    index: 0,
                     op: Receive {
                         arms: [
                             RirReceiveArm {
