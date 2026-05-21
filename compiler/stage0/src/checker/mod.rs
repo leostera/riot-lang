@@ -479,7 +479,8 @@ fn declared_variant_names(
 }
 
 fn prelude_variant_names() -> BTreeSet<TypeName> {
-    crate::stdlib::prelude_signature()
+    crate::stdlib::Stdlib::new()
+        .prelude_signature()
         .ok()
         .map(|rsig| {
             rsig.types
@@ -514,7 +515,8 @@ fn const_functions(program: &AstProgram) -> HashMap<String, ConstFunction> {
 }
 
 fn external_names(program: &AstProgram) -> HashSet<String> {
-    let mut names = crate::stdlib::prelude_signature()
+    let mut names = crate::stdlib::Stdlib::new()
+        .prelude_signature()
         .expect("compiler/std/prelude.ml must parse")
         .exports
         .iter()
@@ -554,7 +556,8 @@ fn constructor_types(
     program: &AstProgram,
     declared_variants: &BTreeSet<TypeName>,
 ) -> HashMap<String, ConstructorShape> {
-    let mut constructors = crate::stdlib::prelude_signature()
+    let mut constructors = crate::stdlib::Stdlib::new()
+        .prelude_signature()
         .ok()
         .map(|rsig| constructor_types_from_rsig(&rsig, None))
         .unwrap_or_default();

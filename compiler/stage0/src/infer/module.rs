@@ -151,7 +151,8 @@ fn declared_variant_names(
 }
 
 fn prelude_variant_names() -> BTreeSet<TypeName> {
-    crate::stdlib::prelude_signature()
+    crate::stdlib::Stdlib::new()
+        .prelude_signature()
         .ok()
         .map(|rsig| {
             rsig.types
@@ -165,7 +166,9 @@ fn prelude_variant_names() -> BTreeSet<TypeName> {
 }
 
 fn install_prelude(state: &mut State) {
-    let rsig = crate::stdlib::prelude_signature().expect("compiler/std/prelude.ml must parse");
+    let rsig = crate::stdlib::Stdlib::new()
+        .prelude_signature()
+        .expect("compiler/std/prelude.ml must parse");
     install_unqualified_signature(state, &rsig);
 }
 

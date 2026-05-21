@@ -3402,7 +3402,8 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
 }
 
 fn codegen_externals(program: &RirProgram) -> miette::Result<BTreeMap<String, RirExternal>> {
-    let mut externals = crate::stdlib::prelude_signature()?
+    let mut externals = crate::stdlib::Stdlib::new()
+        .prelude_signature()?
         .exports
         .into_iter()
         .filter_map(|export| {

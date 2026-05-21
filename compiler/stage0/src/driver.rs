@@ -562,7 +562,9 @@ impl<'a> ImportResolver<'a> {
                     match resolve_rsig(&use_.name, source_dir, self.sig_dirs) {
                         Ok((_path, rsig)) => rsig,
                         Err(error) => {
-                            if let Some(rsig) = crate::stdlib::std_signature(&use_.name)? {
+                            if let Some(rsig) =
+                                crate::stdlib::Stdlib::new().signature(&use_.name)?
+                            {
                                 rsig
                             } else {
                                 return Err(error);
@@ -611,7 +613,7 @@ impl<'a> ImportedObjectResolver<'a> {
             if self
                 .imports
                 .get(module)
-                .is_some_and(crate::stdlib::is_std_signature)
+                .is_some_and(|rsig| crate::stdlib::Stdlib::new().contains_signature(rsig))
             {
                 continue;
             }

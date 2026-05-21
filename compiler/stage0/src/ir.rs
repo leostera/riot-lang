@@ -489,7 +489,8 @@ impl<'a> TypeContext<'a> {
 }
 
 fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, ConstructorSignature> {
-    let mut constructors = crate::stdlib::prelude_signature()
+    let mut constructors = crate::stdlib::Stdlib::new()
+        .prelude_signature()
         .ok()
         .map(|rsig| constructor_type_map_from_rsig(&rsig, None))
         .unwrap_or_default();
@@ -696,7 +697,8 @@ fn declared_variant_names_from_ast(
 }
 
 fn prelude_variant_names() -> BTreeSet<TypeName> {
-    crate::stdlib::prelude_signature()
+    crate::stdlib::Stdlib::new()
+        .prelude_signature()
         .ok()
         .map(|rsig| {
             rsig.types

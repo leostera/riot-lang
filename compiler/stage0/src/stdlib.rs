@@ -19,11 +19,32 @@ const STRING_SOURCE: &str = include_str!("../../std/string.ml");
 const OPTION_SOURCE: &str = include_str!("../../std/option.ml");
 const RESULT_SOURCE: &str = include_str!("../../std/result.ml");
 
-pub(crate) fn prelude_signature() -> miette::Result<Rsig> {
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct Stdlib;
+
+impl Stdlib {
+    pub(crate) fn new() -> Self {
+        Self
+    }
+
+    pub(crate) fn prelude_signature(&self) -> miette::Result<Rsig> {
+        prelude_signature()
+    }
+
+    pub(crate) fn signature(&self, module: &str) -> miette::Result<Option<Rsig>> {
+        std_signature(module)
+    }
+
+    pub(crate) fn contains_signature(&self, rsig: &Rsig) -> bool {
+        is_std_signature(rsig)
+    }
+}
+
+fn prelude_signature() -> miette::Result<Rsig> {
     std_signature("Prelude")?.ok_or_else(|| miette::miette!("compiler/std/prelude.ml is missing"))
 }
 
-pub(crate) fn std_signature(module: &str) -> miette::Result<Option<Rsig>> {
+fn std_signature(module: &str) -> miette::Result<Option<Rsig>> {
     let Some((module, path, source)) = std_source(module) else {
         return Ok(None);
     };
@@ -31,7 +52,7 @@ pub(crate) fn std_signature(module: &str) -> miette::Result<Option<Rsig>> {
     module_signature(module, ast)
 }
 
-pub(crate) fn is_std_signature(rsig: &Rsig) -> bool {
+fn is_std_signature(rsig: &Rsig) -> bool {
     std_signature(rsig.module.as_str())
         .ok()
         .flatten()
@@ -175,11 +196,11 @@ fn declared_variants(ast: &AstProgram) -> BTreeSet<TypeName> {
 
 #[cfg(test)]
 mod tests {
-    use super::{prelude_signature, std_signature};
+    use super::Stdlib;
 
     #[test]
     fn prelude_source_loads_as_binary_signature_data() {
-        let rsig = prelude_signature().unwrap();
+        let rsig = Stdlib::new().prelude_signature().unwrap();
         let names = rsig
             .exports
             .iter()
@@ -204,7 +225,7 @@ mod tests {
 
     #[test]
     fn std_index_source_loads_prelude_exports() {
-        let rsig = std_signature("Std").unwrap().unwrap();
+        let rsig = Stdlib::new().signature("Std").unwrap().unwrap();
 
         assert_eq!(rsig.module.as_str(), "Std");
         assert!(rsig.find("dbg").is_some());
@@ -213,26 +234,30 @@ mod tests {
 
     #[test]
     fn std_modules_load_as_signatures() {
+        let stdlib = Stdlib::new();
         for module in ["Actor", "List", "String", "Option", "Result"] {
-            let rsig = std_signature(module).unwrap().unwrap();
+            let rsig = stdlib.signature(module).unwrap().unwrap();
             assert_eq!(rsig.module.as_str(), module);
         }
         assert!(
-            std_signature("List")
+            stdlib
+                .signature("List")
                 .unwrap()
                 .unwrap()
                 .find("len")
                 .is_some()
         );
         assert!(
-            std_signature("Option")
+            stdlib
+                .signature("Option")
                 .unwrap()
                 .unwrap()
                 .find("is_some")
                 .is_some()
         );
         assert!(
-            std_signature("Result")
+            stdlib
+                .signature("Result")
                 .unwrap()
                 .unwrap()
                 .canonical_text()
