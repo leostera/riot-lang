@@ -92,6 +92,44 @@ pub(crate) struct RsigExternal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FunctionSignature {
+    pub(crate) params: Vec<RsigType>,
+    pub(crate) result: RsigType,
+}
+
+impl FunctionSignature {
+    pub(crate) fn new(params: Vec<RsigType>, result: RsigType) -> Self {
+        Self { params, result }
+    }
+
+    pub(crate) fn unknown_arity(arity: usize) -> Self {
+        Self {
+            params: vec![RsigType::Unknown; arity],
+            result: RsigType::Unknown,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct FunctionTable {
+    signatures: BTreeMap<String, FunctionSignature>,
+}
+
+impl FunctionTable {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn insert(&mut self, name: impl Into<String>, signature: FunctionSignature) {
+        self.signatures.insert(name.into(), signature);
+    }
+
+    pub(crate) fn get(&self, name: &str) -> Option<&FunctionSignature> {
+        self.signatures.get(name)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum RsigType {
     Bool,
     Char,

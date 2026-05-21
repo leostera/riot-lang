@@ -6,8 +6,8 @@ use crate::ast::{
 };
 use crate::imported_types::{imported_type_name, qualify_imported_type};
 use crate::signature::{
-    ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigType, RsigTypeDeclKind,
-    TypeName, TypeParamName,
+    ConstructorName, FieldName, FunctionSignature, FunctionTable, ImportedSignatures, ModuleName,
+    Rsig, RsigType, RsigTypeDeclKind, TypeName, TypeParamName,
 };
 use crate::stdlib::Stdlib;
 use crate::type_lowerer::RsigTypeLowerer;
@@ -24,7 +24,7 @@ pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
     ast: AstProgram,
     imports: &ImportedSignatures,
-    function_types: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    function_types: &FunctionTable,
     expression_types: Option<&BTreeMap<TextSpan, RsigType>>,
 ) -> TypedProgram {
     let mut uses = Vec::new();
@@ -124,15 +124,10 @@ pub(crate) fn typed_program_from_ast(
     let mut functions = Vec::new();
     for function in ast_functions {
         let symbol = module_function_symbol(&module_name, &function.name);
-        let (param_types, inferred_result) = function_types
+        let function_type = function_types
             .get(&function.name)
             .cloned()
-            .unwrap_or_else(|| {
-                (
-                    vec![RsigType::Unknown; function.params.len()],
-                    RsigType::Unknown,
-                )
-            });
+            .unwrap_or_else(|| FunctionSignature::unknown_arity(function.params.len()));
         let annotated_result = function
             .return_type
             .as_ref()
@@ -152,7 +147,11 @@ pub(crate) fn typed_program_from_ast(
             .iter()
             .enumerate()
             .map(|(index, name)| {
-                let type_ = param_types.get(index).cloned().unwrap_or(RsigType::Unknown);
+                let type_ = function_type
+                    .params
+                    .get(index)
+                    .cloned()
+                    .unwrap_or(RsigType::Unknown);
                 TypedParam {
                     binding: context.bind(name, type_.clone()),
                     type_,
@@ -160,8 +159,8 @@ pub(crate) fn typed_program_from_ast(
             })
             .collect::<Vec<_>>();
         let body = type_block(function.body, &mut context);
-        let result =
-            annotated_result.unwrap_or_else(|| merge_types(inferred_result, body.type_.clone()));
+        let result = annotated_result
+            .unwrap_or_else(|| merge_types(function_type.result.clone(), body.type_.clone()));
         functions.push(TypedFunction {
             name: function.name,
             params,
@@ -213,7 +212,7 @@ struct ConstructorSignature {
 struct TypeContext<'a> {
     next_binding_id: usize,
     scopes: Vec<BTreeMap<String, TypedBindingInfo>>,
-    functions: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    functions: &'a FunctionTable,
     externals: &'a BTreeMap<String, ExternalSignature>,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
@@ -224,7 +223,7 @@ struct TypeContext<'a> {
 }
 
 struct TypeContextInputs<'a> {
-    function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    function_types: &'a FunctionTable,
     externals: &'a BTreeMap<String, ExternalSignature>,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
@@ -665,10 +664,16 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 };
             }
             if is_named_call(&callee_path, context) {
-                if let Some((params, result)) = call_signature(&callee_path, context)
-                    && args.len() < params.len()
+                if let Some(signature) = call_signature(&callee_path, context)
+                    && args.len() < signature.params.len()
                 {
-                    return partial_call_lambda(callee_path, args, params, result, context);
+                    return partial_call_lambda(
+                        callee_path,
+                        args,
+                        signature.params,
+                        signature.result,
+                        context,
+                    );
                 }
                 let type_ = call_result_type(&callee_path, context);
                 TypedExpr {
@@ -856,8 +861,14 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
             kind: TypedExprKind::Local(binding.binding.clone()),
         };
     }
-    if let Some((params, result)) = call_signature(&path, context) {
-        return partial_call_lambda(path, Vec::new(), params, result, context);
+    if let Some(signature) = call_signature(&path, context) {
+        return partial_call_lambda(
+            path,
+            Vec::new(),
+            signature.params,
+            signature.result,
+            context,
+        );
     }
     if let Some((type_name, constructor)) = nullary_constructor_type(&path, context) {
         return TypedExpr {
@@ -1268,17 +1279,14 @@ fn imported_constructor_signature(
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
     call_signature(callee, context)
-        .map(|signature| signature.1)
+        .map(|signature| signature.result)
         .unwrap_or(RsigType::Unknown)
 }
 
-fn call_signature(
-    callee: &[String],
-    context: &TypeContext<'_>,
-) -> Option<(Vec<RsigType>, RsigType)> {
+fn call_signature(callee: &[String], context: &TypeContext<'_>) -> Option<FunctionSignature> {
     CallableResolver::new(context.functions, context.externals, context.imports)
         .resolve(callee)
-        .map(|signature| (signature.params, signature.result))
+        .map(|signature| signature.function)
 }
 
 fn apply_result_type(callee: &RsigType, arity: usize) -> RsigType {

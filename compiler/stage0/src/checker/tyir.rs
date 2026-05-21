@@ -1,5 +1,6 @@
 use crate::signature::{
-    AbiSymbol, ConstructorName, FieldName, ModuleName, Rsig, RsigType, TypeName, TypeParamName,
+    AbiSymbol, ConstructorName, FieldName, FunctionTable, ModuleName, Rsig, RsigType, TypeName,
+    TypeParamName,
 };
 use std::collections::BTreeMap;
 
@@ -9,7 +10,7 @@ use crate::signature::ImportedSignatures;
 pub(crate) struct TyIrBuilder<'a> {
     module_name: ModuleName,
     imports: &'a ImportedSignatures,
-    function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    function_types: &'a FunctionTable,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
 }
 
@@ -17,7 +18,7 @@ impl<'a> TyIrBuilder<'a> {
     pub(crate) fn new(
         module_name: ModuleName,
         imports: &'a ImportedSignatures,
-        function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+        function_types: &'a FunctionTable,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
     ) -> Self {
         Self {

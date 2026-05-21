@@ -13,8 +13,8 @@ use crate::ast::{
 };
 use crate::imported_types::{imported_type_name, qualify_imported_type};
 use crate::signature::{
-    ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeDeclKind, RsigTypeScheme, TypeName,
-    TypeVarName,
+    FunctionSignature, FunctionTable, ImportedSignatures, Rsig, RsigExport, RsigType,
+    RsigTypeDeclKind, RsigTypeScheme, TypeName, TypeVarName,
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
@@ -86,10 +86,7 @@ impl<'a> ModuleInferencer<'a> {
 }
 
 impl InferredModule {
-    pub(crate) fn function_signatures(
-        &self,
-        program: &AstProgram,
-    ) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+    pub(crate) fn function_signatures(&self, program: &AstProgram) -> FunctionTable {
         let function_arities = program
             .decls
             .iter()
@@ -98,7 +95,7 @@ impl InferredModule {
                 _ => None,
             })
             .collect::<BTreeMap<_, _>>();
-        let mut signatures = BTreeMap::new();
+        let mut signatures = FunctionTable::new();
         for (name, arity) in function_arities {
             let Some(scheme) = self.env.get_value(&name) else {
                 continue;
@@ -106,7 +103,7 @@ impl InferredModule {
             if let Some((params, result)) = peel_source_function_type(&scheme.body, arity) {
                 signatures.insert(
                     name,
-                    (
+                    FunctionSignature::new(
                         params.iter().map(infer_type_to_rsig_type).collect(),
                         infer_type_to_rsig_type(&result),
                     ),
@@ -1057,7 +1054,7 @@ mod tests {
     use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
-    use crate::signature::{ImportedSignatures, RsigType};
+    use crate::signature::{FunctionSignature, FunctionTable, ImportedSignatures, RsigType};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -1166,9 +1163,7 @@ mod tests {
         ModuleInferencer::new(program, &ImportedSignatures::new()).infer()
     }
 
-    fn signatures(
-        program: &AstProgram,
-    ) -> Result<std::collections::BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
+    fn signatures(program: &AstProgram) -> Result<FunctionTable, InferError> {
         infer(program).map(|inferred| inferred.function_signatures(program))
     }
 
@@ -1404,7 +1399,10 @@ mod tests {
 
         assert_eq!(
             signatures.get("add"),
-            Some(&(vec![RsigType::I64, RsigType::I64], RsigType::I64))
+            Some(&FunctionSignature::new(
+                vec![RsigType::I64, RsigType::I64],
+                RsigType::I64
+            ))
         );
     }
 
@@ -1423,7 +1421,7 @@ mod tests {
 
         assert_eq!(
             signatures.get("apply_i64"),
-            Some(&(
+            Some(&FunctionSignature::new(
                 vec![
                     RsigType::Arrow {
                         parameter: Box::new(RsigType::I64),
@@ -1454,7 +1452,10 @@ mod tests {
 
         assert_eq!(
             signatures.get("make_worker"),
-            Some(&(vec![], RsigType::ActorId(Box::new(RsigType::String))))
+            Some(&FunctionSignature::new(
+                vec![],
+                RsigType::ActorId(Box::new(RsigType::String))
+            ))
         );
     }
 }

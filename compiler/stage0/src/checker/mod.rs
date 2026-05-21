@@ -39,8 +39,8 @@ use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
 use crate::imported_types::{imported_type_name, qualify_imported_type};
 use crate::infer::module::ModuleInferencer;
 use crate::signature::{
-    ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
-    TypeVarName,
+    FunctionSignature, FunctionTable, ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType,
+    RsigTypeDeclKind, TypeName, TypeVarName,
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
@@ -120,7 +120,7 @@ struct ValidationContext<'a> {
     source_path: &'a Utf8Path,
     source: &'a str,
     functions: HashMap<String, ConstFunction>,
-    function_signatures: BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    function_signatures: FunctionTable,
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
@@ -424,35 +424,35 @@ fn function_results(
 fn function_signatures(
     program: &AstProgram,
     declared_variants: &BTreeSet<TypeName>,
-) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
-    program
-        .decls
-        .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::Function(function) => {
-                let params = function
-                    .params
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _)| {
-                        function
-                            .param_types
-                            .get(index)
-                            .and_then(|annotation| annotation.as_ref())
-                            .map(|annotation| lower_type_annotation(annotation, declared_variants))
-                            .unwrap_or(RsigType::Unknown)
-                    })
-                    .collect();
-                let result = function
-                    .return_type
-                    .as_ref()
-                    .map(|annotation| lower_type_annotation(annotation, declared_variants))
-                    .unwrap_or(RsigType::Unknown);
-                Some((function.name.clone(), (params, result)))
-            }
-            _ => None,
-        })
-        .collect()
+) -> FunctionTable {
+    let mut signatures = FunctionTable::new();
+    for decl in &program.decls {
+        if let AstDecl::Function(function) = decl {
+            let params = function
+                .params
+                .iter()
+                .enumerate()
+                .map(|(index, _)| {
+                    function
+                        .param_types
+                        .get(index)
+                        .and_then(|annotation| annotation.as_ref())
+                        .map(|annotation| lower_type_annotation(annotation, declared_variants))
+                        .unwrap_or(RsigType::Unknown)
+                })
+                .collect();
+            let result = function
+                .return_type
+                .as_ref()
+                .map(|annotation| lower_type_annotation(annotation, declared_variants))
+                .unwrap_or(RsigType::Unknown);
+            signatures.insert(
+                function.name.clone(),
+                FunctionSignature::new(params, result),
+            );
+        }
+    }
+    signatures
 }
 
 fn lower_type_annotation(
@@ -2183,14 +2183,9 @@ fn validate_callable_call(
     in_actor: bool,
 ) -> miette::Result<ExprCategory> {
     let name = callee_display_name(callee);
-    if args.is_empty() && !signature.params.is_empty() || args.len() > signature.params.len() {
-        return Err(call_arity_error(
-            ctx,
-            span,
-            &name,
-            signature.params.len(),
-            args.len(),
-        ));
+    let params = &signature.function.params;
+    if args.is_empty() && !params.is_empty() || args.len() > params.len() {
+        return Err(call_arity_error(ctx, span, &name, params.len(), args.len()));
     }
     if callable_signature_has_unknown_import_abi(signature) {
         return Err(ctx
@@ -2209,13 +2204,13 @@ fn validate_callable_call(
         } else {
             validate_expr(ctx, arg, bindings, in_actor)?;
         }
-        if let Some(expected) = signature.params.get(index) {
+        if let Some(expected) = params.get(index) {
             validate_signature_arg_type(ctx, &name, arg, expected, bindings)?;
         }
     }
     validate_static_callable_facts(ctx, span, signature, args)?;
 
-    if args.len() < signature.params.len() {
+    if args.len() < params.len() {
         return Ok(ExprCategory::Other);
     }
     if signature.is_output_operation() {
@@ -2230,12 +2225,17 @@ fn validate_callable_call(
 fn callable_signature_has_unknown_import_abi(signature: &CallableSignature) -> bool {
     match signature.kind {
         CallableKind::ImportedFunction { .. } => {
-            rsig_type_has_unknown_abi(&signature.result)
-                || signature.params.iter().any(rsig_type_has_unknown_abi)
+            rsig_type_has_unknown_abi(&signature.function.result)
+                || signature
+                    .function
+                    .params
+                    .iter()
+                    .any(rsig_type_has_unknown_abi)
         }
         CallableKind::ImportedExternal { .. } => {
-            rsig_external_type_has_unknown_abi(&signature.result)
+            rsig_external_type_has_unknown_abi(&signature.function.result)
                 || signature
+                    .function
                     .params
                     .iter()
                     .any(rsig_external_type_has_unknown_abi)
@@ -2533,7 +2533,7 @@ fn infer_annotation_tuple_index_type(
 fn external_result_type(ctx: &ValidationContext<'_>, name: &str) -> Option<RsigType> {
     ctx.external_signatures
         .get(name)
-        .map(|external| external.result.clone())
+        .map(|external| external.function.result.clone())
 }
 
 fn merge_annotation_types(lhs: RsigType, rhs: RsigType) -> RsigType {
