@@ -20,8 +20,8 @@ use crate::abi::{
     riot_rt_value_variant_payload,
 };
 use crate::actor::{
-    ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
-    actor_from_id, runtime_message_from_raw,
+    ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, POLL_YIELD, RtMessage,
+    RuntimeMessage, actor_from_id, runtime_message_from_raw,
 };
 use crate::actor_id::ActorId;
 use crate::frame::RtFrameLayout;
@@ -30,6 +30,7 @@ use crate::value::{RtValue, VALUE_NULL, VALUE_TAG_MASK};
 
 static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
 static MESSAGES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+static SCHEDULE_EVENTS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
 static RUNTIME_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn runtime_test_guard() -> std::sync::MutexGuard<'static, ()> {
@@ -72,6 +73,38 @@ unsafe extern "C" fn idle_resume(
     _message: *const RtMessage,
 ) -> u32 {
     POLL_WAITING
+}
+
+unsafe extern "C" fn yielding_resume(
+    frame: *mut u8,
+    _actor_id: ActorId,
+    _message: *const RtMessage,
+) -> u32 {
+    let count = unsafe { &mut *(frame as *mut u64) };
+    *count += 1;
+    SCHEDULE_EVENTS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap()
+        .push(format!("yield:{count}"));
+    if *count == 3 {
+        POLL_DONE | POLL_PROGRESS
+    } else {
+        POLL_YIELD
+    }
+}
+
+unsafe extern "C" fn once_resume(
+    _frame: *mut u8,
+    _actor_id: ActorId,
+    _message: *const RtMessage,
+) -> u32 {
+    SCHEDULE_EVENTS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap()
+        .push("once".to_owned());
+    POLL_DONE | POLL_PROGRESS
 }
 
 unsafe extern "C" fn return_first_capture_or_argument(
@@ -122,6 +155,35 @@ fn mailbox_consumes_in_fifo_order_without_front_removal_semantics() {
     riot_rt_shutdown();
     let messages = MESSAGES.get().unwrap().lock().unwrap().clone();
     assert_eq!(messages, ["one", "2"]);
+}
+
+#[test]
+fn scheduler_treats_yield_as_progress_and_rotates() {
+    let _guard = runtime_test_guard();
+    riot_rt_init();
+    SCHEDULE_EVENTS
+        .get_or_init(|| Mutex::new(Vec::new()))
+        .lock()
+        .unwrap()
+        .clear();
+
+    let yielding_frame = riot_rt_alloc_frame_v2(8, 8, None);
+    assert!(!yielding_frame.is_null());
+    unsafe { ptr::write(yielding_frame as *mut u64, 0) };
+    let yielding_actor = unsafe {
+        riot_rt_spawn_actor_v2(yielding_frame, Some(yielding_resume), 8, 8, None)
+    };
+    assert_ne!(yielding_actor, ActorId::NULL);
+
+    let once_frame = riot_rt_alloc_frame_v2(1, 1, None);
+    assert!(!once_frame.is_null());
+    let once_actor = unsafe { riot_rt_spawn_actor_v2(once_frame, Some(once_resume), 1, 1, None) };
+    assert_ne!(once_actor, ActorId::NULL);
+
+    riot_rt_shutdown();
+
+    let events = SCHEDULE_EVENTS.get().unwrap().lock().unwrap().clone();
+    assert_eq!(events, ["yield:1", "once", "yield:2", "yield:3"]);
 }
 
 #[test]
