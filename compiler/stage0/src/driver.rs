@@ -10,7 +10,7 @@ use crate::backend::llvm::{CodegenMode, LlvmBackend};
 use crate::checker::{CheckMode, Checker};
 use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, ObjectMapping};
 use crate::lambda::LambdaSimplifier;
-use crate::linker::link_executable;
+use crate::linker::Linker;
 use crate::parser::parse_source;
 use crate::runtime::RuntimeBuilder;
 use crate::signature::{ImportedSignatures, ModuleName, resolve_rsig, write_rsig};
@@ -24,6 +24,7 @@ pub(crate) struct Stage0Driver {
     source_loader: SourceLoader,
     llvm_backend: LlvmBackend,
     runtime_builder: RuntimeBuilder,
+    linker: Linker,
 }
 
 impl Stage0Driver {
@@ -32,6 +33,7 @@ impl Stage0Driver {
             source_loader: SourceLoader::new(),
             llvm_backend: LlvmBackend::new(),
             runtime_builder: RuntimeBuilder::new(),
+            linker: Linker::new(),
         }
     }
 
@@ -111,7 +113,8 @@ impl Stage0Driver {
         )
         .resolve(&rir.uses)?;
         let imported_objects = Self::with_compiled_objects(imported_objects, &compiled_objects);
-        link_executable(&object, &imported_objects, &runtime, &args.output)?;
+        self.linker
+            .link_executable(&object, &imported_objects, &runtime, &args.output)?;
 
         Ok(())
     }
