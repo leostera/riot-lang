@@ -146,6 +146,10 @@ pub(crate) enum TypedPattern {
     },
     Unit,
     Tuple(Vec<TypedPattern>),
+    List {
+        prefix: Vec<TypedPattern>,
+        tail: Option<Box<TypedPattern>>,
+    },
     Record {
         type_name: TypeName,
         fields: Vec<(String, TypedPattern)>,

@@ -354,6 +354,24 @@ fn const_pattern_matches(pattern: &AstPattern, value: &ConstValue) -> bool {
                     .zip(values)
                     .all(|(pattern, value)| const_pattern_matches(pattern, value))
         }
+        AstPattern::List { prefix, tail, .. } => {
+            let ConstValue::List(values) = value else {
+                return false;
+            };
+            if tail.is_none() && prefix.len() != values.len() {
+                return false;
+            }
+            if tail.is_some() && prefix.len() > values.len() {
+                return false;
+            }
+            prefix
+                .iter()
+                .zip(values)
+                .all(|(pattern, value)| const_pattern_matches(pattern, value))
+                && tail.as_ref().is_none_or(|tail| {
+                    const_pattern_matches(tail, &ConstValue::List(values[prefix.len()..].to_vec()))
+                })
+        }
         AstPattern::Record { path, fields, .. } => {
             let ConstValue::Record {
                 path: actual_path,
@@ -404,6 +422,21 @@ fn bind_const_pattern(
             };
             for (pattern, value) in items.iter().zip(values) {
                 bind_const_pattern(pattern, value, bindings);
+            }
+        }
+        AstPattern::List { prefix, tail, .. } => {
+            let ConstValue::List(values) = value else {
+                return;
+            };
+            for (pattern, value) in prefix.iter().zip(values) {
+                bind_const_pattern(pattern, value, bindings);
+            }
+            if let Some(tail) = tail {
+                bind_const_pattern(
+                    tail,
+                    &ConstValue::List(values[prefix.len()..].to_vec()),
+                    bindings,
+                );
             }
         }
         AstPattern::Record { fields, .. } => {

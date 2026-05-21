@@ -1496,6 +1496,36 @@ fn validate_pattern(
             )?;
         }
     }
+    if let AstPattern::List { prefix, tail, span } = pattern {
+        let item_type = match scrutinee_type {
+            Some(RsigType::List(item)) => item.as_ref().clone(),
+            Some(other) => {
+                return Err(to_source_diagnostic(
+                    ctx.source_path,
+                    ctx.source,
+                    *span,
+                    "match pattern has incompatible type",
+                    format!(
+                        "list pattern expects a list, but the matched value has type `{}`",
+                        other.canonical()
+                    ),
+                    Some("match lists with `[]` or `[head, ..tail]`"),
+                )
+                .into());
+            }
+            None => RsigType::Unknown,
+        };
+        for item in prefix {
+            validate_pattern(ctx, item, Some(&item_type))?;
+        }
+        if let Some(tail) = tail {
+            validate_pattern(
+                ctx,
+                tail,
+                Some(&RsigType::List(Box::new(item_type.clone()))),
+            )?;
+        }
+    }
     if let AstPattern::Record { path, fields, span } = pattern {
         let Some(shape) = record_shape_for_pattern(ctx, path) else {
             return Err(to_source_diagnostic(
@@ -1610,6 +1640,23 @@ fn bind_pattern(
                 }
             }
         }
+        AstPattern::List { prefix, tail, .. } => {
+            let item_type = match scrutinee_type.as_ref() {
+                Some(RsigType::List(item)) => item.as_ref().clone(),
+                _ => RsigType::Unknown,
+            };
+            for nested in prefix {
+                bind_pattern(ctx, nested, Some(item_type.clone()), bindings);
+            }
+            if let Some(tail) = tail {
+                bind_pattern(
+                    ctx,
+                    tail,
+                    Some(RsigType::List(Box::new(item_type))),
+                    bindings,
+                );
+            }
+        }
         AstPattern::Record { path, fields, .. } => {
             let field_types = record_shape_for_pattern(ctx, path)
                 .map(|shape| shape.fields.into_iter().collect::<HashMap<_, _>>())
@@ -1644,6 +1691,21 @@ fn pattern_type(ctx: &ValidationContext<'_>, pattern: &AstPattern) -> Option<Rsi
                 .map(|item| pattern_type(ctx, item).unwrap_or(RsigType::Unknown))
                 .collect(),
         )),
+        AstPattern::List { prefix, tail, .. } => {
+            let item_type = prefix
+                .iter()
+                .filter_map(|item| pattern_type(ctx, item))
+                .find(|type_| !matches!(type_, RsigType::Unknown))
+                .or_else(|| {
+                    tail.as_ref()
+                        .and_then(|tail| match pattern_type(ctx, tail) {
+                            Some(RsigType::List(item)) => Some(*item),
+                            _ => None,
+                        })
+                })
+                .unwrap_or(RsigType::Unknown);
+            Some(RsigType::List(Box::new(item_type)))
+        }
         AstPattern::Record { path, .. } => Some(RsigType::Record(
             record_shape_for_pattern(ctx, path)
                 .map(|shape| shape.type_name)
@@ -1702,6 +1764,7 @@ fn pattern_span(pattern: &AstPattern) -> TextSpan {
         | AstPattern::Constructor { span, .. }
         | AstPattern::Unit { span }
         | AstPattern::Tuple { span, .. }
+        | AstPattern::List { span, .. }
         | AstPattern::Record { span, .. }
         | AstPattern::Bool { span, .. }
         | AstPattern::Int { span, .. }
@@ -2562,6 +2625,11 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
         || matches!(actual, RsigType::Unknown)
         || matches!(expected, RsigType::Var(_))
         || matches!(actual, RsigType::Var(_))
+        || matches!(
+            (expected, actual),
+            (RsigType::List(expected), RsigType::List(actual))
+                if type_matches(expected, actual)
+        )
         || matches!(
             (expected, actual),
             (RsigType::Tuple(expected), RsigType::Tuple(actual))

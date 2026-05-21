@@ -283,6 +283,24 @@ fn static_pattern_matches(pattern: &RirPattern, value: &StaticValue) -> bool {
                     .zip(items)
                     .all(|(pattern, item)| static_pattern_matches(pattern, item))
         }
+        RirPattern::List { prefix, tail } => {
+            let StaticValue::List(items) = value else {
+                return false;
+            };
+            if tail.is_none() && prefix.len() != items.len() {
+                return false;
+            }
+            if tail.is_some() && prefix.len() > items.len() {
+                return false;
+            }
+            prefix
+                .iter()
+                .zip(items)
+                .all(|(pattern, item)| static_pattern_matches(pattern, item))
+                && tail.as_ref().is_none_or(|tail| {
+                    static_pattern_matches(tail, &StaticValue::List(items[prefix.len()..].to_vec()))
+                })
+        }
         RirPattern::Record { type_name, fields } => {
             let StaticValue::Record {
                 path,
@@ -362,6 +380,21 @@ fn bind_static_pattern(
             };
             for (pattern, item) in patterns.iter().zip(items) {
                 bind_static_pattern(pattern, item, bindings);
+            }
+        }
+        RirPattern::List { prefix, tail } => {
+            let StaticValue::List(items) = value else {
+                return;
+            };
+            for (pattern, item) in prefix.iter().zip(&items) {
+                bind_static_pattern(pattern, item.clone(), bindings);
+            }
+            if let Some(tail) = tail {
+                bind_static_pattern(
+                    tail,
+                    StaticValue::List(items[prefix.len()..].to_vec()),
+                    bindings,
+                );
             }
         }
         RirPattern::Record { fields, .. } => {

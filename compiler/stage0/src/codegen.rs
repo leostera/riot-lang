@@ -837,9 +837,10 @@ impl<'ctx> Codegen<'ctx, '_> {
         for (index, arm) in arms.iter().enumerate() {
             self.builder.position_at_end(arm_blocks[index]);
             let mut arm_env = env.clone();
-            self.bind_pattern_env(&mut arm_env, &arm.pattern, &scrutinee)?;
+            let arm_roots = self.bind_pattern_env(&mut arm_env, &arm.pattern, &scrutinee)?;
             let value = self.emit_expr(&arm.body, &mut arm_env)?;
             let incoming_value = self.match_incoming_value(value, result_abi)?;
+            self.pop_runtime_roots(arm_roots)?;
             let end_block = self
                 .builder
                 .get_insert_block()
@@ -946,6 +947,9 @@ impl<'ctx> Codegen<'ctx, '_> {
                     ],
                 )
             }
+            RirPattern::List { prefix, tail } => {
+                self.emit_list_pattern_test(scrutinee, prefix, tail.as_deref())
+            }
             RirPattern::Record { type_name, .. } => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let (path_ptr, path_len) = self.string_literal(type_name.as_str())?;
@@ -957,42 +961,143 @@ impl<'ctx> Codegen<'ctx, '_> {
         }
     }
 
+    fn emit_list_pattern_test(
+        &mut self,
+        scrutinee: &CgValue<'ctx>,
+        prefix: &[RirPattern],
+        tail: Option<&RirPattern>,
+    ) -> miette::Result<IntValue<'ctx>> {
+        let bool_type = self.context.bool_type();
+        let list = self.value_as_runtime(scrutinee.clone())?;
+        let len = self
+            .call_runtime_basic("riot_rt_value_list_len", &[list.into()])?
+            .into_int_value();
+        let expected_len = self.i64_const(prefix.len() as i64);
+        let len_matches = if tail.is_some() {
+            self.builder.build_int_compare(
+                IntPredicate::UGE,
+                len,
+                expected_len,
+                "match_list_min_len",
+            )
+        } else {
+            self.builder
+                .build_int_compare(IntPredicate::EQ, len, expected_len, "match_list_len")
+        }
+        .map_err(|error| miette::miette!("failed to emit list pattern length test: {error}"))?;
+
+        if prefix.is_empty() && tail.is_none_or(pattern_is_irrefutable) {
+            return Ok(len_matches);
+        }
+
+        let parent = self
+            .builder
+            .get_insert_block()
+            .and_then(|block| block.get_parent())
+            .ok_or_else(|| miette::miette!("missing function for list pattern"))?;
+        let start_block = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing list pattern block"))?;
+        let item_block = self.context.append_basic_block(parent, "match.list.items");
+        let cont_block = self.context.append_basic_block(parent, "match.list.cont");
+        self.builder
+            .build_conditional_branch(len_matches, item_block, cont_block)
+            .map_err(|error| miette::miette!("failed to emit list pattern branch: {error}"))?;
+
+        self.builder.position_at_end(item_block);
+        let mut aggregate = bool_type.const_int(1, false);
+        for (index, pattern) in prefix.iter().enumerate() {
+            let item = self.call_runtime_value(
+                "riot_rt_value_list_get",
+                &[list.into(), self.i64_const(index as i64).into()],
+            )?;
+            let item_matches = self.emit_pattern_test(&CgValue::Value(item), pattern)?;
+            aggregate = self
+                .builder
+                .build_and(aggregate, item_matches, "match_list_item")
+                .map_err(|error| miette::miette!("failed to emit list item test: {error}"))?;
+        }
+        if let Some(tail) = tail
+            && !pattern_is_irrefutable(tail)
+        {
+            let tail_value = self.call_runtime_value(
+                "riot_rt_value_list_drop",
+                &[list.into(), self.i64_const(prefix.len() as i64).into()],
+            )?;
+            self.push_runtime_root(tail_value)?;
+            let tail_matches = self.emit_pattern_test(&CgValue::Value(tail_value), tail)?;
+            self.pop_runtime_roots(1)?;
+            aggregate = self
+                .builder
+                .build_and(aggregate, tail_matches, "match_list_tail")
+                .map_err(|error| miette::miette!("failed to emit list tail test: {error}"))?;
+        }
+        let item_end = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing list pattern item block"))?;
+        self.builder
+            .build_unconditional_branch(cont_block)
+            .map_err(|error| miette::miette!("failed to leave list pattern test: {error}"))?;
+
+        self.builder.position_at_end(cont_block);
+        let phi = self
+            .builder
+            .build_phi(bool_type, "match_list")
+            .map_err(|error| miette::miette!("failed to emit list pattern phi: {error}"))?;
+        phi.add_incoming(&[
+            (&bool_type.const_int(0, false), start_block),
+            (&aggregate, item_end),
+        ]);
+        Ok(phi.as_basic_value().into_int_value())
+    }
+
     fn bind_pattern_env(
         &mut self,
         env: &mut Env<'ctx>,
         pattern: &RirPattern,
         scrutinee: &CgValue<'ctx>,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<usize> {
         match pattern {
             RirPattern::Bind { binding, type_ } => {
                 let value = match scrutinee {
                     CgValue::Value(value) => self.runtime_value_as_type(*value, type_)?,
                     _ => scrutinee.clone(),
                 };
+                let roots = if let Some(root) = value.runtime_root() {
+                    self.push_runtime_root(root)?;
+                    1
+                } else {
+                    0
+                };
                 env.values.insert(binding.as_str().to_owned(), value);
+                Ok(roots)
             }
             RirPattern::Constructor { payload, .. } if !payload.is_empty() => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
                 let payload_value = self
                     .call_runtime_value("riot_rt_value_variant_get_payload", &[scrutinee.into()])?;
-                self.bind_payload_patterns(env, payload, payload_value)?;
+                self.bind_payload_patterns(env, payload, payload_value)
             }
             RirPattern::Tuple(items) => {
                 let tuple = self.value_as_runtime(scrutinee.clone())?;
-                self.bind_payload_patterns(env, items, tuple)?;
+                self.bind_payload_patterns(env, items, tuple)
+            }
+            RirPattern::List { prefix, tail } => {
+                self.bind_list_patterns(env, prefix, tail.as_deref(), scrutinee)
             }
             RirPattern::Record { fields, .. } => {
                 let record = self.value_as_runtime(scrutinee.clone())?;
-                self.bind_record_patterns(env, fields, record)?;
+                self.bind_record_patterns(env, fields, record)
             }
             RirPattern::Wildcard
             | RirPattern::Constructor { .. }
             | RirPattern::Unit
             | RirPattern::Bool(_)
             | RirPattern::Int(_)
-            | RirPattern::String(_) => {}
+            | RirPattern::String(_) => Ok(0),
         }
-        Ok(())
     }
 
     fn bind_record_patterns(
@@ -1000,16 +1105,17 @@ impl<'ctx> Codegen<'ctx, '_> {
         env: &mut Env<'ctx>,
         fields: &[(String, RirPattern)],
         record: IntValue<'ctx>,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<usize> {
+        let mut roots = 0;
         for (field, pattern) in fields {
             let (field_ptr, field_len) = self.string_literal(field)?;
             let value = self.call_runtime_value(
                 "riot_rt_value_record_get",
                 &[record.into(), field_ptr.into(), field_len.into()],
             )?;
-            self.bind_pattern_env(env, pattern, &CgValue::Value(value))?;
+            roots += self.bind_pattern_env(env, pattern, &CgValue::Value(value))?;
         }
-        Ok(())
+        Ok(roots)
     }
 
     fn bind_payload_patterns(
@@ -1017,11 +1123,12 @@ impl<'ctx> Codegen<'ctx, '_> {
         env: &mut Env<'ctx>,
         patterns: &[RirPattern],
         payload: IntValue<'ctx>,
-    ) -> miette::Result<()> {
+    ) -> miette::Result<usize> {
         match patterns {
-            [] => Ok(()),
+            [] => Ok(0),
             [pattern] => self.bind_pattern_env(env, pattern, &CgValue::Value(payload)),
             patterns => {
+                let mut roots = 0;
                 for (index, pattern) in patterns.iter().enumerate() {
                     let item = self.call_runtime_value(
                         "riot_rt_value_tuple_get",
@@ -1033,11 +1140,37 @@ impl<'ctx> Codegen<'ctx, '_> {
                                 .into(),
                         ],
                     )?;
-                    self.bind_pattern_env(env, pattern, &CgValue::Value(item))?;
+                    roots += self.bind_pattern_env(env, pattern, &CgValue::Value(item))?;
                 }
-                Ok(())
+                Ok(roots)
             }
         }
+    }
+
+    fn bind_list_patterns(
+        &mut self,
+        env: &mut Env<'ctx>,
+        prefix: &[RirPattern],
+        tail: Option<&RirPattern>,
+        scrutinee: &CgValue<'ctx>,
+    ) -> miette::Result<usize> {
+        let list = self.value_as_runtime(scrutinee.clone())?;
+        let mut roots = 0;
+        for (index, pattern) in prefix.iter().enumerate() {
+            let item = self.call_runtime_value(
+                "riot_rt_value_list_get",
+                &[list.into(), self.i64_const(index as i64).into()],
+            )?;
+            roots += self.bind_pattern_env(env, pattern, &CgValue::Value(item))?;
+        }
+        if let Some(tail) = tail {
+            let tail_value = self.call_runtime_value(
+                "riot_rt_value_list_drop",
+                &[list.into(), self.i64_const(prefix.len() as i64).into()],
+            )?;
+            roots += self.bind_pattern_env(env, tail, &CgValue::Value(tail_value))?;
+        }
+        Ok(roots)
     }
 
     fn match_incoming_value(
@@ -1951,7 +2084,7 @@ impl<'ctx> Codegen<'ctx, '_> {
 
                         self.builder.position_at_end(arm_block);
                         let mut arm_env = env.clone();
-                        self.bind_pattern_env(
+                        let arm_roots = self.bind_pattern_env(
                             &mut arm_env,
                             &arm.pattern,
                             &CgValue::Value(message_value),
@@ -1963,6 +2096,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                             0,
                             i64_type.const_int(next_state as u64, false),
                         )?;
+                        self.pop_runtime_roots(arm_roots)?;
                         self.pop_runtime_roots(1)?;
                         self.return_poll(
                             POLL_CONSUMED | progress_flags(next_state, shape.states.len()),
@@ -2546,7 +2680,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 bool_type.fn_type(&[i64_type.into(), ptr_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_variant_get_payload" => i64_type.fn_type(&[i64_type.into()], false),
-            "riot_rt_value_tuple_get" | "riot_rt_value_list_get" => {
+            "riot_rt_value_tuple_get" | "riot_rt_value_list_get" | "riot_rt_value_list_drop" => {
                 i64_type.fn_type(&[i64_type.into(), i64_type.into()], false)
             }
             "riot_rt_value_tuple_arity_is" => {

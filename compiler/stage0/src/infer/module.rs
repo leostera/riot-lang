@@ -965,6 +965,21 @@ fn pattern_message_type(state: &mut State, pattern: &AstPattern) -> Option<RsigT
                 .map(|item| pattern_message_type(state, item).unwrap_or(RsigType::Unknown))
                 .collect(),
         )),
+        AstPattern::List { prefix, tail, .. } => {
+            let item = prefix
+                .iter()
+                .filter_map(|item| pattern_message_type(state, item))
+                .next()
+                .or_else(|| {
+                    tail.as_ref()
+                        .and_then(|tail| match pattern_message_type(state, tail) {
+                            Some(RsigType::List(item)) => Some(*item),
+                            _ => None,
+                        })
+                })
+                .unwrap_or(RsigType::Unknown);
+            Some(RsigType::List(Box::new(item)))
+        }
         AstPattern::Record { path, .. } => {
             Some(RsigType::Record(TypeName::new(path.segments.join("."))))
         }
@@ -1059,6 +1074,17 @@ fn infer_pattern(
             state.unify(scrutinee_type, &Type::Tuple(item_types.clone()))?;
             for (item, item_type) in items.iter().zip(&item_types) {
                 infer_pattern(state, item, item_type)?;
+            }
+            Ok(())
+        }
+        AstPattern::List { prefix, tail, .. } => {
+            let item_type = state.fresh_var();
+            state.unify(scrutinee_type, &Type::List(Box::new(item_type.clone())))?;
+            for item in prefix {
+                infer_pattern(state, item, &item_type)?;
+            }
+            if let Some(tail) = tail {
+                infer_pattern(state, tail, &Type::List(Box::new(item_type)))?;
             }
             Ok(())
         }

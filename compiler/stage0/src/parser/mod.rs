@@ -924,11 +924,60 @@ impl<'src> Parser<'src> {
                     span: start.span.join(end.span),
                 })
             }
+            TokenKind::LBracket => self.parse_list_pattern(),
             _ => Err(self.error_at_current(
                 "expected match pattern",
                 Some("stage0 patterns currently support literals, constructors, `_`, and binders"),
             )),
         }
+    }
+
+    fn parse_list_pattern(&mut self) -> Result<AstPattern, ParseError> {
+        let start = self.expect(TokenKind::LBracket, "expected `[`")?;
+        let mut prefix = Vec::new();
+
+        if let Some(end) = self.match_kind(TokenKind::RBracket) {
+            return Ok(AstPattern::List {
+                prefix,
+                tail: None,
+                span: start.span.join(end),
+            });
+        }
+
+        loop {
+            if self.match_kind(TokenKind::DotDot).is_some() {
+                let tail = self.parse_pattern()?;
+                if self.match_kind(TokenKind::Comma).is_some() && !self.at(TokenKind::RBracket) {
+                    return Err(self.error_at_current(
+                        "expected `]` after list tail pattern",
+                        Some("put `..tail` last in a list pattern"),
+                    ));
+                }
+                let end = self.expect(TokenKind::RBracket, "expected `]` after list pattern")?;
+                return Ok(AstPattern::List {
+                    prefix,
+                    tail: Some(Box::new(tail)),
+                    span: start.span.join(end.span),
+                });
+            }
+
+            prefix.push(self.parse_pattern()?);
+
+            if self.match_kind(TokenKind::Comma).is_none() {
+                break;
+            }
+
+            if self.at(TokenKind::RBracket) {
+                break;
+            }
+        }
+
+        let end = self.expect(TokenKind::RBracket, "expected `]` after list pattern")?;
+        Ok(AstPattern::List {
+            prefix,
+            tail: None,
+            span: start.span.join(end.span),
+        })
     }
 
     fn parse_record_pattern(

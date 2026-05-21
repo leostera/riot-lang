@@ -119,6 +119,10 @@ pub(crate) enum RirPattern {
     },
     Unit,
     Tuple(Vec<RirPattern>),
+    List {
+        prefix: Vec<RirPattern>,
+        tail: Option<Box<RirPattern>>,
+    },
     Record {
         type_name: TypeName,
         fields: Vec<(String, RirPattern)>,

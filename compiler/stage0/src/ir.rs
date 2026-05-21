@@ -1655,6 +1655,21 @@ fn receive_pattern_type(pattern: &AstPattern, context: &TypeContext<'_>) -> Rsig
                 .map(|item| receive_pattern_type(item, context))
                 .collect(),
         ),
+        AstPattern::List { prefix, tail, .. } => {
+            let item = prefix
+                .iter()
+                .map(|item| receive_pattern_type(item, context))
+                .find(|type_| !matches!(type_, RsigType::Unknown))
+                .or_else(|| {
+                    tail.as_ref()
+                        .and_then(|tail| match receive_pattern_type(tail, context) {
+                            RsigType::List(item) => Some(*item),
+                            _ => None,
+                        })
+                })
+                .unwrap_or(RsigType::Unknown);
+            RsigType::List(Box::new(item))
+        }
         AstPattern::Record { path, .. } => {
             RsigType::Record(record_expr_type(&path.segments, context))
         }
@@ -1710,6 +1725,25 @@ fn type_pattern(
                     })
                     .collect(),
             )
+        }
+        AstPattern::List { prefix, tail, .. } => {
+            let item_type = match scrutinee_type {
+                RsigType::List(item) => item.as_ref().clone(),
+                _ => RsigType::Unknown,
+            };
+            TypedPattern::List {
+                prefix: prefix
+                    .into_iter()
+                    .map(|pattern| type_pattern(pattern, &item_type, context))
+                    .collect(),
+                tail: tail.map(|tail| {
+                    Box::new(type_pattern(
+                        *tail,
+                        &RsigType::List(Box::new(item_type.clone())),
+                        context,
+                    ))
+                }),
+            }
         }
         AstPattern::Record { path, fields, .. } => {
             let type_name = record_expr_type(&path.segments, context);
@@ -2452,6 +2486,14 @@ fn bind_pattern_names(pattern: &RirPattern, bound: &mut BTreeSet<String>) {
                 bind_pattern_names(pattern, bound);
             }
         }
+        RirPattern::List { prefix, tail } => {
+            for pattern in prefix {
+                bind_pattern_names(pattern, bound);
+            }
+            if let Some(tail) = tail {
+                bind_pattern_names(tail, bound);
+            }
+        }
         RirPattern::Record { fields, .. } => {
             for (_, pattern) in fields {
                 bind_pattern_names(pattern, bound);
@@ -2483,6 +2525,14 @@ fn bind_pattern_actor_slot_types(
         RirPattern::Constructor { payload, .. } | RirPattern::Tuple(payload) => {
             for pattern in payload {
                 bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
+            }
+        }
+        RirPattern::List { prefix, tail } => {
+            for pattern in prefix {
+                bind_pattern_actor_slot_types(pattern, Some(ActorSlotType::Value), locals);
+            }
+            if let Some(tail) = tail {
+                bind_pattern_actor_slot_types(tail, Some(ActorSlotType::Value), locals);
             }
         }
         RirPattern::Record { fields, .. } => {
@@ -2915,6 +2965,13 @@ fn lower_pattern(pattern: TypedPattern, context: &mut LowerContext) -> RirPatter
                 .map(|pattern| lower_pattern(pattern, context))
                 .collect(),
         ),
+        TypedPattern::List { prefix, tail } => RirPattern::List {
+            prefix: prefix
+                .into_iter()
+                .map(|pattern| lower_pattern(pattern, context))
+                .collect(),
+            tail: tail.map(|tail| Box::new(lower_pattern(*tail, context))),
+        },
         TypedPattern::Record { type_name, fields } => RirPattern::Record {
             type_name,
             fields: fields

@@ -73,6 +73,8 @@ pub(crate) enum TokenKind {
     Semicolon,
     #[token(":")]
     Colon,
+    #[token("..")]
+    DotDot,
     #[token(".")]
     Dot,
     #[token("=")]

@@ -157,6 +157,11 @@ pub(crate) enum AstPattern {
         items: Vec<AstPattern>,
         span: TextSpan,
     },
+    List {
+        prefix: Vec<AstPattern>,
+        tail: Option<Box<AstPattern>>,
+        span: TextSpan,
+    },
     Record {
         path: AstPath,
         fields: Vec<(String, AstPattern)>,
