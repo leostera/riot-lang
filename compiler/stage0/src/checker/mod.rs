@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use camino::Utf8Path;
 
+mod blocks;
 mod const_eval;
 mod entrypoint;
 mod patterns;
@@ -11,6 +12,7 @@ pub(crate) mod tyir;
 mod type_annotation;
 mod types;
 
+use blocks::BlockValidator;
 use const_eval::{ConstFunction, ConstValue};
 use entrypoint::EntrypointValidator;
 use patterns::PatternValidator;
@@ -239,8 +241,7 @@ impl<'a> ProgramValidator<'a> {
                 AstDecl::Function(function) => {
                     TypeAnnotationChecker::new(&ctx).validate_function(function)?;
                     entrypoint_validator.validate_function(function)?;
-                    validate_block(
-                        &ctx,
+                    BlockValidator::new(&ctx).validate_function_body(
                         &function.body,
                         entrypoint_validator.requires_output_action(function),
                         &function.params,
@@ -1057,7 +1058,13 @@ fn validate_expr(
             body,
             ..
         } => {
-            validate_scoped_block(ctx, body, bindings, params, param_types, in_actor)?;
+            BlockValidator::new(ctx).validate_scoped(
+                body,
+                bindings,
+                params,
+                param_types,
+                in_actor,
+            )?;
             Ok(ExprCategory::Other)
         }
         AstExpr::Block { block, .. } => validate_block_expr(ctx, block, bindings, in_actor),
