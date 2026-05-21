@@ -1,3 +1,6 @@
+use std::ffi::{CStr, c_char};
+use std::slice;
+
 use crate::actor::{ActorResumeFn, RtMessage, RuntimeMessage, runtime_message_from_raw};
 use crate::actor_id::ActorId;
 use crate::frame::{ActorDropFn, RtFrameLayout, alloc_frame, free_frame};
@@ -164,6 +167,43 @@ pub unsafe extern "C" fn riot_rt_value_list(values: *const RtValue, len: usize) 
             HeapObjectKind::List(values.to_vec()),
             HeapOwner::Local(current_actor_id()),
         )
+    })
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn riot_rt_argv(argc: i32, argv: *const *const c_char) -> RtValue {
+    if argc < 0 {
+        runtime_abort("argv received a negative argc");
+    }
+    let len = argc as usize;
+    if len > 0 && argv.is_null() {
+        runtime_abort("argv received a null argv pointer");
+    }
+    let raw_args: &[*const c_char] = if len == 0 {
+        &[]
+    } else {
+        unsafe { slice::from_raw_parts(argv, len) }
+    };
+    with_scheduler_mut(|scheduler| {
+        let mut values = Vec::with_capacity(len);
+        for raw_arg in raw_args {
+            if raw_arg.is_null() {
+                runtime_abort("argv received a null argument pointer");
+            }
+            let bytes = unsafe { CStr::from_ptr(*raw_arg).to_bytes() };
+            let value = scheduler.alloc_value(
+                HeapObjectKind::String(bytes.to_vec()),
+                HeapOwner::Local(current_actor_id()),
+            );
+            scheduler.push_root(value);
+            values.push(value);
+        }
+        let list = scheduler.alloc_value(
+            HeapObjectKind::List(values),
+            HeapOwner::Local(current_actor_id()),
+        );
+        scheduler.pop_roots(len);
+        list
     })
 }
 

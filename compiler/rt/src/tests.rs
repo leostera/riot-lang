@@ -1,21 +1,22 @@
+use std::ffi::CString;
 use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use crate::abi::{
-    riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_free_frame_v2, riot_rt_gc_collect,
-    riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold, riot_rt_init,
-    riot_rt_msg_value, riot_rt_option_is_none, riot_rt_option_is_some, riot_rt_option_unwrap_or,
-    riot_rt_result_is_err, riot_rt_result_is_ok, riot_rt_result_unwrap_or, riot_rt_root_pop,
-    riot_rt_root_push, riot_rt_send, riot_rt_send_i64, riot_rt_shutdown, riot_rt_spawn_actor_v2,
-    riot_rt_value_apply, riot_rt_value_as_bool, riot_rt_value_as_i64, riot_rt_value_bool,
-    riot_rt_value_closure, riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list,
-    riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
-    riot_rt_value_record_get, riot_rt_value_record_is, riot_rt_value_record_set,
-    riot_rt_value_string, riot_rt_value_string_concat, riot_rt_value_string_len,
-    riot_rt_value_tuple, riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
-    riot_rt_value_variant, riot_rt_value_variant_get_payload, riot_rt_value_variant_is,
-    riot_rt_value_variant_payload,
+    riot_rt_actor_frame_roots, riot_rt_alloc_frame_v2, riot_rt_argv, riot_rt_free_frame_v2,
+    riot_rt_gc_collect, riot_rt_gc_collection_count, riot_rt_gc_heap_len, riot_rt_gc_set_threshold,
+    riot_rt_init, riot_rt_msg_value, riot_rt_option_is_none, riot_rt_option_is_some,
+    riot_rt_option_unwrap_or, riot_rt_result_is_err, riot_rt_result_is_ok,
+    riot_rt_result_unwrap_or, riot_rt_root_pop, riot_rt_root_push, riot_rt_send, riot_rt_send_i64,
+    riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_apply, riot_rt_value_as_bool,
+    riot_rt_value_as_i64, riot_rt_value_bool, riot_rt_value_closure, riot_rt_value_eq,
+    riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get, riot_rt_value_list_len,
+    riot_rt_value_record_begin, riot_rt_value_record_get, riot_rt_value_record_is,
+    riot_rt_value_record_set, riot_rt_value_string, riot_rt_value_string_concat,
+    riot_rt_value_string_len, riot_rt_value_tuple, riot_rt_value_tuple_arity_is,
+    riot_rt_value_tuple_get, riot_rt_value_unit, riot_rt_value_variant,
+    riot_rt_value_variant_get_payload, riot_rt_value_variant_is, riot_rt_value_variant_payload,
 };
 use crate::actor::{
     ActorSlot, POLL_CONSUMED, POLL_DONE, POLL_PROGRESS, POLL_WAITING, RtMessage, RuntimeMessage,
@@ -469,6 +470,16 @@ fn value_rendering_handles_compound_values() {
         riot_rt_value_list_get(list, 1),
         riot_rt_value_i64(7)
     ));
+
+    let arg0 = CString::new("program").unwrap();
+    let arg1 = CString::new("--flag").unwrap();
+    let argv = [arg0.as_ptr(), arg1.as_ptr()];
+    let args = unsafe { riot_rt_argv(argv.len() as i32, argv.as_ptr()) };
+    assert_eq!(riot_rt_value_list_len(args), 2);
+    assert_eq!(
+        with_scheduler_mut(|scheduler| scheduler.render_value(args)),
+        "[program, --flag]"
+    );
 
     let suffix = unsafe { riot_rt_value_string(b" lang".as_ptr(), 5) };
     let concatenated = riot_rt_value_string_concat(label, suffix);
