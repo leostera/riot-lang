@@ -151,6 +151,49 @@ fn emit_typed_preserves_block_expression_boundary() -> FixtureResult {
 }
 
 #[test]
+fn emit_boundaries_show_compiler_like_fixture_shapes() -> FixtureResult {
+    let typed = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("typed")
+        .arg("tests/fixtures/programs/basic/compiler_like_token_classifier.ml")
+        .output()?;
+    if !typed.status.success() {
+        return fail(format!(
+            "expected typed emit for compiler-like fixture:\n{}",
+            String::from_utf8_lossy(&typed.stderr)
+        ));
+    }
+    let typed_stdout = String::from_utf8_lossy(&typed.stdout);
+    for needle in ["TypedTypeDecl", "TypedVariantConstructor", "TypedMatchArm", "summary"] {
+        if !typed_stdout.contains(needle) {
+            return fail(format!("typed boundary missing `{needle}`:\n{typed_stdout}"));
+        }
+    }
+
+    let lambda = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("ir")
+        .arg("tests/fixtures/programs/basic/lambda_variant_renderer.ml")
+        .output()?;
+    if !lambda.status.success() {
+        return fail(format!(
+            "expected lambda emit for closure/variant fixture:\n{}",
+            String::from_utf8_lossy(&lambda.stderr)
+        ));
+    }
+    let lambda_stdout = String::from_utf8_lossy(&lambda.stdout);
+    for needle in ["Lambda", "Capture", "LambdaMatchArm", "Constructor"] {
+        if !lambda_stdout.contains(needle) {
+            return fail(format!("lambda boundary missing `{needle}`:\n{lambda_stdout}"));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn mixed_case_file_name_is_rejected() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let source = temp_dir.path().join("helloWorld.ml");
