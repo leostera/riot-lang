@@ -24,6 +24,7 @@ use crate::lambda::ir::{
     LambdaPattern, LambdaProgram, LambdaStmt, Param,
 };
 use crate::signature::{ConstructorName, ImportedSignatures, RsigExport, RsigType, TypeName};
+use crate::stdlib::Stdlib;
 
 mod abi;
 mod static_eval;
@@ -1546,7 +1547,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         result: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        if let Some(name) = prelude_call_name(callee) {
+        if let Some(name) = Stdlib::prelude_member_name(callee) {
             if let Some(static_value) = self.static_eval_call(name, args, &env.statics) {
                 return Ok(CgValue::Static(static_value));
             }
@@ -2748,14 +2749,6 @@ fn pattern_is_irrefutable(pattern: &LambdaPattern) -> bool {
         pattern,
         LambdaPattern::Wildcard | LambdaPattern::Bind { .. }
     )
-}
-
-fn prelude_call_name(callee: &[String]) -> Option<&str> {
-    match callee {
-        [name] => Some(name.as_str()),
-        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
-        _ => None,
-    }
 }
 
 fn external_param_is_boxed(symbol: &str, type_: &RsigType) -> bool {

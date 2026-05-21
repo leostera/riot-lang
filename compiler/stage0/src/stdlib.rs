@@ -45,6 +45,14 @@ impl Stdlib {
     pub(crate) fn is_prelude_type_name(&self, type_name: &TypeName) -> bool {
         prelude_type_names().contains(type_name)
     }
+
+    pub(crate) fn prelude_member_name<'a>(path: &'a [String]) -> Option<&'a str> {
+        match path {
+            [name] => Some(name.as_str()),
+            [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
+            _ => None,
+        }
+    }
 }
 
 fn prelude_signature() -> miette::Result<Rsig> {
@@ -286,5 +294,25 @@ mod tests {
         assert!(stdlib.is_prelude_type_name(&crate::signature::TypeName::new("List")));
         assert!(stdlib.is_prelude_type_name(&crate::signature::TypeName::new("Option")));
         assert!(!stdlib.is_prelude_type_name(&crate::signature::TypeName::new("Matches")));
+    }
+
+    #[test]
+    fn prelude_member_name_accepts_local_and_std_prelude_paths() {
+        assert_eq!(
+            Stdlib::prelude_member_name(&["dbg".to_owned()]),
+            Some("dbg")
+        );
+        assert_eq!(
+            Stdlib::prelude_member_name(&[
+                "Std".to_owned(),
+                "Prelude".to_owned(),
+                "(+)".to_owned()
+            ]),
+            Some("(+)")
+        );
+        assert_eq!(
+            Stdlib::prelude_member_name(&["Std".to_owned(), "List".to_owned(), "len".to_owned()]),
+            None
+        );
     }
 }

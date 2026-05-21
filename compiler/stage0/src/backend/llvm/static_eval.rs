@@ -4,6 +4,7 @@ use crate::lambda::ir::{
     LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaPattern, LambdaStmt,
 };
 use crate::signature::{ConstructorName, TypeName};
+use crate::stdlib::Stdlib;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum StaticValue {
@@ -138,14 +139,6 @@ impl<'a> StaticEvaluator<'a> {
     }
 }
 
-fn prelude_call_name(callee: &[String]) -> Option<&str> {
-    match callee {
-        [name] => Some(name.as_str()),
-        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
-        _ => None,
-    }
-}
-
 fn eval_expr(
     expr: &LambdaExpr,
     bindings: &HashMap<String, StaticValue>,
@@ -185,7 +178,7 @@ fn eval_expr(
         }
         LambdaExpr::Bool(value) => Some(StaticValue::Bool(*value)),
         LambdaExpr::Call { callee, args, .. } => {
-            let name = prelude_call_name(callee)?;
+            let name = Stdlib::prelude_member_name(callee)?;
             eval_call(name, args, bindings, functions, externals, depth)
         }
         LambdaExpr::Unit => Some(StaticValue::Unit),

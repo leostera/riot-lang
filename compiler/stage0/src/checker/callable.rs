@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::imported_types::qualify_imported_type;
 use crate::signature::{ImportedSignatures, ModuleName, RsigExport, RsigType};
+use crate::stdlib::Stdlib;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum CallableKind {
@@ -56,7 +57,7 @@ impl<'a> CallableResolver<'a> {
     }
 
     pub(crate) fn resolve(&self, callee: &[String]) -> Option<CallableSignature> {
-        if let Some(name) = local_or_prelude_name(callee) {
+        if let Some(name) = Stdlib::prelude_member_name(callee) {
             if let Some(external) = self.externals.get(name) {
                 return Some(CallableSignature {
                     params: external.params.clone(),
@@ -131,14 +132,6 @@ pub(crate) fn prelude_external_signatures() -> BTreeMap<String, ExternalSignatur
                 .collect()
         })
         .unwrap_or_default()
-}
-
-fn local_or_prelude_name(callee: &[String]) -> Option<&str> {
-    match callee {
-        [name] => Some(name.as_str()),
-        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
