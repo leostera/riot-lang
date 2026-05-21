@@ -52,11 +52,12 @@ qualified consumer type names for one side and local provider type names for the
 other. LLVM lowering now canonicalizes runtime variant tags to the base type name
 while keeping `.rsig` and type-checker names qualified.
 
+Resolved hardening gap: list spread syntax (`..tail`) used to be pattern-only.
+Stage0 now supports list cons expressions such as `[head, ..tail]`, lowered
+through the ordinary `list_cons` std/runtime ABI.
+
 Known hardening gaps discovered by compiler-shaped fixtures:
 
-- List spread syntax (`..tail`) is currently pattern-only. There is no list-cons
-  expression form for building `[head, ..tail]`, which makes recursive list
-  transforms awkward and forces fixtures to rebuild only small lists.
 - Mutually recursive top-level helpers are not supported yet. Compiler-shaped
   code that naturally splits into `rename_expr`/`rename_args` or
   `render_expr`/`render_args` must currently be ordered or simplified around a
