@@ -102,6 +102,7 @@ impl<'a> ModuleInferencer<'a> {
         let declared_variants = declared_variant_names(self.program, self.imports);
         install_prelude(&mut state);
         install_imports(&mut state, self.program, self.imports);
+        install_annotated_functions(&mut state, self.program, &declared_variants);
         for decl in &self.program.decls {
             infer_decl(&mut state, decl, &declared_variants, &mut expression_types)?;
         }
@@ -210,6 +211,42 @@ fn install_imports(state: &mut State, program: &AstProgram, imports: &ImportedSi
         };
         install_import_signature(state, &use_.name, rsig);
     }
+}
+
+fn install_annotated_functions(
+    state: &mut State,
+    program: &AstProgram,
+    declared_variants: &BTreeSet<TypeName>,
+) {
+    for decl in &program.decls {
+        let AstDecl::Function(function) = decl else {
+            continue;
+        };
+        let Some(type_) = annotated_function_type(state, function, declared_variants) else {
+            continue;
+        };
+        state.add_value(function.name.clone(), state.generalize(type_));
+    }
+}
+
+fn annotated_function_type(
+    state: &mut State,
+    function: &AstFnDecl,
+    declared_variants: &BTreeSet<TypeName>,
+) -> Option<Type> {
+    let result = function.return_type.as_ref().map(|annotation| {
+        rsig_type_to_infer_type(&lower_type_annotation(annotation, declared_variants), state)
+    })?;
+    let params = function
+        .param_types
+        .iter()
+        .map(|annotation| {
+            annotation.as_ref().map(|annotation| {
+                rsig_type_to_infer_type(&lower_type_annotation(annotation, declared_variants), state)
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(source_function_type(params, result))
 }
 
 fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
