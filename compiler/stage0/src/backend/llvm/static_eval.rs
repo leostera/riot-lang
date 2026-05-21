@@ -456,9 +456,7 @@ fn eval_call(
             return Some(StaticValue::Int(eval_arg(0)?.as_int()? % rhs));
         }
         ("(==)", 2) => {
-            let lhs = eval_arg(0)?.to_print_string();
-            let rhs = eval_arg(1)?.to_print_string();
-            return Some(StaticValue::Bool(lhs == rhs));
+            return Some(StaticValue::Bool(eval_arg(0)? == eval_arg(1)?));
         }
         ("(<)", 2) => {
             return Some(StaticValue::Bool(
@@ -529,4 +527,27 @@ fn resolve_path(path: &[String], bindings: &HashMap<String, StaticValue>) -> Opt
             .find_map(|(name, value)| (name == *segment).then_some(value))?;
     }
     Some(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::lambda::ir::LambdaExpr;
+
+    use super::{StaticEvaluator, StaticValue};
+
+    #[test]
+    fn static_equality_is_structural_not_rendered_text() {
+        let functions = HashMap::new();
+        let evaluator = StaticEvaluator::new(&functions);
+
+        let result = evaluator.eval_call(
+            "(==)",
+            &[LambdaExpr::String("1".to_owned()), LambdaExpr::Int(1)],
+            &HashMap::new(),
+        );
+
+        assert_eq!(result, Some(StaticValue::Bool(false)));
+    }
 }
