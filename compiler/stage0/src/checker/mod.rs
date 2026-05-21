@@ -55,56 +55,44 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn check(&self, program: AstProgram) -> miette::Result<CheckedProgram> {
-        typecheck(
+        validate_program(
             self.source_path,
             self.source,
-            self.module_name.clone(),
-            program,
+            &program,
             self.imports,
             self.mode,
+        )?;
+        let inferred = ModuleInferencer::new(&program, self.imports)
+            .infer()
+            .map_err(|error| {
+                let span = error
+                    .span()
+                    .or_else(|| first_decl_span(&program))
+                    .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
+                to_source_diagnostic(
+                    self.source_path,
+                    self.source,
+                    span,
+                    "type inference failed",
+                    error.to_string(),
+                    Some("fix the type error before lowering"),
+                )
+            })?;
+        let expression_types = inferred.expression_rsig_types();
+        let function_types = inferred.function_signatures(&program);
+        let typed_tree = TyIrBuilder::new(
+            self.module_name.clone(),
+            self.imports,
+            &function_types,
+            Some(&expression_types),
         )
+        .build(program);
+        let signature = RsigBuilder::new().build(&typed_tree);
+        Ok(CheckedProgram {
+            typed_tree,
+            signature,
+        })
     }
-}
-
-pub(crate) fn typecheck(
-    source_path: &Utf8Path,
-    source: &str,
-    module_name: ModuleName,
-    program: AstProgram,
-    imports: &ImportedSignatures,
-    mode: CheckMode,
-) -> miette::Result<CheckedProgram> {
-    validate_program(source_path, source, &program, imports, mode)?;
-    let inferred = ModuleInferencer::new(&program, imports)
-        .infer()
-        .map_err(|error| {
-            let span = error
-                .span()
-                .or_else(|| first_decl_span(&program))
-                .unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
-            to_source_diagnostic(
-                source_path,
-                source,
-                span,
-                "type inference failed",
-                error.to_string(),
-                Some("fix the type error before lowering"),
-            )
-        })?;
-    let expression_types = inferred.expression_rsig_types();
-    let function_types = inferred.function_signatures(&program);
-    let typed_tree = TyIrBuilder::new(
-        module_name,
-        imports,
-        &function_types,
-        Some(&expression_types),
-    )
-    .build(program);
-    let signature = RsigBuilder::new().build(&typed_tree);
-    Ok(CheckedProgram {
-        typed_tree,
-        signature,
-    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
