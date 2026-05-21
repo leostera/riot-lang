@@ -1,7 +1,5 @@
-#![allow(dead_code)]
-
 use crate::signature::{
-    ConstructorName, FieldName, ModuleName, Rsig, RsigType, RsigTypeScheme, TypeName, TypeParamName,
+    ConstructorName, FieldName, ModuleName, Rsig, RsigType, TypeName, TypeParamName,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -101,7 +99,6 @@ pub(crate) struct TypedUse {
 #[derive(Debug, Clone)]
 pub(crate) struct TypedExternal {
     pub(crate) name: String,
-    pub(crate) type_text: String,
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) abi: String,
@@ -149,7 +146,6 @@ pub(crate) struct TypedFunction {
 #[derive(Debug, Clone)]
 pub(crate) struct TypedParam {
     pub(crate) binding: BindingId,
-    pub(crate) scheme: RsigTypeScheme,
     pub(crate) type_: RsigType,
 }
 
@@ -164,7 +160,6 @@ pub(crate) struct TypedBlock {
 pub(crate) enum TypedStmt {
     Let {
         binding: BindingId,
-        scheme: RsigTypeScheme,
         value: TypedExpr,
     },
     Expr(TypedExpr),

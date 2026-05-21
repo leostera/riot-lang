@@ -1,14 +1,12 @@
-#![allow(dead_code)]
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeBody, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeBody, TextSpan,
 };
 use crate::signature::{
     ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
     RsigExternal, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
-    RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName, parse_type_signature,
+    RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName,
     parse_type_signature_with_variants, parse_type_with_variants,
 };
 
@@ -22,7 +20,6 @@ pub(crate) fn typed_program_from_ast(
     imports: &ImportedSignatures,
     function_types: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
     expression_types: Option<&BTreeMap<TextSpan, RsigType>>,
-    binding_schemes: Option<&BTreeMap<TextSpan, RsigTypeScheme>>,
 ) -> TypedProgram {
     let mut uses = Vec::new();
     let mut raw_externals = Vec::new();
@@ -100,7 +97,6 @@ pub(crate) fn typed_program_from_ast(
                 parse_type_signature_with_variants(&external.type_text, &declared_variants);
             TypedExternal {
                 name: external.name,
-                type_text: external.type_text,
                 params,
                 result,
                 abi: external.abi,
@@ -145,7 +141,6 @@ pub(crate) fn typed_program_from_ast(
             &record_fields,
             &declared_variants,
             expression_types,
-            binding_schemes,
         );
         let params = function
             .params
@@ -155,7 +150,6 @@ pub(crate) fn typed_program_from_ast(
                 let type_ = param_types.get(index).cloned().unwrap_or(RsigType::Unknown);
                 TypedParam {
                     binding: context.bind(name, type_.clone()),
-                    scheme: RsigTypeScheme::monomorphic(type_.clone()),
                     type_,
                 }
             })
@@ -366,7 +360,6 @@ struct TypeContext<'a> {
     record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
     declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
-    binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
 }
 
 impl<'a> TypeContext<'a> {
@@ -379,7 +372,6 @@ impl<'a> TypeContext<'a> {
         record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
         declared_variants: &'a BTreeSet<TypeName>,
         expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
-        binding_schemes: Option<&'a BTreeMap<TextSpan, RsigTypeScheme>>,
     ) -> Self {
         Self {
             next_binding_id: 0,
@@ -392,7 +384,6 @@ impl<'a> TypeContext<'a> {
             record_fields,
             declared_variants,
             expression_types,
-            binding_schemes,
         }
     }
 
@@ -431,13 +422,6 @@ impl<'a> TypeContext<'a> {
         self.expression_types
             .and_then(|types| types.get(&span))
             .cloned()
-    }
-
-    fn binding_scheme(&self, span: TextSpan, fallback: RsigType) -> RsigTypeScheme {
-        self.binding_schemes
-            .and_then(|schemes| schemes.get(&span))
-            .cloned()
-            .unwrap_or_else(|| RsigTypeScheme::monomorphic(fallback))
     }
 }
 
@@ -662,426 +646,6 @@ fn prelude_variant_names() -> BTreeSet<TypeName> {
         .unwrap_or_default()
 }
 
-fn infer_ast_function_types(
-    functions: &[crate::ast::AstFnDecl],
-) -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
-    let mut signatures = functions
-        .iter()
-        .map(|function| {
-            let params = function
-                .params
-                .iter()
-                .enumerate()
-                .map(|(index, _)| {
-                    function
-                        .param_types
-                        .get(index)
-                        .and_then(|annotation| annotation.as_ref())
-                        .map(|annotation| parse_type_signature(&annotation.text).1)
-                        .unwrap_or(RsigType::Unknown)
-                })
-                .collect::<Vec<_>>();
-            let result = function
-                .return_type
-                .as_ref()
-                .map(|annotation| parse_type_signature(&annotation.text).1)
-                .unwrap_or(RsigType::Unknown);
-            (function.name.clone(), (params, result))
-        })
-        .collect::<BTreeMap<_, _>>();
-
-    for _ in 0..4 {
-        let previous = signatures.clone();
-        for function in functions {
-            let (mut param_types, previous_result) =
-                previous.get(&function.name).cloned().unwrap_or_else(|| {
-                    (
-                        vec![RsigType::Unknown; function.params.len()],
-                        RsigType::Unknown,
-                    )
-                });
-            for (index, annotation) in function.param_types.iter().enumerate() {
-                if let Some(annotation) = annotation
-                    && let Some(param_type) = param_types.get_mut(index)
-                {
-                    *param_type = parse_type_signature(&annotation.text).1;
-                }
-            }
-            let mut locals = function
-                .params
-                .iter()
-                .zip(&param_types)
-                .map(|(name, type_)| (name.clone(), type_.clone()))
-                .collect::<BTreeMap<_, _>>();
-            let result = infer_ast_block_type(
-                &function.body,
-                &function.params,
-                &mut locals,
-                &mut param_types,
-                &previous,
-            );
-            let result = function
-                .return_type
-                .as_ref()
-                .map(|annotation| parse_type_signature(&annotation.text).1)
-                .unwrap_or(result);
-            signatures.insert(
-                function.name.clone(),
-                (param_types, merge_types(previous_result, result)),
-            );
-        }
-        if signatures == previous {
-            break;
-        }
-    }
-
-    signatures
-}
-
-fn infer_ast_block_type(
-    block: &AstBlock,
-    params: &[String],
-    locals: &mut BTreeMap<String, RsigType>,
-    param_types: &mut [RsigType],
-    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
-) -> RsigType {
-    for stmt in &block.statements {
-        match stmt {
-            AstStmt::Let {
-                name,
-                type_annotation,
-                value,
-                ..
-            } => {
-                mark_ast_constraints(value, params, locals, param_types, functions);
-                let inferred = type_annotation
-                    .as_ref()
-                    .map(|annotation| parse_type_signature(&annotation.text).1)
-                    .unwrap_or_else(|| infer_ast_expr_type(value, locals, functions));
-                locals.insert(name.clone(), inferred);
-            }
-            AstStmt::Expr(expr) => {
-                mark_ast_constraints(expr, params, locals, param_types, functions);
-            }
-        }
-    }
-    if let Some(tail) = &block.tail {
-        mark_ast_constraints(tail, params, locals, param_types, functions);
-        infer_ast_expr_type(tail, locals, functions)
-    } else {
-        RsigType::Unit
-    }
-}
-
-fn infer_ast_expr_type(
-    expr: &AstExpr,
-    locals: &BTreeMap<String, RsigType>,
-    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
-) -> RsigType {
-    match expr {
-        AstExpr::Add { lhs, rhs, .. }
-        | AstExpr::Sub { lhs, rhs, .. }
-        | AstExpr::Mul { lhs, rhs, .. }
-        | AstExpr::Div { lhs, rhs, .. }
-        | AstExpr::Mod { lhs, rhs, .. } => {
-            let _ = lhs;
-            let _ = rhs;
-            RsigType::I64
-        }
-        AstExpr::Neg { .. } => RsigType::I64,
-        AstExpr::Eq { lhs, rhs, .. } => {
-            infer_ast_expr_type(lhs, locals, functions);
-            infer_ast_expr_type(rhs, locals, functions);
-            RsigType::Bool
-        }
-        AstExpr::Lt { lhs, rhs, .. } => {
-            let _ = lhs;
-            let _ = rhs;
-            RsigType::Bool
-        }
-        AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {
-            infer_ast_expr_type(lhs, locals, functions);
-            infer_ast_expr_type(rhs, locals, functions);
-            RsigType::Bool
-        }
-        AstExpr::Not { expr, .. } => {
-            infer_ast_expr_type(expr, locals, functions);
-            RsigType::Bool
-        }
-        AstExpr::If {
-            condition,
-            then_branch,
-            else_branch,
-            ..
-        } => {
-            infer_ast_expr_type(condition, locals, functions);
-            merge_types(
-                infer_ast_expr_type(then_branch, locals, functions),
-                infer_ast_expr_type(else_branch, locals, functions),
-            )
-        }
-        AstExpr::Match {
-            scrutinee, arms, ..
-        } => {
-            infer_ast_expr_type(scrutinee, locals, functions);
-            arms.iter()
-                .map(|arm| infer_ast_expr_type(&arm.body, locals, functions))
-                .reduce(merge_types)
-                .unwrap_or(RsigType::Unknown)
-        }
-        AstExpr::Block { block, .. } => {
-            let mut nested_locals = locals.clone();
-            let mut nested_params = Vec::new();
-            infer_ast_block_type(
-                block,
-                &[],
-                &mut nested_locals,
-                &mut nested_params,
-                functions,
-            )
-        }
-        AstExpr::Bool { .. } => RsigType::Bool,
-        AstExpr::Call { callee, args, .. } => {
-            for arg in args {
-                infer_ast_expr_type(arg, locals, functions);
-            }
-            match callee.segments.as_slice() {
-                [name] if name == "dbg" || name == "println" => RsigType::Unit,
-                [name] if name == "send" || name == "monitor" || name == "link" => RsigType::Unit,
-                [name] if name == "list_len" || name == "string_len" => RsigType::I64,
-                [name] if name == "string_concat" => RsigType::String,
-                [name] if name == "list_get" => RsigType::Unknown,
-                [name] => functions
-                    .get(name)
-                    .map(|(_, result)| result.clone())
-                    .unwrap_or(RsigType::Unknown),
-                _ => RsigType::Unknown,
-            }
-        }
-        AstExpr::Apply { callee, args, .. } => {
-            infer_ast_expr_type(callee, locals, functions);
-            for arg in args {
-                infer_ast_expr_type(arg, locals, functions);
-            }
-            RsigType::Unknown
-        }
-        AstExpr::Lambda { body, .. } => {
-            let mut nested_locals = locals.clone();
-            let mut nested_params = Vec::new();
-            infer_ast_block_type(body, &[], &mut nested_locals, &mut nested_params, functions);
-            RsigType::Unknown
-        }
-        AstExpr::Spawn { .. } => RsigType::ActorId(Box::new(RsigType::Unknown)),
-        AstExpr::Receive { arms, .. } => {
-            for arm in arms {
-                infer_ast_expr_type(&arm.body, locals, functions);
-            }
-            RsigType::Unit
-        }
-        AstExpr::Unit { .. } => RsigType::Unit,
-        AstExpr::Tuple { items, .. } => RsigType::Tuple(
-            items
-                .iter()
-                .map(|item| infer_ast_expr_type(item, locals, functions))
-                .collect(),
-        ),
-        AstExpr::List { items, .. } => RsigType::List(Box::new(
-            items
-                .first()
-                .map(|item| infer_ast_expr_type(item, locals, functions))
-                .unwrap_or(RsigType::Unknown),
-        )),
-        AstExpr::Record { path, fields, .. } => {
-            for (_, value) in fields {
-                infer_ast_expr_type(value, locals, functions);
-            }
-            RsigType::Record(TypeName::new(path.segments.join(".")))
-        }
-        AstExpr::Field { base, field, .. } => infer_ast_field_type(base, field, locals, functions),
-        AstExpr::TupleIndex { base, index, .. } => {
-            infer_ast_tuple_index_type(base, *index, locals, functions)
-        }
-        AstExpr::Char { .. } => RsigType::Char,
-        AstExpr::Float { .. } => RsigType::F64,
-        AstExpr::Int { .. } => RsigType::I64,
-        AstExpr::Path { path, .. } => path
-            .segments
-            .first()
-            .and_then(|name| locals.get(name))
-            .cloned()
-            .unwrap_or(RsigType::Unknown),
-        AstExpr::String { .. } => RsigType::String,
-    }
-}
-
-fn infer_ast_field_type(
-    base: &AstExpr,
-    field: &str,
-    locals: &BTreeMap<String, RsigType>,
-    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
-) -> RsigType {
-    if let AstExpr::Record { fields, .. } = base {
-        return fields
-            .iter()
-            .find_map(|(name, value)| {
-                (name == field).then(|| infer_ast_expr_type(value, locals, functions))
-            })
-            .unwrap_or(RsigType::Unknown);
-    }
-    RsigType::Unknown
-}
-
-fn infer_ast_tuple_index_type(
-    base: &AstExpr,
-    index: usize,
-    locals: &BTreeMap<String, RsigType>,
-    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
-) -> RsigType {
-    if let AstExpr::Tuple { items, .. } = base {
-        return items
-            .get(index)
-            .map(|item| infer_ast_expr_type(item, locals, functions))
-            .unwrap_or(RsigType::Unknown);
-    }
-    RsigType::Unknown
-}
-
-fn mark_ast_constraints(
-    expr: &AstExpr,
-    params: &[String],
-    locals: &mut BTreeMap<String, RsigType>,
-    param_types: &mut [RsigType],
-    functions: &BTreeMap<String, (Vec<RsigType>, RsigType)>,
-) {
-    match expr {
-        AstExpr::Add { lhs, rhs, .. }
-        | AstExpr::Sub { lhs, rhs, .. }
-        | AstExpr::Mul { lhs, rhs, .. }
-        | AstExpr::Div { lhs, rhs, .. }
-        | AstExpr::Mod { lhs, rhs, .. }
-        | AstExpr::Lt { lhs, rhs, .. } => {
-            mark_ast_expr_as(params, locals, param_types, lhs, RsigType::I64);
-            mark_ast_expr_as(params, locals, param_types, rhs, RsigType::I64);
-        }
-        AstExpr::Neg { expr, .. } => {
-            mark_ast_expr_as(params, locals, param_types, expr, RsigType::I64)
-        }
-        AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {
-            mark_ast_expr_as(params, locals, param_types, lhs, RsigType::Bool);
-            mark_ast_expr_as(params, locals, param_types, rhs, RsigType::Bool);
-        }
-        AstExpr::Not { expr, .. } => {
-            mark_ast_expr_as(params, locals, param_types, expr, RsigType::Bool)
-        }
-        AstExpr::If {
-            condition,
-            then_branch,
-            else_branch,
-            ..
-        } => {
-            mark_ast_expr_as(params, locals, param_types, condition, RsigType::Bool);
-            mark_ast_constraints(then_branch, params, locals, param_types, functions);
-            mark_ast_constraints(else_branch, params, locals, param_types, functions);
-        }
-        AstExpr::Match {
-            scrutinee, arms, ..
-        } => {
-            mark_ast_constraints(scrutinee, params, locals, param_types, functions);
-            for arm in arms {
-                mark_ast_constraints(&arm.body, params, locals, param_types, functions);
-            }
-        }
-        AstExpr::Block { block, .. } => {
-            let mut nested_locals = locals.clone();
-            let mut nested_params = Vec::new();
-            infer_ast_block_type(
-                block,
-                &[],
-                &mut nested_locals,
-                &mut nested_params,
-                functions,
-            );
-        }
-        AstExpr::Call { args, .. }
-        | AstExpr::Tuple { items: args, .. }
-        | AstExpr::List { items: args, .. } => {
-            for arg in args {
-                mark_ast_constraints(arg, params, locals, param_types, functions);
-            }
-        }
-        AstExpr::Apply { callee, args, .. } => {
-            mark_ast_constraints(callee, params, locals, param_types, functions);
-            for arg in args {
-                mark_ast_constraints(arg, params, locals, param_types, functions);
-            }
-        }
-        AstExpr::Lambda {
-            params: lambda_params,
-            body,
-            ..
-        } => {
-            let mut nested_locals = locals.clone();
-            for param in lambda_params {
-                nested_locals.insert(param.clone(), RsigType::Unknown);
-            }
-            let mut nested_params = vec![RsigType::Unknown; lambda_params.len()];
-            infer_ast_block_type(
-                body,
-                lambda_params,
-                &mut nested_locals,
-                &mut nested_params,
-                functions,
-            );
-        }
-        AstExpr::Record { fields, .. } => {
-            for (_, value) in fields {
-                mark_ast_constraints(value, params, locals, param_types, functions);
-            }
-        }
-        AstExpr::Field { base, .. } | AstExpr::TupleIndex { base, .. } => {
-            mark_ast_constraints(base, params, locals, param_types, functions);
-        }
-        AstExpr::Receive { arms, .. } => {
-            for arm in arms {
-                mark_ast_constraints(&arm.body, params, locals, param_types, functions);
-            }
-        }
-        AstExpr::Spawn { body, .. } => {
-            let mut nested_locals = BTreeMap::new();
-            let mut nested_params = Vec::new();
-            infer_ast_block_type(body, &[], &mut nested_locals, &mut nested_params, functions);
-        }
-        AstExpr::Eq { lhs, rhs, .. } => {
-            mark_ast_constraints(lhs, params, locals, param_types, functions);
-            mark_ast_constraints(rhs, params, locals, param_types, functions);
-        }
-        AstExpr::Bool { .. }
-        | AstExpr::Unit { .. }
-        | AstExpr::Char { .. }
-        | AstExpr::Float { .. }
-        | AstExpr::Int { .. }
-        | AstExpr::Path { .. }
-        | AstExpr::String { .. } => {}
-    }
-}
-
-fn mark_ast_expr_as(
-    params: &[String],
-    locals: &mut BTreeMap<String, RsigType>,
-    param_types: &mut [RsigType],
-    expr: &AstExpr,
-    type_: RsigType,
-) {
-    if let AstExpr::Path { path, .. } = expr
-        && let [name] = path.segments.as_slice()
-    {
-        locals.insert(name.clone(), type_.clone());
-        if let Some(index) = params.iter().position(|param| param == name) {
-            param_types[index] = merge_types(param_types[index].clone(), type_);
-        }
-    }
-}
-
 fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
     context.push_scope();
     let mut statements = Vec::new();
@@ -1089,7 +653,7 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
         match stmt {
             AstStmt::Let {
                 name,
-                name_span,
+                name_span: _,
                 type_annotation,
                 value,
                 ..
@@ -1099,13 +663,8 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
                     value.type_ =
                         parse_type_with_variants(&annotation.text, context.declared_variants);
                 }
-                let scheme = context.binding_scheme(name_span, value.type_.clone());
                 let binding = context.bind(&name, value.type_.clone());
-                statements.push(TypedStmt::Let {
-                    binding,
-                    scheme,
-                    value,
-                });
+                statements.push(TypedStmt::Let { binding, value });
             }
             AstStmt::Expr(expr) => statements.push(TypedStmt::Expr(type_expr(expr, context))),
         }
@@ -1288,11 +847,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         })
                         .unwrap_or(RsigType::Unknown);
                     let binding = context.bind(name, type_.clone());
-                    TypedParam {
-                        binding,
-                        scheme: RsigTypeScheme::monomorphic(type_.clone()),
-                        type_,
-                    }
+                    TypedParam { binding, type_ }
                 })
                 .collect::<Vec<_>>();
             let body = type_block(*body, context);
@@ -1516,7 +1071,6 @@ fn partial_call_lambda(
             let binding = context.bind(&format!("arg{index}"), type_.clone());
             TypedParam {
                 binding,
-                scheme: RsigTypeScheme::monomorphic(type_.clone()),
                 type_: type_.clone(),
             }
         })
@@ -2040,7 +1594,6 @@ fn merge_types(lhs: RsigType, rhs: RsigType) -> RsigType {
 #[derive(Default)]
 struct LowerContext {
     next_actor_id: usize,
-    next_binding_id: usize,
     scopes: Vec<BTreeMap<String, BindingKey>>,
 }
 
@@ -2059,19 +1612,6 @@ impl LowerContext {
         self.scopes.pop();
     }
 
-    fn bind_fresh(&mut self, source_name: &str) -> BindingKey {
-        if self.scopes.is_empty() {
-            self.push_scope();
-        }
-        let key = BindingKey::new(format!("{source_name}${}", self.next_binding_id));
-        self.next_binding_id += 1;
-        self.scopes
-            .last_mut()
-            .expect("lowering always has a lexical scope")
-            .insert(source_name.to_owned(), key.clone());
-        key
-    }
-
     fn bind_existing(&mut self, binding: &BindingId) -> BindingKey {
         if self.scopes.is_empty() {
             self.push_scope();
@@ -2082,13 +1622,6 @@ impl LowerContext {
             .expect("lowering always has a lexical scope")
             .insert(binding.name.clone(), key.clone());
         key
-    }
-
-    fn resolve(&self, source_name: &str) -> Option<&BindingKey> {
-        self.scopes
-            .iter()
-            .rev()
-            .find_map(|scope| scope.get(source_name))
     }
 }
 
@@ -3015,7 +2548,6 @@ mod tests {
             &imports,
             &function_types,
             None,
-            None,
         )
     }
 
@@ -3026,14 +2558,12 @@ mod tests {
         let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
         let function_types = inferred.function_signatures(&program);
         let expression_types = inferred.expression_rsig_types();
-        let binding_schemes = inferred.binding_rsig_schemes();
         typed_program_from_ast(
             ModuleName::new(module),
             program,
             &imports,
             &function_types,
             Some(&expression_types),
-            Some(&binding_schemes),
         )
     }
 
@@ -3291,11 +2821,9 @@ mod tests {
             "ApplyFacts",
             "fn main() { let id = fn(x) { x }; id(1) }",
         );
-        let Some(TypedStmt::Let { value, scheme, .. }) = typed.functions[0].body.statements.first()
-        else {
+        let Some(TypedStmt::Let { value, .. }) = typed.functions[0].body.statements.first() else {
             panic!("expected a let-bound lambda");
         };
-        assert_eq!(scheme.quantifiers.len(), 1);
         assert!(matches!(
             value.type_,
             RsigType::Arrow {
@@ -3330,6 +2858,3 @@ mod tests {
         assert_eq!(callee.binding_id.name, "helper");
     }
 }
-
-#[allow(dead_code)]
-fn _keep_ast_path_used(_: &AstPath) {}

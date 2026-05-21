@@ -318,13 +318,6 @@ impl RsigTypeScheme {
         Self { quantifiers, body }
     }
 
-    pub(crate) fn monomorphic(body: RsigType) -> Self {
-        Self {
-            quantifiers: Vec::new(),
-            body,
-        }
-    }
-
     pub(crate) fn canonical(&self) -> String {
         if self.quantifiers.is_empty() {
             self.body.canonical()
@@ -764,16 +757,6 @@ pub(crate) fn resolve_rsig(
             .collect::<Vec<_>>()
             .join("\n")
     )
-}
-
-pub(crate) fn parse_type_signature(text: &str) -> (Vec<RsigType>, RsigType) {
-    let mut parts = split_top_level_arrows(text);
-    if parts.len() < 2 {
-        return (Vec::new(), parse_type(text));
-    }
-    let result = parse_type(parts.pop().unwrap_or("_"));
-    let params = parts.into_iter().map(parse_type).collect();
-    (params, result)
 }
 
 pub(crate) fn parse_type_signature_with_variants(
@@ -1324,13 +1307,14 @@ mod tests {
         ConstructorName, FieldName, Rsig, RsigDependency, RsigExport, RsigFunction,
         RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme,
         RsigVariantConstructor, TypeName, TypeParamName, decode_rsig, encode_rsig,
-        parse_type_signature, parse_type_signature_with_variants,
+        parse_type_signature_with_variants,
     };
     use std::collections::BTreeSet;
 
     #[test]
     fn parses_parenthesized_arrow_parameter_types() {
-        let (params, result) = parse_type_signature("(i64 -> i64) -> i64 -> i64");
+        let (params, result) =
+            parse_type_signature_with_variants("(i64 -> i64) -> i64 -> i64", &BTreeSet::new());
 
         assert_eq!(
             params,
