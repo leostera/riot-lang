@@ -187,7 +187,28 @@ impl RsigExport {
     }
 }
 
-pub(crate) type ImportedSignatures = BTreeMap<ModuleName, Rsig>;
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct ImportedSignatures {
+    modules: BTreeMap<ModuleName, Rsig>,
+}
+
+impl ImportedSignatures {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn insert(&mut self, module: ModuleName, signature: Rsig) {
+        self.modules.insert(module, signature);
+    }
+
+    pub(crate) fn get(&self, module: impl AsRef<str>) -> Option<&Rsig> {
+        self.modules.get(module.as_ref())
+    }
+
+    pub(crate) fn contains_key(&self, module: impl AsRef<str>) -> bool {
+        self.modules.contains_key(module.as_ref())
+    }
+}
 
 #[cfg(test)]
 mod tests {

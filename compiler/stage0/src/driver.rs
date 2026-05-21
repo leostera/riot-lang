@@ -563,7 +563,7 @@ impl<'a> ImportResolver<'a> {
         ast: &AstProgram,
     ) -> miette::Result<ImportedSignatures> {
         let source_dir = source_path.parent();
-        let mut imports = BTreeMap::new();
+        let mut imports = ImportedSignatures::new();
         for decl in &ast.decls {
             if let AstDecl::Use(use_) = decl {
                 let rsig = if let Some(rsig) = self.available.get(use_.name.as_str()) {
