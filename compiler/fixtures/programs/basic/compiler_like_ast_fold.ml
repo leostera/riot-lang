@@ -23,7 +23,7 @@ fn eval(env: List<binding>, expr: expr) -> i64 {
     Add(left, right) -> eval(env, left) + eval(env, right),
     Let(name, value_expr, body) -> {
       let value = eval(env, value_expr);
-      eval([Binding(name, value)], body)
+      eval([Binding(name, value), ..env], body)
     },
     Var(name) -> lookup(env, name)
   }
