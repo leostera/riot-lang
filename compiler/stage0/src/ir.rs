@@ -11,9 +11,15 @@ use crate::signature::{
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
-pub(crate) use crate::actor::air::*;
+use crate::actor::air::{
+    ActorFrameLayout, ActorFrameOp, ActorFrameSlot, ActorFrameSlotName, ActorFrameState,
+    ActorIrActor, ActorIrProgram, ActorSlotType, ActorStateNext,
+};
 pub(crate) use crate::checker::tyir::*;
-pub(crate) use crate::lambda::ir::*;
+use crate::lambda::ir::{
+    BindingKey, Capture, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm,
+    RirPattern, RirProgram, RirReceiveArm, RirStmt,
+};
 
 pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
