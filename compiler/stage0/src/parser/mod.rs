@@ -1210,7 +1210,16 @@ impl<'src> Parser<'src> {
         }
 
         loop {
-            let (name, _) = self.expect_lower_ident()?;
+            let (name, name_span) = self.expect_lower_ident()?;
+            if !self.at(TokenKind::Colon)
+                && (self.at(TokenKind::Comma) || self.at(TokenKind::RBrace))
+            {
+                return Err(ParseError {
+                    span: name_span,
+                    message: "record field shorthand is not supported yet".to_owned(),
+                    help: Some("write the field as `name: value`"),
+                });
+            }
             self.expect(TokenKind::Colon, "expected `:` after record field name")?;
             let value = self.parse_expr()?;
             fields.push((name, value));
@@ -1246,7 +1255,7 @@ impl<'src> Parser<'src> {
 
         match (self.peek_kind(1), self.peek_kind(2)) {
             (Some(TokenKind::RBrace), _) => path_allows_empty_record,
-            (Some(TokenKind::Ident), Some(TokenKind::Colon)) => true,
+            (Some(TokenKind::Ident), Some(TokenKind::Colon | TokenKind::Comma | TokenKind::RBrace)) => true,
             _ => false,
         }
     }

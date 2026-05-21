@@ -1,0 +1,23 @@
+---
+source: tests/fixtures.rs
+assertion_line: 1395
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/syntax/record_field_shorthand.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/syntax/record_field_shorthand.ml:5:24]
+ 4 │   let name = "input";
+ 5 │   let value = symbol { name };
+   ·                        ──┬─
+   ·                          ╰── record field shorthand is not supported yet
+ 6 │   println(value.name)
+   ╰────
+  help: write the field as `name: value`
