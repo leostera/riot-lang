@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::sync::OnceLock;
 
 use camino::Utf8Path;
 use miette::bail;
@@ -19,6 +20,7 @@ const LIST_SOURCE: &str = include_str!("../../std/list.ml");
 const STRING_SOURCE: &str = include_str!("../../std/string.ml");
 const OPTION_SOURCE: &str = include_str!("../../std/option.ml");
 const RESULT_SOURCE: &str = include_str!("../../std/result.ml");
+static PRELUDE_TYPE_NAMES: OnceLock<BTreeSet<TypeName>> = OnceLock::new();
 
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct Stdlib;
@@ -39,10 +41,25 @@ impl Stdlib {
     pub(crate) fn contains_signature(&self, rsig: &Rsig) -> bool {
         is_std_signature(rsig)
     }
+
+    pub(crate) fn is_prelude_type_name(&self, type_name: &TypeName) -> bool {
+        prelude_type_names().contains(type_name)
+    }
 }
 
 fn prelude_signature() -> miette::Result<Rsig> {
     std_signature("Prelude")?.ok_or_else(|| miette::miette!("compiler/std/prelude.ml is missing"))
+}
+
+fn prelude_type_names() -> &'static BTreeSet<TypeName> {
+    PRELUDE_TYPE_NAMES.get_or_init(|| {
+        prelude_signature()
+            .expect("compiler/std/prelude.ml must parse")
+            .types
+            .into_iter()
+            .map(|type_| type_.name)
+            .collect()
+    })
 }
 
 fn std_signature(module: &str) -> miette::Result<Option<Rsig>> {
@@ -260,5 +277,14 @@ mod tests {
                 .canonical_text()
                 .contains("external unwrap_or(Result<'a, 'b>, 'a) -> 'a")
         );
+    }
+
+    #[test]
+    fn prelude_type_names_come_from_std_source() {
+        let stdlib = Stdlib::new();
+
+        assert!(stdlib.is_prelude_type_name(&crate::signature::TypeName::new("List")));
+        assert!(stdlib.is_prelude_type_name(&crate::signature::TypeName::new("Option")));
+        assert!(!stdlib.is_prelude_type_name(&crate::signature::TypeName::new("Matches")));
     }
 }

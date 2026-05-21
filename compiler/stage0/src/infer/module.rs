@@ -1091,10 +1091,7 @@ fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
 }
 
 fn is_prelude_type_name(type_name: &TypeName) -> bool {
-    matches!(
-        type_name.as_str(),
-        "List" | "Option" | "Result" | "String" | "Never" | "int"
-    )
+    crate::stdlib::Stdlib::new().is_prelude_type_name(type_name)
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::signature::{ImportedSignatures, ModuleName, RsigExport, RsigType, TypeName};
+use crate::stdlib::Stdlib;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum CallableKind {
@@ -160,10 +161,7 @@ fn qualify_imported_type(module: &str, type_: &RsigType) -> RsigType {
 }
 
 fn is_prelude_type_name(type_name: &TypeName) -> bool {
-    matches!(
-        type_name.as_str(),
-        "List" | "Option" | "Result" | "String" | "Never" | "int"
-    )
+    Stdlib::new().is_prelude_type_name(type_name)
 }
 
 #[cfg(test)]
