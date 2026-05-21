@@ -16,9 +16,10 @@ use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeAnnotation,
     AstTypeBody, TextSpan,
 };
+use crate::checker::tyir::{RsigBuilder, TyIrBuilder};
 use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
 use crate::infer::module::ModuleInferencer;
-use crate::ir::{CheckedProgram, RsigBuilder, TyIrBuilder};
+use crate::ir::CheckedProgram;
 use crate::signature::{
     ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
     TypeVarName,

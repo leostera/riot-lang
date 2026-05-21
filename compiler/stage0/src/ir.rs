@@ -15,52 +15,6 @@ pub(crate) use crate::actor::air::*;
 pub(crate) use crate::checker::tyir::*;
 pub(crate) use crate::lambda::ir::*;
 
-pub(crate) struct TyIrBuilder<'a> {
-    module_name: ModuleName,
-    imports: &'a ImportedSignatures,
-    function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
-}
-
-impl<'a> TyIrBuilder<'a> {
-    pub(crate) fn new(
-        module_name: ModuleName,
-        imports: &'a ImportedSignatures,
-        function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
-        expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
-    ) -> Self {
-        Self {
-            module_name,
-            imports,
-            function_types,
-            expression_types,
-        }
-    }
-
-    pub(crate) fn build(self, ast: AstProgram) -> TypedProgram {
-        typed_program_from_ast(
-            self.module_name,
-            ast,
-            self.imports,
-            self.function_types,
-            self.expression_types,
-        )
-    }
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct RsigBuilder;
-
-impl RsigBuilder {
-    pub(crate) fn new() -> Self {
-        Self
-    }
-
-    pub(crate) fn build(&self, program: &TypedProgram) -> Rsig {
-        signature_for(program)
-    }
-}
-
 #[derive(Debug, Default)]
 pub(crate) struct RirLowerer;
 
@@ -88,7 +42,7 @@ impl<'a> ActorIrLowerer<'a> {
     }
 }
 
-fn typed_program_from_ast(
+pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
     ast: AstProgram,
     imports: &ImportedSignatures,
@@ -260,7 +214,7 @@ fn lower_signature_annotation(
     RsigTypeLowerer::new().lower_signature(&annotation.syntax, declared_variants)
 }
 
-fn signature_for(program: &TypedProgram) -> Rsig {
+pub(crate) fn signature_for(program: &TypedProgram) -> Rsig {
     let types = program
         .types
         .iter()

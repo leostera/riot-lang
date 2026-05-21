@@ -1,6 +1,56 @@
 use crate::signature::{
     ConstructorName, FieldName, ModuleName, Rsig, RsigType, TypeName, TypeParamName,
 };
+use std::collections::BTreeMap;
+
+use crate::ast::{AstProgram, TextSpan};
+use crate::signature::ImportedSignatures;
+
+pub(crate) struct TyIrBuilder<'a> {
+    module_name: ModuleName,
+    imports: &'a ImportedSignatures,
+    function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+    expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+}
+
+impl<'a> TyIrBuilder<'a> {
+    pub(crate) fn new(
+        module_name: ModuleName,
+        imports: &'a ImportedSignatures,
+        function_types: &'a BTreeMap<String, (Vec<RsigType>, RsigType)>,
+        expression_types: Option<&'a BTreeMap<TextSpan, RsigType>>,
+    ) -> Self {
+        Self {
+            module_name,
+            imports,
+            function_types,
+            expression_types,
+        }
+    }
+
+    pub(crate) fn build(self, ast: AstProgram) -> TypedProgram {
+        crate::ir::typed_program_from_ast(
+            self.module_name,
+            ast,
+            self.imports,
+            self.function_types,
+            self.expression_types,
+        )
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct RsigBuilder;
+
+impl RsigBuilder {
+    pub(crate) fn new() -> Self {
+        Self
+    }
+
+    pub(crate) fn build(&self, program: &TypedProgram) -> Rsig {
+        crate::ir::signature_for(program)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct BindingId {
