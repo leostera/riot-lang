@@ -911,6 +911,66 @@ fn imported_variant_annotations_use_rsig() -> FixtureResult {
 }
 
 #[test]
+fn imported_compiler_data_model_flows_through_rsig() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | IntLit(i64)\ntype span = { start: i64, end: i64 }\nfn name(token) { match token { Ident(text) -> text, IntLit(_) -> \"int\" } }\nfn zero_span() { span { start: 0, end: 0 } }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Syntax\nfn main() { let tok = Syntax.IntLit(42); let span = Syntax.zero_span(); println(Syntax.name(tok)); dbg(span.start); dbg(span.end) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected compiler-data compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported compiler-data compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"int\n0\n0\n" {
+        return fail(format!(
+            "unexpected imported compiler-data stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_record_construction_uses_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
