@@ -41,11 +41,17 @@ classification, recursive list/tree walks, closure-heavy helper functions,
 variant/record transformations, multi-module interface checks, actor protocols,
 and diagnostics that demonstrate the exact failure mode.
 
-Known hardening gap discovered while adding fixtures: pre-inference validation
-checks match exhaustiveness before lambda parameter types have been inferred.
-For now, lambda matches over variants need explicit parameter annotations; a
-future checker slice should either run that validation with inferred expression
-types or defer exhaustiveness checks until the typed HIR boundary.
+Resolved hardening gap: pre-inference validation used to check match
+exhaustiveness before lambda parameter types had been inferred. Stage0 now reruns
+validation with inferred expression types and refreshes match scrutinee type
+facts after pattern constraints.
+
+Known hardening gap discovered while adding multi-module fixtures: runtime
+variant values constructed through an imported constructor and then matched in
+the defining module can disagree on qualified versus local type names. Add a
+future slice that makes variant runtime identity module-stable across `.rsig`,
+TyIR, lambda patterns, and LLVM tag checks before relying on imported
+payload-bearing variants for compiler data.
 
 `compiler/riotc` may remain as an eventual consumer, but it should not drive the
 loop until stage0 is sturdy enough to serve as the reference implementation.
