@@ -3007,9 +3007,8 @@ mod tests {
 
     fn typed_program(module: &str, program: AstProgram) -> super::TypedProgram {
         let imports = ImportedSignatures::new();
-        let function_types = ModuleInferencer::new(&program, &imports)
-            .infer_function_signatures()
-            .unwrap();
+        let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
+        let function_types = inferred.function_signatures(&program);
         typed_program_from_ast(
             ModuleName::new(module),
             program,

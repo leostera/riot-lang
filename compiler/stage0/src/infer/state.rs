@@ -13,10 +13,6 @@ pub(crate) struct State {
 }
 
 impl State {
-    pub(crate) fn env(&self) -> &Env {
-        &self.env
-    }
-
     pub(crate) fn into_env(self) -> Env {
         self.env
     }

@@ -47,13 +47,6 @@ impl InferError {
             },
         }
     }
-
-    fn root(&self) -> &InferError {
-        match self {
-            InferError::At { error, .. } => error.root(),
-            error => error,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -95,13 +88,6 @@ impl<'a> ModuleInferencer<'a> {
             expression_types,
             binding_schemes,
         })
-    }
-
-    pub(crate) fn infer_function_signatures(
-        &self,
-    ) -> Result<BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
-        let inferred = self.infer()?;
-        Ok(inferred.function_signatures(self.program))
     }
 }
 
@@ -1464,7 +1450,14 @@ mod tests {
     fn signatures(
         program: &AstProgram,
     ) -> Result<std::collections::BTreeMap<String, (Vec<RsigType>, RsigType)>, InferError> {
-        ModuleInferencer::new(program, &ImportedSignatures::new()).infer_function_signatures()
+        infer(program).map(|inferred| inferred.function_signatures(program))
+    }
+
+    fn root_error(error: &InferError) -> &InferError {
+        match error {
+            InferError::At { error, .. } => root_error(error),
+            error => error,
+        }
     }
 
     #[test]
@@ -1508,7 +1501,7 @@ mod tests {
         assert_eq!(Some(span()), err.span());
         assert_eq!(
             &crate::infer::module::InferError::UnknownValue("one".to_owned()),
-            err.root()
+            root_error(&err)
         );
     }
 

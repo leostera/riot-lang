@@ -70,6 +70,7 @@ impl Env {
             .or_else(|| self.prelude.values.get(name).map(|binding| &binding.scheme))
     }
 
+    #[cfg(test)]
     pub(crate) fn exported_values(&self) -> Vec<(String, TypeScheme)> {
         let root = self
             .scopes
