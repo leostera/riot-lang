@@ -250,6 +250,43 @@ impl fmt::Display for TypeParamName {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct TypeVarName(String);
+
+impl TypeVarName {
+    pub(crate) fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for TypeVarName {
+    fn from(value: String) -> Self {
+        TypeVarName::new(value)
+    }
+}
+
+impl From<&str> for TypeVarName {
+    fn from(value: &str) -> Self {
+        TypeVarName::new(value)
+    }
+}
+
+impl AsRef<str> for TypeVarName {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for TypeVarName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RsigRecordField {
     pub(crate) name: FieldName,
@@ -292,7 +329,7 @@ pub(crate) enum RsigType {
     ActorId(Box<RsigType>),
     String,
     Unit,
-    Var(String),
+    Var(TypeVarName),
     Arrow {
         parameter: Box<RsigType>,
         result: Box<RsigType>,
@@ -310,7 +347,7 @@ pub(crate) enum RsigType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RsigTypeScheme {
-    pub(crate) quantifiers: Vec<String>,
+    pub(crate) quantifiers: Vec<TypeVarName>,
     pub(crate) body: RsigType,
 }
 
@@ -328,7 +365,11 @@ impl RsigTypeScheme {
         } else {
             format!(
                 "forall {}. {}",
-                self.quantifiers.join(" "),
+                self.quantifiers
+                    .iter()
+                    .map(TypeVarName::as_str)
+                    .collect::<Vec<_>>()
+                    .join(" "),
                 self.body.canonical()
             )
         }
@@ -352,7 +393,7 @@ fn source_function_type(params: Vec<RsigType>, result: RsigType) -> RsigType {
     }
 }
 
-fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
+fn collect_type_vars(type_: &RsigType, vars: &mut Vec<TypeVarName>) {
     match type_ {
         RsigType::ActorId(message) | RsigType::List(message) => collect_type_vars(message, vars),
         RsigType::Arrow { parameter, result } => {
@@ -624,7 +665,7 @@ impl RsigVariantConstructor {
 
 #[derive(Default)]
 struct TypeVarCanonicalizer {
-    names: BTreeMap<String, String>,
+    names: BTreeMap<TypeVarName, TypeVarName>,
 }
 
 impl TypeVarCanonicalizer {
@@ -671,12 +712,12 @@ impl TypeVarCanonicalizer {
     }
 }
 
-fn canonical_type_var_name(index: usize) -> String {
+fn canonical_type_var_name(index: usize) -> TypeVarName {
     if index < 26 {
         let name = char::from(b'a' + index as u8);
-        format!("'{name}")
+        TypeVarName::new(format!("'{name}"))
     } else {
-        format!("'t{}", index - 26)
+        TypeVarName::new(format!("'t{}", index - 26))
     }
 }
 
@@ -691,7 +732,7 @@ impl RsigType {
             RsigType::ActorId(message) => format!("actor_id<{}>", message.canonical()),
             RsigType::String => "String".to_owned(),
             RsigType::Unit => "unit".to_owned(),
-            RsigType::Var(name) => name.clone(),
+            RsigType::Var(name) => name.to_string(),
             RsigType::Arrow { parameter, result } => {
                 format!("({} -> {})", parameter.canonical(), result.canonical())
             }
@@ -984,7 +1025,7 @@ fn get_types(cursor: &mut Cursor<&[u8]>) -> miette::Result<Vec<RsigType>> {
 fn put_scheme(bytes: &mut Vec<u8>, scheme: &RsigTypeScheme) {
     put_u32(bytes, scheme.quantifiers.len() as u32);
     for quantifier in &scheme.quantifiers {
-        put_string(bytes, quantifier);
+        put_string(bytes, quantifier.as_str());
     }
     put_type(bytes, &scheme.body);
 }
@@ -993,7 +1034,7 @@ fn get_scheme(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigTypeScheme> {
     let count = get_u32(cursor)?;
     let mut quantifiers = Vec::new();
     for _ in 0..count {
-        quantifiers.push(get_string(cursor)?);
+        quantifiers.push(TypeVarName::new(get_string(cursor)?));
     }
     let body = get_type(cursor)?;
     Ok(RsigTypeScheme { quantifiers, body })
@@ -1057,7 +1098,7 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
         4 => RsigType::ActorId(Box::new(get_type(cursor)?)),
         5 => RsigType::String,
         6 => RsigType::Unit,
-        7 => RsigType::Var(get_string(cursor)?),
+        7 => RsigType::Var(TypeVarName::new(get_string(cursor)?)),
         8 => RsigType::Tuple(get_types(cursor)?),
         9 => RsigType::List(Box::new(get_type(cursor)?)),
         10 => RsigType::Record(TypeName::new(get_string(cursor)?)),
@@ -1125,7 +1166,7 @@ mod tests {
     use super::{
         ConstructorName, FieldName, Rsig, RsigDependency, RsigExport, RsigFunction,
         RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeParser, RsigTypeScheme,
-        RsigVariantConstructor, TypeName, TypeParamName, decode_rsig, encode_rsig,
+        RsigVariantConstructor, TypeName, TypeParamName, TypeVarName, decode_rsig, encode_rsig,
     };
     use std::collections::BTreeSet;
 
@@ -1206,11 +1247,11 @@ mod tests {
             Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "id".to_owned(),
-                params: vec![RsigType::Var("'t17".to_owned())],
-                result: RsigType::Var("'t17".to_owned()),
+                params: vec![RsigType::Var(TypeVarName::new("'t17"))],
+                result: RsigType::Var(TypeVarName::new("'t17")),
                 scheme: RsigTypeScheme::from_signature(
-                    &[RsigType::Var("'t17".to_owned())],
-                    &RsigType::Var("'t17".to_owned()),
+                    &[RsigType::Var(TypeVarName::new("'t17"))],
+                    &RsigType::Var(TypeVarName::new("'t17")),
                 ),
                 symbol: "riot_mod_Id_id".to_owned(),
                 fingerprint: 0,
@@ -1222,11 +1263,11 @@ mod tests {
             Vec::new(),
             vec![RsigExport::Function(RsigFunction {
                 name: "id".to_owned(),
-                params: vec![RsigType::Var("'source_name".to_owned())],
-                result: RsigType::Var("'source_name".to_owned()),
+                params: vec![RsigType::Var(TypeVarName::new("'source_name"))],
+                result: RsigType::Var(TypeVarName::new("'source_name")),
                 scheme: RsigTypeScheme::from_signature(
-                    &[RsigType::Var("'source_name".to_owned())],
-                    &RsigType::Var("'source_name".to_owned()),
+                    &[RsigType::Var(TypeVarName::new("'source_name"))],
+                    &RsigType::Var(TypeVarName::new("'source_name")),
                 ),
                 symbol: "riot_mod_Id_id".to_owned(),
                 fingerprint: 0,

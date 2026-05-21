@@ -13,6 +13,7 @@ use crate::ast::{
 };
 use crate::signature::{
     ImportedSignatures, Rsig, RsigExport, RsigType, RsigTypeDeclKind, RsigTypeScheme, TypeName,
+    TypeVarName,
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
@@ -975,7 +976,7 @@ fn rsig_scheme_to_infer_scheme(scheme: &RsigTypeScheme, state: &mut State) -> Ty
 fn rsig_type_to_infer_type_with_vars(
     type_: &RsigType,
     state: &mut State,
-    vars: &mut BTreeMap<String, Type>,
+    vars: &mut BTreeMap<TypeVarName, Type>,
 ) -> Type {
     match type_ {
         RsigType::ActorId(message) => Type::ActorId(Box::new(rsig_type_to_infer_type_with_vars(
@@ -1035,7 +1036,7 @@ fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
         Type::String => RsigType::String,
         Type::Tuple(items) => RsigType::Tuple(items.iter().map(infer_type_to_rsig_type).collect()),
         Type::Unit => RsigType::Unit,
-        Type::Var(var) => RsigType::Var(format!("'t{}", var.index())),
+        Type::Var(var) => RsigType::Var(TypeVarName::new(format!("'t{}", var.index()))),
     }
 }
 

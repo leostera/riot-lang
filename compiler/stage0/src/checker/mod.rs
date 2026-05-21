@@ -20,6 +20,7 @@ use crate::infer::module::ModuleInferencer;
 use crate::ir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::signature::{
     ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
+    TypeVarName,
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
@@ -140,7 +141,7 @@ struct RecordShape {
 #[derive(Debug, Clone)]
 struct ConstructorShape {
     type_name: TypeName,
-    type_params: Vec<String>,
+    type_params: Vec<TypeVarName>,
     payload: Vec<RsigType>,
 }
 
@@ -595,7 +596,7 @@ fn constructor_types(
                                 type_params: type_
                                     .params
                                     .iter()
-                                    .map(|param| param.name.clone())
+                                    .map(|param| TypeVarName::new(param.name.clone()))
                                     .collect(),
                                 payload: constructor
                                     .payload
@@ -636,7 +637,7 @@ fn constructor_types_from_rsig(
                             type_params: type_
                                 .params
                                 .iter()
-                                .map(|param| param.as_str().to_owned())
+                                .map(|param| TypeVarName::new(param.as_str()))
                                 .collect(),
                             payload: constructor.payload.clone(),
                         },
@@ -1794,7 +1795,10 @@ fn instantiate_constructor_payload(
         .collect()
 }
 
-fn substitute_type_vars(type_: &RsigType, substitutions: &BTreeMap<String, RsigType>) -> RsigType {
+fn substitute_type_vars(
+    type_: &RsigType,
+    substitutions: &BTreeMap<TypeVarName, RsigType>,
+) -> RsigType {
     match type_ {
         RsigType::Var(name) => substitutions
             .get(name)
@@ -2039,7 +2043,7 @@ fn imported_constructor_shape(
                     type_params: type_
                         .params
                         .iter()
-                        .map(|param| param.as_str().to_owned())
+                        .map(|param| TypeVarName::new(param.as_str()))
                         .collect(),
                     payload: candidate
                         .payload

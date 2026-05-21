@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::ast::{AstPath, AstTypeExpr};
-use crate::signature::{RsigType, TypeName};
+use crate::signature::{RsigType, TypeName, TypeVarName};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct RsigTypeLowerer;
@@ -41,7 +41,7 @@ fn split_signature_type(type_: RsigType) -> (Vec<RsigType>, RsigType) {
 fn lower_type_expr(type_: &AstTypeExpr, variants: &BTreeSet<TypeName>) -> RsigType {
     match type_ {
         AstTypeExpr::Wildcard { .. } => RsigType::Unknown,
-        AstTypeExpr::Var { name, .. } => RsigType::Var(name.clone()),
+        AstTypeExpr::Var { name, .. } => RsigType::Var(TypeVarName::new(name.clone())),
         AstTypeExpr::Path { path, .. } => lower_type_path(&path.segments.join("."), variants),
         AstTypeExpr::Apply {
             constructor, args, ..
