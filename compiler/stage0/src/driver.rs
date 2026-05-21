@@ -13,7 +13,7 @@ use crate::lambda::LambdaSimplifier;
 use crate::linker::Linker;
 use crate::parser::parse_source;
 use crate::runtime::RuntimeBuilder;
-use crate::signature::{ImportedSignatures, ModuleName, resolve_rsig, write_rsig};
+use crate::signature::{ImportedSignatures, ModuleName, RsigStore};
 
 pub(crate) fn run(cli: Cli) -> miette::Result<()> {
     Stage0Driver::new().run(cli)
@@ -25,6 +25,7 @@ pub(crate) struct Stage0Driver {
     llvm_backend: LlvmBackend,
     runtime_builder: RuntimeBuilder,
     linker: Linker,
+    rsig_store: RsigStore,
     output_writer: OutputWriter,
 }
 
@@ -35,6 +36,7 @@ impl Stage0Driver {
             llvm_backend: LlvmBackend::new(),
             runtime_builder: RuntimeBuilder::new(),
             linker: Linker::new(),
+            rsig_store: RsigStore::new(),
             output_writer: OutputWriter::new(),
         }
     }
@@ -87,7 +89,7 @@ impl Stage0Driver {
             compiled.insert(units[index].module_name.clone(), artifact.signature);
         }
 
-        let main_imports = ImportResolver::new(&args.sig_dirs, &compiled)
+        let main_imports = ImportResolver::new(&args.sig_dirs, &compiled, self.rsig_store)
             .resolve_source(&units[main_index].path, &units[main_index].ast)?;
         let checked = Checker::new(
             &units[main_index].path,
@@ -166,7 +168,7 @@ impl Stage0Driver {
         out_dir: &Utf8Path,
         emit_llvm: Option<&Utf8Path>,
     ) -> miette::Result<CompiledModule> {
-        let imports = ImportResolver::new(sig_dirs, available).resolve(unit)?;
+        let imports = ImportResolver::new(sig_dirs, available, self.rsig_store).resolve(unit)?;
         let checked = Checker::new(
             &unit.path,
             &unit.source,
@@ -178,7 +180,7 @@ impl Stage0Driver {
         let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
         let rsig_path = out_dir.join(format!("{}.rsig", unit.module_name));
         let object_path = out_dir.join(format!("{}.o", unit.module_name));
-        write_rsig(&rsig_path, &checked.signature)?;
+        self.rsig_store.write(&rsig_path, &checked.signature)?;
         self.llvm_backend
             .emit_module_object(&rir, &imports, &object_path, emit_llvm)?;
 
@@ -192,7 +194,7 @@ impl Stage0Driver {
         let source = self.source_loader.load(&args.input)?;
         let ast = parse_source(&args.input, &source)?;
         let empty_imports = ImportedSignatures::new();
-        let imports = ImportResolver::new(&args.sig_dirs, &empty_imports)
+        let imports = ImportResolver::new(&args.sig_dirs, &empty_imports, self.rsig_store)
             .resolve_source(&args.input, &ast)?;
         let module_name = self.source_loader.module_name_from_path(&args.input)?;
         let checked = Checker::new(
@@ -216,7 +218,7 @@ impl Stage0Driver {
                 let output = args
                     .output
                     .unwrap_or_else(|| args.input.with_extension("rsig"));
-                write_rsig(&output, &checked.signature)
+                self.rsig_store.write(&output, &checked.signature)
             }
             EmitPass::Ir => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
@@ -533,13 +535,19 @@ impl<'a> SourceGraph<'a> {
 struct ImportResolver<'a> {
     sig_dirs: &'a [Utf8PathBuf],
     available: &'a ImportedSignatures,
+    rsig_store: RsigStore,
 }
 
 impl<'a> ImportResolver<'a> {
-    fn new(sig_dirs: &'a [Utf8PathBuf], available: &'a ImportedSignatures) -> Self {
+    fn new(
+        sig_dirs: &'a [Utf8PathBuf],
+        available: &'a ImportedSignatures,
+        rsig_store: RsigStore,
+    ) -> Self {
         Self {
             sig_dirs,
             available,
+            rsig_store,
         }
     }
 
@@ -559,7 +567,10 @@ impl<'a> ImportResolver<'a> {
                 let rsig = if let Some(rsig) = self.available.get(use_.name.as_str()) {
                     rsig.clone()
                 } else {
-                    match resolve_rsig(&use_.name, source_dir, self.sig_dirs) {
+                    match self
+                        .rsig_store
+                        .resolve(&use_.name, source_dir, self.sig_dirs)
+                    {
                         Ok((_path, rsig)) => rsig,
                         Err(error) => {
                             if let Some(rsig) =
