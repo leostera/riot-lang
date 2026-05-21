@@ -46,15 +46,16 @@ impl Stage0Driver {
         if units.len() > 1 && args.emit_llvm.is_some() {
             bail!("--emit-llvm is only supported with a single compile input for now");
         }
+        let graph = SourceGraph::new(&units);
         let main_index = if units.len() == 1 {
             0
         } else {
-            executable_unit_index(&units)?
+            graph.executable_unit_index()?
         };
         if units.len() > 1 {
-            ensure_no_module_depends_on_entrypoint(&units, main_index)?;
+            graph.ensure_no_module_depends_on_entrypoint(main_index)?;
         }
-        let order = topological_source_order(&units)?;
+        let order = graph.topological_order()?;
 
         let repo = find_repo_root()?;
         let runtime = build_runtime(&repo)?;
@@ -133,7 +134,8 @@ impl Stage0Driver {
         std::fs::create_dir_all(args.out_dir.as_std_path())
             .into_diagnostic()
             .wrap_err_with(|| format!("failed to create {}", args.out_dir))?;
-        let order = topological_source_order(&units)?;
+        let graph = SourceGraph::new(&units);
+        let order = graph.topological_order()?;
         let mut compiled = ImportedSignatures::new();
         for index in order {
             let artifact = self.compile_module_unit(
@@ -269,7 +271,7 @@ impl Stage0Driver {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct SourceUnit {
     path: Utf8PathBuf,
     source: String,
@@ -377,66 +379,6 @@ impl SourceLoader {
     }
 }
 
-fn executable_unit_index(units: &[SourceUnit]) -> miette::Result<usize> {
-    let main_units = units
-        .iter()
-        .enumerate()
-        .filter(|(_, unit)| unit_has_main(unit))
-        .map(|(index, _)| index)
-        .collect::<Vec<_>>();
-    match main_units.as_slice() {
-        [index] => Ok(*index),
-        [] => bail!("stage0 compile with multiple inputs requires one module defining main"),
-        _ => bail!("stage0 compile with multiple inputs found more than one module defining main"),
-    }
-}
-
-fn unit_has_main(unit: &SourceUnit) -> bool {
-    unit.ast
-        .decls
-        .iter()
-        .any(|decl| matches!(decl, AstDecl::Function(function) if function.name == "main"))
-}
-
-fn ensure_no_module_depends_on_entrypoint(
-    units: &[SourceUnit],
-    main_index: usize,
-) -> miette::Result<()> {
-    let main_module = &units[main_index].module_name;
-    for unit in units {
-        if &unit.module_name == main_module {
-            continue;
-        }
-        if module_dependencies(&unit.ast)
-            .iter()
-            .any(|dependency| dependency == main_module)
-        {
-            bail!(
-                "module {} depends on executable module {main_module}; split shared code into a library module",
-                unit.module_name
-            );
-        }
-    }
-    Ok(())
-}
-
-fn topological_source_order(units: &[SourceUnit]) -> miette::Result<Vec<usize>> {
-    let modules = units
-        .iter()
-        .enumerate()
-        .map(|(index, unit)| (unit.module_name.clone(), index))
-        .collect::<BTreeMap<_, _>>();
-    let mut state = vec![VisitState::Unvisited; units.len()];
-    let mut stack = Vec::new();
-    let mut order = Vec::new();
-
-    for index in 0..units.len() {
-        visit_source_unit(index, units, &modules, &mut state, &mut stack, &mut order)?;
-    }
-
-    Ok(order)
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum VisitState {
     Unvisited,
@@ -444,54 +386,127 @@ enum VisitState {
     Visited,
 }
 
-fn visit_source_unit(
-    index: usize,
-    units: &[SourceUnit],
-    modules: &BTreeMap<ModuleName, usize>,
-    state: &mut [VisitState],
-    stack: &mut Vec<usize>,
-    order: &mut Vec<usize>,
-) -> miette::Result<()> {
-    match state[index] {
-        VisitState::Visited => return Ok(()),
-        VisitState::Visiting => {
-            let cycle_start = stack
-                .iter()
-                .position(|candidate| *candidate == index)
-                .unwrap_or(0);
-            let mut cycle = stack[cycle_start..]
-                .iter()
-                .map(|candidate| units[*candidate].module_name.to_string())
-                .collect::<Vec<_>>();
-            cycle.push(units[index].module_name.to_string());
-            bail!("module graph contains a cycle: {}", cycle.join(" -> "));
-        }
-        VisitState::Unvisited => {}
-    }
-
-    state[index] = VisitState::Visiting;
-    stack.push(index);
-    for dependency in module_dependencies(&units[index].ast) {
-        if let Some(dependency_index) = modules.get(&dependency) {
-            visit_source_unit(*dependency_index, units, modules, state, stack, order)?;
-        }
-    }
-    stack.pop();
-    state[index] = VisitState::Visited;
-    order.push(index);
-    Ok(())
+#[derive(Debug)]
+struct SourceGraph<'a> {
+    units: &'a [SourceUnit],
+    modules: BTreeMap<ModuleName, usize>,
 }
 
-fn module_dependencies(ast: &AstProgram) -> Vec<ModuleName> {
-    ast.decls
-        .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::Use(use_) => Some(ModuleName::new(use_.name.clone())),
-            AstDecl::Module(module) => Some(ModuleName::new(module.name.clone())),
-            AstDecl::Include(include) => Some(ModuleName::new(include.name.clone())),
-            AstDecl::External(_) | AstDecl::Type(_) | AstDecl::Function(_) => None,
-        })
-        .collect()
+impl<'a> SourceGraph<'a> {
+    fn new(units: &'a [SourceUnit]) -> Self {
+        let modules = units
+            .iter()
+            .enumerate()
+            .map(|(index, unit)| (unit.module_name.clone(), index))
+            .collect();
+        Self { units, modules }
+    }
+
+    fn executable_unit_index(&self) -> miette::Result<usize> {
+        let main_units = self
+            .units
+            .iter()
+            .enumerate()
+            .filter(|(_, unit)| Self::unit_has_main(unit))
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+        match main_units.as_slice() {
+            [index] => Ok(*index),
+            [] => bail!("stage0 compile with multiple inputs requires one module defining main"),
+            _ => {
+                bail!(
+                    "stage0 compile with multiple inputs found more than one module defining main"
+                )
+            }
+        }
+    }
+
+    fn ensure_no_module_depends_on_entrypoint(&self, main_index: usize) -> miette::Result<()> {
+        let main_module = &self.units[main_index].module_name;
+        for unit in self.units {
+            if &unit.module_name == main_module {
+                continue;
+            }
+            if Self::dependencies(&unit.ast)
+                .iter()
+                .any(|dependency| dependency == main_module)
+            {
+                bail!(
+                    "module {} depends on executable module {main_module}; split shared code into a library module",
+                    unit.module_name
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn topological_order(&self) -> miette::Result<Vec<usize>> {
+        let mut state = vec![VisitState::Unvisited; self.units.len()];
+        let mut stack = Vec::new();
+        let mut order = Vec::new();
+
+        for index in 0..self.units.len() {
+            self.visit_source_unit(index, &mut state, &mut stack, &mut order)?;
+        }
+
+        Ok(order)
+    }
+
+    fn visit_source_unit(
+        &self,
+        index: usize,
+        state: &mut [VisitState],
+        stack: &mut Vec<usize>,
+        order: &mut Vec<usize>,
+    ) -> miette::Result<()> {
+        match state[index] {
+            VisitState::Visited => return Ok(()),
+            VisitState::Visiting => {
+                let cycle_start = stack
+                    .iter()
+                    .position(|candidate| *candidate == index)
+                    .unwrap_or(0);
+                let mut cycle = stack[cycle_start..]
+                    .iter()
+                    .map(|candidate| self.units[*candidate].module_name.to_string())
+                    .collect::<Vec<_>>();
+                cycle.push(self.units[index].module_name.to_string());
+                bail!("module graph contains a cycle: {}", cycle.join(" -> "));
+            }
+            VisitState::Unvisited => {}
+        }
+
+        state[index] = VisitState::Visiting;
+        stack.push(index);
+        for dependency in Self::dependencies(&self.units[index].ast) {
+            if let Some(dependency_index) = self.modules.get(&dependency) {
+                self.visit_source_unit(*dependency_index, state, stack, order)?;
+            }
+        }
+        stack.pop();
+        state[index] = VisitState::Visited;
+        order.push(index);
+        Ok(())
+    }
+
+    fn dependencies(ast: &AstProgram) -> Vec<ModuleName> {
+        ast.decls
+            .iter()
+            .filter_map(|decl| match decl {
+                AstDecl::Use(use_) => Some(ModuleName::new(use_.name.clone())),
+                AstDecl::Module(module) => Some(ModuleName::new(module.name.clone())),
+                AstDecl::Include(include) => Some(ModuleName::new(include.name.clone())),
+                AstDecl::External(_) | AstDecl::Type(_) | AstDecl::Function(_) => None,
+            })
+            .collect()
+    }
+
+    fn unit_has_main(unit: &SourceUnit) -> bool {
+        unit.ast
+            .decls
+            .iter()
+            .any(|decl| matches!(decl, AstDecl::Function(function) if function.name == "main"))
+    }
 }
 
 fn resolve_imports(
@@ -584,7 +599,7 @@ fn write_text(path: Option<&Utf8Path>, text: &str) -> miette::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{SourceLoader, SourceUnit, topological_source_order};
+    use super::{SourceGraph, SourceLoader, SourceUnit};
     use crate::parser::parse_source;
     use camino::Utf8PathBuf;
 
@@ -600,7 +615,7 @@ mod tests {
             source_unit("child.ml", "fn child() { 3 }\n"),
         ];
 
-        let order = topological_source_order(&units).unwrap();
+        let order = SourceGraph::new(&units).topological_order().unwrap();
         let ordered_modules = order
             .iter()
             .map(|index| units[*index].module_name.as_str())
@@ -619,7 +634,10 @@ mod tests {
             source_unit("b.ml", "use A\nfn b() { 0 }\n"),
         ];
 
-        let error = topological_source_order(&units).unwrap_err().to_string();
+        let error = SourceGraph::new(&units)
+            .topological_order()
+            .unwrap_err()
+            .to_string();
 
         assert!(error.contains("module graph contains a cycle"));
         assert!(error.contains("A -> B -> A"));
