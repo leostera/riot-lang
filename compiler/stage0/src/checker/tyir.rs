@@ -29,7 +29,7 @@ impl<'a> TyIrBuilder<'a> {
     }
 
     pub(crate) fn build(self, ast: AstProgram) -> TypedProgram {
-        crate::ir::typed_program_from_ast(
+        super::lower::typed_program_from_ast(
             self.module_name,
             ast,
             self.imports,

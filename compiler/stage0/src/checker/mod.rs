@@ -6,6 +6,7 @@ mod blocks;
 mod const_eval;
 mod entrypoint;
 mod imports;
+mod lower;
 mod patterns;
 mod shapes;
 mod signature;

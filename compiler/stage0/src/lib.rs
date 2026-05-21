@@ -8,7 +8,6 @@ mod diagnostic;
 mod driver;
 mod fingerprint;
 mod infer;
-mod ir;
 mod lambda;
 mod lexer;
 mod linker;
