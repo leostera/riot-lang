@@ -577,7 +577,8 @@ impl<'ctx> Codegen<'ctx, '_> {
         payload: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+        let runtime_type_name = runtime_variant_type_name(type_name);
+        let (type_ptr, type_len) = self.string_literal(&runtime_type_name)?;
         let (constructor_ptr, constructor_len) = self.string_literal(constructor.as_str())?;
         if payload.is_empty() {
             return Ok(CgValue::Value(self.call_runtime_value(
@@ -875,7 +876,8 @@ impl<'ctx> Codegen<'ctx, '_> {
                 payload,
             } => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
-                let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+                let runtime_type_name = runtime_variant_type_name(type_name);
+                let (type_ptr, type_len) = self.string_literal(&runtime_type_name)?;
                 let (constructor_ptr, constructor_len) =
                     self.string_literal(constructor.as_str())?;
                 let tag_matches = self.call_runtime_value(
@@ -1288,7 +1290,8 @@ impl<'ctx> Codegen<'ctx, '_> {
         constructor: &ConstructorName,
         payload: StaticValue,
     ) -> miette::Result<CgValue<'ctx>> {
-        let (type_ptr, type_len) = self.string_literal(type_name.as_str())?;
+        let runtime_type_name = runtime_variant_type_name(type_name);
+        let (type_ptr, type_len) = self.string_literal(&runtime_type_name)?;
         let (constructor_ptr, constructor_len) = self.string_literal(constructor.as_str())?;
         if matches!(payload, StaticValue::Unit) {
             return Ok(CgValue::Value(self.call_runtime_value(
@@ -3172,6 +3175,15 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
         }
         _ => AbiType::Unknown,
     }
+}
+
+fn runtime_variant_type_name(type_name: &TypeName) -> String {
+    type_name
+        .as_str()
+        .rsplit('.')
+        .next()
+        .unwrap_or_else(|| type_name.as_str())
+        .to_owned()
 }
 
 fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTable> {

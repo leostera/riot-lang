@@ -924,7 +924,7 @@ fn imported_compiler_data_model_flows_through_rsig() -> FixtureResult {
     )?;
     std::fs::write(
         &main,
-        "use Syntax\nfn main() { let tok = Syntax.IntLit(42); let span = Syntax.zero_span(); println(Syntax.name(tok)); dbg(span.start); dbg(span.end) }\n",
+        "use Syntax\nfn main() { let tok = Syntax.Ident(\"answer\"); let span = Syntax.zero_span(); println(Syntax.name(tok)); dbg(span.start); dbg(span.end) }\n",
     )?;
 
     let compile_lib = Command::new(cargo_bin("stage0"))
@@ -960,7 +960,7 @@ fn imported_compiler_data_model_flows_through_rsig() -> FixtureResult {
     }
 
     let run = Command::new(&output).output()?;
-    if run.stdout != b"int\n0\n0\n" {
+    if run.stdout != b"answer\n0\n0\n" {
         return fail(format!(
             "unexpected imported compiler-data stdout:\n{}",
             String::from_utf8_lossy(&run.stdout)
