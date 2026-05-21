@@ -10,12 +10,14 @@ mod error;
 mod literal;
 mod source;
 mod span;
+mod type_syntax;
 
 use error::ParseError;
 use literal::{parse_char_literal, parse_int_literal};
 use span::expr_span;
 
 pub(crate) use source::SourceParser;
+pub(crate) use type_syntax::{AstTypeExpr, TypeSyntaxParser};
 
 struct Parser<'src> {
     source: &'src str,
