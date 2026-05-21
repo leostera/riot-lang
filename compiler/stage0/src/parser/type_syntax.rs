@@ -219,7 +219,7 @@ impl<'src> TypeParser<'src> {
 #[cfg(test)]
 mod tests {
     use super::TypeSyntaxParser;
-    use crate::ast::AstTypeExpr;
+    use crate::ast::{AstPath, AstTypeExpr};
 
     #[test]
     fn parses_curried_function_types() {
@@ -235,6 +235,79 @@ mod tests {
         };
         assert!(matches!(*parameter, AstTypeExpr::Arrow { .. }));
         assert!(matches!(*result, AstTypeExpr::Arrow { .. }));
+    }
+
+    #[test]
+    fn parses_type_applications() {
+        let type_ = TypeSyntaxParser::new()
+            .parse("List<String>")
+            .expect("type parses");
+
+        let AstTypeExpr::Apply {
+            constructor, args, ..
+        } = type_
+        else {
+            panic!("expected type application");
+        };
+        assert_eq!(constructor.segments, ["List"]);
+        assert_eq!(args.len(), 1);
+        assert!(matches!(
+            &args[0],
+            AstTypeExpr::Path {
+                path: AstPath { segments },
+                ..
+            } if segments == &["String"]
+        ));
+    }
+
+    #[test]
+    fn parses_actor_id_type_applications() {
+        let type_ = TypeSyntaxParser::new()
+            .parse("actor_id<'msg>")
+            .expect("type parses");
+
+        let AstTypeExpr::Apply {
+            constructor, args, ..
+        } = type_
+        else {
+            panic!("expected type application");
+        };
+        assert_eq!(constructor.segments, ["actor_id"]);
+        assert!(matches!(&args[0], AstTypeExpr::Var { name, .. } if name == "'msg"));
+    }
+
+    #[test]
+    fn parses_qualified_type_names() {
+        let type_ = TypeSyntaxParser::new()
+            .parse("Palette.color")
+            .expect("type parses");
+
+        let AstTypeExpr::Path { path, .. } = type_ else {
+            panic!("expected type path");
+        };
+        assert_eq!(path.segments, ["Palette", "color"]);
+    }
+
+    #[test]
+    fn parses_tuple_types() {
+        let type_ = TypeSyntaxParser::new()
+            .parse("(String, i64)")
+            .expect("type parses");
+
+        let AstTypeExpr::Tuple { items, .. } = type_ else {
+            panic!("expected tuple type");
+        };
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn parses_unit_syntax_as_type_constructor() {
+        let type_ = TypeSyntaxParser::new().parse("()").expect("type parses");
+
+        let AstTypeExpr::Path { path, .. } = type_ else {
+            panic!("expected unit type constructor path");
+        };
+        assert_eq!(path.segments, ["unit"]);
     }
 
     #[test]
