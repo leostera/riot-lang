@@ -1531,8 +1531,8 @@ impl<'ctx> Codegen<'ctx, '_> {
         {
             return Ok(value.clone());
         }
-        if let Some(value) =
-            StaticEvaluator::new(&self.function_map).resolve_path(path, &env.statics)
+        if let Some(value) = StaticEvaluator::new(&self.function_map, &self.externals)
+            .resolve_path(path, &env.statics)
         {
             return Ok(CgValue::Static(value));
         }
@@ -2676,7 +2676,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         expr: &LambdaExpr,
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
-        StaticEvaluator::new(&self.function_map).eval_expr(expr, bindings)
+        StaticEvaluator::new(&self.function_map, &self.externals).eval_expr(expr, bindings)
     }
 
     fn static_eval_call(
@@ -2685,7 +2685,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         args: &[LambdaExpr],
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
-        StaticEvaluator::new(&self.function_map).eval_call(name, args, bindings)
+        StaticEvaluator::new(&self.function_map, &self.externals).eval_call(name, args, bindings)
     }
 }
 

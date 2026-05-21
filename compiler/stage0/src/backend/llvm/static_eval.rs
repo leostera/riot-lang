@@ -1,6 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
-use crate::lambda::ir::{LambdaBlock, LambdaExpr, LambdaFunction, LambdaPattern, LambdaStmt};
+use crate::lambda::ir::{
+    LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaPattern, LambdaStmt,
+};
 use crate::signature::{ConstructorName, TypeName};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,11 +98,18 @@ impl StaticValue {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StaticEvaluator<'a> {
     functions: &'a HashMap<&'a str, &'a LambdaFunction>,
+    externals: &'a BTreeMap<String, LambdaExternal>,
 }
 
 impl<'a> StaticEvaluator<'a> {
-    pub(crate) fn new(functions: &'a HashMap<&'a str, &'a LambdaFunction>) -> Self {
-        Self { functions }
+    pub(crate) fn new(
+        functions: &'a HashMap<&'a str, &'a LambdaFunction>,
+        externals: &'a BTreeMap<String, LambdaExternal>,
+    ) -> Self {
+        Self {
+            functions,
+            externals,
+        }
     }
 
     pub(crate) fn eval_expr(
@@ -108,7 +117,7 @@ impl<'a> StaticEvaluator<'a> {
         expr: &LambdaExpr,
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
-        eval_expr(expr, bindings, self.functions, 0)
+        eval_expr(expr, bindings, self.functions, self.externals, 0)
     }
 
     pub(crate) fn eval_call(
@@ -117,7 +126,7 @@ impl<'a> StaticEvaluator<'a> {
         args: &[LambdaExpr],
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
-        eval_call(name, args, bindings, self.functions, 0)
+        eval_call(name, args, bindings, self.functions, self.externals, 0)
     }
 
     pub(crate) fn resolve_path(
@@ -141,6 +150,7 @@ fn eval_expr(
     expr: &LambdaExpr,
     bindings: &HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
+    externals: &BTreeMap<String, LambdaExternal>,
     depth: usize,
 ) -> Option<StaticValue> {
     if depth > 64 {
@@ -152,47 +162,50 @@ fn eval_expr(
             then_branch,
             else_branch,
         } => {
-            if eval_expr(condition, bindings, functions, depth)?.as_bool()? {
-                eval_expr(then_branch, bindings, functions, depth)
+            if eval_expr(condition, bindings, functions, externals, depth)?.as_bool()? {
+                eval_expr(then_branch, bindings, functions, externals, depth)
             } else {
-                eval_expr(else_branch, bindings, functions, depth)
+                eval_expr(else_branch, bindings, functions, externals, depth)
             }
         }
         LambdaExpr::Match { scrutinee, arms } => {
-            let scrutinee = eval_expr(scrutinee, bindings, functions, depth)?;
+            let scrutinee = eval_expr(scrutinee, bindings, functions, externals, depth)?;
             for arm in arms {
                 if static_pattern_matches(&arm.pattern, &scrutinee) {
                     let mut arm_bindings = bindings.clone();
                     bind_static_pattern(&arm.pattern, scrutinee.clone(), &mut arm_bindings);
-                    return eval_expr(&arm.body, &arm_bindings, functions, depth);
+                    return eval_expr(&arm.body, &arm_bindings, functions, externals, depth);
                 }
             }
             None
         }
         LambdaExpr::Block(block) => {
             let mut block_bindings = bindings.clone();
-            eval_block(block, &mut block_bindings, functions, depth)
+            eval_block(block, &mut block_bindings, functions, externals, depth)
         }
         LambdaExpr::Bool(value) => Some(StaticValue::Bool(*value)),
         LambdaExpr::Call { callee, args, .. } => {
             let name = prelude_call_name(callee)?;
-            eval_call(name, args, bindings, functions, depth)
+            eval_call(name, args, bindings, functions, externals, depth)
         }
         LambdaExpr::Unit => Some(StaticValue::Unit),
         LambdaExpr::Tuple(items) => items
             .iter()
-            .map(|item| eval_expr(item, bindings, functions, depth))
+            .map(|item| eval_expr(item, bindings, functions, externals, depth))
             .collect::<Option<Vec<_>>>()
             .map(StaticValue::Tuple),
         LambdaExpr::List(items) => items
             .iter()
-            .map(|item| eval_expr(item, bindings, functions, depth))
+            .map(|item| eval_expr(item, bindings, functions, externals, depth))
             .collect::<Option<Vec<_>>>()
             .map(StaticValue::List),
         LambdaExpr::Record { path, fields } => fields
             .iter()
             .map(|(name, value)| {
-                Some((name.clone(), eval_expr(value, bindings, functions, depth)?))
+                Some((
+                    name.clone(),
+                    eval_expr(value, bindings, functions, externals, depth)?,
+                ))
             })
             .collect::<Option<Vec<_>>>()
             .map(|fields| StaticValue::Record {
@@ -208,11 +221,11 @@ fn eval_expr(
             constructor: constructor.clone(),
             payload: Box::new(match payload.as_slice() {
                 [] => StaticValue::Unit,
-                [value] => eval_expr(value, bindings, functions, depth)?,
+                [value] => eval_expr(value, bindings, functions, externals, depth)?,
                 values => StaticValue::Tuple(
                     values
                         .iter()
-                        .map(|value| eval_expr(value, bindings, functions, depth))
+                        .map(|value| eval_expr(value, bindings, functions, externals, depth))
                         .collect::<Option<Vec<_>>>()?,
                 ),
             }),
@@ -415,66 +428,11 @@ fn eval_call(
     args: &[LambdaExpr],
     bindings: &HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
+    externals: &BTreeMap<String, LambdaExternal>,
     depth: usize,
 ) -> Option<StaticValue> {
-    let eval_arg = |index: usize| eval_expr(args.get(index)?, bindings, functions, depth + 1);
-    match (name, args.len()) {
-        ("(+)", 2) => {
-            return Some(StaticValue::Int(
-                eval_arg(0)?.as_int()? + eval_arg(1)?.as_int()?,
-            ));
-        }
-        ("(-)", 2) => {
-            return Some(StaticValue::Int(
-                eval_arg(0)?.as_int()? - eval_arg(1)?.as_int()?,
-            ));
-        }
-        ("neg", 1) => {
-            return match eval_arg(0)? {
-                StaticValue::Float(value) => Some(StaticValue::Float(format!("-{value}"))),
-                StaticValue::Int(value) => Some(StaticValue::Int(-value)),
-                _ => None,
-            };
-        }
-        ("(*)", 2) => {
-            return Some(StaticValue::Int(
-                eval_arg(0)?.as_int()? * eval_arg(1)?.as_int()?,
-            ));
-        }
-        ("(/)", 2) => {
-            let rhs = eval_arg(1)?.as_int()?;
-            if rhs == 0 {
-                return None;
-            }
-            return Some(StaticValue::Int(eval_arg(0)?.as_int()? / rhs));
-        }
-        ("(%)", 2) => {
-            let rhs = eval_arg(1)?.as_int()?;
-            if rhs == 0 {
-                return None;
-            }
-            return Some(StaticValue::Int(eval_arg(0)?.as_int()? % rhs));
-        }
-        ("(==)", 2) => {
-            return Some(StaticValue::Bool(eval_arg(0)? == eval_arg(1)?));
-        }
-        ("(<)", 2) => {
-            return Some(StaticValue::Bool(
-                eval_arg(0)?.as_int()? < eval_arg(1)?.as_int()?,
-            ));
-        }
-        ("(&&)", 2) => {
-            return Some(StaticValue::Bool(
-                eval_arg(0)?.as_bool()? && eval_arg(1)?.as_bool()?,
-            ));
-        }
-        ("(||)", 2) => {
-            return Some(StaticValue::Bool(
-                eval_arg(0)?.as_bool()? || eval_arg(1)?.as_bool()?,
-            ));
-        }
-        ("(!)", 1) => return Some(StaticValue::Bool(!eval_arg(0)?.as_bool()?)),
-        _ => {}
+    if let Some(external) = externals.get(name) {
+        return eval_external_call(&external.abi, args, bindings, functions, externals, depth);
     }
 
     let function = functions.get(name)?;
@@ -485,33 +443,111 @@ fn eval_call(
     for (param, arg) in function.params.iter().zip(args) {
         call_bindings.insert(
             param.as_str().to_owned(),
-            eval_expr(arg, bindings, functions, depth + 1)?,
+            eval_expr(arg, bindings, functions, externals, depth + 1)?,
         );
     }
-    eval_block(&function.body, &mut call_bindings, functions, depth + 1)
+    eval_block(
+        &function.body,
+        &mut call_bindings,
+        functions,
+        externals,
+        depth + 1,
+    )
+}
+
+fn eval_external_call(
+    abi: &str,
+    args: &[LambdaExpr],
+    bindings: &HashMap<String, StaticValue>,
+    functions: &HashMap<&str, &LambdaFunction>,
+    externals: &BTreeMap<String, LambdaExternal>,
+    depth: usize,
+) -> Option<StaticValue> {
+    let eval_arg =
+        |index: usize| eval_expr(args.get(index)?, bindings, functions, externals, depth + 1);
+    match (abi, args.len()) {
+        ("riot_rt_prim_add", 2) => {
+            return Some(StaticValue::Int(
+                eval_arg(0)?.as_int()? + eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("riot_rt_prim_sub", 2) => {
+            return Some(StaticValue::Int(
+                eval_arg(0)?.as_int()? - eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("riot_rt_prim_neg", 1) => {
+            return match eval_arg(0)? {
+                StaticValue::Float(value) => Some(StaticValue::Float(format!("-{value}"))),
+                StaticValue::Int(value) => Some(StaticValue::Int(-value)),
+                _ => None,
+            };
+        }
+        ("riot_rt_prim_mul", 2) => {
+            return Some(StaticValue::Int(
+                eval_arg(0)?.as_int()? * eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("riot_rt_prim_div", 2) => {
+            let rhs = eval_arg(1)?.as_int()?;
+            if rhs == 0 {
+                return None;
+            }
+            return Some(StaticValue::Int(eval_arg(0)?.as_int()? / rhs));
+        }
+        ("riot_rt_prim_mod", 2) => {
+            let rhs = eval_arg(1)?.as_int()?;
+            if rhs == 0 {
+                return None;
+            }
+            return Some(StaticValue::Int(eval_arg(0)?.as_int()? % rhs));
+        }
+        ("riot_rt_prim_eq", 2) => {
+            return Some(StaticValue::Bool(eval_arg(0)? == eval_arg(1)?));
+        }
+        ("riot_rt_prim_lt", 2) => {
+            return Some(StaticValue::Bool(
+                eval_arg(0)?.as_int()? < eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("riot_rt_prim_and", 2) => {
+            return Some(StaticValue::Bool(
+                eval_arg(0)?.as_bool()? && eval_arg(1)?.as_bool()?,
+            ));
+        }
+        ("riot_rt_prim_or", 2) => {
+            return Some(StaticValue::Bool(
+                eval_arg(0)?.as_bool()? || eval_arg(1)?.as_bool()?,
+            ));
+        }
+        ("riot_rt_prim_not", 1) => return Some(StaticValue::Bool(!eval_arg(0)?.as_bool()?)),
+        _ => {}
+    }
+    None
 }
 
 fn eval_block(
     block: &LambdaBlock,
     bindings: &mut HashMap<String, StaticValue>,
     functions: &HashMap<&str, &LambdaFunction>,
+    externals: &BTreeMap<String, LambdaExternal>,
     depth: usize,
 ) -> Option<StaticValue> {
     for stmt in &block.statements {
         match stmt {
             LambdaStmt::Let { name, value } => {
-                let value = eval_expr(value, bindings, functions, depth)?;
+                let value = eval_expr(value, bindings, functions, externals, depth)?;
                 bindings.insert(name.as_str().to_owned(), value);
             }
             LambdaStmt::Expr(expr) => {
-                eval_expr(expr, bindings, functions, depth)?;
+                eval_expr(expr, bindings, functions, externals, depth)?;
             }
         }
     }
     block
         .tail
         .as_ref()
-        .map(|tail| eval_expr(tail, bindings, functions, depth))
+        .map(|tail| eval_expr(tail, bindings, functions, externals, depth))
         .unwrap_or(Some(StaticValue::Unit))
 }
 
@@ -531,16 +567,26 @@ fn resolve_path(path: &[String], bindings: &HashMap<String, StaticValue>) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap};
 
-    use crate::lambda::ir::LambdaExpr;
+    use crate::lambda::ir::{LambdaExpr, LambdaExternal};
+    use crate::signature::RsigType;
 
     use super::{StaticEvaluator, StaticValue};
 
     #[test]
     fn static_equality_is_structural_not_rendered_text() {
         let functions = HashMap::new();
-        let evaluator = StaticEvaluator::new(&functions);
+        let externals = BTreeMap::from([(
+            "(==)".to_owned(),
+            LambdaExternal {
+                name: "(==)".to_owned(),
+                params: vec![RsigType::Var("'a".into()), RsigType::Var("'a".into())],
+                result: RsigType::Bool,
+                abi: "riot_rt_prim_eq".to_owned(),
+            },
+        )]);
+        let evaluator = StaticEvaluator::new(&functions, &externals);
 
         let result = evaluator.eval_call(
             "(==)",
