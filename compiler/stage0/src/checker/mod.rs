@@ -3,12 +3,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use camino::Utf8Path;
 
 mod const_eval;
+mod patterns;
 mod span;
 pub(crate) mod tyir;
 mod type_annotation;
 mod types;
 
 use const_eval::{ConstFunction, ConstValue};
+use patterns::PatternValidator;
 use span::expr_span;
 use type_annotation::TypeAnnotationChecker;
 
@@ -1185,7 +1187,8 @@ fn validate_expr(
                     .into());
             };
             let scrutinee_type = simple_expr_type(ctx, scrutinee, bindings);
-            if !match_is_exhaustive(ctx, arms, scrutinee_type.as_ref()) {
+            let pattern_validator = PatternValidator::new(ctx);
+            if !pattern_validator.is_match_exhaustive(arms, scrutinee_type.as_ref()) {
                 return Err(ctx
                     .diagnostic(
                         *span,
@@ -1196,9 +1199,9 @@ fn validate_expr(
                     .into());
             }
             for arm in arms {
-                validate_pattern(ctx, &arm.pattern, scrutinee_type.as_ref())?;
+                pattern_validator.validate(&arm.pattern, scrutinee_type.as_ref())?;
                 let mut arm_bindings = bindings.clone();
-                bind_pattern(ctx, &arm.pattern, scrutinee_type.clone(), &mut arm_bindings);
+                pattern_validator.bind(&arm.pattern, scrutinee_type.clone(), &mut arm_bindings);
                 validate_expr(ctx, &arm.body, &arm_bindings, in_actor)?;
             }
             Ok(ExprCategory::Other)
@@ -2302,11 +2305,14 @@ fn validate_receive_arms(
     arms: &[crate::ast::AstReceiveArm],
     bindings: &HashMap<String, BindingKind>,
 ) -> miette::Result<()> {
+    let pattern_validator = PatternValidator::new(ctx);
     for arm in arms {
-        validate_pattern(ctx, &arm.pattern, None)?;
+        pattern_validator.validate(&arm.pattern, None)?;
         let mut receive_bindings = bindings.clone();
-        let pattern_type = pattern_type(ctx, &arm.pattern).unwrap_or(RsigType::Unknown);
-        bind_pattern(ctx, &arm.pattern, Some(pattern_type), &mut receive_bindings);
+        let pattern_type = pattern_validator
+            .pattern_type(&arm.pattern)
+            .unwrap_or(RsigType::Unknown);
+        pattern_validator.bind(&arm.pattern, Some(pattern_type), &mut receive_bindings);
         validate_expr(ctx, &arm.body, &receive_bindings, true)?;
     }
     Ok(())
