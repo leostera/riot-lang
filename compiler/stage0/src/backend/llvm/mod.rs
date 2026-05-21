@@ -173,7 +173,7 @@ impl LlvmBackend {
             builder: context.create_builder(),
             program,
             imports,
-            functions: HashMap::new(),
+            functions: FunctionValueTable::new(),
             function_abis: infer_function_abis(program, &externals),
             function_map: StaticFunctionTable::from_functions(&program.functions),
             externals,
@@ -250,7 +250,7 @@ struct Codegen<'ctx, 'a> {
     builder: Builder<'ctx>,
     program: &'a LambdaProgram,
     imports: &'a ImportedSignatures,
-    functions: HashMap<String, FunctionValue<'ctx>>,
+    functions: FunctionValueTable<'ctx>,
     function_abis: FunctionAbiTable,
     function_map: StaticFunctionTable<'a>,
     externals: LambdaExternalTable,
@@ -274,6 +274,29 @@ impl FunctionAbiTable {
 
     fn get(&self, name: impl AsRef<str>) -> Option<&FunctionAbi> {
         self.abis.get(name.as_ref())
+    }
+}
+
+#[derive(Debug, Default)]
+struct FunctionValueTable<'ctx> {
+    values: HashMap<String, FunctionValue<'ctx>>,
+}
+
+impl<'ctx> FunctionValueTable<'ctx> {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn insert(&mut self, name: impl Into<String>, value: FunctionValue<'ctx>) {
+        self.values.insert(name.into(), value);
+    }
+
+    fn get(&self, name: impl AsRef<str>) -> Option<FunctionValue<'ctx>> {
+        self.values.get(name.as_ref()).copied()
+    }
+
+    fn contains_key(&self, name: impl AsRef<str>) -> bool {
+        self.values.contains_key(name.as_ref())
     }
 }
 
@@ -317,7 +340,7 @@ impl<'ctx> Codegen<'ctx, '_> {
             .cloned()
             .collect::<Vec<_>>();
         for function in functions {
-            let Some(function_value) = self.functions.get(&function.name).copied() else {
+            let Some(function_value) = self.functions.get(&function.name) else {
                 continue;
             };
             let Some(abi) = self.function_abis.get(&function.name).cloned() else {
@@ -1614,7 +1637,10 @@ impl<'ctx> Codegen<'ctx, '_> {
         args: &[LambdaExpr],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        let function = self.functions[name];
+        let function = self
+            .functions
+            .get(name)
+            .ok_or_else(|| miette::miette!("missing LLVM function for `{name}`"))?;
         let abi = self
             .function_abis
             .get(name)
