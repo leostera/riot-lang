@@ -29,10 +29,7 @@ mod abi;
 mod static_eval;
 
 use abi::{AbiType, FunctionAbi};
-use static_eval::{
-    StaticValue, eval_call as static_eval_call, eval_expr as static_eval_expr,
-    resolve_path as resolve_static_path,
-};
+use static_eval::{StaticEvaluator, StaticValue};
 
 const POLL_CONSUMED: u32 = 1;
 const POLL_DONE: u32 = 2;
@@ -1663,7 +1660,9 @@ impl<'ctx> Codegen<'ctx, '_> {
         {
             return Ok(value.clone());
         }
-        if let Some(value) = resolve_static_path(path, &env.statics) {
+        if let Some(value) =
+            StaticEvaluator::new(&self.function_map).resolve_path(path, &env.statics)
+        {
             return Ok(CgValue::Static(value));
         }
         bail!("unknown value `{}`", path.join("."))
@@ -2890,7 +2889,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         expr: &RirExpr,
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
-        static_eval_expr(expr, bindings, &self.function_map, 0)
+        StaticEvaluator::new(&self.function_map).eval_expr(expr, bindings)
     }
 
     fn static_eval_call(
@@ -2899,7 +2898,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         args: &[RirExpr],
         bindings: &HashMap<String, StaticValue>,
     ) -> Option<StaticValue> {
-        static_eval_call(name, args, bindings, &self.function_map, 0)
+        StaticEvaluator::new(&self.function_map).eval_call(name, args, bindings)
     }
 }
 

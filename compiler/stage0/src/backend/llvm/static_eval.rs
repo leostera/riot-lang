@@ -93,7 +93,43 @@ impl StaticValue {
     }
 }
 
-pub(crate) fn eval_expr(
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct StaticEvaluator<'a> {
+    functions: &'a HashMap<&'a str, &'a RirFunction>,
+}
+
+impl<'a> StaticEvaluator<'a> {
+    pub(crate) fn new(functions: &'a HashMap<&'a str, &'a RirFunction>) -> Self {
+        Self { functions }
+    }
+
+    pub(crate) fn eval_expr(
+        &self,
+        expr: &RirExpr,
+        bindings: &HashMap<String, StaticValue>,
+    ) -> Option<StaticValue> {
+        eval_expr(expr, bindings, self.functions, 0)
+    }
+
+    pub(crate) fn eval_call(
+        &self,
+        name: &str,
+        args: &[RirExpr],
+        bindings: &HashMap<String, StaticValue>,
+    ) -> Option<StaticValue> {
+        eval_call(name, args, bindings, self.functions, 0)
+    }
+
+    pub(crate) fn resolve_path(
+        &self,
+        path: &[String],
+        bindings: &HashMap<String, StaticValue>,
+    ) -> Option<StaticValue> {
+        resolve_path(path, bindings)
+    }
+}
+
+fn eval_expr(
     expr: &RirExpr,
     bindings: &HashMap<String, StaticValue>,
     functions: &HashMap<&str, &RirFunction>,
@@ -422,7 +458,7 @@ fn bind_static_pattern(
     }
 }
 
-pub(crate) fn eval_call(
+fn eval_call(
     name: &str,
     args: &[RirExpr],
     bindings: &HashMap<String, StaticValue>,
@@ -467,10 +503,7 @@ fn eval_block(
         .unwrap_or(Some(StaticValue::Unit))
 }
 
-pub(crate) fn resolve_path(
-    path: &[String],
-    bindings: &HashMap<String, StaticValue>,
-) -> Option<StaticValue> {
+fn resolve_path(path: &[String], bindings: &HashMap<String, StaticValue>) -> Option<StaticValue> {
     let (head, tail) = path.split_first()?;
     let mut value = bindings.get(head)?.clone();
     for segment in tail {
