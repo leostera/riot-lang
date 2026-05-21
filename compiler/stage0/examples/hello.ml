@@ -1,1 +1,3 @@
-let main () = println "hello world"
+fn main() {
+  println("hello world")
+}
