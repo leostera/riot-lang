@@ -11,11 +11,11 @@ use crate::abi::{
     riot_rt_result_is_ok, riot_rt_result_unwrap_or, riot_rt_root_pop, riot_rt_root_push,
     riot_rt_send, riot_rt_send_i64, riot_rt_shutdown, riot_rt_spawn_actor_v2, riot_rt_value_apply,
     riot_rt_value_as_bool, riot_rt_value_as_i64, riot_rt_value_bool, riot_rt_value_closure,
-    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_get,
-    riot_rt_value_list_len, riot_rt_value_record_begin, riot_rt_value_record_get,
-    riot_rt_value_record_is, riot_rt_value_record_set, riot_rt_value_string,
-    riot_rt_value_string_concat, riot_rt_value_string_len, riot_rt_value_tuple,
-    riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
+    riot_rt_value_eq, riot_rt_value_i64, riot_rt_value_list, riot_rt_value_list_drop,
+    riot_rt_value_list_get, riot_rt_value_list_len, riot_rt_value_record_begin,
+    riot_rt_value_record_get, riot_rt_value_record_is, riot_rt_value_record_set,
+    riot_rt_value_string, riot_rt_value_string_concat, riot_rt_value_string_len,
+    riot_rt_value_tuple, riot_rt_value_tuple_arity_is, riot_rt_value_tuple_get, riot_rt_value_unit,
     riot_rt_value_variant, riot_rt_value_variant_get_payload, riot_rt_value_variant_is,
     riot_rt_value_variant_payload,
 };
@@ -469,6 +469,12 @@ fn value_rendering_handles_compound_values() {
     assert!(riot_rt_value_eq(riot_rt_value_list_get(list, 0), label));
     assert!(riot_rt_value_eq(
         riot_rt_value_list_get(list, 1),
+        riot_rt_value_i64(7)
+    ));
+    let dropped = riot_rt_value_list_drop(list, 1);
+    assert_eq!(riot_rt_value_list_len(dropped), 1);
+    assert!(riot_rt_value_eq(
+        riot_rt_value_list_get(dropped, 0),
         riot_rt_value_i64(7)
     ));
 

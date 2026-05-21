@@ -358,6 +358,33 @@ pub extern "C" fn riot_rt_value_list_get(list: RtValue, index: i64) -> RtValue {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_value_list_drop(list: RtValue, count: i64) -> RtValue {
+    if count < 0 {
+        runtime_abort("list_drop received a negative count");
+    }
+    with_scheduler_mut(|scheduler| {
+        let Some(heap_index) = heap_index(list) else {
+            runtime_abort("list_drop expected a list value");
+        };
+        let Some(object) = scheduler.heap.get(heap_index).and_then(Option::as_ref) else {
+            runtime_abort("list_drop received a stale list value");
+        };
+        let items = match &object.kind {
+            HeapObjectKind::List(items) => items,
+            _ => runtime_abort("list_drop expected a list value"),
+        };
+        let count = count as usize;
+        if count > items.len() {
+            runtime_abort("list_drop count out of bounds");
+        }
+        scheduler.alloc_value(
+            HeapObjectKind::List(items[count..].to_vec()),
+            HeapOwner::Local(current_actor_id()),
+        )
+    })
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn riot_rt_value_tuple_get(tuple: RtValue, index: usize) -> RtValue {
     with_scheduler_mut(|scheduler| {
         let Some(heap_index) = heap_index(tuple) else {
