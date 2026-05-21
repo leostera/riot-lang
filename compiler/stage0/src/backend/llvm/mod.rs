@@ -20,8 +20,8 @@ use crate::actor::air::{
     ActorFrameOp, ActorFrameSlot, ActorFrameState, ActorIrActor, ActorIrProgram, ActorStateNext,
 };
 use crate::lambda::ir::{
-    Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaExternalTable, LambdaFunction,
-    LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
+    Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaExternalTable, LambdaMatchArm,
+    LambdaPattern, LambdaProgram, LambdaStmt, Param,
 };
 use crate::signature::{ConstructorName, ImportedSignatures, RsigExport, RsigType, TypeName};
 use crate::stdlib::Stdlib;
@@ -30,7 +30,7 @@ mod abi;
 mod static_eval;
 
 use abi::{AbiType, ExternalAbi, FunctionAbi};
-use static_eval::{StaticEvaluator, StaticValue};
+use static_eval::{StaticEvaluator, StaticFunctionTable, StaticValue};
 
 const POLL_CONSUMED: u32 = 1;
 const POLL_DONE: u32 = 2;
@@ -175,11 +175,7 @@ impl LlvmBackend {
             imports,
             functions: HashMap::new(),
             function_abis: infer_function_abis(program, &externals),
-            function_map: program
-                .functions
-                .iter()
-                .map(|function| (function.name.as_str(), function))
-                .collect(),
+            function_map: StaticFunctionTable::from_functions(&program.functions),
             externals,
             actor_ir: StacklessActorLowerer::new(imports).lower(program),
             string_counter: 0,
@@ -256,7 +252,7 @@ struct Codegen<'ctx, 'a> {
     imports: &'a ImportedSignatures,
     functions: HashMap<String, FunctionValue<'ctx>>,
     function_abis: FunctionAbiTable,
-    function_map: HashMap<&'a str, &'a LambdaFunction>,
+    function_map: StaticFunctionTable<'a>,
     externals: LambdaExternalTable,
     actor_ir: ActorIrProgram,
     string_counter: usize,

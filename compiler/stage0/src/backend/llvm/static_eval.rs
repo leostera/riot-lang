@@ -98,13 +98,40 @@ impl StaticValue {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StaticEvaluator<'a> {
-    functions: &'a HashMap<&'a str, &'a LambdaFunction>,
+    functions: &'a StaticFunctionTable<'a>,
     externals: &'a LambdaExternalTable,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct StaticFunctionTable<'a> {
+    functions: HashMap<&'a str, &'a LambdaFunction>,
+}
+
+impl<'a> StaticFunctionTable<'a> {
+    pub(crate) fn from_functions(functions: &'a [LambdaFunction]) -> Self {
+        Self {
+            functions: functions
+                .iter()
+                .map(|function| (function.name.as_str(), function))
+                .collect(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new() -> Self {
+        Self {
+            functions: HashMap::new(),
+        }
+    }
+
+    fn get(&self, name: &str) -> Option<&'a LambdaFunction> {
+        self.functions.get(name).copied()
+    }
 }
 
 impl<'a> StaticEvaluator<'a> {
     pub(crate) fn new(
-        functions: &'a HashMap<&'a str, &'a LambdaFunction>,
+        functions: &'a StaticFunctionTable<'a>,
         externals: &'a LambdaExternalTable,
     ) -> Self {
         Self {
@@ -142,7 +169,7 @@ impl<'a> StaticEvaluator<'a> {
 fn eval_expr(
     expr: &LambdaExpr,
     bindings: &HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &LambdaFunction>,
+    functions: &StaticFunctionTable<'_>,
     externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
@@ -420,7 +447,7 @@ fn eval_call(
     name: &str,
     args: &[LambdaExpr],
     bindings: &HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &LambdaFunction>,
+    functions: &StaticFunctionTable<'_>,
     externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
@@ -452,7 +479,7 @@ fn eval_external_call(
     abi: &str,
     args: &[LambdaExpr],
     bindings: &HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &LambdaFunction>,
+    functions: &StaticFunctionTable<'_>,
     externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
@@ -522,7 +549,7 @@ fn eval_external_call(
 fn eval_block(
     block: &LambdaBlock,
     bindings: &mut HashMap<String, StaticValue>,
-    functions: &HashMap<&str, &LambdaFunction>,
+    functions: &StaticFunctionTable<'_>,
     externals: &LambdaExternalTable,
     depth: usize,
 ) -> Option<StaticValue> {
@@ -565,11 +592,11 @@ mod tests {
     use crate::lambda::ir::{LambdaExpr, LambdaExternal, LambdaExternalTable};
     use crate::signature::RsigType;
 
-    use super::{StaticEvaluator, StaticValue};
+    use super::{StaticEvaluator, StaticFunctionTable, StaticValue};
 
     #[test]
     fn static_equality_is_structural_not_rendered_text() {
-        let functions = HashMap::new();
+        let functions = StaticFunctionTable::new();
         let mut externals = LambdaExternalTable::new();
         externals.insert(LambdaExternal {
             name: "(==)".to_owned(),
