@@ -11,7 +11,7 @@ use crate::checker::{CheckMode, Checker};
 use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, ObjectMapping};
 use crate::lambda::LambdaSimplifier;
 use crate::linker::Linker;
-use crate::parser::parse_source;
+use crate::parser::SourceParser;
 use crate::runtime::RuntimeBuilder;
 use crate::signature::{ImportedSignatures, ModuleName, RsigStore};
 
@@ -192,7 +192,7 @@ impl Stage0Driver {
 
     fn emit(&self, args: EmitArgs) -> miette::Result<()> {
         let source = self.source_loader.load(&args.input)?;
-        let ast = parse_source(&args.input, &source)?;
+        let ast = SourceParser::new().parse(&args.input, &source)?;
         let empty_imports = ImportedSignatures::new();
         let imports = ImportResolver::new(&args.sig_dirs, &empty_imports, self.rsig_store)
             .resolve_source(&args.input, &ast)?;
@@ -328,7 +328,7 @@ impl SourceLoader {
         let mut modules = BTreeMap::new();
         for input in inputs {
             let source = self.load(input)?;
-            let ast = parse_source(input, &source)?;
+            let ast = SourceParser::new().parse(input, &source)?;
             let module_name = self.module_name_from_path(input)?;
             if let Some(previous) = modules.insert(module_name.clone(), input.clone()) {
                 bail!(
@@ -680,7 +680,7 @@ impl OutputWriter {
 #[cfg(test)]
 mod tests {
     use super::{SourceGraph, SourceLoader, SourceUnit};
-    use crate::parser::parse_source;
+    use crate::parser::SourceParser;
     use camino::Utf8PathBuf;
 
     #[test]
@@ -728,7 +728,7 @@ mod tests {
         let source_loader = SourceLoader::new();
         SourceUnit {
             module_name: source_loader.module_name_from_path(&path).unwrap(),
-            ast: parse_source(&path, source).unwrap(),
+            ast: SourceParser::new().parse(&path, source).unwrap(),
             source: source.to_owned(),
             path,
         }

@@ -2577,7 +2577,7 @@ mod tests {
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
     use crate::infer::module::ModuleInferencer;
-    use crate::parser::parse_source;
+    use crate::parser::SourceParser;
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{Capture, RirExpr, RirLowerer, RirStmt, TyIrBuilder, TypedExprKind, TypedStmt};
@@ -2604,7 +2604,7 @@ mod tests {
 
     fn typed_program_with_inference_facts(module: &str, source: &str) -> super::TypedProgram {
         let path = camino::Utf8Path::new("test.ml");
-        let program = parse_source(path, source).unwrap();
+        let program = SourceParser::new().parse(path, source).unwrap();
         let imports = ImportedSignatures::new();
         let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
         let function_types = inferred.function_signatures(&program);

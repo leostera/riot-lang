@@ -4,7 +4,7 @@ use camino::Utf8Path;
 use miette::bail;
 
 use crate::ast::{AstDecl, AstProgram, AstTypeBody};
-use crate::parser::parse_source;
+use crate::parser::SourceParser;
 use crate::signature::{
     ConstructorName, FieldName, ModuleName, Rsig, RsigExport, RsigExternal, RsigRecordField,
     RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme, RsigVariantConstructor, TypeName,
@@ -48,7 +48,7 @@ fn std_signature(module: &str) -> miette::Result<Option<Rsig>> {
     let Some((module, path, source)) = std_source(module) else {
         return Ok(None);
     };
-    let ast = parse_source(Utf8Path::new(path), source)?;
+    let ast = SourceParser::new().parse(Utf8Path::new(path), source)?;
     module_signature(module, ast)
 }
 

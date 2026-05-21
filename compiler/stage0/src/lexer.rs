@@ -120,24 +120,33 @@ pub(crate) struct LexError {
     pub(crate) message: String,
 }
 
-pub(crate) fn lex(source: &str) -> Result<Vec<Token>, LexError> {
-    let mut lexer = TokenKind::lexer(source);
-    let mut tokens = Vec::new();
+#[derive(Debug, Default, Clone, Copy)]
+pub(crate) struct Lexer;
 
-    while let Some(result) = lexer.next() {
-        let range = lexer.span();
-        let span = TextSpan::new(range.start, range.end);
-        let kind = result.map_err(|()| LexError {
-            span,
-            message: "unexpected character".to_owned(),
-        })?;
-        tokens.push(Token { kind, span });
+impl Lexer {
+    pub(crate) fn new() -> Self {
+        Self
     }
 
-    tokens.push(Token {
-        kind: TokenKind::Eof,
-        span: TextSpan::new(source.len(), source.len()),
-    });
+    pub(crate) fn lex(&self, source: &str) -> Result<Vec<Token>, LexError> {
+        let mut lexer = TokenKind::lexer(source);
+        let mut tokens = Vec::new();
 
-    Ok(tokens)
+        while let Some(result) = lexer.next() {
+            let range = lexer.span();
+            let span = TextSpan::new(range.start, range.end);
+            let kind = result.map_err(|()| LexError {
+                span,
+                message: "unexpected character".to_owned(),
+            })?;
+            tokens.push(Token { kind, span });
+        }
+
+        tokens.push(Token {
+            kind: TokenKind::Eof,
+            span: TextSpan::new(source.len(), source.len()),
+        });
+
+        Ok(tokens)
+    }
 }

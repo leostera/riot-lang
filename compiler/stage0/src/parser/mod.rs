@@ -1,48 +1,21 @@
-use camino::Utf8Path;
-
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstIncludeDecl, AstMatchArm,
     AstModuleDecl, AstPath, AstPattern, AstProgram, AstReceiveArm, AstRecordTypeField, AstStmt,
     AstTypeAnnotation, AstTypeBody, AstTypeDecl, AstTypeParam, AstUseDecl, AstVariantConstructor,
     TextSpan,
 };
-use crate::diagnostic::to_source_diagnostic;
-use crate::lexer::{Token, TokenKind, lex};
+use crate::lexer::{Token, TokenKind};
 
 mod error;
 mod literal;
+mod source;
 mod span;
 
 use error::ParseError;
 use literal::{parse_char_literal, parse_int_literal};
 use span::expr_span;
 
-pub(crate) fn parse_source(source_path: &Utf8Path, source: &str) -> miette::Result<AstProgram> {
-    let tokens = lex(source).map_err(|error| {
-        to_source_diagnostic(
-            source_path,
-            source,
-            error.span,
-            "could not lex Riot ML source",
-            error.message,
-            Some("stage0 currently accepts a small Riot ML subset"),
-        )
-    })?;
-
-    Parser::new(source, tokens)
-        .parse_program()
-        .map_err(|error| {
-            to_source_diagnostic(
-                source_path,
-                source,
-                error.span,
-                "could not parse Riot ML source",
-                error.message,
-                error.help,
-            )
-            .into()
-        })
-}
+pub(crate) use source::SourceParser;
 
 struct Parser<'src> {
     source: &'src str,
@@ -1464,15 +1437,16 @@ mod tests {
 
     use crate::ast::{AstDecl, AstExpr, AstStmt, AstTypeBody};
 
-    use super::parse_source;
+    use super::SourceParser;
 
     #[test]
     fn parses_expression_lambdas() {
-        let program = parse_source(
-            Utf8Path::new("lambda.ml"),
-            "fn main() { let f = fn(n) { fn(x) { x + n } }; dbg(\"ok\") }\n",
-        )
-        .unwrap();
+        let program = SourceParser::new()
+            .parse(
+                Utf8Path::new("lambda.ml"),
+                "fn main() { let f = fn(n) { fn(x) { x + n } }; dbg(\"ok\") }\n",
+            )
+            .unwrap();
 
         let AstDecl::Function(function) = &program.decls[0] else {
             panic!("expected function declaration");
@@ -1489,11 +1463,12 @@ mod tests {
 
     #[test]
     fn parses_apply_for_non_path_callees() {
-        let program = parse_source(
-            Utf8Path::new("apply.ml"),
-            "fn main() { dbg((fn(x) { x })(1)) }\n",
-        )
-        .unwrap();
+        let program = SourceParser::new()
+            .parse(
+                Utf8Path::new("apply.ml"),
+                "fn main() { dbg((fn(x) { x })(1)) }\n",
+            )
+            .unwrap();
 
         let AstDecl::Function(function) = &program.decls[0] else {
             panic!("expected function declaration");
@@ -1506,11 +1481,12 @@ mod tests {
 
     #[test]
     fn parses_operator_external_names() {
-        let program = parse_source(
-            Utf8Path::new("operators.ml"),
-            "external (+) : 'a -> 'a -> 'a = \"riot_rt_prim_add\"\n",
-        )
-        .unwrap();
+        let program = SourceParser::new()
+            .parse(
+                Utf8Path::new("operators.ml"),
+                "external (+) : 'a -> 'a -> 'a = \"riot_rt_prim_add\"\n",
+            )
+            .unwrap();
 
         let AstDecl::External(external) = &program.decls[0] else {
             panic!("expected external declaration");
@@ -1522,11 +1498,12 @@ mod tests {
 
     #[test]
     fn parses_record_type_declarations() {
-        let program = parse_source(
-            Utf8Path::new("record_type.ml"),
-            "type point = { coords: (i64, i64), label: string }\nfn main() { dbg(\"ok\") }\n",
-        )
-        .unwrap();
+        let program = SourceParser::new()
+            .parse(
+                Utf8Path::new("record_type.ml"),
+                "type point = { coords: (i64, i64), label: string }\nfn main() { dbg(\"ok\") }\n",
+            )
+            .unwrap();
 
         let AstDecl::Type(type_) = &program.decls[0] else {
             panic!("expected type declaration");
@@ -1541,11 +1518,12 @@ mod tests {
 
     #[test]
     fn parses_qualified_record_literals() {
-        let program = parse_source(
-            Utf8Path::new("record_literal.ml"),
-            "fn main() { dbg(Geometry.point { x: 1, y: 2 }.x) }\n",
-        )
-        .unwrap();
+        let program = SourceParser::new()
+            .parse(
+                Utf8Path::new("record_literal.ml"),
+                "fn main() { dbg(Geometry.point { x: 1, y: 2 }.x) }\n",
+            )
+            .unwrap();
 
         let AstDecl::Function(function) = &program.decls[0] else {
             panic!("expected function declaration");
