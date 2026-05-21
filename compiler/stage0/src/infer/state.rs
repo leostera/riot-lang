@@ -101,6 +101,7 @@ fn instantiate_type(ty: &Type, replacements: &BTreeMap<TypeVar, Type>) -> Type {
         Type::Bool
         | Type::Char
         | Type::F64
+        | Type::I32
         | Type::I64
         | Type::String
         | Type::Unit

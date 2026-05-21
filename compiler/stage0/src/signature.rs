@@ -7,7 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
-const VERSION: u16 = 8;
+const VERSION: u16 = 9;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Rsig {
@@ -283,6 +283,7 @@ pub(crate) enum RsigType {
     Bool,
     Char,
     F64,
+    I32,
     I64,
     ActorId(Box<RsigType>),
     String,
@@ -376,6 +377,7 @@ fn collect_type_vars(type_: &RsigType, vars: &mut Vec<String>) {
         | RsigType::Bool
         | RsigType::Char
         | RsigType::F64
+        | RsigType::I32
         | RsigType::I64
         | RsigType::Record(_)
         | RsigType::String
@@ -658,6 +660,7 @@ impl TypeVarCanonicalizer {
             RsigType::Bool
             | RsigType::Char
             | RsigType::F64
+            | RsigType::I32
             | RsigType::I64
             | RsigType::Record(_)
             | RsigType::Variant(_)
@@ -683,6 +686,7 @@ impl RsigType {
             RsigType::Bool => "bool".to_owned(),
             RsigType::Char => "char".to_owned(),
             RsigType::F64 => "f64".to_owned(),
+            RsigType::I32 => "i32".to_owned(),
             RsigType::I64 => "i64".to_owned(),
             RsigType::ActorId(message) => format!("actor_id<{}>", message.canonical()),
             RsigType::String => "String".to_owned(),
@@ -824,6 +828,7 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
         "bool" => RsigType::Bool,
         "char" => RsigType::Char,
         "f64" | "float" => RsigType::F64,
+        "i32" => RsigType::I32,
         "i64" | "int" => RsigType::I64,
         "String" | "string" => RsigType::String,
         "unit" => RsigType::Unit,
@@ -1238,6 +1243,7 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
             put_types(bytes, args);
         }
         RsigType::Unknown => bytes.push(11),
+        RsigType::I32 => bytes.push(15),
     }
 }
 
@@ -1266,6 +1272,7 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
             name: TypeName::new(get_string(cursor)?),
             args: get_types(cursor)?,
         },
+        15 => RsigType::I32,
         tag => bail!("unknown type tag {tag}"),
     })
 }

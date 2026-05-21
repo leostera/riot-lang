@@ -2137,7 +2137,8 @@ fn validate_function_abi_annotation(
     let type_ = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
     if matches!(
         type_,
-        RsigType::I64
+        RsigType::I32
+            | RsigType::I64
             | RsigType::Bool
             | RsigType::Unit
             | RsigType::ActorId(_)
@@ -2378,6 +2379,10 @@ fn const_value_type(value: &ConstValue) -> RsigType {
 
 fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
     expected == actual
+        || matches!(
+            (expected, actual),
+            (RsigType::I32, RsigType::I64) | (RsigType::I64, RsigType::I32)
+        )
         || matches!(expected, RsigType::Unknown)
         || matches!(actual, RsigType::Unknown)
         || matches!(expected, RsigType::Var(_))
@@ -2445,6 +2450,7 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
         RsigType::Bool
         | RsigType::Char
         | RsigType::F64
+        | RsigType::I32
         | RsigType::I64
         | RsigType::String
         | RsigType::Unit

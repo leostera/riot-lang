@@ -1140,6 +1140,7 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
         RsigType::Bool => Type::Bool,
         RsigType::Char => Type::Char,
         RsigType::F64 => Type::F64,
+        RsigType::I32 => Type::I32,
         RsigType::I64 => Type::I64,
         RsigType::List(element) => Type::List(Box::new(rsig_type_to_infer_type(element, state))),
         RsigType::Record(name) => Type::Record(name.clone()),
@@ -1189,6 +1190,7 @@ fn rsig_type_to_infer_type_with_vars(
         RsigType::Bool => Type::Bool,
         RsigType::Char => Type::Char,
         RsigType::F64 => Type::F64,
+        RsigType::I32 => Type::I32,
         RsigType::I64 => Type::I64,
         RsigType::List(element) => Type::List(Box::new(rsig_type_to_infer_type_with_vars(
             element, state, vars,
@@ -1223,6 +1225,7 @@ fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
         Type::Bool => RsigType::Bool,
         Type::Char => RsigType::Char,
         Type::F64 => RsigType::F64,
+        Type::I32 => RsigType::I32,
         Type::Arrow { parameter, result } => RsigType::Arrow {
             parameter: Box::new(infer_type_to_rsig_type(parameter)),
             result: Box::new(infer_type_to_rsig_type(result)),

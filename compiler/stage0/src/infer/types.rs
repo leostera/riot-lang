@@ -20,6 +20,7 @@ pub(crate) enum Type {
     Bool,
     Char,
     F64,
+    I32,
     I64,
     String,
     Unit,
@@ -61,6 +62,7 @@ impl Type {
             Type::Bool
             | Type::Char
             | Type::F64
+            | Type::I32
             | Type::I64
             | Type::String
             | Type::Unit
@@ -93,6 +95,7 @@ impl Type {
             Type::Bool
             | Type::Char
             | Type::F64
+            | Type::I32
             | Type::I64
             | Type::String
             | Type::Unit

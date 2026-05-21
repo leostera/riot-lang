@@ -2188,7 +2188,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 output.push(len.into());
                 Ok(roots)
             }
-            RsigType::I64 => {
+            RsigType::I32 | RsigType::I64 => {
                 let value = self.emit_expr(arg, env)?;
                 output.push(self.value_as_i64(value)?.into());
                 Ok(0)
@@ -2574,7 +2574,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                     llvm_params.push(self.ptr_type().into());
                     llvm_params.push(self.context.i64_type().into());
                 }
-                RsigType::I64 | RsigType::ActorId(_) => {
+                RsigType::I32 | RsigType::I64 | RsigType::ActorId(_) => {
                     llvm_params.push(self.context.i64_type().into())
                 }
                 RsigType::Bool => llvm_params.push(self.context.bool_type().into()),

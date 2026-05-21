@@ -28,6 +28,7 @@ impl Substitution {
             Type::Bool
             | Type::Char
             | Type::F64
+            | Type::I32
             | Type::I64
             | Type::String
             | Type::Unit
@@ -45,6 +46,9 @@ impl Substitution {
             (Type::Bool, Type::Bool)
             | (Type::Char, Type::Char)
             | (Type::F64, Type::F64)
+            | (Type::I32, Type::I32)
+            | (Type::I32, Type::I64)
+            | (Type::I64, Type::I32)
             | (Type::I64, Type::I64)
             | (Type::String, Type::String)
             | (Type::Unit, Type::Unit) => Ok(()),

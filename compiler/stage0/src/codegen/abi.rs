@@ -24,7 +24,7 @@ impl AbiType {
     pub(crate) fn from_rsig(type_: &RsigType) -> Self {
         match type_ {
             RsigType::Bool => AbiType::Bool,
-            RsigType::I64 => AbiType::I64,
+            RsigType::I32 | RsigType::I64 => AbiType::I64,
             RsigType::ActorId(_) => AbiType::ActorId,
             RsigType::Unit => AbiType::Unit,
             RsigType::String
