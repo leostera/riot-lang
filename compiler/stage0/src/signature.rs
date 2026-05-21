@@ -6,6 +6,7 @@ use std::io::{Cursor, Read};
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
+use crate::fingerprint::SignatureFingerprinter;
 pub(crate) use crate::signature_type_parser::RsigTypeParser;
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";
@@ -390,17 +391,20 @@ impl Rsig {
         mut exports: Vec<RsigExport>,
     ) -> Self {
         let module = module.into();
+        let fingerprinter = SignatureFingerprinter::new();
         dependencies.sort_by(|lhs, rhs| lhs.module.cmp(&rhs.module));
         types.sort_by(|lhs, rhs| lhs.name.as_str().cmp(rhs.name.as_str()));
         for type_ in &mut types {
-            type_.fingerprint = stable_hash(&type_.canonical_without_fingerprint());
+            type_.fingerprint = fingerprinter.stable_text(&type_.canonical_without_fingerprint());
         }
         for export in &mut exports {
             export.canonicalize_type_vars();
         }
         exports.sort_by(|lhs, rhs| lhs.name().cmp(rhs.name()).then(lhs.kind().cmp(rhs.kind())));
         for export in &mut exports {
-            export.set_fingerprint(stable_hash(&export.canonical_without_fingerprint()));
+            export.set_fingerprint(
+                fingerprinter.stable_text(&export.canonical_without_fingerprint()),
+            );
         }
         let dependency_text = dependencies
             .iter()
@@ -417,7 +421,7 @@ impl Rsig {
             .map(RsigTypeDecl::canonical_with_fingerprint)
             .collect::<Vec<_>>()
             .join("\n");
-        let module_fingerprint = stable_hash(
+        let module_fingerprint = fingerprinter.stable_text(
             &[
                 dependency_text.as_str(),
                 type_text.as_str(),
@@ -785,17 +789,6 @@ fn resolve_rsig(
             .collect::<Vec<_>>()
             .join("\n")
     )
-}
-
-pub(crate) fn stable_hash(text: &str) -> u64 {
-    const OFFSET: u64 = 0xcbf29ce484222325;
-    const PRIME: u64 = 0x100000001b3;
-    let mut hash = OFFSET;
-    for byte in text.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(PRIME);
-    }
-    hash
 }
 
 fn encode_rsig(rsig: &Rsig) -> Vec<u8> {

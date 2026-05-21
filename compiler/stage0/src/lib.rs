@@ -6,6 +6,7 @@ mod cli;
 mod command;
 mod diagnostic;
 mod driver;
+mod fingerprint;
 mod infer;
 mod ir;
 mod lambda;
