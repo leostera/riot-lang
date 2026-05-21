@@ -53,6 +53,10 @@ impl Stdlib {
             _ => None,
         }
     }
+
+    pub(crate) fn prelude_path(name: impl Into<String>) -> Vec<String> {
+        vec!["Std".to_owned(), "Prelude".to_owned(), name.into()]
+    }
 }
 
 fn prelude_signature() -> miette::Result<Rsig> {
@@ -313,6 +317,10 @@ mod tests {
         assert_eq!(
             Stdlib::prelude_member_name(&["Std".to_owned(), "List".to_owned(), "len".to_owned()]),
             None
+        );
+        assert_eq!(
+            Stdlib::prelude_path("(+)"),
+            vec!["Std".to_owned(), "Prelude".to_owned(), "(+)".to_owned()]
         );
     }
 }

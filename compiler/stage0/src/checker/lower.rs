@@ -9,6 +9,7 @@ use crate::signature::{
     ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigType, RsigTypeDeclKind,
     TypeName, TypeParamName,
 };
+use crate::stdlib::Stdlib;
 use crate::type_lowerer::RsigTypeLowerer;
 
 use crate::checker::tyir::{
@@ -1209,11 +1210,7 @@ fn typed_operator_call(
     TypedExpr {
         type_: result,
         kind: TypedExprKind::Call {
-            callee: EntityId::from_segments(vec![
-                "Std".to_owned(),
-                "Prelude".to_owned(),
-                operator.to_owned(),
-            ]),
+            callee: EntityId::from_segments(Stdlib::prelude_path(operator)),
             args: args
                 .into_iter()
                 .map(|arg| type_expr(arg, context))
