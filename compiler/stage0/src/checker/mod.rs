@@ -5,11 +5,12 @@ use camino::Utf8Path;
 mod const_eval;
 mod span;
 pub(crate) mod tyir;
+mod type_annotation;
 mod types;
 
-use const_eval::{ConstFunction, ConstValue, resolve_const_value};
+use const_eval::{ConstFunction, ConstValue};
 use span::expr_span;
-use types::parse_primitive_type;
+use type_annotation::TypeAnnotationChecker;
 
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstPath, AstPattern, AstProgram, AstStmt, AstTypeAnnotation,
@@ -232,16 +233,12 @@ fn validate_program(
                             external.type_annotation.span,
                             "empty external type",
                             "external declarations need a source-level type",
-                            Some("try: external println : string -> unit = \"riot_prim_println\""),
+                            Some("try: external println : String -> unit = \"riot_prim_println\""),
                         )
                         .into());
                 }
-                validate_source_type_spelling(
-                    ctx.source_path,
-                    ctx.source,
-                    external.type_annotation.span,
-                    &external.type_annotation.text,
-                )?;
+                TypeAnnotationChecker::new(&ctx)
+                    .validate_source_spelling(&external.type_annotation)?;
             }
             AstDecl::Type(type_) => {
                 if matches!(&type_.body, AstTypeBody::Variant { constructors } if constructors.is_empty())
@@ -258,7 +255,7 @@ fn validate_program(
                 validate_type_decl_spelling(&ctx, type_)?;
             }
             AstDecl::Function(function) => {
-                validate_function_annotations(&ctx, function)?;
+                TypeAnnotationChecker::new(&ctx).validate_function(function)?;
                 validate_main_function_signature(&ctx, function)?;
                 validate_block(
                     &ctx,
@@ -283,63 +280,18 @@ fn validate_type_decl_spelling(
         AstTypeBody::Variant { constructors } => {
             for constructor in constructors {
                 for payload in &constructor.payload {
-                    validate_source_type_spelling(
-                        ctx.source_path,
-                        ctx.source,
-                        payload.span,
-                        &payload.text,
-                    )?;
+                    TypeAnnotationChecker::new(ctx).validate_source_spelling(payload)?;
                 }
             }
             Ok(())
         }
         AstTypeBody::Record { fields } => {
             for field in fields {
-                validate_source_type_spelling(
-                    ctx.source_path,
-                    ctx.source,
-                    field.type_annotation.span,
-                    &field.type_annotation.text,
-                )?;
+                TypeAnnotationChecker::new(ctx).validate_source_spelling(&field.type_annotation)?;
             }
             Ok(())
         }
     }
-}
-
-fn validate_source_type_spelling(
-    source_path: &Utf8Path,
-    source: &str,
-    span: TextSpan,
-    text: &str,
-) -> miette::Result<()> {
-    let diagnostics = SourceDiagnostics::new(source_path, source);
-    if type_text_has_token(text, "string") {
-        return Err(diagnostics
-            .at(
-                span,
-                "invalid type spelling",
-                "`string` is not a source-level type name",
-                Some("use `String`"),
-            )
-            .into());
-    }
-    if text.contains(" list") {
-        return Err(diagnostics
-            .at(
-                span,
-                "invalid list type spelling",
-                "postfix `list` types are not supported",
-                Some("use `List<T>`"),
-            )
-            .into());
-    }
-    Ok(())
-}
-
-fn type_text_has_token(text: &str, token: &str) -> bool {
-    text.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
-        .any(|part| part == token)
 }
 
 fn main_requires_output_action(
@@ -772,7 +724,7 @@ fn validate_block(
                 value,
             } => {
                 if let Some(annotation) = type_annotation {
-                    validate_type_annotation(ctx, annotation, value, &bindings)?;
+                    TypeAnnotationChecker::new(ctx).validate_binding(annotation, value)?;
                 }
                 let kind = match value {
                     AstExpr::Spawn { body, span: _ } => {
@@ -851,7 +803,7 @@ fn validate_scoped_block(
                 ..
             } => {
                 if let Some(annotation) = type_annotation {
-                    validate_type_annotation(ctx, annotation, value, &bindings)?;
+                    TypeAnnotationChecker::new(ctx).validate_binding(annotation, value)?;
                 }
                 let kind = match value {
                     AstExpr::Spawn { body, .. } => {
@@ -1365,7 +1317,7 @@ fn validate_block_expr(
                 ..
             } => {
                 if let Some(annotation) = type_annotation {
-                    validate_type_annotation(ctx, annotation, value, &bindings)?;
+                    TypeAnnotationChecker::new(ctx).validate_binding(annotation, value)?;
                 }
                 let kind = match value {
                     AstExpr::Spawn { body, .. } => {
@@ -2382,155 +2334,6 @@ fn validate_actor_target(
     }
     validate_expr(ctx, expr, bindings, false)?;
     Ok(())
-}
-
-fn validate_type_annotation(
-    ctx: &ValidationContext<'_>,
-    annotation: &AstTypeAnnotation,
-    value: &AstExpr,
-    _bindings: &HashMap<String, BindingKind>,
-) -> miette::Result<()> {
-    validate_source_type_spelling(
-        ctx.source_path,
-        ctx.source,
-        annotation.span,
-        &annotation.text,
-    )?;
-    if annotation.text == "float" {
-        let error = parse_primitive_type(&annotation.text).unwrap_err();
-        return Err(ctx
-            .diagnostic(
-                annotation.span,
-                "unsupported type annotation",
-                error.message,
-                error.help,
-            )
-            .into());
-    }
-
-    if parse_primitive_type(&annotation.text).is_err()
-        && !annotation.text.starts_with('(')
-        && !annotation.text.ends_with(" list")
-    {
-        return Ok(());
-    }
-
-    let value_type = resolve_const_value(value, &HashMap::new(), &ctx.functions)
-        .map(|value| const_value_type(&value));
-    if let Some(value_type) = value_type {
-        let expected = ctx.lower_type_annotation(annotation);
-        if type_matches(&expected, &value_type) {
-            return Ok(());
-        }
-        return Err(ctx
-            .diagnostic(
-                annotation.span,
-                "type annotation does not match value",
-                format!(
-                    "expected `{}`, but this binding has type `{}`",
-                    expected.canonical(),
-                    value_type.canonical()
-                ),
-                Some("change the annotation or the value"),
-            )
-            .into());
-    }
-
-    Ok(())
-}
-
-fn validate_function_annotations(
-    ctx: &ValidationContext<'_>,
-    function: &crate::ast::AstFnDecl,
-) -> miette::Result<()> {
-    let mut bindings = HashMap::new();
-    for (index, annotation) in function.param_types.iter().enumerate() {
-        let Some(annotation) = annotation else {
-            continue;
-        };
-        validate_function_abi_annotation(ctx, annotation)?;
-        if let Some(param) = function.params.get(index) {
-            bindings.insert(param.clone(), ctx.lower_type_annotation(annotation));
-        }
-    }
-
-    let Some(return_annotation) = &function.return_type else {
-        return Ok(());
-    };
-    validate_function_abi_annotation(ctx, return_annotation)?;
-
-    let expected = ctx.lower_type_annotation(return_annotation);
-    let actual = infer_annotation_block_type(ctx, &function.body, &mut bindings);
-    if let Some(actual) = actual
-        && !type_matches(&expected, &actual)
-    {
-        return Err(ctx
-            .diagnostic(
-                return_annotation.span,
-                "function return type does not match body",
-                format!(
-                    "expected `{}`, but this function body has type `{}`",
-                    expected.canonical(),
-                    actual.canonical()
-                ),
-                Some("change the return annotation or the function body"),
-            )
-            .into());
-    }
-
-    Ok(())
-}
-
-fn validate_function_abi_annotation(
-    ctx: &ValidationContext<'_>,
-    annotation: &AstTypeAnnotation,
-) -> miette::Result<()> {
-    validate_source_type_spelling(
-        ctx.source_path,
-        ctx.source,
-        annotation.span,
-        &annotation.text,
-    )?;
-    if annotation.text == "float" {
-        let error = parse_primitive_type(&annotation.text).unwrap_err();
-        return Err(ctx
-            .diagnostic(
-                annotation.span,
-                "unsupported function ABI annotation",
-                error.message,
-                error.help,
-            )
-            .into());
-    }
-
-    let type_ = ctx.lower_type_annotation(annotation);
-    if matches!(
-        type_,
-        RsigType::I32
-            | RsigType::I64
-            | RsigType::Bool
-            | RsigType::Unit
-            | RsigType::ActorId(_)
-            | RsigType::String
-            | RsigType::Tuple(_)
-            | RsigType::List(_)
-            | RsigType::Record(_)
-            | RsigType::Variant(_)
-            | RsigType::VariantApp { .. }
-            | RsigType::Arrow { .. }
-    ) {
-        return Ok(());
-    }
-
-    Err(ctx.diagnostic(annotation.span,
-        "unsupported function ABI annotation",
-        format!(
-            "`{}` is not supported for native Riot function parameters or returns yet",
-            annotation.text
-        ),
-        Some("use a scalar type or a boxed value type such as `string`, a tuple, a list, or a record"),
-    )
-    .into())
 }
 
 fn infer_annotation_block_type(

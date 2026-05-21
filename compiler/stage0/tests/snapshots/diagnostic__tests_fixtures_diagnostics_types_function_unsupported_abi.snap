@@ -18,5 +18,5 @@ Error: stage0::source
    ·                 ╰── `f64` is not supported for native Riot function parameters or returns yet
  2 │   value
    ╰────
-  help: use a scalar type or a boxed value type such as `string`, a tuple, a
+  help: use a scalar type or a boxed value type such as `String`, a tuple, a
         list, or a record
