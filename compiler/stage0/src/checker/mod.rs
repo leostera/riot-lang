@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use camino::Utf8Path;
 
 mod blocks;
+mod callable;
 mod const_eval;
 mod entrypoint;
 mod imports;

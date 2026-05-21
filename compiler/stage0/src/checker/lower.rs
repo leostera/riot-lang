@@ -5,8 +5,8 @@ use crate::ast::{
     TextSpan,
 };
 use crate::signature::{
-    ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType,
-    RsigTypeDeclKind, TypeName, TypeParamName,
+    ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigType, RsigTypeDeclKind,
+    TypeName, TypeParamName,
 };
 use crate::type_lowerer::RsigTypeLowerer;
 
@@ -15,6 +15,9 @@ use crate::checker::tyir::{
     TypedLiteral, TypedMatchArm, TypedParam, TypedPattern, TypedProgram, TypedReceiveArm,
     TypedRecordField, TypedStmt, TypedTypeBody, TypedTypeDecl, TypedUse, TypedVariantConstructor,
 };
+
+use super::callable::{CallableResolver, prelude_external_signatures};
+
 pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
     ast: AstProgram,
@@ -105,7 +108,7 @@ pub(crate) fn typed_program_from_ast(
     let records = record_type_map(&types, &uses, imports);
     let record_fields = record_field_type_map(&types, &uses, imports);
 
-    let mut external_types = prelude_external_type_map();
+    let mut external_types = prelude_external_signatures();
     for external in &externals {
         external_types.insert(
             external.name.clone(),
@@ -496,24 +499,6 @@ fn prelude_variant_names() -> BTreeSet<TypeName> {
                 .into_iter()
                 .filter_map(|type_| {
                     matches!(type_.body, RsigTypeDeclKind::Variant { .. }).then_some(type_.name)
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn prelude_external_type_map() -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
-    crate::stdlib::Stdlib::new()
-        .prelude_signature()
-        .ok()
-        .map(|rsig| {
-            rsig.exports
-                .into_iter()
-                .filter_map(|export| {
-                    let RsigExport::External(external) = export else {
-                        return None;
-                    };
-                    Some((external.name, (external.params, external.result)))
                 })
                 .collect()
         })
@@ -1330,46 +1315,18 @@ fn is_prelude_type_name(type_name: &TypeName) -> bool {
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
-    if let Some((_params, result)) = call_signature(callee, context) {
-        return result;
-    }
-    RsigType::Unknown
+    call_signature(callee, context)
+        .map(|signature| signature.1)
+        .unwrap_or(RsigType::Unknown)
 }
 
 fn call_signature(
     callee: &[String],
     context: &TypeContext<'_>,
 ) -> Option<(Vec<RsigType>, RsigType)> {
-    if let Some(name) = local_or_prelude_call_name(callee) {
-        return context
-            .externals
-            .get(name)
-            .or_else(|| context.functions.get(name))
-            .cloned();
-    }
-    match callee {
-        [module, name] => context
-            .imports
-            .get(module.as_str())
-            .and_then(|rsig| rsig.find(name))
-            .map(|export| match export {
-                RsigExport::Function(function) => {
-                    (function.params.clone(), function.result.clone())
-                }
-                RsigExport::External(external) => {
-                    (external.params.clone(), external.result.clone())
-                }
-            }),
-        _ => None,
-    }
-}
-
-fn local_or_prelude_call_name(callee: &[String]) -> Option<&str> {
-    match callee {
-        [name] => Some(name.as_str()),
-        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
-        _ => None,
-    }
+    CallableResolver::new(context.functions, context.externals, context.imports)
+        .resolve(callee)
+        .map(|signature| (signature.params, signature.result))
 }
 
 fn apply_result_type(callee: &RsigType, arity: usize) -> RsigType {
