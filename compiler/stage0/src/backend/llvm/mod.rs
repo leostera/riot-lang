@@ -255,11 +255,30 @@ struct Codegen<'ctx, 'a> {
     program: &'a LambdaProgram,
     imports: &'a ImportedSignatures,
     functions: HashMap<String, FunctionValue<'ctx>>,
-    function_abis: HashMap<String, FunctionAbi>,
+    function_abis: FunctionAbiTable,
     function_map: HashMap<&'a str, &'a LambdaFunction>,
     externals: LambdaExternalTable,
     actor_ir: ActorIrProgram,
     string_counter: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct FunctionAbiTable {
+    abis: HashMap<String, FunctionAbi>,
+}
+
+impl FunctionAbiTable {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn insert(&mut self, name: impl Into<String>, abi: FunctionAbi) {
+        self.abis.insert(name.into(), abi);
+    }
+
+    fn get(&self, name: impl AsRef<str>) -> Option<&FunctionAbi> {
+        self.abis.get(name.as_ref())
+    }
 }
 
 impl<'ctx> Codegen<'ctx, '_> {
@@ -305,7 +324,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             let Some(function_value) = self.functions.get(&function.name).copied() else {
                 continue;
             };
-            let abi = self.function_abis[&function.name].clone();
+            let Some(abi) = self.function_abis.get(&function.name).cloned() else {
+                continue;
+            };
             let entry = self.context.append_basic_block(function_value, "entry");
             self.builder.position_at_end(entry);
 
@@ -1598,7 +1619,11 @@ impl<'ctx> Codegen<'ctx, '_> {
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let function = self.functions[name];
-        let abi = self.function_abis[name].clone();
+        let abi = self
+            .function_abis
+            .get(name)
+            .cloned()
+            .ok_or_else(|| miette::miette!("missing ABI for function `{name}`"))?;
         if abi.params.len() != args.len() {
             bail!("function `{name}` called with wrong arity");
         }
@@ -2763,24 +2788,21 @@ fn is_result_unit_i32(type_: &RsigType) -> bool {
 fn infer_function_abis(
     program: &LambdaProgram,
     externals: &LambdaExternalTable,
-) -> HashMap<String, FunctionAbi> {
-    let mut abis = program
-        .functions
-        .iter()
-        .map(|function| {
-            (
-                function.name.clone(),
-                FunctionAbi {
-                    params: function
-                        .param_types
-                        .iter()
-                        .map(AbiType::from_rsig)
-                        .collect(),
-                    result: AbiType::from_rsig(&function.result),
-                },
-            )
-        })
-        .collect::<HashMap<_, _>>();
+) -> FunctionAbiTable {
+    let mut abis = FunctionAbiTable::new();
+    for function in &program.functions {
+        abis.insert(
+            function.name.clone(),
+            FunctionAbi {
+                params: function
+                    .param_types
+                    .iter()
+                    .map(AbiType::from_rsig)
+                    .collect(),
+                result: AbiType::from_rsig(&function.result),
+            },
+        );
+    }
 
     for _ in 0..4 {
         let previous = abis.clone();
@@ -2827,7 +2849,7 @@ fn infer_block_abi(
     params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
-    functions: &HashMap<String, FunctionAbi>,
+    functions: &FunctionAbiTable,
     externals: &LambdaExternalTable,
 ) -> AbiType {
     for stmt in &block.statements {
@@ -2852,7 +2874,7 @@ fn infer_block_abi(
 fn infer_expr_abi(
     expr: &LambdaExpr,
     locals: &HashMap<String, AbiType>,
-    functions: &HashMap<String, FunctionAbi>,
+    functions: &FunctionAbiTable,
     externals: &LambdaExternalTable,
 ) -> AbiType {
     match expr {
@@ -2899,7 +2921,7 @@ fn infer_expr_abi(
 fn infer_match_arm_abi(
     arm: &LambdaMatchArm,
     outer_locals: &HashMap<String, AbiType>,
-    functions: &HashMap<String, FunctionAbi>,
+    functions: &FunctionAbiTable,
     externals: &LambdaExternalTable,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
@@ -2941,7 +2963,7 @@ fn bind_pattern_abis(pattern: &LambdaPattern, locals: &mut HashMap<String, AbiTy
 fn infer_block_expr_abi(
     block: &LambdaBlock,
     outer_locals: &HashMap<String, AbiType>,
-    functions: &HashMap<String, FunctionAbi>,
+    functions: &FunctionAbiTable,
     externals: &LambdaExternalTable,
 ) -> AbiType {
     let mut locals = outer_locals.clone();
@@ -2961,7 +2983,7 @@ fn mark_expr_constraints(
     params: &[Param],
     locals: &mut HashMap<String, AbiType>,
     param_types: &mut [AbiType],
-    functions: &HashMap<String, FunctionAbi>,
+    functions: &FunctionAbiTable,
     externals: &LambdaExternalTable,
 ) {
     match expr {
