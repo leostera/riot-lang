@@ -255,6 +255,91 @@ fn main_result_err_controls_exit_status() -> FixtureResult {
 }
 
 #[test]
+fn std_arg_parser_compiles_and_reports_missing_values() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let arg_parser = manifest_dir().join("../std/arg_parser.ml");
+    let source = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &source,
+        r#"use ArgParser
+
+fn run(matches: ArgParser.Matches) -> Result<(), i32> {
+  if ArgParser.get_flag(matches, "help") {
+    dbg("help");
+    Ok(())
+  } else {
+    match ArgParser.get_one(matches, "output") {
+      Some(output) -> {
+        dbg(output);
+        Ok(())
+      },
+      None -> {
+        dbg("none");
+        Ok(())
+      },
+      _ -> Err(3)
+    }
+  }
+}
+
+fn main(args: List<String>) -> Result<(), i32> {
+  let cmd = ArgParser.command("riotc", [
+    ArgParser.flag("help", "--help"),
+    ArgParser.option("output", "--output")
+  ]);
+  match ArgParser.parse(cmd, args) {
+    Ok(matches) -> run(matches),
+    Err(error) -> {
+      dbg(ArgParser.error_message(error));
+      Err(2)
+    },
+    _ -> Err(4)
+  }
+}
+"#,
+    )?;
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&arg_parser)
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected std arg parser program to compile:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let ok = Command::new(&output)
+        .args(["--output", "out.txt"])
+        .output()?;
+    if ok.status.code() != Some(0) || ok.stdout != b"out.txt\n" {
+        return fail(format!(
+            "unexpected arg parser success run: status={}, stdout={}",
+            status_label(&ok),
+            String::from_utf8_lossy(&ok.stdout)
+        ));
+    }
+
+    let missing = Command::new(&output).arg("--output").output()?;
+    if missing.status.code() != Some(2) || missing.stdout != b"missing value for --output\n" {
+        return fail(format!(
+            "unexpected arg parser missing-value run: status={}, stdout={}",
+            status_label(&missing),
+            String::from_utf8_lossy(&missing.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_object_links_imported_function_from_object_dir() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");

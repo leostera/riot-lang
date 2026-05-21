@@ -13,6 +13,9 @@ pub mod Option
 /// Fallible results.
 pub mod Result
 
+/// Command-line argument parsing.
+pub mod ArgParser
+
 /// Ubiquitous declarations.
 pub mod Prelude
 
