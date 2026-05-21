@@ -12,7 +12,7 @@ mod store;
 use binary::{decode_rsig, encode_rsig};
 
 pub(crate) use names::{
-    ConstructorName, FieldName, ModuleName, TypeName, TypeParamName, TypeVarName,
+    AbiSymbol, ConstructorName, FieldName, ModuleName, TypeName, TypeParamName, TypeVarName,
 };
 pub(crate) use store::RsigStore;
 
@@ -87,7 +87,7 @@ pub(crate) struct RsigExternal {
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) scheme: RsigTypeScheme,
-    pub(crate) abi: String,
+    pub(crate) abi: AbiSymbol,
     pub(crate) fingerprint: u64,
 }
 

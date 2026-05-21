@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
+use crate::signature::{AbiSymbol, ConstructorName, ModuleName, RsigType, TypeName};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct BindingKey {
@@ -90,7 +90,7 @@ pub(crate) struct LambdaExternal {
     pub(crate) name: String,
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
-    pub(crate) abi: String,
+    pub(crate) abi: AbiSymbol,
 }
 
 #[derive(Debug, Clone)]

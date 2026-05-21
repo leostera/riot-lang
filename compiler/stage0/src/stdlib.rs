@@ -188,7 +188,7 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                     params,
                     result,
                     scheme,
-                    abi: external.abi,
+                    abi: external.abi.into(),
                     fingerprint: 0,
                 }));
             }

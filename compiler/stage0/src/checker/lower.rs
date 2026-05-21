@@ -102,7 +102,7 @@ pub(crate) fn typed_program_from_ast(
                 name: external.name,
                 params,
                 result,
-                abi: external.abi,
+                abi: external.abi.into(),
             }
         })
         .collect::<Vec<_>>();

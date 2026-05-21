@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::imported_types::qualify_imported_type;
-use crate::signature::{ImportedSignatures, ModuleName, RsigExport, RsigType};
+use crate::signature::{AbiSymbol, ImportedSignatures, ModuleName, RsigExport, RsigType};
 use crate::stdlib::Stdlib;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,18 +17,18 @@ pub(crate) struct CallableSignature {
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
     pub(crate) kind: CallableKind,
-    pub(crate) abi: Option<String>,
+    pub(crate) abi: Option<AbiSymbol>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExternalSignature {
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
-    pub(crate) abi: String,
+    pub(crate) abi: AbiSymbol,
 }
 
 impl ExternalSignature {
-    pub(crate) fn new(params: Vec<RsigType>, result: RsigType, abi: impl Into<String>) -> Self {
+    pub(crate) fn new(params: Vec<RsigType>, result: RsigType, abi: impl Into<AbiSymbol>) -> Self {
         Self {
             params,
             result,

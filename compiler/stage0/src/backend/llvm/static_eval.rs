@@ -576,7 +576,7 @@ mod tests {
                 name: "(==)".to_owned(),
                 params: vec![RsigType::Var("'a".into()), RsigType::Var("'a".into())],
                 result: RsigType::Bool,
-                abi: "riot_rt_prim_eq".to_owned(),
+                abi: "riot_rt_prim_eq".into(),
             },
         )]);
         let evaluator = StaticEvaluator::new(&functions, &externals);

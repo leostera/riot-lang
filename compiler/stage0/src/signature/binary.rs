@@ -3,9 +3,9 @@ use std::io::{Cursor, Read};
 use miette::{IntoDiagnostic, bail};
 
 use super::{
-    ConstructorName, FieldName, MAGIC, ModuleName, Rsig, RsigDependency, RsigExport, RsigExternal,
-    RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme,
-    RsigVariantConstructor, TypeName, TypeParamName, TypeVarName, VERSION,
+    AbiSymbol, ConstructorName, FieldName, MAGIC, ModuleName, Rsig, RsigDependency, RsigExport,
+    RsigExternal, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
+    RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName, TypeVarName, VERSION,
 };
 
 pub(super) fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
@@ -67,7 +67,7 @@ pub(super) fn encode_rsig(rsig: &Rsig) -> Vec<u8> {
                 put_types(&mut bytes, &external.params);
                 put_type(&mut bytes, &external.result);
                 put_scheme(&mut bytes, &external.scheme);
-                put_string(&mut bytes, &external.abi);
+                put_string(&mut bytes, external.abi.as_str());
                 put_u64(&mut bytes, external.fingerprint);
             }
         }
@@ -166,7 +166,7 @@ pub(super) fn decode_rsig(bytes: &[u8]) -> miette::Result<Rsig> {
                 params,
                 result,
                 scheme,
-                abi: payload,
+                abi: AbiSymbol::new(payload),
                 fingerprint,
             })),
             tag => bail!("unknown rsig export tag {tag}"),

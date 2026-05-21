@@ -1,5 +1,5 @@
 use crate::signature::{
-    ConstructorName, FieldName, ModuleName, Rsig, RsigType, TypeName, TypeParamName,
+    AbiSymbol, ConstructorName, FieldName, ModuleName, Rsig, RsigType, TypeName, TypeParamName,
 };
 use std::collections::BTreeMap;
 
@@ -147,7 +147,7 @@ pub(crate) struct TypedExternal {
     pub(crate) name: String,
     pub(crate) params: Vec<RsigType>,
     pub(crate) result: RsigType,
-    pub(crate) abi: String,
+    pub(crate) abi: AbiSymbol,
 }
 
 #[derive(Debug, Clone)]

@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt;
+use std::ops::Deref;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct ModuleName(String);
@@ -45,6 +46,57 @@ impl fmt::Display for ModuleName {
 }
 
 impl fmt::Debug for ModuleName {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(formatter)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct AbiSymbol(String);
+
+impl AbiSymbol {
+    pub(crate) fn new(symbol: impl Into<String>) -> Self {
+        Self(symbol.into())
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for AbiSymbol {
+    fn from(value: String) -> Self {
+        AbiSymbol::new(value)
+    }
+}
+
+impl From<&str> for AbiSymbol {
+    fn from(value: &str) -> Self {
+        AbiSymbol::new(value)
+    }
+}
+
+impl AsRef<str> for AbiSymbol {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Deref for AbiSymbol {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for AbiSymbol {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl fmt::Debug for AbiSymbol {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(formatter)
     }
