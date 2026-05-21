@@ -1,10 +1,23 @@
 pub(crate) mod air;
 
-use crate::ir::ActorIrLowerer;
 use crate::lambda::ir::RirProgram;
 use crate::signature::ImportedSignatures;
 
 pub(crate) use air::*;
+
+pub(crate) struct ActorIrLowerer<'a> {
+    imports: &'a ImportedSignatures,
+}
+
+impl<'a> ActorIrLowerer<'a> {
+    pub(crate) fn new(imports: &'a ImportedSignatures) -> Self {
+        Self { imports }
+    }
+
+    pub(crate) fn lower(&self, program: &RirProgram) -> ActorIrProgram {
+        crate::ir::lower_rir_to_actor_ir(program, self.imports)
+    }
+}
 
 pub(crate) struct StacklessActorLowerer<'a> {
     imports: &'a ImportedSignatures,

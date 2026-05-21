@@ -15,20 +15,6 @@ pub(crate) use crate::actor::air::*;
 pub(crate) use crate::checker::tyir::*;
 pub(crate) use crate::lambda::ir::*;
 
-pub(crate) struct ActorIrLowerer<'a> {
-    imports: &'a ImportedSignatures,
-}
-
-impl<'a> ActorIrLowerer<'a> {
-    pub(crate) fn new(imports: &'a ImportedSignatures) -> Self {
-        Self { imports }
-    }
-
-    pub(crate) fn lower(&self, program: &RirProgram) -> ActorIrProgram {
-        lower_rir_to_actor_ir(program, self.imports)
-    }
-}
-
 pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
     ast: AstProgram,
@@ -328,7 +314,10 @@ fn closure_convert_rir(mut program: RirProgram) -> RirProgram {
     program
 }
 
-fn lower_rir_to_actor_ir(program: &RirProgram, imports: &ImportedSignatures) -> ActorIrProgram {
+pub(crate) fn lower_rir_to_actor_ir(
+    program: &RirProgram,
+    imports: &ImportedSignatures,
+) -> ActorIrProgram {
     let mut actors = Vec::new();
     let context = ActorLowerContext {
         functions: function_type_map(program),
