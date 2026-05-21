@@ -10,7 +10,7 @@ mod error;
 mod literal;
 mod source;
 mod span;
-mod type_syntax;
+pub(crate) mod type_syntax;
 
 use error::ParseError;
 use literal::{parse_char_literal, parse_int_literal};

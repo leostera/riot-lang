@@ -105,3 +105,21 @@ fn lower_type_app(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use crate::parser::type_syntax::TypeSyntaxParser;
+    use crate::signature::RsigType;
+
+    use super::RsigTypeLowerer;
+
+    #[test]
+    fn lowers_unit_syntax_to_unit_type_constructor() {
+        let type_ = TypeSyntaxParser::new().parse("()").expect("type parses");
+        let lowered = RsigTypeLowerer::new().lower(&type_, &BTreeSet::new());
+
+        assert_eq!(lowered, RsigType::Unit);
+    }
+}
