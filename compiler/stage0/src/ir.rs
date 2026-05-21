@@ -1,13 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::ast::{
-    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeBody, TextSpan,
+    AstBlock, AstDecl, AstExpr, AstPattern, AstProgram, AstStmt, AstTypeAnnotation, AstTypeBody,
+    TextSpan,
 };
 use crate::signature::{
     ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigExport,
     RsigExternal, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
-    RsigTypeParser, RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName,
+    RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName,
 };
+use crate::type_lowerer::RsigTypeLowerer;
 
 pub(crate) use crate::actor::air::*;
 pub(crate) use crate::checker::tyir::*;
@@ -134,10 +136,7 @@ fn typed_program_from_ast(
                                         .payload
                                         .into_iter()
                                         .map(|payload| {
-                                            RsigTypeParser::new().parse_with_variants(
-                                                &payload.text,
-                                                &predeclared_variants,
-                                            )
+                                            lower_type_annotation(&payload, &predeclared_variants)
                                         })
                                         .collect(),
                                 })
@@ -148,8 +147,8 @@ fn typed_program_from_ast(
                                 .into_iter()
                                 .map(|field| TypedRecordField {
                                     name: FieldName::new(field.name),
-                                    type_: RsigTypeParser::new().parse_with_variants(
-                                        &field.type_annotation.text,
+                                    type_: lower_type_annotation(
+                                        &field.type_annotation,
                                         &predeclared_variants,
                                     ),
                                 })
@@ -165,8 +164,8 @@ fn typed_program_from_ast(
     let externals = raw_externals
         .into_iter()
         .map(|external| {
-            let (params, result) = RsigTypeParser::new()
-                .parse_signature_with_variants(&external.type_text, &declared_variants);
+            let (params, result) =
+                lower_signature_annotation(&external.type_annotation, &declared_variants);
             TypedExternal {
                 name: external.name,
                 params,
@@ -200,9 +199,10 @@ fn typed_program_from_ast(
                     RsigType::Unknown,
                 )
             });
-        let annotated_result = function.return_type.as_ref().map(|annotation| {
-            RsigTypeParser::new().parse_with_variants(&annotation.text, &declared_variants)
-        });
+        let annotated_result = function
+            .return_type
+            .as_ref()
+            .map(|annotation| lower_type_annotation(annotation, &declared_variants));
         let mut context = TypeContext::new(TypeContextInputs {
             function_types,
             externals: &external_types,
@@ -244,6 +244,20 @@ fn typed_program_from_ast(
         types,
         functions,
     }
+}
+
+fn lower_type_annotation(
+    annotation: &AstTypeAnnotation,
+    declared_variants: &BTreeSet<TypeName>,
+) -> RsigType {
+    RsigTypeLowerer::new().lower(&annotation.syntax, declared_variants)
+}
+
+fn lower_signature_annotation(
+    annotation: &AstTypeAnnotation,
+    declared_variants: &BTreeSet<TypeName>,
+) -> (Vec<RsigType>, RsigType) {
+    RsigTypeLowerer::new().lower_signature(&annotation.syntax, declared_variants)
 }
 
 fn signature_for(program: &TypedProgram) -> Rsig {
@@ -722,8 +736,7 @@ fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
             } => {
                 let mut value = type_expr(value, context);
                 if let Some(annotation) = type_annotation {
-                    value.type_ = RsigTypeParser::new()
-                        .parse_with_variants(&annotation.text, context.declared_variants);
+                    value.type_ = lower_type_annotation(&annotation, context.declared_variants);
                 }
                 let binding = context.bind(&name, value.type_.clone());
                 statements.push(TypedStmt::Let { binding, value });
@@ -905,8 +918,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         .get(index)
                         .and_then(|annotation| annotation.as_ref())
                         .map(|annotation| {
-                            RsigTypeParser::new()
-                                .parse_with_variants(&annotation.text, context.declared_variants)
+                            lower_type_annotation(annotation, context.declared_variants)
                         })
                         .unwrap_or(RsigType::Unknown);
                     let binding = context.bind(name, type_.clone());

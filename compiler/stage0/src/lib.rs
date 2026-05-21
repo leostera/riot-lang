@@ -15,8 +15,10 @@ mod linker;
 mod parser;
 mod runtime;
 mod signature;
+#[cfg(test)]
 mod signature_type_parser;
 mod stdlib;
+mod type_lowerer;
 
 pub fn run_cli() -> miette::Result<()> {
     use clap::Parser as _;

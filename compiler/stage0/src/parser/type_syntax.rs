@@ -1,51 +1,5 @@
-use crate::ast::{AstPath, TextSpan};
+use crate::ast::{AstPath, AstTypeExpr, TextSpan};
 use crate::lexer::{Lexer, Token, TokenKind};
-
-#[derive(Debug, Clone)]
-pub(crate) enum AstTypeExpr {
-    Unit {
-        span: TextSpan,
-    },
-    Wildcard {
-        span: TextSpan,
-    },
-    Var {
-        name: String,
-        span: TextSpan,
-    },
-    Path {
-        path: AstPath,
-        span: TextSpan,
-    },
-    Apply {
-        constructor: AstPath,
-        args: Vec<AstTypeExpr>,
-        span: TextSpan,
-    },
-    Tuple {
-        items: Vec<AstTypeExpr>,
-        span: TextSpan,
-    },
-    Arrow {
-        parameter: Box<AstTypeExpr>,
-        result: Box<AstTypeExpr>,
-        span: TextSpan,
-    },
-}
-
-impl AstTypeExpr {
-    pub(crate) fn span(&self) -> TextSpan {
-        match self {
-            AstTypeExpr::Unit { span }
-            | AstTypeExpr::Wildcard { span }
-            | AstTypeExpr::Var { span, .. }
-            | AstTypeExpr::Path { span, .. }
-            | AstTypeExpr::Apply { span, .. }
-            | AstTypeExpr::Tuple { span, .. }
-            | AstTypeExpr::Arrow { span, .. } => *span,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypeSyntaxError {
@@ -182,7 +136,10 @@ impl<'src> TypeParser<'src> {
     fn parse_parenthesized_type(&mut self) -> Result<AstTypeExpr, TypeSyntaxError> {
         let start = self.expect(TokenKind::LParen, "expected `(`")?;
         if let Some(end) = self.match_kind(TokenKind::RParen) {
-            return Ok(AstTypeExpr::Unit {
+            return Ok(AstTypeExpr::Path {
+                path: AstPath {
+                    segments: vec!["unit".to_owned()],
+                },
                 span: start.span.join(end),
             });
         }
@@ -261,7 +218,8 @@ impl<'src> TypeParser<'src> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AstTypeExpr, TypeSyntaxParser};
+    use super::TypeSyntaxParser;
+    use crate::ast::AstTypeExpr;
 
     #[test]
     fn parses_curried_function_types() {

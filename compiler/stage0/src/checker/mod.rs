@@ -19,9 +19,9 @@ use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
 use crate::infer::module::ModuleInferencer;
 use crate::ir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::signature::{
-    ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, RsigTypeParser,
-    TypeName,
+    ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType, RsigTypeDeclKind, TypeName,
 };
+use crate::type_lowerer::RsigTypeLowerer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CheckMode {
@@ -116,6 +116,10 @@ struct ValidationContext<'a> {
 }
 
 impl<'a> ValidationContext<'a> {
+    fn lower_type_annotation(&self, annotation: &AstTypeAnnotation) -> RsigType {
+        lower_type_annotation(annotation, &self.declared_variants)
+    }
+
     fn diagnostic(
         &self,
         span: TextSpan,
@@ -221,10 +225,10 @@ fn validate_program(
             }
             AstDecl::Module(_) | AstDecl::Include(_) => {}
             AstDecl::External(external) => {
-                if external.type_text.trim().is_empty() {
+                if external.type_annotation.text.trim().is_empty() {
                     return Err(ctx
                         .diagnostic(
-                            external.type_span,
+                            external.type_annotation.span,
                             "empty external type",
                             "external declarations need a source-level type",
                             Some("try: external println : string -> unit = \"riot_prim_println\""),
@@ -234,8 +238,8 @@ fn validate_program(
                 validate_source_type_spelling(
                     ctx.source_path,
                     ctx.source,
-                    external.type_span,
-                    &external.type_text,
+                    external.type_annotation.span,
+                    &external.type_annotation.text,
                 )?;
             }
             AstDecl::Type(type_) => {
@@ -347,9 +351,7 @@ fn main_requires_output_action(
     function
         .return_type
         .as_ref()
-        .map(|annotation| {
-            RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants)
-        })
+        .map(|annotation| ctx.lower_type_annotation(annotation))
         .is_none_or(|type_| matches!(type_, RsigType::Unit))
 }
 
@@ -374,8 +376,7 @@ fn validate_main_function_signature(
                     )
                     .into());
             };
-            let actual =
-                RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants);
+            let actual = ctx.lower_type_annotation(annotation);
             let expected = RsigType::List(Box::new(RsigType::String));
             if actual != expected {
                 return Err(ctx
@@ -406,8 +407,7 @@ fn validate_main_function_signature(
     let Some(annotation) = &function.return_type else {
         return Ok(());
     };
-    let result =
-        RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants);
+    let result = ctx.lower_type_annotation(annotation);
     if matches!(result, RsigType::Unit | RsigType::I32) || is_main_result_exit_type(&result) {
         return Ok(());
     }
@@ -445,12 +445,19 @@ fn function_results(
             AstDecl::Function(function) => function.return_type.as_ref().map(|annotation| {
                 (
                     function.name.clone(),
-                    RsigTypeParser::new().parse_with_variants(&annotation.text, declared_variants),
+                    lower_type_annotation(annotation, declared_variants),
                 )
             }),
             _ => None,
         })
         .collect()
+}
+
+fn lower_type_annotation(
+    annotation: &AstTypeAnnotation,
+    declared_variants: &BTreeSet<TypeName>,
+) -> RsigType {
+    RsigTypeLowerer::new().lower(&annotation.syntax, declared_variants)
 }
 
 fn declared_variant_names(
@@ -594,8 +601,7 @@ fn constructor_types(
                                     .payload
                                     .iter()
                                     .map(|payload| {
-                                        RsigTypeParser::new()
-                                            .parse_with_variants(&payload.text, declared_variants)
+                                        lower_type_annotation(payload, declared_variants)
                                     })
                                     .collect(),
                             },
@@ -665,10 +671,7 @@ fn record_shapes(
                         .map(|field| {
                             (
                                 field.name.clone(),
-                                RsigTypeParser::new().parse_with_variants(
-                                    &field.type_annotation.text,
-                                    declared_variants,
-                                ),
+                                lower_type_annotation(&field.type_annotation, declared_variants),
                             )
                         })
                         .collect(),
@@ -753,10 +756,7 @@ fn validate_block(
             let type_ = param_types
                 .get(index)
                 .and_then(|annotation| annotation.as_ref())
-                .map(|annotation| {
-                    RsigTypeParser::new()
-                        .parse_with_variants(&annotation.text, &ctx.declared_variants)
-                });
+                .map(|annotation| ctx.lower_type_annotation(annotation));
             (param.clone(), BindingKind::Value(type_))
         })
         .collect::<HashMap<_, _>>();
@@ -783,10 +783,7 @@ fn validate_block(
                         validate_expr(ctx, value, &bindings, false)?;
                         let type_ = type_annotation
                             .as_ref()
-                            .map(|annotation| {
-                                RsigTypeParser::new()
-                                    .parse_with_variants(&annotation.text, &ctx.declared_variants)
-                            })
+                            .map(|annotation| ctx.lower_type_annotation(annotation))
                             .or_else(|| simple_expr_type(ctx, value, &bindings));
                         BindingKind::Value(type_)
                     }
@@ -840,9 +837,7 @@ fn validate_scoped_block(
         let type_ = param_types
             .get(index)
             .and_then(|annotation| annotation.as_ref())
-            .map(|annotation| {
-                RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants)
-            });
+            .map(|annotation| ctx.lower_type_annotation(annotation));
         bindings.insert(param.clone(), BindingKind::Value(type_));
     }
 
@@ -866,10 +861,7 @@ fn validate_scoped_block(
                         validate_expr(ctx, value, &bindings, in_actor)?;
                         let type_ = type_annotation
                             .as_ref()
-                            .map(|annotation| {
-                                RsigTypeParser::new()
-                                    .parse_with_variants(&annotation.text, &ctx.declared_variants)
-                            })
+                            .map(|annotation| ctx.lower_type_annotation(annotation))
                             .or_else(|| simple_expr_type(ctx, value, &bindings));
                         BindingKind::Value(type_)
                     }
@@ -1389,10 +1381,7 @@ fn validate_block_expr(
                         }
                         let type_ = type_annotation
                             .as_ref()
-                            .map(|annotation| {
-                                RsigTypeParser::new()
-                                    .parse_with_variants(&annotation.text, &ctx.declared_variants)
-                            })
+                            .map(|annotation| ctx.lower_type_annotation(annotation))
                             .or_else(|| simple_expr_type(ctx, value, &bindings));
                         BindingKind::Value(type_)
                     }
@@ -2425,8 +2414,7 @@ fn validate_type_annotation(
     let value_type = resolve_const_value(value, &HashMap::new(), &ctx.functions)
         .map(|value| const_value_type(&value));
     if let Some(value_type) = value_type {
-        let expected =
-            RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants);
+        let expected = ctx.lower_type_annotation(annotation);
         if type_matches(&expected, &value_type) {
             return Ok(());
         }
@@ -2458,10 +2446,7 @@ fn validate_function_annotations(
         };
         validate_function_abi_annotation(ctx, annotation)?;
         if let Some(param) = function.params.get(index) {
-            bindings.insert(
-                param.clone(),
-                RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants),
-            );
+            bindings.insert(param.clone(), ctx.lower_type_annotation(annotation));
         }
     }
 
@@ -2470,8 +2455,7 @@ fn validate_function_annotations(
     };
     validate_function_abi_annotation(ctx, return_annotation)?;
 
-    let expected =
-        RsigTypeParser::new().parse_with_variants(&return_annotation.text, &ctx.declared_variants);
+    let expected = ctx.lower_type_annotation(return_annotation);
     let actual = infer_annotation_block_type(ctx, &function.body, &mut bindings);
     if let Some(actual) = actual
         && !type_matches(&expected, &actual)
@@ -2515,7 +2499,7 @@ fn validate_function_abi_annotation(
             .into());
     }
 
-    let type_ = RsigTypeParser::new().parse_with_variants(&annotation.text, &ctx.declared_variants);
+    let type_ = ctx.lower_type_annotation(annotation);
     if matches!(
         type_,
         RsigType::I32
@@ -2560,10 +2544,7 @@ fn infer_annotation_block_type(
             } => {
                 let type_ = type_annotation
                     .as_ref()
-                    .map(|annotation| {
-                        RsigTypeParser::new()
-                            .parse_with_variants(&annotation.text, &ctx.declared_variants)
-                    })
+                    .map(|annotation| ctx.lower_type_annotation(annotation))
                     .or_else(|| infer_annotation_expr_type(ctx, value, bindings))
                     .unwrap_or(RsigType::Unknown);
                 bindings.insert(name.clone(), type_);
@@ -2976,10 +2957,7 @@ fn simple_block_type(
             } => {
                 let type_ = type_annotation
                     .as_ref()
-                    .map(|annotation| {
-                        RsigTypeParser::new()
-                            .parse_with_variants(&annotation.text, &ctx.declared_variants)
-                    })
+                    .map(|annotation| ctx.lower_type_annotation(annotation))
                     .or_else(|| simple_expr_type(ctx, value, &bindings));
                 bindings.insert(name.clone(), BindingKind::Value(type_));
             }

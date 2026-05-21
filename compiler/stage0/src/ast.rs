@@ -54,8 +54,7 @@ pub(crate) struct AstIncludeDecl {
 #[derive(Debug, Clone)]
 pub(crate) struct AstExternalDecl {
     pub(crate) name: String,
-    pub(crate) type_text: String,
-    pub(crate) type_span: TextSpan,
+    pub(crate) type_annotation: AstTypeAnnotation,
     pub(crate) abi: String,
     pub(crate) span: TextSpan,
 }
@@ -186,7 +185,50 @@ pub(crate) enum AstStmt {
 #[derive(Debug, Clone)]
 pub(crate) struct AstTypeAnnotation {
     pub(crate) text: String,
+    pub(crate) syntax: AstTypeExpr,
     pub(crate) span: TextSpan,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum AstTypeExpr {
+    Wildcard {
+        span: TextSpan,
+    },
+    Var {
+        name: String,
+        span: TextSpan,
+    },
+    Path {
+        path: AstPath,
+        span: TextSpan,
+    },
+    Apply {
+        constructor: AstPath,
+        args: Vec<AstTypeExpr>,
+        span: TextSpan,
+    },
+    Tuple {
+        items: Vec<AstTypeExpr>,
+        span: TextSpan,
+    },
+    Arrow {
+        parameter: Box<AstTypeExpr>,
+        result: Box<AstTypeExpr>,
+        span: TextSpan,
+    },
+}
+
+impl AstTypeExpr {
+    pub(crate) fn span(&self) -> TextSpan {
+        match self {
+            AstTypeExpr::Wildcard { span }
+            | AstTypeExpr::Var { span, .. }
+            | AstTypeExpr::Path { span, .. }
+            | AstTypeExpr::Apply { span, .. }
+            | AstTypeExpr::Tuple { span, .. }
+            | AstTypeExpr::Arrow { span, .. } => *span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

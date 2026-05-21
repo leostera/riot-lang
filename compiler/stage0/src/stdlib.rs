@@ -7,9 +7,10 @@ use crate::ast::{AstDecl, AstProgram, AstTypeBody};
 use crate::parser::SourceParser;
 use crate::signature::{
     ConstructorName, FieldName, ModuleName, Rsig, RsigExport, RsigExternal, RsigRecordField,
-    RsigTypeDecl, RsigTypeDeclKind, RsigTypeParser, RsigTypeScheme, RsigVariantConstructor,
-    TypeName, TypeParamName,
+    RsigTypeDecl, RsigTypeDeclKind, RsigTypeScheme, RsigVariantConstructor, TypeName,
+    TypeParamName,
 };
+use crate::type_lowerer::RsigTypeLowerer;
 
 const STD_SOURCE: &str = include_str!("../../std/std.ml");
 const PRELUDE_SOURCE: &str = include_str!("../../std/prelude.ml");
@@ -128,10 +129,8 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                                         .payload
                                         .into_iter()
                                         .map(|payload| {
-                                            RsigTypeParser::new().parse_with_variants(
-                                                &payload.text,
-                                                &declared_variants,
-                                            )
+                                            RsigTypeLowerer::new()
+                                                .lower(&payload.syntax, &declared_variants)
                                         })
                                         .collect(),
                                 })
@@ -142,10 +141,8 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                                 .into_iter()
                                 .map(|field| RsigRecordField {
                                     name: FieldName::new(field.name),
-                                    type_: RsigTypeParser::new().parse_with_variants(
-                                        &field.type_annotation.text,
-                                        &declared_variants,
-                                    ),
+                                    type_: RsigTypeLowerer::new()
+                                        .lower(&field.type_annotation.syntax, &declared_variants),
                                 })
                                 .collect(),
                         },
@@ -154,8 +151,8 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
                 });
             }
             AstDecl::External(external) => {
-                let (params, result) = RsigTypeParser::new()
-                    .parse_signature_with_variants(&external.type_text, &declared_variants);
+                let (params, result) = RsigTypeLowerer::new()
+                    .lower_signature(&external.type_annotation.syntax, &declared_variants);
                 let scheme = RsigTypeScheme::from_signature(&params, &result);
                 exports.push(RsigExport::External(RsigExternal {
                     name: external.name,

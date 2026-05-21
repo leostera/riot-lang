@@ -11,12 +11,12 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × invalid list type spelling
-   ╭─[tests/fixtures/diagnostics/types/postfix_list_type.ml:2:15]
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/types/postfix_list_type.ml:2:19]
  1 │ fn main() {
  2 │   let values: i64 list = [1];
-   ·               ────┬───
-   ·                   ╰── postfix `list` types are not supported
+   ·                   ──┬─
+   ·                     ╰── expected end of type annotation
  3 │   dbg(list_len(values))
    ╰────
-  help: use `List<T>`
+  help: use Riot type syntax like `List<String>` or `i64 -> i64`

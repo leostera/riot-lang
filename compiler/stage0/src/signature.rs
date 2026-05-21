@@ -7,6 +7,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
 use crate::fingerprint::SignatureFingerprinter;
+#[cfg(test)]
 pub(crate) use crate::signature_type_parser::RsigTypeParser;
 
 const MAGIC: &[u8; 8] = b"RIOTRSIG";

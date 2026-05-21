@@ -17,7 +17,7 @@ use literal::{parse_char_literal, parse_int_literal};
 use span::expr_span;
 
 pub(crate) use source::SourceParser;
-pub(crate) use type_syntax::{AstTypeExpr, TypeSyntaxParser};
+pub(crate) use type_syntax::TypeSyntaxParser;
 
 struct Parser<'src> {
     source: &'src str,
@@ -119,22 +119,8 @@ impl<'src> Parser<'src> {
         let start = self.expect(TokenKind::External, "expected `external`")?;
         let (name, _) = self.parse_external_name()?;
         self.expect(TokenKind::Colon, "expected `:` after external name")?;
-        let type_start = self.current().span;
-        while !self.at(TokenKind::Eq) {
-            if self.at(TokenKind::Semicolon)
-                || self.at(TokenKind::LBrace)
-                || self.at(TokenKind::RBrace)
-                || self.at(TokenKind::Eof)
-            {
-                return Err(self.error_at_current("expected `=` after external type", None));
-            }
-            self.bump();
-        }
-        let type_end = self.previous_span();
-        if type_start.start >= type_end.end {
-            return Err(self.error_at_current("expected external type after `:`", None));
-        }
-        let type_span = TextSpan::new(type_start.start, type_end.end);
+        let type_annotation =
+            self.parse_type_annotation_until(&[TokenKind::Eq], "expected `=` after external type")?;
         self.expect(TokenKind::Eq, "expected `=` after external type")?;
         let abi_token = self.expect(TokenKind::String, "expected external ABI string")?;
         let abi = snailquote::unescape(self.text(abi_token.span)).map_err(|error| ParseError {
@@ -144,8 +130,7 @@ impl<'src> Parser<'src> {
         })?;
         Ok(AstExternalDecl {
             name,
-            type_text: self.text(type_span).trim().to_owned(),
-            type_span,
+            type_annotation,
             abi,
             span: start.span.join(abi_token.span),
         })
@@ -467,10 +452,21 @@ impl<'src> Parser<'src> {
         }
 
         let span = TextSpan::new(start.start, end.end);
-        Ok(AstTypeAnnotation {
-            text: self.text(span).trim().to_owned(),
-            span,
-        })
+        let raw_text = self.text(span);
+        let leading_whitespace = raw_text.len() - raw_text.trim_start().len();
+        let text = raw_text.trim().to_owned();
+        let syntax = TypeSyntaxParser::new().parse(&text).map_err(|error| {
+            let (error_span, message) = error.into_parts();
+            ParseError {
+                span: TextSpan::new(
+                    span.start + leading_whitespace + error_span.start,
+                    span.start + leading_whitespace + error_span.end,
+                ),
+                message,
+                help: Some("use Riot type syntax like `List<String>` or `i64 -> i64`"),
+            }
+        })?;
+        Ok(AstTypeAnnotation { text, syntax, span })
     }
 
     fn parse_expr(&mut self) -> Result<AstExpr, ParseError> {
@@ -1495,7 +1491,7 @@ mod tests {
         };
 
         assert_eq!(external.name, "(+)");
-        assert_eq!(external.type_text, "'a -> 'a -> 'a");
+        assert_eq!(external.type_annotation.text, "'a -> 'a -> 'a");
     }
 
     #[test]
