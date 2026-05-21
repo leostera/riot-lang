@@ -12,11 +12,11 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × duplicate function parameter
-   ╭─[tests/fixtures/diagnostics/types/duplicate_function_param.ml:1:4]
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/types/duplicate_function_param.ml:1:16]
  1 │ fn add(x: i64, x: i64) {
-   ·    ─┬─
-   ·     ╰── this parameter name is already used by this function
+   ·                ┬
+   ·                ╰── duplicate parameter name
  2 │   x + x
    ╰────
-  help: choose a unique name for each function parameter
+  help: choose a unique name for each parameter

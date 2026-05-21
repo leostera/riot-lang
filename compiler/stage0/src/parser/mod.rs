@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::ast::{
     AstBlock, AstDecl, AstExpr, AstExternalDecl, AstFnDecl, AstIncludeDecl, AstMatchArm,
     AstModuleDecl, AstPath, AstPattern, AstProgram, AstReceiveArm, AstRecordTypeField, AstStmt,
@@ -337,13 +339,21 @@ impl<'src> Parser<'src> {
         self.expect(TokenKind::LParen, "expected `(` after function name")?;
         let mut params = Vec::new();
         let mut param_types = Vec::new();
+        let mut seen_params = HashMap::<String, TextSpan>::new();
 
         if self.match_kind(TokenKind::RParen).is_some() {
             return Ok((params, param_types));
         }
 
         loop {
-            let (name, _) = self.expect_lower_ident()?;
+            let (name, name_span) = self.expect_lower_ident()?;
+            if seen_params.insert(name.clone(), name_span).is_some() {
+                return Err(ParseError {
+                    span: name_span,
+                    message: "duplicate parameter name".to_owned(),
+                    help: Some("choose a unique name for each parameter"),
+                });
+            }
             params.push(name);
             let type_annotation = if self.match_kind(TokenKind::Colon).is_some() {
                 Some(self.parse_type_annotation_until(

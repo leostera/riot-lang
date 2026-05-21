@@ -12,12 +12,12 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × duplicate lambda parameter
-   ╭─[tests/fixtures/diagnostics/types/duplicate_lambda_param.ml:2:13]
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/types/duplicate_lambda_param.ml:2:19]
  1 │ fn main() {
  2 │   let bad = fn(x, x) { x };
-   ·             ───────┬──────
-   ·                    ╰── this parameter name is already used by this lambda
+   ·                   ┬
+   ·                   ╰── duplicate parameter name
  3 │   dbg(bad(1, 2))
    ╰────
-  help: choose a unique name for each lambda parameter
+  help: choose a unique name for each parameter
