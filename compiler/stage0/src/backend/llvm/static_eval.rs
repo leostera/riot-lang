@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ir::{RirBlock, RirExpr, RirFunction, RirPattern, RirStmt};
+use crate::lambda::ir::{RirBlock, RirExpr, RirFunction, RirPattern, RirStmt};
 use crate::signature::{ConstructorName, TypeName};
 
 #[derive(Debug, Clone, PartialEq)]

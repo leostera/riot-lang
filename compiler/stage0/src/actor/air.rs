@@ -1,6 +1,8 @@
+#![allow(dead_code)]
+
 use crate::signature::{ModuleName, RsigType};
 
-use super::RirExpr;
+use crate::lambda::ir::{RirExpr, RirReceiveArm};
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActorIrProgram {
@@ -72,6 +74,6 @@ pub(crate) enum ActorStateNext {
 #[derive(Debug, Clone)]
 pub(crate) enum ActorFrameOp {
     Let { name: String, value: RirExpr },
-    Receive { arms: Vec<super::RirReceiveArm> },
+    Receive { arms: Vec<RirReceiveArm> },
     Expr(RirExpr),
 }

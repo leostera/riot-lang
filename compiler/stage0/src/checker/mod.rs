@@ -4,6 +4,7 @@ use camino::Utf8Path;
 
 mod const_eval;
 mod span;
+pub(crate) mod tyir;
 mod types;
 
 use const_eval::{ConstFunction, ConstValue, resolve_const_value};
@@ -26,6 +27,43 @@ use crate::signature::{
 pub(crate) enum CheckMode {
     Executable,
     Interface,
+}
+
+pub(crate) struct Checker<'a> {
+    source_path: &'a Utf8Path,
+    source: &'a str,
+    module_name: ModuleName,
+    imports: &'a ImportedSignatures,
+    mode: CheckMode,
+}
+
+impl<'a> Checker<'a> {
+    pub(crate) fn new(
+        source_path: &'a Utf8Path,
+        source: &'a str,
+        module_name: ModuleName,
+        imports: &'a ImportedSignatures,
+        mode: CheckMode,
+    ) -> Self {
+        Self {
+            source_path,
+            source,
+            module_name,
+            imports,
+            mode,
+        }
+    }
+
+    pub(crate) fn check(&self, program: AstProgram) -> miette::Result<CheckedProgram> {
+        typecheck(
+            self.source_path,
+            self.source,
+            self.module_name.clone(),
+            program,
+            self.imports,
+            self.mode,
+        )
+    }
 }
 
 pub(crate) fn typecheck(
@@ -51,8 +89,8 @@ pub(crate) fn typecheck(
             Some("fix the type error before lowering"),
         )
     })?;
-    let function_types = inferred.function_signatures(&program);
     let expression_types = inferred.expression_rsig_types();
+    let function_types = inferred.function_signatures(&program);
     let binding_schemes = inferred.binding_rsig_schemes();
     let typed_tree = typed_program_from_ast(
         module_name,

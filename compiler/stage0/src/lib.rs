@@ -1,11 +1,13 @@
 mod ast;
+mod actor;
+mod backend;
 mod checker;
 mod cli;
-mod codegen;
 mod command;
 mod diagnostic;
 mod driver;
 mod infer;
+mod lambda;
 mod ir;
 mod lexer;
 mod linker;

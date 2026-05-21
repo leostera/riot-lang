@@ -4,13 +4,14 @@ use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 use tempfile::TempDir;
 
+use crate::actor::StacklessActorLowerer;
 use crate::ast::{AstDecl, AstProgram};
-use crate::checker::{CheckMode, typecheck};
-use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, ObjectMapping};
-use crate::codegen::{
+use crate::backend::llvm::{
     CodegenMode, emit_assembly_text, emit_executable_object, emit_llvm_text, emit_module_object,
 };
-use crate::ir::{lower_rir_to_actor_ir, lower_typed_to_rir};
+use crate::checker::{CheckMode, Checker};
+use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, ObjectMapping};
+use crate::lambda::LambdaSimplifier;
 use crate::linker::link_executable;
 use crate::parser::parse_source;
 use crate::runtime::{build_runtime, find_repo_root};
@@ -78,15 +79,15 @@ fn compile(args: CompileArgs) -> miette::Result<()> {
         &args.sig_dirs,
         &compiled,
     )?;
-    let checked = typecheck(
+    let checked = Checker::new(
         &units[main_index].path,
         &units[main_index].source,
         units[main_index].module_name.clone(),
-        units[main_index].ast.clone(),
         &main_imports,
         CheckMode::Executable,
-    )?;
-    let rir = lower_typed_to_rir(checked.typed_tree);
+    )
+    .check(units[main_index].ast.clone())?;
+    let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
 
     let object = temp_dir.join("main.o");
     emit_executable_object(&rir, &main_imports, &object, args.emit_llvm.as_deref())?;
@@ -148,15 +149,15 @@ fn compile_module_unit(
     emit_llvm: Option<&Utf8Path>,
 ) -> miette::Result<CompiledModule> {
     let imports = resolve_imports(&unit.path, &unit.ast, sig_dirs, available)?;
-    let checked = typecheck(
+    let checked = Checker::new(
         &unit.path,
         &unit.source,
         unit.module_name.clone(),
-        unit.ast.clone(),
         &imports,
         CheckMode::Interface,
-    )?;
-    let rir = lower_typed_to_rir(checked.typed_tree);
+    )
+    .check(unit.ast.clone())?;
+    let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
     let rsig_path = out_dir.join(format!("{}.rsig", unit.module_name));
     let object_path = out_dir.join(format!("{}.o", unit.module_name));
     write_rsig(&rsig_path, &checked.signature)?;
@@ -178,14 +179,14 @@ fn emit(args: EmitArgs) -> miette::Result<()> {
         &ImportedSignatures::new(),
     )?;
     let module_name = module_name_from_path(&args.input)?;
-    let checked = typecheck(
+    let checked = Checker::new(
         &args.input,
         &source,
         module_name,
-        ast.clone(),
         &imports,
         CheckMode::Interface,
-    )?;
+    )
+    .check(ast.clone())?;
 
     match args.pass {
         EmitPass::Cst => write_text(args.output.as_deref(), &format!("{ast:#?}")),
@@ -200,38 +201,38 @@ fn emit(args: EmitArgs) -> miette::Result<()> {
             write_rsig(&output, &checked.signature)
         }
         EmitPass::Ir => {
-            let rir = lower_typed_to_rir(checked.typed_tree);
+            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
             write_text(args.output.as_deref(), &format!("{rir:#?}"))
         }
         EmitPass::ActorIr => {
-            let rir = lower_typed_to_rir(checked.typed_tree);
-            let actor_ir = lower_rir_to_actor_ir(&rir, &imports);
+            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
+            let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
             write_text(args.output.as_deref(), &format!("{actor_ir:#?}"))
         }
         EmitPass::Llvm => {
-            let rir = lower_typed_to_rir(checked.typed_tree);
+            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
             write_text(
                 args.output.as_deref(),
                 &emit_llvm_text(&rir, &imports, emit_mode_for(&rir))?,
             )
         }
         EmitPass::Assembly => {
-            let rir = lower_typed_to_rir(checked.typed_tree);
+            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
             write_text(
                 args.output.as_deref(),
                 &emit_assembly_text(&rir, &imports, emit_mode_for(&rir))?,
             )
         }
         EmitPass::Object => {
-            let rir = lower_typed_to_rir(checked.typed_tree);
+            let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
             let output = args
                 .output
                 .unwrap_or_else(|| args.input.with_extension("o"));
             emit_module_object(&rir, &imports, &output, None)
         }
         EmitPass::All => {
-            let rir = lower_typed_to_rir(checked.typed_tree.clone());
-            let actor_ir = lower_rir_to_actor_ir(&rir, &imports);
+            let rir = LambdaSimplifier::new().simplify(checked.typed_tree.clone());
+            let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
             let mut text = String::new();
             text.push_str("== cst ==\n");
             text.push_str(&format!("{ast:#?}\n"));
@@ -250,7 +251,7 @@ fn emit(args: EmitArgs) -> miette::Result<()> {
     }
 }
 
-fn emit_mode_for(rir: &crate::ir::RirProgram) -> CodegenMode {
+fn emit_mode_for(rir: &crate::lambda::ir::RirProgram) -> CodegenMode {
     if rir.functions.iter().any(|function| function.name == "main") {
         CodegenMode::Executable
     } else {

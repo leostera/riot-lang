@@ -12,13 +12,9 @@ use crate::signature::{
     parse_type_signature_with_variants, parse_type_with_variants,
 };
 
-mod actor;
-mod hir;
-mod rir;
-
-pub(crate) use actor::*;
-pub(crate) use hir::*;
-pub(crate) use rir::*;
+pub(crate) use crate::actor::air::*;
+pub(crate) use crate::checker::tyir::*;
+pub(crate) use crate::lambda::ir::*;
 
 pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,

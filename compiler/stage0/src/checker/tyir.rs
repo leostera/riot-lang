@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::signature::{
     ConstructorName, FieldName, ModuleName, Rsig, RsigType, RsigTypeScheme, TypeName, TypeParamName,
 };

@@ -15,9 +15,13 @@ use inkwell::values::{
 use inkwell::{AddressSpace, IntPredicate, OptimizationLevel};
 use miette::bail;
 
-use crate::ir::{
-    ActorFrameOp, ActorIrActor, ActorIrProgram, Capture, Param, RirBlock, RirExpr, RirFunction,
-    RirMatchArm, RirPattern, RirProgram, RirStmt, lower_rir_to_actor_ir,
+use crate::actor::StacklessActorLowerer;
+use crate::actor::air::{
+    ActorFrameOp, ActorFrameSlot, ActorFrameState, ActorIrActor, ActorIrProgram, ActorStateNext,
+};
+use crate::lambda::ir::{
+    Capture, Param, RirBlock, RirExpr, RirExternal, RirFunction, RirMatchArm, RirPattern,
+    RirProgram, RirStmt,
 };
 use crate::signature::{ConstructorName, ImportedSignatures, RsigExport, RsigType, TypeName};
 
@@ -165,7 +169,7 @@ fn build_program_module<'ctx>(
             .map(|function| (function.name.as_str(), function))
             .collect(),
         externals: codegen_externals(program)?,
-        actor_ir: lower_rir_to_actor_ir(program, imports),
+        actor_ir: StacklessActorLowerer::new(imports).lower(program),
         string_counter: 0,
     };
     codegen.emit_program(mode)
@@ -182,7 +186,7 @@ struct FrameSlot {
 struct ActorShape {
     slots: Vec<FrameSlot>,
     captures: Vec<FrameSlot>,
-    states: Vec<crate::ir::ActorFrameState>,
+    states: Vec<ActorFrameState>,
     size_bytes: usize,
     align: usize,
 }
@@ -221,7 +225,7 @@ struct Codegen<'ctx, 'a> {
     functions: HashMap<String, FunctionValue<'ctx>>,
     function_abis: HashMap<String, FunctionAbi>,
     function_map: HashMap<&'a str, &'a RirFunction>,
-    externals: BTreeMap<String, crate::ir::RirExternal>,
+    externals: BTreeMap<String, RirExternal>,
     actor_ir: ActorIrProgram,
     string_counter: usize,
 }
@@ -2012,8 +2016,8 @@ impl<'ctx> Codegen<'ctx, '_> {
             self.builder.position_at_end(*block);
             let mut env = self.load_actor_env(frame_type, frame, &shape)?;
             let next_state = match state.next {
-                crate::ir::ActorStateNext::State(index) => index,
-                crate::ir::ActorStateNext::Done => shape.states.len(),
+                ActorStateNext::State(index) => index,
+                ActorStateNext::Done => shape.states.len(),
             };
             match &state.op {
                 ActorFrameOp::Let { name, value } => {
@@ -2882,7 +2886,7 @@ fn actor_shape_from_ir(actor: &ActorIrActor) -> ActorShape {
     }
 }
 
-fn frame_slot_from_actor_ir(slot: &crate::ir::ActorFrameSlot) -> FrameSlot {
+fn frame_slot_from_actor_ir(slot: &ActorFrameSlot) -> FrameSlot {
     FrameSlot {
         name: slot.name.clone(),
         abi: AbiType::from_actor_slot(slot.type_),
@@ -3270,9 +3274,7 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
     }
 }
 
-fn codegen_externals(
-    program: &RirProgram,
-) -> miette::Result<BTreeMap<String, crate::ir::RirExternal>> {
+fn codegen_externals(program: &RirProgram) -> miette::Result<BTreeMap<String, RirExternal>> {
     let mut externals = crate::stdlib::prelude_signature()?
         .exports
         .into_iter()
@@ -3282,7 +3284,7 @@ fn codegen_externals(
             };
             Some((
                 external.name.clone(),
-                crate::ir::RirExternal {
+                RirExternal {
                     name: external.name,
                     params: external.params,
                     result: external.result,
@@ -3301,7 +3303,7 @@ fn codegen_externals(
 
 #[cfg(test)]
 mod tests {
-    use crate::ir::{
+    use crate::lambda::ir::{
         BindingKey, Capture, Param, RirBlock, RirExpr, RirFunction, RirProgram, RirStmt,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};

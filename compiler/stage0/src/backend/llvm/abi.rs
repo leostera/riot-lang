@@ -1,4 +1,4 @@
-use crate::ir::ActorSlotType;
+use crate::actor::air::ActorSlotType;
 use crate::signature::RsigType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

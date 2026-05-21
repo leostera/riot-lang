@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
