@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 729
 expression: transcript
 ---
 fixture: tests/fixtures/programs/basic/variant_nullary.ml

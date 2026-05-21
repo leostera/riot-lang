@@ -85,6 +85,90 @@ pub extern "C" fn riot_rt_value_as_actor_id(value: RtValue) -> ActorId {
     value_actor_id_payload(value).unwrap_or_else(|| runtime_abort("expected an actor id value"))
 }
 
+fn prim_i64(value: RtValue, name: &str) -> i64 {
+    value_i64_payload(value).unwrap_or_else(|| runtime_abort(name))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_add(lhs: RtValue, rhs: RtValue) -> RtValue {
+    value_i64(
+        prim_i64(lhs, "add expected an i64 lhs")
+            .wrapping_add(prim_i64(rhs, "add expected an i64 rhs")),
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_sub(lhs: RtValue, rhs: RtValue) -> RtValue {
+    value_i64(
+        prim_i64(lhs, "sub expected an i64 lhs")
+            .wrapping_sub(prim_i64(rhs, "sub expected an i64 rhs")),
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_neg(value: RtValue) -> RtValue {
+    value_i64(prim_i64(value, "neg expected an i64 value").wrapping_neg())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_mul(lhs: RtValue, rhs: RtValue) -> RtValue {
+    value_i64(
+        prim_i64(lhs, "mul expected an i64 lhs")
+            .wrapping_mul(prim_i64(rhs, "mul expected an i64 rhs")),
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_div(lhs: RtValue, rhs: RtValue) -> RtValue {
+    let rhs = prim_i64(rhs, "div expected an i64 rhs");
+    if rhs == 0 {
+        runtime_abort("division by zero");
+    }
+    value_i64(
+        prim_i64(lhs, "div expected an i64 lhs")
+            .checked_div(rhs)
+            .unwrap_or_else(|| runtime_abort("integer division overflow")),
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_mod(lhs: RtValue, rhs: RtValue) -> RtValue {
+    let rhs = prim_i64(rhs, "mod expected an i64 rhs");
+    if rhs == 0 {
+        runtime_abort("modulo by zero");
+    }
+    value_i64(
+        prim_i64(lhs, "mod expected an i64 lhs")
+            .checked_rem(rhs)
+            .unwrap_or_else(|| runtime_abort("integer modulo overflow")),
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_eq(lhs: RtValue, rhs: RtValue) -> bool {
+    riot_rt_value_eq(lhs, rhs)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_lt(lhs: RtValue, rhs: RtValue) -> bool {
+    riot_rt_value_lt(lhs, rhs)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_and(lhs: bool, rhs: bool) -> bool {
+    lhs && rhs
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_or(lhs: bool, rhs: bool) -> bool {
+    lhs || rhs
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn riot_rt_prim_not(value: bool) -> bool {
+    !value
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn riot_rt_value_string(ptr: *const u8, len: usize) -> RtValue {
     let Some(bytes) = (unsafe { bytes_from_raw(ptr, len) }) else {

@@ -51,7 +51,7 @@ impl<'a> StacklessActorLowerer<'a> {
 fn collect_actors_from_block(
     block: &LambdaBlock,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
-    context: &ActorSlotTypeContext<'_>,
+    context: &ActorSlotTypeContext,
     actors: &mut Vec<ActorIrActor>,
 ) {
     for stmt in &block.statements {
@@ -74,7 +74,7 @@ fn collect_actors_from_block(
 fn collect_actors_from_expr(
     expr: &LambdaExpr,
     locals: &mut BTreeMap<String, Option<ActorSlotType>>,
-    context: &ActorSlotTypeContext<'_>,
+    context: &ActorSlotTypeContext,
     actors: &mut Vec<ActorIrActor>,
 ) {
     match expr {
@@ -88,21 +88,6 @@ fn collect_actors_from_expr(
                 .collect::<BTreeMap<_, _>>();
             actors.push(actor);
             collect_actors_from_block(body, &mut actor_locals, context, actors);
-        }
-        LambdaExpr::Add(lhs, rhs)
-        | LambdaExpr::Sub(lhs, rhs)
-        | LambdaExpr::Mul(lhs, rhs)
-        | LambdaExpr::Div(lhs, rhs)
-        | LambdaExpr::Mod(lhs, rhs)
-        | LambdaExpr::Eq(lhs, rhs)
-        | LambdaExpr::Lt(lhs, rhs)
-        | LambdaExpr::And(lhs, rhs)
-        | LambdaExpr::Or(lhs, rhs) => {
-            collect_actors_from_expr(lhs, locals, context, actors);
-            collect_actors_from_expr(rhs, locals, context, actors);
-        }
-        LambdaExpr::Neg(value) | LambdaExpr::Not(value) => {
-            collect_actors_from_expr(value, locals, context, actors);
         }
         LambdaExpr::If {
             condition,

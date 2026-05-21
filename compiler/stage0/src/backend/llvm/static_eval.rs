@@ -129,6 +129,14 @@ impl<'a> StaticEvaluator<'a> {
     }
 }
 
+fn prelude_call_name(callee: &[String]) -> Option<&str> {
+    match callee {
+        [name] => Some(name.as_str()),
+        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
+        _ => None,
+    }
+}
+
 fn eval_expr(
     expr: &LambdaExpr,
     bindings: &HashMap<String, StaticValue>,
@@ -139,61 +147,6 @@ fn eval_expr(
         return None;
     }
     match expr {
-        LambdaExpr::Add(lhs, rhs) => Some(StaticValue::Int(
-            eval_expr(lhs, bindings, functions, depth)?.as_int()?
-                + eval_expr(rhs, bindings, functions, depth)?.as_int()?,
-        )),
-        LambdaExpr::Sub(lhs, rhs) => Some(StaticValue::Int(
-            eval_expr(lhs, bindings, functions, depth)?.as_int()?
-                - eval_expr(rhs, bindings, functions, depth)?.as_int()?,
-        )),
-        LambdaExpr::Mul(lhs, rhs) => Some(StaticValue::Int(
-            eval_expr(lhs, bindings, functions, depth)?.as_int()?
-                * eval_expr(rhs, bindings, functions, depth)?.as_int()?,
-        )),
-        LambdaExpr::Div(lhs, rhs) => {
-            let rhs = eval_expr(rhs, bindings, functions, depth)?.as_int()?;
-            if rhs == 0 {
-                return None;
-            }
-            Some(StaticValue::Int(
-                eval_expr(lhs, bindings, functions, depth)?.as_int()? / rhs,
-            ))
-        }
-        LambdaExpr::Mod(lhs, rhs) => {
-            let rhs = eval_expr(rhs, bindings, functions, depth)?.as_int()?;
-            if rhs == 0 {
-                return None;
-            }
-            Some(StaticValue::Int(
-                eval_expr(lhs, bindings, functions, depth)?.as_int()? % rhs,
-            ))
-        }
-        LambdaExpr::Neg(value) => match eval_expr(value, bindings, functions, depth)? {
-            StaticValue::Float(value) => Some(StaticValue::Float(format!("-{value}"))),
-            StaticValue::Int(value) => Some(StaticValue::Int(-value)),
-            _ => None,
-        },
-        LambdaExpr::Eq(lhs, rhs) => {
-            let lhs = eval_expr(lhs, bindings, functions, depth)?.to_print_string();
-            let rhs = eval_expr(rhs, bindings, functions, depth)?.to_print_string();
-            Some(StaticValue::Bool(lhs == rhs))
-        }
-        LambdaExpr::Lt(lhs, rhs) => Some(StaticValue::Bool(
-            eval_expr(lhs, bindings, functions, depth)?.as_int()?
-                < eval_expr(rhs, bindings, functions, depth)?.as_int()?,
-        )),
-        LambdaExpr::And(lhs, rhs) => Some(StaticValue::Bool(
-            eval_expr(lhs, bindings, functions, depth)?.as_bool()?
-                && eval_expr(rhs, bindings, functions, depth)?.as_bool()?,
-        )),
-        LambdaExpr::Or(lhs, rhs) => Some(StaticValue::Bool(
-            eval_expr(lhs, bindings, functions, depth)?.as_bool()?
-                || eval_expr(rhs, bindings, functions, depth)?.as_bool()?,
-        )),
-        LambdaExpr::Not(value) => Some(StaticValue::Bool(
-            !eval_expr(value, bindings, functions, depth)?.as_bool()?,
-        )),
         LambdaExpr::If {
             condition,
             then_branch,
@@ -221,10 +174,8 @@ fn eval_expr(
             eval_block(block, &mut block_bindings, functions, depth)
         }
         LambdaExpr::Bool(value) => Some(StaticValue::Bool(*value)),
-        LambdaExpr::Call { callee, args } => {
-            let [name] = callee.as_slice() else {
-                return None;
-            };
+        LambdaExpr::Call { callee, args, .. } => {
+            let name = prelude_call_name(callee)?;
             eval_call(name, args, bindings, functions, depth)
         }
         LambdaExpr::Unit => Some(StaticValue::Unit),
@@ -466,6 +417,68 @@ fn eval_call(
     functions: &HashMap<&str, &LambdaFunction>,
     depth: usize,
 ) -> Option<StaticValue> {
+    let eval_arg = |index: usize| eval_expr(args.get(index)?, bindings, functions, depth + 1);
+    match (name, args.len()) {
+        ("(+)", 2) => {
+            return Some(StaticValue::Int(
+                eval_arg(0)?.as_int()? + eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("(-)", 2) => {
+            return Some(StaticValue::Int(
+                eval_arg(0)?.as_int()? - eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("neg", 1) => {
+            return match eval_arg(0)? {
+                StaticValue::Float(value) => Some(StaticValue::Float(format!("-{value}"))),
+                StaticValue::Int(value) => Some(StaticValue::Int(-value)),
+                _ => None,
+            };
+        }
+        ("(*)", 2) => {
+            return Some(StaticValue::Int(
+                eval_arg(0)?.as_int()? * eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("(/)", 2) => {
+            let rhs = eval_arg(1)?.as_int()?;
+            if rhs == 0 {
+                return None;
+            }
+            return Some(StaticValue::Int(eval_arg(0)?.as_int()? / rhs));
+        }
+        ("(%)", 2) => {
+            let rhs = eval_arg(1)?.as_int()?;
+            if rhs == 0 {
+                return None;
+            }
+            return Some(StaticValue::Int(eval_arg(0)?.as_int()? % rhs));
+        }
+        ("(==)", 2) => {
+            let lhs = eval_arg(0)?.to_print_string();
+            let rhs = eval_arg(1)?.to_print_string();
+            return Some(StaticValue::Bool(lhs == rhs));
+        }
+        ("(<)", 2) => {
+            return Some(StaticValue::Bool(
+                eval_arg(0)?.as_int()? < eval_arg(1)?.as_int()?,
+            ));
+        }
+        ("(&&)", 2) => {
+            return Some(StaticValue::Bool(
+                eval_arg(0)?.as_bool()? && eval_arg(1)?.as_bool()?,
+            ));
+        }
+        ("(||)", 2) => {
+            return Some(StaticValue::Bool(
+                eval_arg(0)?.as_bool()? || eval_arg(1)?.as_bool()?,
+            ));
+        }
+        ("(!)", 1) => return Some(StaticValue::Bool(!eval_arg(0)?.as_bool()?)),
+        _ => {}
+    }
+
     let function = functions.get(name)?;
     if function.params.len() != args.len() {
         return None;

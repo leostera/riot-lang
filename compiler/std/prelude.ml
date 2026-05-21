@@ -24,6 +24,9 @@ external (+) : 'a -> 'a -> 'a = "riot_rt_prim_add"
 /// Subtract two values with the target primitive implementation.
 external (-) : 'a -> 'a -> 'a = "riot_rt_prim_sub"
 
+/// Negate one value with the target primitive implementation.
+external neg : 'a -> 'a = "riot_rt_prim_neg"
+
 /// Multiply two values with the target primitive implementation.
 external (*) : 'a -> 'a -> 'a = "riot_rt_prim_mul"
 

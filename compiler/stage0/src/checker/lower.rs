@@ -105,15 +105,13 @@ pub(crate) fn typed_program_from_ast(
     let records = record_type_map(&types, &uses, imports);
     let record_fields = record_field_type_map(&types, &uses, imports);
 
-    let external_types = externals
-        .iter()
-        .map(|external| {
-            (
-                external.name.clone(),
-                (external.params.clone(), external.result.clone()),
-            )
-        })
-        .collect::<BTreeMap<_, _>>();
+    let mut external_types = prelude_external_type_map();
+    for external in &externals {
+        external_types.insert(
+            external.name.clone(),
+            (external.params.clone(), external.result.clone()),
+        );
+    }
     let mut functions = Vec::new();
     for function in ast_functions {
         let symbol = module_function_symbol(&module_name, &function.name);
@@ -504,6 +502,24 @@ fn prelude_variant_names() -> BTreeSet<TypeName> {
         .unwrap_or_default()
 }
 
+fn prelude_external_type_map() -> BTreeMap<String, (Vec<RsigType>, RsigType)> {
+    crate::stdlib::Stdlib::new()
+        .prelude_signature()
+        .ok()
+        .map(|rsig| {
+            rsig.exports
+                .into_iter()
+                .filter_map(|export| {
+                    let RsigExport::External(external) = export else {
+                        return None;
+                    };
+                    Some((external.name, (external.params, external.result)))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn type_block(block: AstBlock, context: &mut TypeContext<'_>) -> TypedBlock {
     context.push_scope();
     let mut statements = Vec::new();
@@ -566,7 +582,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             typed_operator_call("(%)", vec![*lhs, *rhs], RsigType::I64, context)
         }
         AstExpr::Neg { expr, .. } => {
-            typed_operator_call("(-)", vec![*expr], RsigType::I64, context)
+            typed_operator_call("neg", vec![*expr], RsigType::I64, context)
         }
         AstExpr::Eq { lhs, rhs, .. } => {
             typed_operator_call("(==)", vec![*lhs, *rhs], RsigType::Bool, context)
@@ -1219,29 +1235,7 @@ fn typed_operator_call(
 fn is_named_call(callee: &[String], context: &TypeContext<'_>) -> bool {
     match callee {
         [name] if context.resolve(name).is_some() => false,
-        [name]
-            if matches!(
-                name.as_str(),
-                "dbg"
-                    | "println"
-                    | "send"
-                    | "monitor"
-                    | "link"
-                    | "list_len"
-                    | "list_get"
-                    | "string_len"
-                    | "string_concat"
-            ) =>
-        {
-            true
-        }
-        [name] => context.externals.contains_key(name) || context.functions.contains_key(name),
-        [module, name] => context
-            .imports
-            .get(module.as_str())
-            .and_then(|rsig| rsig.find(name))
-            .is_some(),
-        _ => false,
+        _ => call_signature(callee, context).is_some(),
     }
 }
 
@@ -1346,40 +1340,14 @@ fn call_signature(
     callee: &[String],
     context: &TypeContext<'_>,
 ) -> Option<(Vec<RsigType>, RsigType)> {
-    match callee {
-        [name] if name == "dbg" => Some((vec![RsigType::Unknown], RsigType::Unit)),
-        [name] if name == "println" => Some((vec![RsigType::String], RsigType::Unit)),
-        [name] if name == "send" => Some((
-            vec![
-                RsigType::ActorId(Box::new(RsigType::Unknown)),
-                RsigType::Unknown,
-            ],
-            RsigType::Unit,
-        )),
-        [name] if name == "monitor" || name == "link" => Some((
-            vec![RsigType::ActorId(Box::new(RsigType::Unknown))],
-            RsigType::Unit,
-        )),
-        [name] => context
+    if let Some(name) = local_or_prelude_call_name(callee) {
+        return context
             .externals
             .get(name)
             .or_else(|| context.functions.get(name))
-            .cloned()
-            .or_else(|| match name.as_str() {
-                "list_len" => Some((
-                    vec![RsigType::List(Box::new(RsigType::Unknown))],
-                    RsigType::I64,
-                )),
-                "list_get" => Some((
-                    vec![RsigType::List(Box::new(RsigType::Unknown)), RsigType::I64],
-                    RsigType::Unknown,
-                )),
-                "string_len" => Some((vec![RsigType::String], RsigType::I64)),
-                "string_concat" => {
-                    Some((vec![RsigType::String, RsigType::String], RsigType::String))
-                }
-                _ => None,
-            }),
+            .cloned();
+    }
+    match callee {
         [module, name] => context
             .imports
             .get(module.as_str())
@@ -1392,6 +1360,14 @@ fn call_signature(
                     (external.params.clone(), external.result.clone())
                 }
             }),
+        _ => None,
+    }
+}
+
+fn local_or_prelude_call_name(callee: &[String]) -> Option<&str> {
+    match callee {
+        [name] => Some(name.as_str()),
+        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
         _ => None,
     }
 }
@@ -1731,10 +1707,14 @@ mod tests {
 
         let typed = typed_program("ApplyTest", program);
         let lambda_ir = LambdaLowerer::new().lower(typed);
-        let Some(LambdaExpr::Add(lhs, _)) = &lambda_ir.functions[0].body.tail else {
-            panic!("expected add tail");
+        let Some(LambdaExpr::Call { callee, args, .. }) = &lambda_ir.functions[0].body.tail else {
+            panic!("expected operator call tail");
         };
-        let LambdaExpr::Apply { result, .. } = lhs.as_ref() else {
+        assert_eq!(
+            callee.as_slice(),
+            &["Std".to_owned(), "Prelude".to_owned(), "(+)".to_owned()]
+        );
+        let LambdaExpr::Apply { result, .. } = &args[0] else {
             panic!("expected typed apply");
         };
 

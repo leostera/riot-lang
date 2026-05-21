@@ -34,6 +34,14 @@ ActorIrProgram {
                                             ),
                                         ),
                                     ],
+                                    arg_types: [
+                                        Var(
+                                            TypeVarName(
+                                                "'t24",
+                                            ),
+                                        ),
+                                    ],
+                                    result: Unit,
                                 },
                             },
                         ],
@@ -92,8 +100,23 @@ ActorIrProgram {
                                                     6,
                                                 ),
                                             ],
+                                            arg_types: [
+                                                I64,
+                                            ],
+                                            result: I64,
                                         },
                                     ],
+                                    arg_types: [
+                                        ActorId(
+                                            Var(
+                                                TypeVarName(
+                                                    "'t30",
+                                                ),
+                                            ),
+                                        ),
+                                        I64,
+                                    ],
+                                    result: Unit,
                                 },
                             },
                         ],

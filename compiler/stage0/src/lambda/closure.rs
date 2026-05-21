@@ -24,19 +24,6 @@ fn closure_convert_block(block: &mut LambdaBlock) {
 
 fn closure_convert_expr(expr: &mut LambdaExpr) {
     match expr {
-        LambdaExpr::Add(lhs, rhs)
-        | LambdaExpr::Sub(lhs, rhs)
-        | LambdaExpr::Mul(lhs, rhs)
-        | LambdaExpr::Div(lhs, rhs)
-        | LambdaExpr::Mod(lhs, rhs)
-        | LambdaExpr::Eq(lhs, rhs)
-        | LambdaExpr::Lt(lhs, rhs)
-        | LambdaExpr::And(lhs, rhs)
-        | LambdaExpr::Or(lhs, rhs) => {
-            closure_convert_expr(lhs);
-            closure_convert_expr(rhs);
-        }
-        LambdaExpr::Neg(value) | LambdaExpr::Not(value) => closure_convert_expr(value),
         LambdaExpr::If {
             condition,
             then_branch,
@@ -119,19 +106,6 @@ pub(crate) fn collect_free_expr(
                 free.insert(binding.clone());
             }
         }
-        LambdaExpr::Add(lhs, rhs)
-        | LambdaExpr::Sub(lhs, rhs)
-        | LambdaExpr::Mul(lhs, rhs)
-        | LambdaExpr::Div(lhs, rhs)
-        | LambdaExpr::Mod(lhs, rhs)
-        | LambdaExpr::Eq(lhs, rhs)
-        | LambdaExpr::Lt(lhs, rhs)
-        | LambdaExpr::And(lhs, rhs)
-        | LambdaExpr::Or(lhs, rhs) => {
-            collect_free_expr(lhs, bound, free);
-            collect_free_expr(rhs, bound, free);
-        }
-        LambdaExpr::Neg(value) | LambdaExpr::Not(value) => collect_free_expr(value, bound, free),
         LambdaExpr::If {
             condition,
             then_branch,

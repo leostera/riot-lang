@@ -116,6 +116,7 @@ struct ValidationContext<'a> {
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
+    external_signatures: HashMap<String, (Vec<RsigType>, RsigType)>,
     external_names: HashSet<String>,
     constructor_types: HashMap<String, ConstructorShape>,
     declared_variants: BTreeSet<TypeName>,
@@ -168,6 +169,7 @@ impl<'a> ProgramValidator<'a> {
         let type_shapes = TypeShapeCollector::new(self.imports).collect(program);
         let function_results = function_results(program, &type_shapes.declared_variants);
         let declared_external_names = declared_external_names(program);
+        let external_signatures = external_signatures(program, &type_shapes.declared_variants);
         let external_names = external_names(program);
         let declared_variants = type_shapes.declared_variants;
         let ctx = ValidationContext {
@@ -177,6 +179,7 @@ impl<'a> ProgramValidator<'a> {
             function_names,
             function_results,
             declared_external_names,
+            external_signatures,
             external_names,
             constructor_types: type_shapes.constructor_types,
             declared_variants,
@@ -485,6 +488,32 @@ fn external_names(program: &AstProgram) -> HashSet<String> {
         }
     }
     names
+}
+
+fn external_signatures(
+    program: &AstProgram,
+    declared_variants: &BTreeSet<TypeName>,
+) -> HashMap<String, (Vec<RsigType>, RsigType)> {
+    let mut signatures = crate::stdlib::Stdlib::new()
+        .prelude_signature()
+        .expect("compiler/std/prelude.ml must parse")
+        .exports
+        .into_iter()
+        .filter_map(|export| {
+            let RsigExport::External(external) = export else {
+                return None;
+            };
+            Some((external.name, (external.params, external.result)))
+        })
+        .collect::<HashMap<_, _>>();
+    for decl in &program.decls {
+        if let AstDecl::External(external) = decl {
+            let (params, result) = RsigTypeLowerer::new()
+                .lower_signature(&external.type_annotation.syntax, declared_variants);
+            signatures.insert(external.name.clone(), (params, result));
+        }
+    }
+    signatures
 }
 
 fn declared_external_names(program: &AstProgram) -> HashSet<String> {
@@ -2409,21 +2438,18 @@ fn infer_annotation_expr_type(
             infer_annotation_block_type(ctx, block, &mut bindings.clone())
         }
         AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
-            [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
-            [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
-            [name] if name == "list_len" || name == "string_len" => Some(RsigType::I64),
-            [name] if name == "string_concat" => Some(RsigType::String),
             [name] if name == "list_get" => args.first().map(
                 |list| match infer_annotation_expr_type(ctx, list, bindings) {
                     Some(RsigType::List(item)) => *item,
-                    _ => RsigType::Unknown,
+                    _ => external_result_type(ctx, name).unwrap_or(RsigType::Unknown),
                 },
             ),
             [name] => ctx
                 .constructor_types
                 .get(name)
                 .map(|constructor| RsigType::Variant(constructor.type_name.clone()))
-                .or_else(|| ctx.function_results.get(name).cloned()),
+                .or_else(|| ctx.function_results.get(name).cloned())
+                .or_else(|| external_result_type(ctx, name)),
             [module, name] => ctx
                 .imports
                 .get(module.as_str())
@@ -2514,6 +2540,12 @@ fn infer_annotation_tuple_index_type(
             .and_then(|item| infer_annotation_expr_type(ctx, item, bindings));
     }
     None
+}
+
+fn external_result_type(ctx: &ValidationContext<'_>, name: &str) -> Option<RsigType> {
+    ctx.external_signatures
+        .get(name)
+        .map(|(_params, result)| result.clone())
 }
 
 fn merge_annotation_types(lhs: RsigType, rhs: RsigType) -> RsigType {
@@ -2695,22 +2727,19 @@ fn simple_expr_type(
                 .map(|constructor| constructor_value_type(&constructor))
         }
         AstExpr::Call { callee, args, .. } => match callee.segments.as_slice() {
-            [name] if name == "dbg" || name == "println" => Some(RsigType::Unit),
-            [name] if name == "send" || name == "monitor" || name == "link" => Some(RsigType::Unit),
-            [name] if name == "list_len" || name == "string_len" => Some(RsigType::I64),
-            [name] if name == "string_concat" => Some(RsigType::String),
             [name] if name == "list_get" => {
                 args.first()
                     .map(|list| match simple_expr_type(ctx, list, bindings) {
                         Some(RsigType::List(item)) => *item,
-                        _ => RsigType::Unknown,
+                        _ => external_result_type(ctx, name).unwrap_or(RsigType::Unknown),
                     })
             }
             [name] => ctx
                 .constructor_types
                 .get(name)
                 .map(|constructor| RsigType::Variant(constructor.type_name.clone()))
-                .or_else(|| ctx.function_results.get(name).cloned()),
+                .or_else(|| ctx.function_results.get(name).cloned())
+                .or_else(|| external_result_type(ctx, name)),
             [module, name] => ctx
                 .imports
                 .get(module.as_str())

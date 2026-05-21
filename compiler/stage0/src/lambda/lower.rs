@@ -4,7 +4,7 @@ use crate::checker::tyir::{
     BindingId, EntityId, TypedBlock, TypedExpr, TypedExprKind, TypedLiteral, TypedPattern,
     TypedProgram, TypedStmt,
 };
-use crate::signature::TypeName;
+use crate::signature::{RsigType, TypeName};
 
 use super::closure::closure_convert_program;
 
@@ -12,7 +12,6 @@ use super::ir::{
     BindingKey, LambdaBlock, LambdaExpr, LambdaExternal, LambdaFunction, LambdaMatchArm,
     LambdaPath, LambdaPattern, LambdaProgram, LambdaReceiveArm, LambdaStmt, Param,
 };
-use super::operators::lower_prelude_operator;
 
 #[derive(Debug, Default)]
 pub(crate) struct LambdaLowerer;
@@ -164,7 +163,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> LambdaExpr {
         }
         TypedExprKind::Block(block) => LambdaExpr::Block(Box::new(lower_block(*block, context))),
         TypedExprKind::Literal(literal) => lower_literal(literal),
-        TypedExprKind::Call { callee, args } => lower_call(callee, args, context),
+        TypedExprKind::Call { callee, args } => lower_call(callee, args, expr_type, context),
         TypedExprKind::Apply { callee, args } => LambdaExpr::Apply {
             callee: Box::new(lower_expr(*callee, context)),
             args: args
@@ -255,13 +254,24 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> LambdaExpr {
     }
 }
 
-fn lower_call(callee: EntityId, args: Vec<TypedExpr>, context: &mut LowerContext) -> LambdaExpr {
+fn lower_call(
+    callee: EntityId,
+    args: Vec<TypedExpr>,
+    result: RsigType,
+    context: &mut LowerContext,
+) -> LambdaExpr {
     let callee = lower_entity_path(callee, context);
+    let arg_types = args.iter().map(|arg| arg.type_.clone()).collect();
     let args = args
         .into_iter()
         .map(|arg| lower_expr(arg, context))
         .collect::<Vec<_>>();
-    lower_prelude_operator(callee, args)
+    LambdaExpr::Call {
+        callee: callee.into_segments(),
+        args,
+        arg_types,
+        result,
+    }
 }
 
 fn lower_entity_path(entity: EntityId, _context: &LowerContext) -> LambdaPath {

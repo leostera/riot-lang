@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 729
 expression: transcript
 ---
 fixture: tests/fixtures/programs/basic/function_partial_application.ml

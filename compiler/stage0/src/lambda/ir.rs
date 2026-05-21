@@ -183,17 +183,6 @@ pub(crate) enum LambdaPattern {
 
 #[derive(Debug, Clone)]
 pub(crate) enum LambdaExpr {
-    Add(Box<LambdaExpr>, Box<LambdaExpr>),
-    Sub(Box<LambdaExpr>, Box<LambdaExpr>),
-    Mul(Box<LambdaExpr>, Box<LambdaExpr>),
-    Div(Box<LambdaExpr>, Box<LambdaExpr>),
-    Mod(Box<LambdaExpr>, Box<LambdaExpr>),
-    Neg(Box<LambdaExpr>),
-    Eq(Box<LambdaExpr>, Box<LambdaExpr>),
-    Lt(Box<LambdaExpr>, Box<LambdaExpr>),
-    And(Box<LambdaExpr>, Box<LambdaExpr>),
-    Or(Box<LambdaExpr>, Box<LambdaExpr>),
-    Not(Box<LambdaExpr>),
     If {
         condition: Box<LambdaExpr>,
         then_branch: Box<LambdaExpr>,
@@ -208,6 +197,8 @@ pub(crate) enum LambdaExpr {
     Call {
         callee: Vec<String>,
         args: Vec<LambdaExpr>,
+        arg_types: Vec<RsigType>,
+        result: RsigType,
     },
     Apply {
         callee: Box<LambdaExpr>,

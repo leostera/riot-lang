@@ -442,147 +442,6 @@ impl<'ctx> Codegen<'ctx, '_> {
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         match expr {
-            LambdaExpr::Add(lhs, rhs) => {
-                let lhs = self.emit_i64(lhs, env)?;
-                let rhs = self.emit_i64(rhs, env)?;
-                Ok(CgValue::I64(
-                    self.builder
-                        .build_int_add(lhs, rhs, "addtmp")
-                        .map_err(|error| miette::miette!("failed to emit add: {error}"))?,
-                ))
-            }
-            LambdaExpr::Sub(lhs, rhs) => {
-                let lhs = self.emit_i64(lhs, env)?;
-                let rhs = self.emit_i64(rhs, env)?;
-                Ok(CgValue::I64(
-                    self.builder
-                        .build_int_sub(lhs, rhs, "subtmp")
-                        .map_err(|error| miette::miette!("failed to emit sub: {error}"))?,
-                ))
-            }
-            LambdaExpr::Mul(lhs, rhs) => {
-                let lhs = self.emit_i64(lhs, env)?;
-                let rhs = self.emit_i64(rhs, env)?;
-                Ok(CgValue::I64(
-                    self.builder
-                        .build_int_mul(lhs, rhs, "multmp")
-                        .map_err(|error| miette::miette!("failed to emit mul: {error}"))?,
-                ))
-            }
-            LambdaExpr::Div(lhs, rhs) => {
-                let lhs = self.emit_i64(lhs, env)?;
-                let rhs = self.emit_i64(rhs, env)?;
-                Ok(CgValue::I64(
-                    self.builder
-                        .build_int_signed_div(lhs, rhs, "divtmp")
-                        .map_err(|error| miette::miette!("failed to emit div: {error}"))?,
-                ))
-            }
-            LambdaExpr::Mod(lhs, rhs) => {
-                let lhs = self.emit_i64(lhs, env)?;
-                let rhs = self.emit_i64(rhs, env)?;
-                Ok(CgValue::I64(
-                    self.builder
-                        .build_int_signed_rem(lhs, rhs, "modtmp")
-                        .map_err(|error| miette::miette!("failed to emit mod: {error}"))?,
-                ))
-            }
-            LambdaExpr::Neg(value) => {
-                if let Some(value) = self.static_eval(expr, &env.statics) {
-                    return Ok(CgValue::Static(value));
-                }
-                let value = self.emit_i64(value, env)?;
-                Ok(CgValue::I64(
-                    self.builder
-                        .build_int_neg(value, "negtmp")
-                        .map_err(|error| miette::miette!("failed to emit negation: {error}"))?,
-                ))
-            }
-            LambdaExpr::Eq(lhs, rhs) => {
-                let lhs_value = self.emit_expr(lhs, env)?;
-                let lhs_root = self.push_optional_runtime_root(&lhs_value)?;
-                let rhs_value = self.emit_expr(rhs, env)?;
-                let rhs_root = self.push_optional_runtime_root(&rhs_value)?;
-                let result = match (lhs_value, rhs_value) {
-                    (CgValue::I64(lhs), CgValue::I64(rhs)) => Ok(CgValue::Bool(
-                        self.builder
-                            .build_int_compare(IntPredicate::EQ, lhs, rhs, "eqtmp")
-                            .map_err(|error| miette::miette!("failed to emit equality: {error}"))?,
-                    )),
-                    (CgValue::Bool(lhs), CgValue::Bool(rhs)) => Ok(CgValue::Bool(
-                        self.builder
-                            .build_int_compare(IntPredicate::EQ, lhs, rhs, "eqtmp")
-                            .map_err(|error| miette::miette!("failed to emit equality: {error}"))?,
-                    )),
-                    (lhs, rhs) => {
-                        let lhs = self.value_as_runtime(lhs)?;
-                        self.push_runtime_root(lhs)?;
-                        let rhs = self.value_as_runtime(rhs)?;
-                        self.push_runtime_root(rhs)?;
-                        let result = Ok(CgValue::Bool(
-                            self.call_runtime_value("riot_rt_value_eq", &[lhs.into(), rhs.into()])?,
-                        ));
-                        self.pop_runtime_roots(2)?;
-                        result
-                    }
-                };
-                self.pop_runtime_roots(lhs_root + rhs_root)?;
-                result
-            }
-            LambdaExpr::Lt(lhs, rhs) => {
-                let lhs_value = self.emit_expr(lhs, env)?;
-                let lhs_root = self.push_optional_runtime_root(&lhs_value)?;
-                let rhs_value = self.emit_expr(rhs, env)?;
-                let rhs_root = self.push_optional_runtime_root(&rhs_value)?;
-                let result = match (lhs_value, rhs_value) {
-                    (CgValue::I64(lhs), CgValue::I64(rhs)) => Ok(CgValue::Bool(
-                        self.builder
-                            .build_int_compare(IntPredicate::SLT, lhs, rhs, "lttmp")
-                            .map_err(|error| {
-                                miette::miette!("failed to emit comparison: {error}")
-                            })?,
-                    )),
-                    (lhs, rhs) => {
-                        let lhs = self.value_as_runtime(lhs)?;
-                        self.push_runtime_root(lhs)?;
-                        let rhs = self.value_as_runtime(rhs)?;
-                        self.push_runtime_root(rhs)?;
-                        let result = Ok(CgValue::Bool(
-                            self.call_runtime_value("riot_rt_value_lt", &[lhs.into(), rhs.into()])?,
-                        ));
-                        self.pop_runtime_roots(2)?;
-                        result
-                    }
-                };
-                self.pop_runtime_roots(lhs_root + rhs_root)?;
-                result
-            }
-            LambdaExpr::And(lhs, rhs) => {
-                let lhs = self.emit_bool(lhs, env)?;
-                let rhs = self.emit_bool(rhs, env)?;
-                Ok(CgValue::Bool(
-                    self.builder
-                        .build_and(lhs, rhs, "andtmp")
-                        .map_err(|error| miette::miette!("failed to emit and: {error}"))?,
-                ))
-            }
-            LambdaExpr::Or(lhs, rhs) => {
-                let lhs = self.emit_bool(lhs, env)?;
-                let rhs = self.emit_bool(rhs, env)?;
-                Ok(CgValue::Bool(
-                    self.builder
-                        .build_or(lhs, rhs, "ortmp")
-                        .map_err(|error| miette::miette!("failed to emit or: {error}"))?,
-                ))
-            }
-            LambdaExpr::Not(value) => {
-                let value = self.emit_bool(value, env)?;
-                Ok(CgValue::Bool(
-                    self.builder
-                        .build_not(value, "nottmp")
-                        .map_err(|error| miette::miette!("failed to emit not: {error}"))?,
-                ))
-            }
             LambdaExpr::If {
                 condition,
                 then_branch,
@@ -596,7 +455,12 @@ impl<'ctx> Codegen<'ctx, '_> {
             LambdaExpr::Bool(value) => Ok(CgValue::Bool(
                 self.context.bool_type().const_int(u64::from(*value), false),
             )),
-            LambdaExpr::Call { callee, args } => self.emit_call(callee, args, env),
+            LambdaExpr::Call {
+                callee,
+                args,
+                result,
+                ..
+            } => self.emit_call(callee, args, result, env),
             LambdaExpr::Apply {
                 callee,
                 args,
@@ -1679,20 +1543,26 @@ impl<'ctx> Codegen<'ctx, '_> {
         &mut self,
         callee: &[String],
         args: &[LambdaExpr],
+        result: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        match callee {
-            [name] if name == "dbg" || name == "println" => self.emit_output(name, args, env),
-            [name] if self.externals.contains_key(name.as_str()) => {
-                let external = self.externals.get(name.as_str()).unwrap().clone();
-                self.emit_external_call(
+        if let Some(name) = prelude_call_name(callee) {
+            if let Some(static_value) = self.static_eval_call(name, args, &env.statics) {
+                return Ok(CgValue::Static(static_value));
+            }
+            if self.externals.contains_key(name) {
+                let external = self.externals.get(name).unwrap().clone();
+                let value = self.emit_external_call(
                     &external.abi,
                     &external.params,
                     &external.result,
                     args,
                     env,
-                )
+                )?;
+                return self.coerce_call_result(value, result);
             }
+        }
+        match callee {
             [name] if self.functions.contains_key(name) => self.emit_local_call(name, args, env),
             [name] => {
                 if let Some(static_value) = self.static_eval_call(name, args, &env.statics) {
@@ -1701,8 +1571,23 @@ impl<'ctx> Codegen<'ctx, '_> {
                     bail!("cannot lower call to `{name}` with the currently inferred ABI")
                 }
             }
-            [module, name] => self.emit_imported_call(module, name, args, env),
+            [module, name] => self.emit_imported_call(module, name, args, result, env),
             _ => bail!("unsupported call path `{}`", callee.join(".")),
+        }
+    }
+
+    fn coerce_call_result(
+        &self,
+        value: CgValue<'ctx>,
+        result: &RsigType,
+    ) -> miette::Result<CgValue<'ctx>> {
+        let target = AbiType::from_rsig(result);
+        if target == AbiType::Unknown || value.abi() == target {
+            return Ok(value);
+        }
+        match value {
+            CgValue::Value(value) => self.runtime_value_as_type(value, result),
+            value => Ok(value),
         }
     }
 
@@ -1738,6 +1623,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         module: &str,
         name: &str,
         args: &[LambdaExpr],
+        checked_result: &RsigType,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
         let export = self
@@ -1754,13 +1640,16 @@ impl<'ctx> Codegen<'ctx, '_> {
                 args,
                 env,
             ),
-            RsigExport::External(external) => self.emit_external_call(
-                &external.abi,
-                &external.params,
-                &external.result,
-                args,
-                env,
-            ),
+            RsigExport::External(external) => {
+                let value = self.emit_external_call(
+                    &external.abi,
+                    &external.params,
+                    &external.result,
+                    args,
+                    env,
+                )?;
+                self.coerce_call_result(value, checked_result)
+            }
         }
     }
 
@@ -1827,100 +1716,6 @@ impl<'ctx> Codegen<'ctx, '_> {
         );
         self.pop_runtime_roots(rooted_values)?;
         result
-    }
-
-    fn emit_output(
-        &mut self,
-        name: &str,
-        args: &[LambdaExpr],
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<CgValue<'ctx>> {
-        let Some(arg) = args.first() else {
-            bail!("{name} expects one argument");
-        };
-        let value = self.emit_expr(arg, env)?;
-        match value {
-            CgValue::I64(value) => {
-                let symbol = if name == "println" {
-                    "riot_rt_println_i64"
-                } else {
-                    "riot_rt_dbg_i64"
-                };
-                self.call_void_runtime(symbol, &[value.into()])?;
-            }
-            CgValue::Bool(value) => self.emit_bool_output(name, value)?,
-            CgValue::Value(value) => {
-                self.push_runtime_root(value)?;
-                let external_string_abi = self
-                    .externals
-                    .get(name)
-                    .filter(|external| matches!(external.params.as_slice(), [RsigType::String]))
-                    .map(|external| external.abi.clone());
-                if let Some(abi) = external_string_abi {
-                    let (ptr, len) = self.value_as_bytes(CgValue::Value(value))?;
-                    self.call_void_runtime(&abi, &[ptr.into(), len.into()])?;
-                } else {
-                    let symbol = if name == "println" {
-                        "riot_rt_println_value"
-                    } else {
-                        "riot_rt_dbg_value"
-                    };
-                    self.call_void_runtime(symbol, &[value.into()])?;
-                }
-                self.pop_runtime_roots(1)?;
-            }
-            CgValue::Static(value) => {
-                let rendered = value.to_print_string();
-                let (ptr, len) = self.string_literal(&rendered)?;
-                let symbol = self.output_string_symbol(name);
-                self.call_void_runtime(symbol, &[ptr.into(), len.into()])?;
-            }
-            CgValue::Unit => {
-                let (ptr, len) = self.string_literal("()")?;
-                let symbol = self.output_string_symbol(name);
-                self.call_void_runtime(symbol, &[ptr.into(), len.into()])?;
-            }
-            CgValue::ActorId(actor_id) => {
-                let symbol = if name == "println" {
-                    "riot_rt_println_i64"
-                } else {
-                    "riot_rt_dbg_i64"
-                };
-                self.call_void_runtime(symbol, &[actor_id.into()])?;
-            }
-        }
-        Ok(CgValue::Unit)
-    }
-
-    fn emit_bool_output(&mut self, name: &str, value: IntValue<'ctx>) -> miette::Result<()> {
-        let Some(parent) = self.current_function() else {
-            bail!("bool output emitted without an active function");
-        };
-        let true_block = self.context.append_basic_block(parent, "bool.true");
-        let false_block = self.context.append_basic_block(parent, "bool.false");
-        let cont_block = self.context.append_basic_block(parent, "bool.cont");
-        self.builder
-            .build_conditional_branch(value, true_block, false_block)
-            .map_err(|error| miette::miette!("failed to emit bool output branch: {error}"))?;
-
-        self.builder.position_at_end(true_block);
-        let (ptr, len) = self.string_literal("true")?;
-        let symbol = self.output_string_symbol(name);
-        self.call_void_runtime(symbol, &[ptr.into(), len.into()])?;
-        self.builder
-            .build_unconditional_branch(cont_block)
-            .map_err(|error| miette::miette!("failed to emit bool output branch: {error}"))?;
-
-        self.builder.position_at_end(false_block);
-        let (ptr, len) = self.string_literal("false")?;
-        let symbol = self.output_string_symbol(name);
-        self.call_void_runtime(symbol, &[ptr.into(), len.into()])?;
-        self.builder
-            .build_unconditional_branch(cont_block)
-            .map_err(|error| miette::miette!("failed to emit bool output branch: {error}"))?;
-
-        self.builder.position_at_end(cont_block);
-        Ok(())
     }
 
     fn emit_spawn(
@@ -2325,15 +2120,6 @@ impl<'ctx> Codegen<'ctx, '_> {
         self.builder
             .build_struct_gep(frame_type, frame, field_index, "frame_field")
             .map_err(|error| miette::miette!("failed to address actor frame field: {error}"))
-    }
-
-    fn emit_i64(
-        &mut self,
-        expr: &LambdaExpr,
-        env: &mut Env<'ctx>,
-    ) -> miette::Result<IntValue<'ctx>> {
-        let value = self.emit_expr(expr, env)?;
-        self.value_as_i64(value)
     }
 
     fn emit_bool(
@@ -2865,20 +2651,6 @@ impl<'ctx> Codegen<'ctx, '_> {
         self.builder.get_insert_block()?.get_parent()
     }
 
-    fn output_string_symbol(&self, name: &str) -> &str {
-        if let Some(external) = self
-            .externals
-            .get(name)
-            .filter(|external| matches!(external.params.as_slice(), [RsigType::String]))
-        {
-            return &external.abi;
-        }
-        match name {
-            "println" => "riot_rt_println",
-            _ => "riot_rt_dbg",
-        }
-    }
-
     fn string_literal(
         &mut self,
         value: &str,
@@ -2976,6 +2748,14 @@ fn pattern_is_irrefutable(pattern: &LambdaPattern) -> bool {
         pattern,
         LambdaPattern::Wildcard | LambdaPattern::Bind { .. }
     )
+}
+
+fn prelude_call_name(callee: &[String]) -> Option<&str> {
+    match callee {
+        [name] => Some(name.as_str()),
+        [std, prelude, name] if std == "Std" && prelude == "Prelude" => Some(name.as_str()),
+        _ => None,
+    }
 }
 
 fn external_param_is_boxed(symbol: &str, type_: &RsigType) -> bool {
@@ -3125,19 +2905,8 @@ fn infer_expr_abi(
     externals: &BTreeMap<String, LambdaExternal>,
 ) -> AbiType {
     match expr {
-        LambdaExpr::Add(_, _)
-        | LambdaExpr::Sub(_, _)
-        | LambdaExpr::Mul(_, _)
-        | LambdaExpr::Div(_, _)
-        | LambdaExpr::Mod(_, _)
-        | LambdaExpr::Neg(_)
-        | LambdaExpr::Int(_) => AbiType::I64,
-        LambdaExpr::Eq(_, _)
-        | LambdaExpr::Lt(_, _)
-        | LambdaExpr::And(_, _)
-        | LambdaExpr::Or(_, _)
-        | LambdaExpr::Not(_)
-        | LambdaExpr::Bool(_) => AbiType::Bool,
+        LambdaExpr::Int(_) => AbiType::I64,
+        LambdaExpr::Bool(_) => AbiType::Bool,
         LambdaExpr::If {
             then_branch,
             else_branch,
@@ -3151,16 +2920,7 @@ fn infer_expr_abi(
             .map(|arm| infer_match_arm_abi(arm, locals, functions, externals))
             .fold(AbiType::Unknown, unify_abi),
         LambdaExpr::Block(block) => infer_block_expr_abi(block, locals, functions, externals),
-        LambdaExpr::Call { callee, .. } => match callee.as_slice() {
-            [name] if name == "dbg" || name == "println" => AbiType::Unit,
-            [name] if name == "send" || name == "monitor" || name == "link" => AbiType::Unit,
-            [name] => externals
-                .get(name)
-                .map(|external| AbiType::from_rsig(&external.result))
-                .or_else(|| functions.get(name).map(|abi| abi.result))
-                .unwrap_or(AbiType::Unknown),
-            _ => AbiType::Unknown,
-        },
+        LambdaExpr::Call { result, .. } => AbiType::from_rsig(result),
         LambdaExpr::Unit => AbiType::Unit,
         LambdaExpr::Apply { result, .. } => AbiType::from_rsig(result),
         LambdaExpr::Lambda { .. } => AbiType::Value,
@@ -3254,16 +3014,6 @@ fn mark_expr_constraints(
     externals: &BTreeMap<String, LambdaExternal>,
 ) {
     match expr {
-        LambdaExpr::Add(lhs, rhs)
-        | LambdaExpr::Sub(lhs, rhs)
-        | LambdaExpr::Mul(lhs, rhs)
-        | LambdaExpr::Div(lhs, rhs)
-        | LambdaExpr::Mod(lhs, rhs)
-        | LambdaExpr::Lt(lhs, rhs) => {
-            mark_expr_as(params, locals, param_types, lhs, AbiType::I64);
-            mark_expr_as(params, locals, param_types, rhs, AbiType::I64);
-        }
-        LambdaExpr::Neg(value) => mark_expr_as(params, locals, param_types, value, AbiType::I64),
         LambdaExpr::If {
             condition,
             then_branch,
@@ -3305,8 +3055,14 @@ fn mark_expr_constraints(
                 externals,
             );
         }
-        LambdaExpr::Call { args, .. } => {
-            for arg in args {
+        LambdaExpr::Call {
+            args, arg_types, ..
+        } => {
+            for (arg, type_) in args.iter().zip(arg_types) {
+                let abi = AbiType::from_rsig(type_);
+                if abi != AbiType::Unknown {
+                    mark_expr_as(params, locals, param_types, arg, abi);
+                }
                 mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
@@ -3347,13 +3103,6 @@ fn mark_expr_constraints(
         }
         LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
             mark_expr_constraints(base, params, locals, param_types, functions, externals);
-        }
-        LambdaExpr::And(lhs, rhs) | LambdaExpr::Or(lhs, rhs) | LambdaExpr::Eq(lhs, rhs) => {
-            mark_expr_constraints(lhs, params, locals, param_types, functions, externals);
-            mark_expr_constraints(rhs, params, locals, param_types, functions, externals);
-        }
-        LambdaExpr::Not(value) => {
-            mark_expr_constraints(value, params, locals, param_types, functions, externals);
         }
         LambdaExpr::Receive { arms } => {
             for arm in arms {
@@ -3531,10 +3280,12 @@ mod tests {
                             captures: Vec::new(),
                             body: Box::new(LambdaBlock {
                                 statements: Vec::new(),
-                                tail: Some(LambdaExpr::Add(
-                                    Box::new(LambdaExpr::Local(x)),
-                                    Box::new(LambdaExpr::Int(1)),
-                                )),
+                                tail: Some(LambdaExpr::Call {
+                                    callee: vec!["(+)".to_owned()],
+                                    args: vec![LambdaExpr::Local(x), LambdaExpr::Int(1)],
+                                    arg_types: vec![RsigType::I64, RsigType::I64],
+                                    result: RsigType::I64,
+                                }),
                             }),
                         }),
                         args: vec![LambdaExpr::Int(41)],
