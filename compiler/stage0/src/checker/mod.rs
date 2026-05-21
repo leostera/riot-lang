@@ -121,16 +121,54 @@ struct ValidationContext<'a> {
     source: &'a str,
     functions: ConstFunctionTable,
     function_signatures: FunctionTable,
-    function_names: HashSet<String>,
+    function_names: FunctionNameSet,
     function_results: HashMap<String, RsigType>,
-    declared_external_names: HashSet<String>,
+    declared_external_names: ExternalNameSet,
     external_signatures: ExternalTable,
-    external_names: HashSet<String>,
+    external_names: ExternalNameSet,
     constructor_types: HashMap<String, ConstructorShape>,
     declared_variants: BTreeSet<TypeName>,
     record_shapes: HashMap<String, RecordShape>,
     record_shapes_by_type: BTreeMap<TypeName, RecordShape>,
     imports: &'a ImportedSignatures,
+}
+
+#[derive(Debug, Clone, Default)]
+struct FunctionNameSet {
+    names: HashSet<String>,
+}
+
+impl FunctionNameSet {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn insert(&mut self, name: impl Into<String>) {
+        self.names.insert(name.into());
+    }
+
+    fn contains(&self, name: &str) -> bool {
+        self.names.contains(name)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct ExternalNameSet {
+    names: HashSet<String>,
+}
+
+impl ExternalNameSet {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn insert(&mut self, name: impl Into<String>) {
+        self.names.insert(name.into());
+    }
+
+    fn contains(&self, name: &str) -> bool {
+        self.names.contains(name)
+    }
 }
 
 impl<'a> ValidationContext<'a> {
@@ -182,7 +220,10 @@ impl<'a> ProgramValidator<'a> {
 
     fn validate(&self, program: &AstProgram) -> miette::Result<()> {
         let functions = const_functions(program);
-        let function_names = functions.names().cloned().collect::<HashSet<_>>();
+        let mut function_names = FunctionNameSet::new();
+        for name in functions.names() {
+            function_names.insert(name.clone());
+        }
         let type_shapes = TypeShapeCollector::new(self.imports).collect(program);
         let function_signatures = function_signatures(program, &type_shapes.declared_variants);
         let function_results = function_results(program, &type_shapes.declared_variants);
@@ -524,14 +565,17 @@ fn const_functions(program: &AstProgram) -> ConstFunctionTable {
     functions
 }
 
-fn external_names(program: &AstProgram) -> HashSet<String> {
-    let mut names = crate::stdlib::Stdlib::new()
+fn external_names(program: &AstProgram) -> ExternalNameSet {
+    let mut names = ExternalNameSet::new();
+    for name in crate::stdlib::Stdlib::new()
         .prelude_signature()
         .expect("compiler/std/prelude.ml must parse")
         .exports
         .iter()
         .map(|export| export.name().to_owned())
-        .collect::<HashSet<_>>();
+    {
+        names.insert(name);
+    }
     for decl in &program.decls {
         if let AstDecl::External(external) = decl {
             names.insert(external.name.clone());
@@ -558,15 +602,14 @@ fn external_signatures(
     signatures
 }
 
-fn declared_external_names(program: &AstProgram) -> HashSet<String> {
-    program
-        .decls
-        .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::External(external) => Some(external.name.clone()),
-            _ => None,
-        })
-        .collect()
+fn declared_external_names(program: &AstProgram) -> ExternalNameSet {
+    let mut names = ExternalNameSet::new();
+    for decl in &program.decls {
+        if let AstDecl::External(external) = decl {
+            names.insert(external.name.clone());
+        }
+    }
+    names
 }
 
 fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
