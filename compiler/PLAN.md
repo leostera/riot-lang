@@ -56,12 +56,15 @@ Resolved hardening gap: list spread syntax (`..tail`) used to be pattern-only.
 Stage0 now supports list cons expressions such as `[head, ..tail]`, lowered
 through the ordinary `list_cons` std/runtime ABI.
 
+Resolved hardening gap: annotated mutually recursive top-level functions are now
+predeclared before inference. Unannotated forward recursion still receives a
+source-backed diagnostic so the unsupported inference case is explicit.
+
 Known hardening gaps discovered by compiler-shaped fixtures:
 
-- Mutually recursive top-level helpers are not supported yet. Compiler-shaped
-  code that naturally splits into `rename_expr`/`rename_args` or
-  `render_expr`/`render_args` must currently be ordered or simplified around a
-  one-way dependency.
+- Unannotated mutually recursive helpers are not inferred yet. Compiler-shaped
+  code that wants mutually recursive `rename_expr`/`rename_args` helpers should
+  add annotations today or wait for a future recursive inference slice.
 
 `compiler/riotc` may remain as an eventual consumer, but it should not drive the
 loop until stage0 is sturdy enough to serve as the reference implementation.
