@@ -958,6 +958,13 @@ impl<'src> Parser<'src> {
             prefix.push(self.parse_pattern()?);
 
             if self.match_kind(TokenKind::Comma).is_none() {
+                if !self.at(TokenKind::RBracket) {
+                    return Err(ParseError {
+                        span: self.current().span,
+                        message: "expected `,` between list pattern items".to_owned(),
+                        help: Some("insert a comma before the next pattern"),
+                    });
+                }
                 break;
             }
 
