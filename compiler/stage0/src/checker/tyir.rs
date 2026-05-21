@@ -5,12 +5,12 @@ use crate::signature::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct HirBinding {
+pub(crate) struct BindingId {
     pub(crate) name: String,
     pub(crate) id: usize,
 }
 
-impl HirBinding {
+impl BindingId {
     pub(crate) fn new(name: impl Into<String>, id: usize) -> Self {
         Self {
             name: name.into(),
@@ -24,53 +24,37 @@ impl HirBinding {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct IdentSegment(String);
-
-impl IdentSegment {
-    pub(crate) fn new(name: impl Into<String>) -> Self {
-        Self(name.into())
-    }
-
-    pub(crate) fn as_str(&self) -> &str {
-        &self.0
-    }
+pub(crate) enum Ident {
+    Name(String),
+    Qualified(String, Box<Ident>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct QualifiedIdent {
-    segments: Vec<IdentSegment>,
-}
+impl Ident {
+    pub(crate) fn from_segments(segments: Vec<String>) -> Self {
+        Self::from_segment_slice(&segments)
+    }
 
-impl QualifiedIdent {
-    pub(crate) fn new(segments: Vec<String>) -> Self {
-        Self {
-            segments: segments.into_iter().map(IdentSegment::new).collect(),
+    fn from_segment_slice(segments: &[String]) -> Self {
+        let Some((first, rest)) = segments.split_first() else {
+            return Self::Name("_".to_owned());
+        };
+        if rest.is_empty() {
+            Self::Name(first.clone())
+        } else {
+            Self::Qualified(first.clone(), Box::new(Self::from_segment_slice(rest)))
         }
-    }
-
-    pub(crate) fn unqualified(name: impl Into<String>) -> Self {
-        Self::new(vec![name.into()])
     }
 
     pub(crate) fn as_strings(&self) -> Vec<String> {
-        self.segments
-            .iter()
-            .map(|segment| segment.as_str().to_owned())
-            .collect()
-    }
-
-    pub(crate) fn as_unqualified_name(&self) -> Option<&str> {
-        match self.segments.as_slice() {
-            [segment] => Some(segment.as_str()),
-            _ => None,
+        match self {
+            Ident::Name(name) => vec![name.clone()],
+            Ident::Qualified(prefix, rest) => {
+                let mut segments = vec![prefix.clone()];
+                segments.extend(rest.as_strings());
+                segments
+            }
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum Ident {
-    Binding(HirBinding),
-    Qualified(QualifiedIdent),
 }
 
 #[derive(Debug, Clone)]
@@ -153,7 +137,7 @@ pub(crate) struct TypedFunction {
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedParam {
-    pub(crate) binding: HirBinding,
+    pub(crate) binding: BindingId,
     pub(crate) scheme: RsigTypeScheme,
     pub(crate) type_: RsigType,
 }
@@ -168,7 +152,7 @@ pub(crate) struct TypedBlock {
 #[derive(Debug, Clone)]
 pub(crate) enum TypedStmt {
     Let {
-        binding: HirBinding,
+        binding: BindingId,
         scheme: RsigTypeScheme,
         value: TypedExpr,
     },
@@ -197,7 +181,7 @@ pub(crate) struct TypedReceiveArm {
 pub(crate) enum TypedPattern {
     Wildcard,
     Bind {
-        binding: HirBinding,
+        binding: BindingId,
         type_: RsigType,
     },
     Constructor {
@@ -248,7 +232,7 @@ pub(crate) enum TypedExprKind {
     Tuple(Vec<TypedExpr>),
     List(Vec<TypedExpr>),
     Record {
-        path: QualifiedIdent,
+        path: Ident,
         fields: Vec<(String, TypedExpr)>,
     },
     Field {
@@ -265,6 +249,7 @@ pub(crate) enum TypedExprKind {
         payload: Vec<TypedExpr>,
     },
     Ident(Ident),
+    Local(BindingId),
     Spawn {
         body: Box<TypedBlock>,
     },

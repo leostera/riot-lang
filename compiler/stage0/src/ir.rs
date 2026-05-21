@@ -345,7 +345,7 @@ pub(crate) fn module_function_symbol(module: &ModuleName, name: &str) -> String 
 
 #[derive(Debug, Clone)]
 struct TypedBindingInfo {
-    binding: HirBinding,
+    binding: BindingId,
     type_: RsigType,
 }
 
@@ -404,11 +404,11 @@ impl<'a> TypeContext<'a> {
         self.scopes.pop();
     }
 
-    fn bind(&mut self, name: &str, type_: RsigType) -> HirBinding {
+    fn bind(&mut self, name: &str, type_: RsigType) -> BindingId {
         if self.scopes.is_empty() {
             self.push_scope();
         }
-        let binding = HirBinding::new(name, self.next_binding_id);
+        let binding = BindingId::new(name, self.next_binding_id);
         self.next_binding_id += 1;
         self.scopes
             .last_mut()
@@ -1252,7 +1252,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 TypedExpr {
                     type_,
                     kind: TypedExprKind::Call {
-                        callee: Ident::Qualified(QualifiedIdent::new(callee_path)),
+                        callee: Ident::from_segments(callee_path),
                         args,
                     },
                 }
@@ -1381,7 +1381,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             TypedExpr {
                 type_: RsigType::Record(type_name),
                 kind: TypedExprKind::Record {
-                    path: QualifiedIdent::new(path.segments),
+                    path: Ident::from_segments(path.segments),
                     fields,
                 },
             }
@@ -1435,7 +1435,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     {
         return TypedExpr {
             type_,
-            kind: TypedExprKind::Ident(Ident::Binding(binding.binding.clone())),
+            kind: TypedExprKind::Local(binding.binding.clone()),
         };
     }
     if let Some((params, result)) = call_signature(&path, context) {
@@ -1453,7 +1453,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     }
     TypedExpr {
         type_,
-        kind: TypedExprKind::Ident(Ident::Qualified(QualifiedIdent::new(path))),
+        kind: TypedExprKind::Ident(Ident::from_segments(path)),
     }
 }
 
@@ -1523,12 +1523,12 @@ fn partial_call_lambda(
         .collect::<Vec<_>>();
     supplied_args.extend(typed_params.iter().map(|param| TypedExpr {
         type_: param.type_.clone(),
-        kind: TypedExprKind::Ident(Ident::Binding(param.binding.clone())),
+        kind: TypedExprKind::Local(param.binding.clone()),
     }));
     let call = TypedExpr {
         type_: result.clone(),
         kind: TypedExprKind::Call {
-            callee: Ident::Qualified(QualifiedIdent::new(callee)),
+            callee: Ident::from_segments(callee),
             args: supplied_args,
         },
     };
@@ -1793,11 +1793,11 @@ fn typed_operator_call(
     TypedExpr {
         type_: result,
         kind: TypedExprKind::Call {
-            callee: Ident::Qualified(QualifiedIdent::new(vec![
+            callee: Ident::from_segments(vec![
                 "Std".to_owned(),
                 "Prelude".to_owned(),
                 operator.to_owned(),
-            ])),
+            ]),
             args: args
                 .into_iter()
                 .map(|arg| type_expr(arg, context))
@@ -2072,7 +2072,7 @@ impl LowerContext {
         key
     }
 
-    fn bind_existing(&mut self, binding: &HirBinding) -> BindingKey {
+    fn bind_existing(&mut self, binding: &BindingId) -> BindingKey {
         if self.scopes.is_empty() {
             self.push_scope();
         }
@@ -2885,6 +2885,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
             }
         }
         TypedExprKind::Ident(ident) => RirExpr::Path(lower_ident_path(ident, context)),
+        TypedExprKind::Local(binding) => RirExpr::Path(vec![binding.key_name()]),
     }
 }
 
@@ -2918,18 +2919,13 @@ fn lower_prelude_operator(callee: Vec<String>, args: Vec<RirExpr>) -> RirExpr {
 }
 
 fn lower_ident_path(ident: Ident, context: &LowerContext) -> Vec<String> {
-    match ident {
-        Ident::Binding(binding) => vec![binding.key_name()],
-        Ident::Qualified(path) => {
-            let path = path.as_strings();
-            if let [name] = path.as_slice()
-                && let Some(binding) = context.resolve(name)
-            {
-                return vec![binding.as_str().to_owned()];
-            }
-            path
-        }
+    let path = ident.as_strings();
+    if let [name] = path.as_slice()
+        && let Some(binding) = context.resolve(name)
+    {
+        return vec![binding.as_str().to_owned()];
     }
+    path
 }
 
 fn lower_literal(literal: TypedLiteral) -> RirExpr {
@@ -2998,7 +2994,7 @@ mod tests {
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{
-        Capture, RirExpr, RirStmt, Ident, TypedExprKind, TypedStmt, lower_typed_to_rir,
+        Capture, Ident, RirExpr, RirStmt, TypedExprKind, TypedStmt, lower_typed_to_rir,
         typed_program_from_ast,
     };
 
@@ -3234,7 +3230,7 @@ mod tests {
         let Some(tail) = &body.tail else {
             panic!("expected lambda tail");
         };
-        let TypedExprKind::Ident(Ident::Binding(captured_a)) = &tail.kind else {
+        let TypedExprKind::Local(captured_a) = &tail.kind else {
             panic!("expected lambda tail to resolve a local");
         };
 
@@ -3320,6 +3316,22 @@ mod tests {
         };
 
         assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn typed_names_are_not_binding_ids() {
+        let typed = typed_program_with_inference_facts(
+            "NamedCall",
+            "fn helper() { 1 }\nfn main() { helper() }",
+        );
+        let Some(tail) = &typed.functions[1].body.tail else {
+            panic!("expected a tail expression");
+        };
+        let TypedExprKind::Call { callee, .. } = &tail.kind else {
+            panic!("expected a named call");
+        };
+
+        assert!(matches!(callee, Ident::Name(name) if name == "helper"));
     }
 }
 
