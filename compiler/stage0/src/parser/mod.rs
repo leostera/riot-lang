@@ -1225,6 +1225,13 @@ impl<'src> Parser<'src> {
             fields.push((name, value));
 
             if self.match_kind(TokenKind::Comma).is_none() {
+                if self.at(TokenKind::Ident) && self.peek_kind(1) == Some(TokenKind::Colon) {
+                    return Err(ParseError {
+                        span: self.current().span,
+                        message: "expected `,` between record fields".to_owned(),
+                        help: Some("insert a comma before the next field"),
+                    });
+                }
                 break;
             }
 
