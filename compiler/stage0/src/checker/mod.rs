@@ -315,6 +315,14 @@ impl<'a> ProgramValidator<'a> {
                     validate_type_decl_spelling(&ctx, type_)?;
                 }
                 AstDecl::Function(function) => {
+                    validate_unique_params(
+                        &ctx,
+                        &function.params,
+                        function.name_span,
+                        "duplicate function parameter",
+                        "this parameter name is already used by this function",
+                        "choose a unique name for each function parameter",
+                    )?;
                     TypeAnnotationChecker::new(&ctx).validate_function(function)?;
                     entrypoint_validator.validate_function(function)?;
                     BlockValidator::new(&ctx).validate_function_body(
@@ -436,6 +444,23 @@ fn reject_duplicate_name(
 ) -> miette::Result<()> {
     if seen.insert(name, span).is_some() {
         return Err(diagnostics.at(span, message, label, Some(help)).into());
+    }
+    Ok(())
+}
+
+fn validate_unique_params(
+    ctx: &ValidationContext<'_>,
+    params: &[String],
+    span: TextSpan,
+    message: &'static str,
+    label: &'static str,
+    help: &'static str,
+) -> miette::Result<()> {
+    let mut seen = HashSet::new();
+    for param in params {
+        if !seen.insert(param) {
+            return Err(ctx.diagnostic(span, message, label, Some(help)).into());
+        }
     }
     Ok(())
 }
@@ -1160,8 +1185,16 @@ fn validate_expr(
             params,
             param_types,
             body,
-            ..
+            span,
         } => {
+            validate_unique_params(
+                ctx,
+                params,
+                *span,
+                "duplicate lambda parameter",
+                "this parameter name is already used by this lambda",
+                "choose a unique name for each lambda parameter",
+            )?;
             BlockValidator::new(ctx).validate_scoped(
                 body,
                 bindings,
