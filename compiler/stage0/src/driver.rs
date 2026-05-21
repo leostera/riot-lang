@@ -82,12 +82,8 @@ impl Stage0Driver {
             compiled.insert(units[index].module_name.clone(), artifact.signature);
         }
 
-        let main_imports = resolve_imports(
-            &units[main_index].path,
-            &units[main_index].ast,
-            &args.sig_dirs,
-            &compiled,
-        )?;
+        let main_imports = ImportResolver::new(&args.sig_dirs, &compiled)
+            .resolve_source(&units[main_index].path, &units[main_index].ast)?;
         let checked = Checker::new(
             &units[main_index].path,
             &units[main_index].source,
@@ -101,13 +97,13 @@ impl Stage0Driver {
         let object = temp_dir.join("main.o");
         emit_executable_object(&rir, &main_imports, &object, args.emit_llvm.as_deref())?;
 
-        let imported_objects = resolve_imported_objects(
-            &rir.uses,
+        let imported_objects = ImportedObjectResolver::new(
             &main_imports,
             &compiled_objects,
             &args.objects,
             &args.object_dirs,
-        )?;
+        )
+        .resolve(&rir.uses)?;
         let imported_objects = Self::with_compiled_objects(imported_objects, &compiled_objects);
         link_executable(&object, &imported_objects, &runtime, &args.output)?;
 
@@ -159,7 +155,7 @@ impl Stage0Driver {
         out_dir: &Utf8Path,
         emit_llvm: Option<&Utf8Path>,
     ) -> miette::Result<CompiledModule> {
-        let imports = resolve_imports(&unit.path, &unit.ast, sig_dirs, available)?;
+        let imports = ImportResolver::new(sig_dirs, available).resolve(unit)?;
         let checked = Checker::new(
             &unit.path,
             &unit.source,
@@ -183,12 +179,9 @@ impl Stage0Driver {
     fn emit(&self, args: EmitArgs) -> miette::Result<()> {
         let source = self.source_loader.load(&args.input)?;
         let ast = parse_source(&args.input, &source)?;
-        let imports = resolve_imports(
-            &args.input,
-            &ast,
-            &args.sig_dirs,
-            &ImportedSignatures::new(),
-        )?;
+        let empty_imports = ImportedSignatures::new();
+        let imports = ImportResolver::new(&args.sig_dirs, &empty_imports)
+            .resolve_source(&args.input, &ast)?;
         let module_name = self.source_loader.module_name_from_path(&args.input)?;
         let checked = Checker::new(
             &args.input,
@@ -509,81 +502,119 @@ impl<'a> SourceGraph<'a> {
     }
 }
 
-fn resolve_imports(
-    source_path: &Utf8Path,
-    ast: &AstProgram,
-    sig_dirs: &[Utf8PathBuf],
-    available: &ImportedSignatures,
-) -> miette::Result<ImportedSignatures> {
-    let source_dir = source_path.parent();
-    let mut imports = BTreeMap::new();
-    for decl in &ast.decls {
-        if let AstDecl::Use(use_) = decl {
-            let rsig = if let Some(rsig) = available.get(use_.name.as_str()) {
-                rsig.clone()
-            } else {
-                match resolve_rsig(&use_.name, source_dir, sig_dirs) {
-                    Ok((_path, rsig)) => rsig,
-                    Err(error) => {
-                        if let Some(rsig) = crate::stdlib::std_signature(&use_.name)? {
-                            rsig
-                        } else {
-                            return Err(error);
-                        }
-                    }
-                }
-            };
-            imports.insert(ModuleName::new(use_.name.clone()), rsig);
-        }
-    }
-    Ok(imports)
+#[derive(Debug)]
+struct ImportResolver<'a> {
+    sig_dirs: &'a [Utf8PathBuf],
+    available: &'a ImportedSignatures,
 }
 
-fn resolve_imported_objects(
-    uses: &[ModuleName],
-    imports: &ImportedSignatures,
-    available_objects: &BTreeMap<ModuleName, Utf8PathBuf>,
-    mappings: &[ObjectMapping],
-    object_dirs: &[Utf8PathBuf],
-) -> miette::Result<Vec<Utf8PathBuf>> {
-    let explicit = mappings
-        .iter()
-        .map(|mapping| (mapping.module.as_str(), mapping.path.clone()))
-        .collect::<BTreeMap<_, _>>();
-    let mut objects = Vec::new();
-    for module in uses {
-        if imports
-            .get(module)
-            .is_some_and(crate::stdlib::is_std_signature)
-        {
-            continue;
+impl<'a> ImportResolver<'a> {
+    fn new(sig_dirs: &'a [Utf8PathBuf], available: &'a ImportedSignatures) -> Self {
+        Self {
+            sig_dirs,
+            available,
         }
-        if let Some(path) = available_objects.get(module) {
-            objects.push(path.clone());
-            continue;
-        }
-        if let Some(path) = explicit.get(module.as_str()) {
-            objects.push(path.clone());
-            continue;
-        }
-        let mut candidates = Vec::new();
-        for dir in object_dirs {
-            candidates.push(dir.join(format!("{module}.o")));
-        }
-        if let Some(found) = candidates.iter().find(|path| path.exists()) {
-            objects.push(found.clone());
-            continue;
-        }
-        bail!(
-            "missing object for imported module {module}\nsearched:\n{}",
-            candidates
-                .iter()
-                .map(|path| format!("  - {path}"))
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
     }
-    Ok(objects)
+
+    fn resolve(&self, unit: &SourceUnit) -> miette::Result<ImportedSignatures> {
+        self.resolve_source(&unit.path, &unit.ast)
+    }
+
+    fn resolve_source(
+        &self,
+        source_path: &Utf8Path,
+        ast: &AstProgram,
+    ) -> miette::Result<ImportedSignatures> {
+        let source_dir = source_path.parent();
+        let mut imports = BTreeMap::new();
+        for decl in &ast.decls {
+            if let AstDecl::Use(use_) = decl {
+                let rsig = if let Some(rsig) = self.available.get(use_.name.as_str()) {
+                    rsig.clone()
+                } else {
+                    match resolve_rsig(&use_.name, source_dir, self.sig_dirs) {
+                        Ok((_path, rsig)) => rsig,
+                        Err(error) => {
+                            if let Some(rsig) = crate::stdlib::std_signature(&use_.name)? {
+                                rsig
+                            } else {
+                                return Err(error);
+                            }
+                        }
+                    }
+                };
+                imports.insert(ModuleName::new(use_.name.clone()), rsig);
+            }
+        }
+        Ok(imports)
+    }
+}
+
+#[derive(Debug)]
+struct ImportedObjectResolver<'a> {
+    imports: &'a ImportedSignatures,
+    available_objects: &'a BTreeMap<ModuleName, Utf8PathBuf>,
+    mappings: &'a [ObjectMapping],
+    object_dirs: &'a [Utf8PathBuf],
+}
+
+impl<'a> ImportedObjectResolver<'a> {
+    fn new(
+        imports: &'a ImportedSignatures,
+        available_objects: &'a BTreeMap<ModuleName, Utf8PathBuf>,
+        mappings: &'a [ObjectMapping],
+        object_dirs: &'a [Utf8PathBuf],
+    ) -> Self {
+        Self {
+            imports,
+            available_objects,
+            mappings,
+            object_dirs,
+        }
+    }
+
+    fn resolve(&self, uses: &[ModuleName]) -> miette::Result<Vec<Utf8PathBuf>> {
+        let explicit = self
+            .mappings
+            .iter()
+            .map(|mapping| (mapping.module.as_str(), mapping.path.clone()))
+            .collect::<BTreeMap<_, _>>();
+        let mut objects = Vec::new();
+        for module in uses {
+            if self
+                .imports
+                .get(module)
+                .is_some_and(crate::stdlib::is_std_signature)
+            {
+                continue;
+            }
+            if let Some(path) = self.available_objects.get(module) {
+                objects.push(path.clone());
+                continue;
+            }
+            if let Some(path) = explicit.get(module.as_str()) {
+                objects.push(path.clone());
+                continue;
+            }
+            let mut candidates = Vec::new();
+            for dir in self.object_dirs {
+                candidates.push(dir.join(format!("{module}.o")));
+            }
+            if let Some(found) = candidates.iter().find(|path| path.exists()) {
+                objects.push(found.clone());
+                continue;
+            }
+            bail!(
+                "missing object for imported module {module}\nsearched:\n{}",
+                candidates
+                    .iter()
+                    .map(|path| format!("  - {path}"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+        }
+        Ok(objects)
+    }
 }
 
 fn write_text(path: Option<&Utf8Path>, text: &str) -> miette::Result<()> {
