@@ -231,6 +231,10 @@ impl<'a> ProgramValidator<'a> {
     }
 
     fn validate(&self, program: &AstProgram) -> miette::Result<()> {
+        validate_unique_top_level_names(
+            &SourceDiagnostics::new(self.source_path, self.source),
+            program,
+        )?;
         let functions = const_functions(program);
         let mut function_names = FunctionNameSet::new();
         for name in functions.names() {
@@ -338,6 +342,102 @@ struct ConstructorShape {
     type_name: TypeName,
     type_params: Vec<TypeVarName>,
     payload: Vec<RsigType>,
+}
+
+fn validate_unique_top_level_names(
+    diagnostics: &SourceDiagnostics<'_>,
+    program: &AstProgram,
+) -> miette::Result<()> {
+    let mut types = HashMap::<String, TextSpan>::new();
+    let mut constructors = HashMap::<String, TextSpan>::new();
+    let mut externals = HashMap::<String, TextSpan>::new();
+    let mut functions = HashMap::<String, TextSpan>::new();
+
+    for decl in &program.decls {
+        match decl {
+            AstDecl::Type(type_) => {
+                reject_duplicate_name(
+                    diagnostics,
+                    &mut types,
+                    type_.name.clone(),
+                    type_.name_span,
+                    "duplicate type declaration",
+                    "this type name is already declared in this module",
+                    "choose a unique type name for each type declaration",
+                )?;
+                match &type_.body {
+                    AstTypeBody::Variant { constructors: variant_constructors } => {
+                        for constructor in variant_constructors {
+                            reject_duplicate_name(
+                                diagnostics,
+                                &mut constructors,
+                                constructor.name.clone(),
+                                constructor.name_span,
+                                "duplicate variant constructor",
+                                "this constructor name is already declared in this module",
+                                "choose a unique constructor name; constructors share a module namespace",
+                            )?;
+                        }
+                    }
+                    AstTypeBody::Record { fields } => {
+                        let mut field_names = HashMap::<String, TextSpan>::new();
+                        for field in fields {
+                            reject_duplicate_name(
+                                diagnostics,
+                                &mut field_names,
+                                field.name.clone(),
+                                field.type_annotation.span,
+                                "duplicate record type field",
+                                "this field is already declared on the record type",
+                                "remove the duplicate field or choose a unique field name",
+                            )?;
+                        }
+                    }
+                    AstTypeBody::Abstract => {}
+                }
+            }
+            AstDecl::External(external) => {
+                reject_duplicate_name(
+                    diagnostics,
+                    &mut externals,
+                    external.name.clone(),
+                    external.span,
+                    "duplicate external declaration",
+                    "this external name is already declared in this module",
+                    "choose a unique external name",
+                )?;
+            }
+            AstDecl::Function(function) => {
+                reject_duplicate_name(
+                    diagnostics,
+                    &mut functions,
+                    function.name.clone(),
+                    function.name_span,
+                    "duplicate function declaration",
+                    "this function name is already declared in this module",
+                    "choose a unique function name",
+                )?;
+            }
+            AstDecl::Use(_) | AstDecl::Module(_) | AstDecl::Include(_) => {}
+        }
+    }
+
+    Ok(())
+}
+
+fn reject_duplicate_name(
+    diagnostics: &SourceDiagnostics<'_>,
+    seen: &mut HashMap<String, TextSpan>,
+    name: String,
+    span: TextSpan,
+    message: &'static str,
+    label: &'static str,
+    help: &'static str,
+) -> miette::Result<()> {
+    if seen.insert(name, span).is_some() {
+        return Err(diagnostics.at(span, message, label, Some(help)).into());
+    }
+    Ok(())
 }
 
 fn validate_type_decl_spelling(
