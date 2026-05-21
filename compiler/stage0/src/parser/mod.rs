@@ -902,6 +902,13 @@ impl<'src> Parser<'src> {
                 }
                 let first = self.parse_pattern()?;
                 if self.match_kind(TokenKind::Comma).is_none() {
+                    if !self.at(TokenKind::RParen) {
+                        return Err(ParseError {
+                            span: self.current().span,
+                            message: "expected `,` between tuple pattern items".to_owned(),
+                            help: Some("insert a comma before the next pattern"),
+                        });
+                    }
                     self.expect(TokenKind::RParen, "expected `)` after pattern")?;
                     return Ok(first);
                 }
@@ -909,6 +916,13 @@ impl<'src> Parser<'src> {
                 while !self.at(TokenKind::RParen) {
                     items.push(self.parse_pattern()?);
                     if self.match_kind(TokenKind::Comma).is_none() {
+                        if !self.at(TokenKind::RParen) {
+                            return Err(ParseError {
+                                span: self.current().span,
+                                message: "expected `,` between tuple pattern items".to_owned(),
+                                help: Some("insert a comma before the next pattern"),
+                            });
+                        }
                         break;
                     }
                 }
