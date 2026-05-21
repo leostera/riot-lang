@@ -4,7 +4,7 @@ type token =
   | IntLit(i64)
 
 fn make_renderer(prefix: String) {
-  fn(token: token) {
+  fn(token) {
     match token {
       KwFn -> string_concat(prefix, "fn"),
       Ident(name) -> string_concat(prefix, name),

@@ -601,6 +601,7 @@ fn infer_expr_kind(
                 state.unify(&result, &body_type)?;
                 state.pop_scope();
             }
+            expression_types.insert(expr_span(scrutinee), state.resolve(&scrutinee_type));
             Ok(state.resolve(&result))
         }
         AstExpr::Block { block, .. } => {

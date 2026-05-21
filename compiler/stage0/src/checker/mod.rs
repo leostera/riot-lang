@@ -37,7 +37,7 @@ use crate::ast::{
 use crate::checker::tyir::{CheckedProgram, RsigBuilder, TyIrBuilder};
 use crate::diagnostic::{SourceDiagnostic, SourceDiagnostics};
 use crate::imported_types::{imported_type_name, qualify_imported_type};
-use crate::infer::module::ModuleInferencer;
+use crate::infer::module::{ExpressionTypeTable, ModuleInferencer};
 use crate::signature::{
     FunctionSignature, FunctionTable, ImportedSignatures, ModuleName, Rsig, RsigExport, RsigType,
     RsigTypeDeclKind, TypeName, TypeVarName,
@@ -76,7 +76,7 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn check(&self, program: AstProgram) -> miette::Result<CheckedProgram> {
-        ProgramValidator::new(self.source_path, self.source, self.imports, self.mode)
+        ProgramValidator::new(self.source_path, self.source, self.imports, self.mode, None)
             .validate(&program)?;
         let inferred = ModuleInferencer::new(&program, self.imports)
             .infer()
@@ -93,6 +93,14 @@ impl<'a> Checker<'a> {
                 )
             })?;
         let expression_types = inferred.expression_rsig_types();
+        ProgramValidator::new(
+            self.source_path,
+            self.source,
+            self.imports,
+            self.mode,
+            Some(&expression_types),
+        )
+        .validate(&program)?;
         let function_types = inferred.function_signatures(&program);
         let typed_tree = TyIrBuilder::new(
             self.module_name.clone(),
@@ -131,6 +139,7 @@ struct ValidationContext<'a> {
     record_shapes: HashMap<String, RecordShape>,
     record_shapes_by_type: BTreeMap<TypeName, RecordShape>,
     imports: &'a ImportedSignatures,
+    expression_types: Option<&'a ExpressionTypeTable>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -201,6 +210,7 @@ struct ProgramValidator<'a> {
     source: &'a str,
     imports: &'a ImportedSignatures,
     mode: CheckMode,
+    expression_types: Option<&'a ExpressionTypeTable>,
 }
 
 impl<'a> ProgramValidator<'a> {
@@ -209,12 +219,14 @@ impl<'a> ProgramValidator<'a> {
         source: &'a str,
         imports: &'a ImportedSignatures,
         mode: CheckMode,
+        expression_types: Option<&'a ExpressionTypeTable>,
     ) -> Self {
         Self {
             source_path,
             source,
             imports,
             mode,
+            expression_types,
         }
     }
 
@@ -246,6 +258,7 @@ impl<'a> ProgramValidator<'a> {
             record_shapes: type_shapes.record_shapes,
             record_shapes_by_type: type_shapes.record_shapes_by_type,
             imports: self.imports,
+            expression_types: self.expression_types,
         };
 
         let main_decls = program
@@ -1383,7 +1396,7 @@ fn match_is_exhaustive(
     match scrutinee_type {
         Some(RsigType::List(_)) => list_patterns_are_exhaustive(arms),
         Some(type_) => variant_patterns_are_exhaustive(ctx, arms, type_),
-        None => false,
+        None => ctx.expression_types.is_none(),
     }
 }
 
@@ -2711,6 +2724,14 @@ fn simple_expr_type(
     expr: &AstExpr,
     bindings: &HashMap<String, BindingKind>,
 ) -> Option<RsigType> {
+    if let Some(type_) = ctx
+        .expression_types
+        .and_then(|expression_types| expression_types.get(expr_span(expr)))
+        && !matches!(type_, RsigType::Unknown | RsigType::Var(_))
+    {
+        return Some(type_.clone());
+    }
+
     match expr {
         AstExpr::Add { .. }
         | AstExpr::Sub { .. }
