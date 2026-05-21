@@ -24,9 +24,9 @@ impl HirBinding {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct TyPathSegment(String);
+pub(crate) struct IdentSegment(String);
 
-impl TyPathSegment {
+impl IdentSegment {
     pub(crate) fn new(name: impl Into<String>) -> Self {
         Self(name.into())
     }
@@ -37,14 +37,14 @@ impl TyPathSegment {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct TyPath {
-    segments: Vec<TyPathSegment>,
+pub(crate) struct QualifiedIdent {
+    segments: Vec<IdentSegment>,
 }
 
-impl TyPath {
+impl QualifiedIdent {
     pub(crate) fn new(segments: Vec<String>) -> Self {
         Self {
-            segments: segments.into_iter().map(TyPathSegment::new).collect(),
+            segments: segments.into_iter().map(IdentSegment::new).collect(),
         }
     }
 
@@ -68,13 +68,13 @@ impl TyPath {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TyIdent {
-    Local(HirBinding),
-    Path(TyPath),
+pub(crate) enum Ident {
+    Binding(HirBinding),
+    Qualified(QualifiedIdent),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TyLiteral {
+pub(crate) enum TypedLiteral {
     Bool(bool),
     Char(char),
     Float(String),
@@ -232,9 +232,9 @@ pub(crate) enum TypedExprKind {
         arms: Vec<TypedMatchArm>,
     },
     Block(Box<TypedBlock>),
-    Literal(TyLiteral),
+    Literal(TypedLiteral),
     Call {
-        callee: TyIdent,
+        callee: Ident,
         args: Vec<TypedExpr>,
     },
     Apply {
@@ -248,7 +248,7 @@ pub(crate) enum TypedExprKind {
     Tuple(Vec<TypedExpr>),
     List(Vec<TypedExpr>),
     Record {
-        path: TyPath,
+        path: QualifiedIdent,
         fields: Vec<(String, TypedExpr)>,
     },
     Field {
@@ -264,7 +264,7 @@ pub(crate) enum TypedExprKind {
         constructor: ConstructorName,
         payload: Vec<TypedExpr>,
     },
-    Ident(TyIdent),
+    Ident(Ident),
     Spawn {
         body: Box<TypedBlock>,
     },

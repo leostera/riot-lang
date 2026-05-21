@@ -1218,7 +1218,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
         }
         AstExpr::Bool { value, .. } => TypedExpr {
             type_: RsigType::Bool,
-            kind: TypedExprKind::Literal(TyLiteral::Bool(value)),
+            kind: TypedExprKind::Literal(TypedLiteral::Bool(value)),
         },
         AstExpr::Call { callee, args, .. } => {
             let callee_path = callee.segments;
@@ -1252,7 +1252,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 TypedExpr {
                     type_,
                     kind: TypedExprKind::Call {
-                        callee: TyIdent::Path(TyPath::new(callee_path)),
+                        callee: Ident::Qualified(QualifiedIdent::new(callee_path)),
                         args,
                     },
                 }
@@ -1381,7 +1381,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             TypedExpr {
                 type_: RsigType::Record(type_name),
                 kind: TypedExprKind::Record {
-                    path: TyPath::new(path.segments),
+                    path: QualifiedIdent::new(path.segments),
                     fields,
                 },
             }
@@ -1410,20 +1410,20 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
         }
         AstExpr::Char { value, .. } => TypedExpr {
             type_: RsigType::Char,
-            kind: TypedExprKind::Literal(TyLiteral::Char(value)),
+            kind: TypedExprKind::Literal(TypedLiteral::Char(value)),
         },
         AstExpr::Float { value, .. } => TypedExpr {
             type_: RsigType::F64,
-            kind: TypedExprKind::Literal(TyLiteral::Float(value)),
+            kind: TypedExprKind::Literal(TypedLiteral::Float(value)),
         },
         AstExpr::Int { value, .. } => TypedExpr {
             type_: RsigType::I64,
-            kind: TypedExprKind::Literal(TyLiteral::Int(value)),
+            kind: TypedExprKind::Literal(TypedLiteral::Int(value)),
         },
         AstExpr::Path { path, .. } => type_path_expr(path.segments, context),
         AstExpr::String { value, .. } => TypedExpr {
             type_: RsigType::String,
-            kind: TypedExprKind::Literal(TyLiteral::String(value)),
+            kind: TypedExprKind::Literal(TypedLiteral::String(value)),
         },
     }
 }
@@ -1435,7 +1435,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     {
         return TypedExpr {
             type_,
-            kind: TypedExprKind::Ident(TyIdent::Local(binding.binding.clone())),
+            kind: TypedExprKind::Ident(Ident::Binding(binding.binding.clone())),
         };
     }
     if let Some((params, result)) = call_signature(&path, context) {
@@ -1453,7 +1453,7 @@ fn type_path_expr(path: Vec<String>, context: &mut TypeContext<'_>) -> TypedExpr
     }
     TypedExpr {
         type_,
-        kind: TypedExprKind::Ident(TyIdent::Path(TyPath::new(path))),
+        kind: TypedExprKind::Ident(Ident::Qualified(QualifiedIdent::new(path))),
     }
 }
 
@@ -1523,12 +1523,12 @@ fn partial_call_lambda(
         .collect::<Vec<_>>();
     supplied_args.extend(typed_params.iter().map(|param| TypedExpr {
         type_: param.type_.clone(),
-        kind: TypedExprKind::Ident(TyIdent::Local(param.binding.clone())),
+        kind: TypedExprKind::Ident(Ident::Binding(param.binding.clone())),
     }));
     let call = TypedExpr {
         type_: result.clone(),
         kind: TypedExprKind::Call {
-            callee: TyIdent::Path(TyPath::new(callee)),
+            callee: Ident::Qualified(QualifiedIdent::new(callee)),
             args: supplied_args,
         },
     };
@@ -1793,7 +1793,7 @@ fn typed_operator_call(
     TypedExpr {
         type_: result,
         kind: TypedExprKind::Call {
-            callee: TyIdent::Path(TyPath::new(vec![
+            callee: Ident::Qualified(QualifiedIdent::new(vec![
                 "Std".to_owned(),
                 "Prelude".to_owned(),
                 operator.to_owned(),
@@ -2888,7 +2888,7 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> RirExpr {
     }
 }
 
-fn lower_call(callee: TyIdent, args: Vec<TypedExpr>, context: &mut LowerContext) -> RirExpr {
+fn lower_call(callee: Ident, args: Vec<TypedExpr>, context: &mut LowerContext) -> RirExpr {
     let callee = lower_ident_path(callee, context);
     let args = args
         .into_iter()
@@ -2917,10 +2917,10 @@ fn lower_prelude_operator(callee: Vec<String>, args: Vec<RirExpr>) -> RirExpr {
     }
 }
 
-fn lower_ident_path(ident: TyIdent, context: &LowerContext) -> Vec<String> {
+fn lower_ident_path(ident: Ident, context: &LowerContext) -> Vec<String> {
     match ident {
-        TyIdent::Local(binding) => vec![binding.key_name()],
-        TyIdent::Path(path) => {
+        Ident::Binding(binding) => vec![binding.key_name()],
+        Ident::Qualified(path) => {
             let path = path.as_strings();
             if let [name] = path.as_slice()
                 && let Some(binding) = context.resolve(name)
@@ -2932,13 +2932,13 @@ fn lower_ident_path(ident: TyIdent, context: &LowerContext) -> Vec<String> {
     }
 }
 
-fn lower_literal(literal: TyLiteral) -> RirExpr {
+fn lower_literal(literal: TypedLiteral) -> RirExpr {
     match literal {
-        TyLiteral::Bool(value) => RirExpr::Bool(value),
-        TyLiteral::Char(value) => RirExpr::Char(value),
-        TyLiteral::Float(value) => RirExpr::Float(value),
-        TyLiteral::Int(value) => RirExpr::Int(value),
-        TyLiteral::String(value) => RirExpr::String(value),
+        TypedLiteral::Bool(value) => RirExpr::Bool(value),
+        TypedLiteral::Char(value) => RirExpr::Char(value),
+        TypedLiteral::Float(value) => RirExpr::Float(value),
+        TypedLiteral::Int(value) => RirExpr::Int(value),
+        TypedLiteral::String(value) => RirExpr::String(value),
     }
 }
 
@@ -2998,7 +2998,7 @@ mod tests {
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
     use super::{
-        Capture, RirExpr, RirStmt, TyIdent, TypedExprKind, TypedStmt, lower_typed_to_rir,
+        Capture, RirExpr, RirStmt, Ident, TypedExprKind, TypedStmt, lower_typed_to_rir,
         typed_program_from_ast,
     };
 
@@ -3234,7 +3234,7 @@ mod tests {
         let Some(tail) = &body.tail else {
             panic!("expected lambda tail");
         };
-        let TypedExprKind::Ident(TyIdent::Local(captured_a)) = &tail.kind else {
+        let TypedExprKind::Ident(Ident::Binding(captured_a)) = &tail.kind else {
             panic!("expected lambda tail to resolve a local");
         };
 
