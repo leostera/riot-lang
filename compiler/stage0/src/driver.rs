@@ -25,6 +25,7 @@ pub(crate) struct Stage0Driver {
     llvm_backend: LlvmBackend,
     runtime_builder: RuntimeBuilder,
     linker: Linker,
+    output_writer: OutputWriter,
 }
 
 impl Stage0Driver {
@@ -34,6 +35,7 @@ impl Stage0Driver {
             llvm_backend: LlvmBackend::new(),
             runtime_builder: RuntimeBuilder::new(),
             linker: Linker::new(),
+            output_writer: OutputWriter::new(),
         }
     }
 
@@ -203,8 +205,10 @@ impl Stage0Driver {
         .check(ast.clone())?;
 
         match args.pass {
-            EmitPass::Cst => write_text(args.output.as_deref(), &format!("{ast:#?}")),
-            EmitPass::Typed => write_text(
+            EmitPass::Cst => self
+                .output_writer
+                .write_text(args.output.as_deref(), &format!("{ast:#?}")),
+            EmitPass::Typed => self.output_writer.write_text(
                 args.output.as_deref(),
                 &format!("{:#?}", checked.typed_tree),
             ),
@@ -216,16 +220,18 @@ impl Stage0Driver {
             }
             EmitPass::Ir => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-                write_text(args.output.as_deref(), &format!("{rir:#?}"))
+                self.output_writer
+                    .write_text(args.output.as_deref(), &format!("{rir:#?}"))
             }
             EmitPass::ActorIr => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 let actor_ir = StacklessActorLowerer::new(&imports).lower(&rir);
-                write_text(args.output.as_deref(), &format!("{actor_ir:#?}"))
+                self.output_writer
+                    .write_text(args.output.as_deref(), &format!("{actor_ir:#?}"))
             }
             EmitPass::Llvm => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-                write_text(
+                self.output_writer.write_text(
                     args.output.as_deref(),
                     &self
                         .llvm_backend
@@ -234,7 +240,7 @@ impl Stage0Driver {
             }
             EmitPass::Assembly => {
                 let rir = LambdaSimplifier::new().simplify(checked.typed_tree);
-                write_text(
+                self.output_writer.write_text(
                     args.output.as_deref(),
                     &self.llvm_backend.emit_assembly_text(
                         &rir,
@@ -271,7 +277,7 @@ impl Stage0Driver {
                     &imports,
                     Self::emit_mode_for(&rir),
                 )?);
-                write_text(args.output.as_deref(), &text)
+                self.output_writer.write_text(args.output.as_deref(), &text)
             }
         }
     }
@@ -638,14 +644,23 @@ impl<'a> ImportedObjectResolver<'a> {
     }
 }
 
-fn write_text(path: Option<&Utf8Path>, text: &str) -> miette::Result<()> {
-    if let Some(path) = path {
-        std::fs::write(path.as_std_path(), text)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("failed to write {path}"))
-    } else {
-        print!("{text}");
-        Ok(())
+#[derive(Debug, Default)]
+struct OutputWriter;
+
+impl OutputWriter {
+    fn new() -> Self {
+        Self
+    }
+
+    fn write_text(&self, path: Option<&Utf8Path>, text: &str) -> miette::Result<()> {
+        if let Some(path) = path {
+            std::fs::write(path.as_std_path(), text)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("failed to write {path}"))
+        } else {
+            print!("{text}");
+            Ok(())
+        }
     }
 }
 
