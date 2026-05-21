@@ -1,5 +1,5 @@
-fn prefix() -> string { "riot" }
-fn suffix() -> string { " lang" }
+fn prefix() -> String { "riot" }
+fn suffix() -> String { " lang" }
 
 fn main() {
   dbg(string_len(""));

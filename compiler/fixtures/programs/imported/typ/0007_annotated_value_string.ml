@@ -1,4 +1,4 @@
 fn main() {
-  let value: string = "typed";
+  let value: String = "typed";
   dbg(value)
 }

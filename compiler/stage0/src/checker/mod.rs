@@ -198,6 +198,12 @@ fn validate_program(
                     )
                     .into());
                 }
+                validate_source_type_spelling(
+                    ctx.source_path,
+                    ctx.source,
+                    external.type_span,
+                    &external.type_text,
+                )?;
             }
             AstDecl::Type(type_) => {
                 if matches!(&type_.body, AstTypeBody::Variant { constructors } if constructors.is_empty())
@@ -212,6 +218,7 @@ fn validate_program(
                     )
                     .into());
                 }
+                validate_type_decl_spelling(&ctx, type_)?;
             }
             AstDecl::Function(function) => {
                 validate_function_annotations(&ctx, function)?;
@@ -228,6 +235,75 @@ fn validate_program(
     }
 
     Ok(())
+}
+
+fn validate_type_decl_spelling(
+    ctx: &ValidationContext<'_>,
+    type_: &crate::ast::AstTypeDecl,
+) -> miette::Result<()> {
+    match &type_.body {
+        AstTypeBody::Abstract => Ok(()),
+        AstTypeBody::Variant { constructors } => {
+            for constructor in constructors {
+                for payload in &constructor.payload {
+                    validate_source_type_spelling(
+                        ctx.source_path,
+                        ctx.source,
+                        payload.span,
+                        &payload.text,
+                    )?;
+                }
+            }
+            Ok(())
+        }
+        AstTypeBody::Record { fields } => {
+            for field in fields {
+                validate_source_type_spelling(
+                    ctx.source_path,
+                    ctx.source,
+                    field.type_annotation.span,
+                    &field.type_annotation.text,
+                )?;
+            }
+            Ok(())
+        }
+    }
+}
+
+fn validate_source_type_spelling(
+    source_path: &Utf8Path,
+    source: &str,
+    span: TextSpan,
+    text: &str,
+) -> miette::Result<()> {
+    if type_text_has_token(text, "string") {
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            span,
+            "invalid type spelling",
+            "`string` is not a source-level type name",
+            Some("use `String`"),
+        )
+        .into());
+    }
+    if text.contains(" list") {
+        return Err(to_source_diagnostic(
+            source_path,
+            source,
+            span,
+            "invalid list type spelling",
+            "postfix `list` types are not supported",
+            Some("use `List<T>`"),
+        )
+        .into());
+    }
+    Ok(())
+}
+
+fn type_text_has_token(text: &str, token: &str) -> bool {
+    text.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+        .any(|part| part == token)
 }
 
 fn main_requires_output_action(
@@ -2113,6 +2189,12 @@ fn validate_type_annotation(
     value: &AstExpr,
     _bindings: &HashMap<String, BindingKind>,
 ) -> miette::Result<()> {
+    validate_source_type_spelling(
+        ctx.source_path,
+        ctx.source,
+        annotation.span,
+        &annotation.text,
+    )?;
     if annotation.text == "float" {
         let error = parse_primitive_type(&annotation.text).unwrap_err();
         return Err(to_source_diagnostic(
@@ -2208,6 +2290,12 @@ fn validate_function_abi_annotation(
     ctx: &ValidationContext<'_>,
     annotation: &AstTypeAnnotation,
 ) -> miette::Result<()> {
+    validate_source_type_spelling(
+        ctx.source_path,
+        ctx.source,
+        annotation.span,
+        &annotation.text,
+    )?;
     if annotation.text == "float" {
         let error = parse_primitive_type(&annotation.text).unwrap_err();
         return Err(to_source_diagnostic(

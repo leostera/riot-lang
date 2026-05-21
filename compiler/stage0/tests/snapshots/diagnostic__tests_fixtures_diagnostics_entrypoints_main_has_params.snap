@@ -11,11 +11,11 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × main function cannot have parameters
+  × main argument type is missing
    ╭─[tests/fixtures/diagnostics/entrypoints/main-has-params.ml:1:4]
  1 │ fn main(name) {
    ·    ──┬─
-   ·      ╰── stage0 requires main to have no parameters
+   ·      ╰── main arguments must be annotated as `List<String>`
  2 │   println("hello world")
    ╰────
-  help: try: fn main() { dbg("hello world") }
+  help: try: fn main(args: List<String>) -> i32 { 0 }

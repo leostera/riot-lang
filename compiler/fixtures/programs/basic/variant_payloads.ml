@@ -1,5 +1,5 @@
 type option_i64 = Some(i64) | None
-type event = Pair(i64, string)
+type event = Pair(i64, String)
 
 fn wrap(value: i64) {
   Some(value)

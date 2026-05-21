@@ -1,4 +1,4 @@
-fn make_pair(name: string) -> (string, i64) {
+fn make_pair(name: String) -> (String, i64) {
   (name, 42)
 }
 

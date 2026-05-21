@@ -1,4 +1,4 @@
-type result = Ok(i64) | Err(string)
+type result = Ok(i64) | Err(String)
 
 fn main() {
   let worker = spawn {

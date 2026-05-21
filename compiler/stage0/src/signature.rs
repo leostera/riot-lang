@@ -813,9 +813,6 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
                 result: Box::new(result),
             });
     }
-    if let Some(item) = text.strip_suffix(" list") {
-        return RsigType::List(Box::new(parse_type(item)));
-    }
     if let Some((name, args)) = parse_named_type_app(text)
         && name == "List"
     {
@@ -830,7 +827,7 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
         "f64" | "float" => RsigType::F64,
         "i32" => RsigType::I32,
         "i64" | "int" => RsigType::I64,
-        "String" | "string" => RsigType::String,
+        "String" => RsigType::String,
         "unit" => RsigType::Unit,
         "_" | "" => RsigType::Unknown,
         _ if text.starts_with('\'') => RsigType::Var(text.to_owned()),
@@ -1353,7 +1350,7 @@ mod tests {
         let declared = BTreeSet::from([TypeName::new("color"), TypeName::new("Palette.color")]);
 
         let (params, result) =
-            parse_type_signature_with_variants("color -> Palette.color list", &declared);
+            parse_type_signature_with_variants("color -> List<Palette.color>", &declared);
 
         assert_eq!(params, vec![RsigType::Variant(TypeName::new("color"))]);
         assert_eq!(

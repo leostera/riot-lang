@@ -1,4 +1,4 @@
-fn words() -> string list { ["alpha", "beta"] }
+fn words() -> List<String> { ["alpha", "beta"] }
 
 fn main() {
   dbg(list_len([]));

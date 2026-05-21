@@ -1,4 +1,4 @@
-external println : string -> unit = "riot_prim_println"
+external println : String -> unit = "riot_prim_println"
 
 fn main() {
   println("hello from external")

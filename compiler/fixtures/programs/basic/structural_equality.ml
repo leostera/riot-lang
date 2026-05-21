@@ -1,6 +1,6 @@
-fn pair(name: string) -> (string, i64) { (name, 42) }
+fn pair(name: String) -> (String, i64) { (name, 42) }
 
-fn numbers() -> i64 list { [1, 2, 3] }
+fn numbers() -> List<i64> { [1, 2, 3] }
 
 fn main() {
   dbg("riot" == "riot");

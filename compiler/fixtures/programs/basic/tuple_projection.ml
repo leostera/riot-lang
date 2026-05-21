@@ -1,5 +1,5 @@
-fn pair() -> (string, i64) { ("riot", 42) }
-fn nested() -> ((i64, i64), string) { ((10, 20), "done") }
+fn pair() -> (String, i64) { ("riot", 42) }
+fn nested() -> ((i64, i64), String) { ((10, 20), "done") }
 
 fn main() {
   dbg(("literal", 1).0);

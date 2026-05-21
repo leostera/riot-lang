@@ -1,5 +1,5 @@
-fn word_a() -> string { "alpha" }
-fn word_b() -> string { "beta" }
+fn word_a() -> String { "alpha" }
+fn word_b() -> String { "beta" }
 fn number_a() -> i64 { 1 }
 fn number_b() -> i64 { 2 }
 

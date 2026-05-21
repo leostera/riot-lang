@@ -1,0 +1,22 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/postfix_list_type.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × invalid list type spelling
+   ╭─[tests/fixtures/diagnostics/types/postfix_list_type.ml:2:15]
+ 1 │ fn main() {
+ 2 │   let values: i64 list = [1];
+   ·               ────┬───
+   ·                   ╰── postfix `list` types are not supported
+ 3 │   dbg(list_len(values))
+   ╰────
+  help: use `List<T>`
