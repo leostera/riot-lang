@@ -354,6 +354,12 @@ impl<'ctx> Codegen<'ctx, '_> {
                     .build_int_truncate(value, i32_type, "main_exit_code")
                     .map_err(|error| miette::miette!("failed to emit main exit code: {error}"))
             }
+            type_ if is_result_unit_i32(type_) => {
+                let value = self.value_as_runtime(result)?;
+                Ok(self
+                    .call_runtime_basic("riot_rt_result_exit_code", &[value.into()])?
+                    .into_int_value())
+            }
             other => bail!(
                 "unsupported main return type `{}` for executable codegen",
                 other.canonical()
@@ -2465,6 +2471,9 @@ impl<'ctx> Codegen<'ctx, '_> {
             "riot_rt_argv" => {
                 i64_type.fn_type(&[self.context.i32_type().into(), ptr_type.into()], false)
             }
+            "riot_rt_result_exit_code" => {
+                self.context.i32_type().fn_type(&[i64_type.into()], false)
+            }
             "riot_rt_root_push" | "riot_rt_root_pop" => {
                 void_type.fn_type(&[i64_type.into()], false)
             }
@@ -2771,6 +2780,15 @@ fn pattern_is_irrefutable(pattern: &RirPattern) -> bool {
 fn external_param_is_boxed(symbol: &str, type_: &RsigType) -> bool {
     matches!(type_, RsigType::String) && symbol.starts_with("riot_rt_value_")
         || external_param_type_is_boxed(type_)
+}
+
+fn is_result_unit_i32(type_: &RsigType) -> bool {
+    match type_ {
+        RsigType::VariantApp { name, args } if name.as_str() == "Result" => {
+            matches!(args.as_slice(), [RsigType::Unit, RsigType::I32])
+        }
+        _ => false,
+    }
 }
 
 fn external_param_type_is_boxed(type_: &RsigType) -> bool {

@@ -219,7 +219,7 @@ fn validate_program(
                 validate_block(
                     &ctx,
                     &function.body,
-                    function.name == "main",
+                    main_requires_output_action(&ctx, function),
                     &function.params,
                     &function.param_types,
                 )?;
@@ -228,6 +228,20 @@ fn validate_program(
     }
 
     Ok(())
+}
+
+fn main_requires_output_action(
+    ctx: &ValidationContext<'_>,
+    function: &crate::ast::AstFnDecl,
+) -> bool {
+    if function.name != "main" {
+        return false;
+    }
+    function
+        .return_type
+        .as_ref()
+        .map(|annotation| parse_type_with_variants(&annotation.text, &ctx.declared_variants))
+        .is_none_or(|type_| matches!(type_, RsigType::Unit))
 }
 
 fn validate_main_function_signature(
@@ -286,7 +300,7 @@ fn validate_main_function_signature(
         return Ok(());
     };
     let result = parse_type_with_variants(&annotation.text, &ctx.declared_variants);
-    if matches!(result, RsigType::Unit | RsigType::I32) {
+    if matches!(result, RsigType::Unit | RsigType::I32) || is_main_result_exit_type(&result) {
         return Ok(());
     }
 
@@ -296,12 +310,21 @@ fn validate_main_function_signature(
         annotation.span,
         "invalid main return type",
         format!(
-            "main can return `unit` or `i32`, but this annotation is `{}`",
+            "main can return `unit`, `i32`, or `Result<(), i32>`, but this annotation is `{}`",
             result.canonical()
         ),
         Some("use `-> i32` when main should control the process exit code"),
     )
     .into())
+}
+
+fn is_main_result_exit_type(type_: &RsigType) -> bool {
+    match type_ {
+        RsigType::VariantApp { name, args } if name.as_str() == "Result" => {
+            matches!(args.as_slice(), [RsigType::Unit, RsigType::I32])
+        }
+        _ => false,
+    }
 }
 
 fn function_results(

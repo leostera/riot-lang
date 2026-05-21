@@ -219,6 +219,42 @@ fn main_receives_argv_and_returns_i32_status() -> FixtureResult {
 }
 
 #[test]
+fn main_result_err_controls_exit_status() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let source = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &source,
+        "fn main(args: List<String>) -> Result<(), i32> { Err(5) }\n",
+    )?;
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected result main to compile:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).arg("ignored").output()?;
+    if run.status.code() != Some(5) {
+        return fail(format!(
+            "expected exit status 5, got {}",
+            status_label(&run)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_object_links_imported_function_from_object_dir() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");
