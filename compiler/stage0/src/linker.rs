@@ -3,14 +3,18 @@ use std::process::Command;
 use camino::Utf8Path;
 use miette::{IntoDiagnostic, WrapErr};
 
-use crate::command::run_command;
+use crate::command::CommandRunner;
 
 #[derive(Debug, Default)]
-pub(crate) struct Linker;
+pub(crate) struct Linker {
+    command_runner: CommandRunner,
+}
 
 impl Linker {
     pub(crate) fn new() -> Self {
-        Self
+        Self {
+            command_runner: CommandRunner::new(),
+        }
     }
 
     pub(crate) fn link_executable(
@@ -42,6 +46,7 @@ impl Linker {
             command.args(["-lpthread", "-ldl", "-lm"]);
         }
 
-        run_command(command, "failed to link executable")
+        self.command_runner
+            .run(command, "failed to link executable")
     }
 }

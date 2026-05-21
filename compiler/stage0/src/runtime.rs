@@ -4,14 +4,18 @@ use std::time::{Duration, SystemTime};
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
 
-use crate::command::run_command;
+use crate::command::CommandRunner;
 
 #[derive(Debug, Default)]
-pub(crate) struct RuntimeBuilder;
+pub(crate) struct RuntimeBuilder {
+    command_runner: CommandRunner,
+}
 
 impl RuntimeBuilder {
     pub(crate) fn new() -> Self {
-        Self
+        Self {
+            command_runner: CommandRunner::new(),
+        }
     }
 
     pub(crate) fn build(&self) -> miette::Result<Utf8PathBuf> {
@@ -56,7 +60,8 @@ impl RuntimeBuilder {
 
         let mut command = Command::new(cargo);
         command.args(["build", "--release", "--manifest-path", manifest.as_str()]);
-        run_command(command, "failed to build Riot runtime")?;
+        self.command_runner
+            .run(command, "failed to build Riot runtime")?;
 
         if !lib.exists() {
             bail!("runtime build did not produce {}", lib);
