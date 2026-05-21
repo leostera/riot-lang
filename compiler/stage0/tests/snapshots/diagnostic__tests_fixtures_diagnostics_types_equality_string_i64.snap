@@ -16,7 +16,7 @@ Error: stage0::source
  1 │ fn main() {
  2 │   dbg("riot" == 1)
    ·       ─────┬─────
-   ·            ╰── left side has type `string`, but right side has type `i64`
+   ·            ╰── left side has type `String`, but right side has type `i64`
  3 │ }
    ╰────
   help: compare values with the same type

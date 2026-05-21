@@ -16,7 +16,7 @@ Error: stage0::source
  3 │ fn main() {
  4 │   dbg(point { x: "left", y: 2 })
    ·                  ───┬──
-   ·                     ╰── field `x` expects `i64`, but this value has type `string`
+   ·                     ╰── field `x` expects `i64`, but this value has type `String`
  5 │ }
    ╰────
   help: provide a value with the declared field type

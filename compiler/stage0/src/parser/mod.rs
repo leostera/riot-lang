@@ -198,6 +198,8 @@ impl<'src> Parser<'src> {
             return self.parse_record_type_decl(start.span, name, name_span, params);
         }
 
+        self.match_kind(TokenKind::Pipe);
+
         let mut constructors = Vec::new();
         loop {
             let (constructor, constructor_span) = self.expect_upper_ident()?;

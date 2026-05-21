@@ -1886,7 +1886,10 @@ fn qualify_imported_type(module_name: &str, type_: &RsigType) -> RsigType {
 }
 
 fn is_prelude_type_name(type_name: &TypeName) -> bool {
-    matches!(type_name.as_str(), "option" | "result" | "Never" | "int")
+    matches!(
+        type_name.as_str(),
+        "List" | "Option" | "Result" | "String" | "Never" | "int"
+    )
 }
 
 fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {

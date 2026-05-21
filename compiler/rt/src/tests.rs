@@ -361,7 +361,7 @@ fn value_equality_handles_nested_runtime_values() {
 
     let lhs_some = unsafe {
         riot_rt_value_variant_payload(
-            b"option".as_ptr(),
+            b"Option".as_ptr(),
             6,
             b"Some".as_ptr(),
             4,
@@ -370,7 +370,7 @@ fn value_equality_handles_nested_runtime_values() {
     };
     let rhs_some = unsafe {
         riot_rt_value_variant_payload(
-            b"option".as_ptr(),
+            b"Option".as_ptr(),
             6,
             b"Some".as_ptr(),
             4,
@@ -379,7 +379,7 @@ fn value_equality_handles_nested_runtime_values() {
     };
     let other_some = unsafe {
         riot_rt_value_variant_payload(
-            b"option".as_ptr(),
+            b"Option".as_ptr(),
             6,
             b"Some".as_ptr(),
             4,
@@ -487,7 +487,7 @@ fn value_rendering_handles_compound_values() {
 
     let some = unsafe {
         riot_rt_value_variant_payload(
-            b"option".as_ptr(),
+            b"Option".as_ptr(),
             6,
             b"Some".as_ptr(),
             4,
@@ -498,7 +498,7 @@ fn value_rendering_handles_compound_values() {
         with_scheduler_mut(|scheduler| scheduler.render_value(some)),
         "Some(42)"
     );
-    assert!(unsafe { riot_rt_value_variant_is(some, b"option".as_ptr(), 6, b"Some".as_ptr(), 4) });
+    assert!(unsafe { riot_rt_value_variant_is(some, b"Option".as_ptr(), 6, b"Some".as_ptr(), 4) });
     assert!(riot_rt_value_eq(
         riot_rt_value_variant_get_payload(some),
         riot_rt_value_i64(42)
@@ -509,7 +509,7 @@ fn value_rendering_handles_compound_values() {
         riot_rt_option_unwrap_or(some, riot_rt_value_i64(7)),
         riot_rt_value_i64(42)
     ));
-    let none = unsafe { riot_rt_value_variant(b"option".as_ptr(), 6, b"None".as_ptr(), 4) };
+    let none = unsafe { riot_rt_value_variant(b"Option".as_ptr(), 6, b"None".as_ptr(), 4) };
     assert!(!riot_rt_option_is_some(none));
     assert!(riot_rt_option_is_none(none));
     assert!(riot_rt_value_eq(
@@ -528,7 +528,7 @@ fn value_rendering_handles_compound_values() {
 
     let ok = unsafe {
         riot_rt_value_variant_payload(
-            b"result".as_ptr(),
+            b"Result".as_ptr(),
             6,
             b"Ok".as_ptr(),
             2,
@@ -537,7 +537,7 @@ fn value_rendering_handles_compound_values() {
     };
     let err = unsafe {
         riot_rt_value_variant_payload(
-            b"result".as_ptr(),
+            b"Result".as_ptr(),
             6,
             b"Err".as_ptr(),
             3,

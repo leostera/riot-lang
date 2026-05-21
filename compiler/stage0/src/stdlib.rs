@@ -159,7 +159,11 @@ fn module_signature(module: ModuleName, ast: AstProgram) -> miette::Result<Optio
 }
 
 fn declared_variants(ast: &AstProgram) -> BTreeSet<TypeName> {
-    let mut names = BTreeSet::from([TypeName::new("option"), TypeName::new("result")]);
+    let mut names = BTreeSet::from([
+        TypeName::new("List"),
+        TypeName::new("Option"),
+        TypeName::new("Result"),
+    ]);
     names.extend(ast.decls.iter().filter_map(|decl| {
         let AstDecl::Type(type_) = decl else {
             return None;
@@ -188,7 +192,11 @@ mod tests {
         assert!(names.contains(&"string_concat".to_owned()));
         assert!(
             rsig.canonical_text()
-                .contains("type option<'value> = Some('value) | None")
+                .contains("type List<'value> = Nil | Cons('value, List<'value>)")
+        );
+        assert!(
+            rsig.canonical_text()
+                .contains("type Option<'value> = Some('value) | None")
         );
         assert!(rsig.canonical_text().contains("type Never"));
     }
@@ -227,7 +235,7 @@ mod tests {
                 .unwrap()
                 .unwrap()
                 .canonical_text()
-                .contains("external unwrap_or(result<'a, 'b>, 'a) -> 'a")
+                .contains("external unwrap_or(Result<'a, 'b>, 'a) -> 'a")
         );
     }
 }

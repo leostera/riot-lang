@@ -16,7 +16,7 @@ Error: stage0::source
  3 │ fn main() {
  4 │   dbg(Some("nope"))
    ·            ───┬──
-   ·               ╰── `Some` expects `i64`, but this payload has type `string`
+   ·               ╰── `Some` expects `i64`, but this payload has type `String`
  5 │ }
    ╰────
   help: construct the variant with a payload of the declared type

@@ -1289,7 +1289,10 @@ fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
 }
 
 fn is_prelude_type_name(type_name: &TypeName) -> bool {
-    matches!(type_name.as_str(), "option" | "result" | "Never" | "int")
+    matches!(
+        type_name.as_str(),
+        "List" | "Option" | "Result" | "String" | "Never" | "int"
+    )
 }
 
 fn infer_scheme_to_rsig_scheme(scheme: &TypeScheme) -> RsigTypeScheme {

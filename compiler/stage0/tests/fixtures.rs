@@ -952,7 +952,7 @@ fn emit_all_exposes_actor_message_types_in_rsig() -> FixtureResult {
         ));
     }
     let stdout = String::from_utf8_lossy(&emit.stdout);
-    if !stdout.contains("fn make_worker() -> actor_id<string>") {
+    if !stdout.contains("fn make_worker() -> actor_id<String>") {
         return fail(format!(
             "rsig output did not expose actor message type:\n{stdout}"
         ));

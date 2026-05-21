@@ -685,14 +685,14 @@ impl RsigType {
             RsigType::F64 => "f64".to_owned(),
             RsigType::I64 => "i64".to_owned(),
             RsigType::ActorId(message) => format!("actor_id<{}>", message.canonical()),
-            RsigType::String => "string".to_owned(),
+            RsigType::String => "String".to_owned(),
             RsigType::Unit => "unit".to_owned(),
             RsigType::Var(name) => name.clone(),
             RsigType::Arrow { parameter, result } => {
                 format!("({} -> {})", parameter.canonical(), result.canonical())
             }
             RsigType::Tuple(items) => format!("({})", render_types(items)),
-            RsigType::List(item) => format!("{} list", item.canonical()),
+            RsigType::List(item) => format!("List<{}>", item.canonical()),
             RsigType::Record(name) => name.to_string(),
             RsigType::Variant(name) => name.to_string(),
             RsigType::VariantApp { name, args } => {
@@ -790,6 +790,9 @@ pub(crate) fn parse_type_signature_with_variants(
 
 pub(crate) fn parse_type(text: &str) -> RsigType {
     let text = text.trim();
+    if text == "()" {
+        return RsigType::Unit;
+    }
     if let Some(inner) = strip_wrapping_parens(text)
         && split_top_level_arrows(inner).len() > 1
     {
@@ -809,12 +812,20 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
     if let Some(item) = text.strip_suffix(" list") {
         return RsigType::List(Box::new(parse_type(item)));
     }
+    if let Some((name, args)) = parse_named_type_app(text)
+        && name == "List"
+    {
+        let args = split_top_level_commas(args);
+        if let [item] = args.as_slice() {
+            return RsigType::List(Box::new(parse_type(item)));
+        }
+    }
     match text {
         "bool" => RsigType::Bool,
         "char" => RsigType::Char,
         "f64" | "float" => RsigType::F64,
         "i64" | "int" => RsigType::I64,
-        "string" => RsigType::String,
+        "String" | "string" => RsigType::String,
         "unit" => RsigType::Unit,
         "_" | "" => RsigType::Unknown,
         _ if text.starts_with('\'') => RsigType::Var(text.to_owned()),
@@ -837,6 +848,14 @@ pub(crate) fn parse_type(text: &str) -> RsigType {
 
 pub(crate) fn parse_type_with_variants(text: &str, variants: &BTreeSet<TypeName>) -> RsigType {
     let text = text.trim();
+    if let Some((name, args)) = parse_named_type_app(text)
+        && name == "List"
+    {
+        let args = split_top_level_commas(args);
+        if let [item] = args.as_slice() {
+            return RsigType::List(Box::new(parse_type_with_variants(item, variants)));
+        }
+    }
     if let Some((name, args)) = parse_named_type_app(text) {
         let name = TypeName::new(name);
         let args = split_top_level_commas(args)
@@ -1564,7 +1583,7 @@ mod tests {
         assert!(
             decoded
                 .canonical_text()
-                .contains("type option_i64 = Some(i64) | Pair(i64, string) | None")
+                .contains("type option_i64 = Some(i64) | Pair(i64, String) | None")
         );
     }
 

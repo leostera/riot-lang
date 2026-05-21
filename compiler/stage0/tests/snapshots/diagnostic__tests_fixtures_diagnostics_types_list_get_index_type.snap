@@ -16,7 +16,7 @@ Error: stage0::source
  1 │ fn main() {
  2 │   dbg(list_get([1, 2], "zero"))
    ·                        ───┬──
-   ·                           ╰── `list_get` expects `i64`, but this argument has type `string`
+   ·                           ╰── `list_get` expects `i64`, but this argument has type `String`
  3 │ }
    ╰────
   help: pass a value with the expected type
