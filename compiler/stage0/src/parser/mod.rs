@@ -366,6 +366,16 @@ impl<'src> Parser<'src> {
             param_types.push(type_annotation);
 
             if self.match_kind(TokenKind::Comma).is_none() {
+                if !self.at(TokenKind::RParen)
+                    && !self.at(TokenKind::RBrace)
+                    && !self.at(TokenKind::Eof)
+                {
+                    return Err(ParseError {
+                        span: self.current().span,
+                        message: "expected `,` between function parameters".to_owned(),
+                        help: Some("insert a comma before the next parameter"),
+                    });
+                }
                 break;
             }
 
