@@ -57,13 +57,8 @@ impl<'a> Checker<'a> {
     }
 
     pub(crate) fn check(&self, program: AstProgram) -> miette::Result<CheckedProgram> {
-        validate_program(
-            self.source_path,
-            self.source,
-            &program,
-            self.imports,
-            self.mode,
-        )?;
+        ProgramValidator::new(self.source_path, self.source, self.imports, self.mode)
+            .validate(&program)?;
         let inferred = ModuleInferencer::new(&program, self.imports)
             .infer()
             .map_err(|error| {
@@ -133,6 +128,150 @@ impl<'a> ValidationContext<'a> {
     }
 }
 
+struct ProgramValidator<'a> {
+    source_path: &'a Utf8Path,
+    source: &'a str,
+    imports: &'a ImportedSignatures,
+    mode: CheckMode,
+}
+
+impl<'a> ProgramValidator<'a> {
+    fn new(
+        source_path: &'a Utf8Path,
+        source: &'a str,
+        imports: &'a ImportedSignatures,
+        mode: CheckMode,
+    ) -> Self {
+        Self {
+            source_path,
+            source,
+            imports,
+            mode,
+        }
+    }
+
+    fn validate(&self, program: &AstProgram) -> miette::Result<()> {
+        let functions = const_functions(program);
+        let function_names = functions.keys().cloned().collect::<HashSet<_>>();
+        let declared_variants = declared_variant_names(program, self.imports);
+        let function_results = function_results(program, &declared_variants);
+        let declared_external_names = declared_external_names(program);
+        let external_names = external_names(program);
+        let constructor_types = constructor_types(program, &declared_variants);
+        let (record_shapes, record_shapes_by_type) =
+            record_shapes(program, self.imports, &declared_variants);
+        let ctx = ValidationContext {
+            source_path: self.source_path,
+            source: self.source,
+            functions,
+            function_names,
+            function_results,
+            declared_external_names,
+            external_names,
+            constructor_types,
+            declared_variants,
+            record_shapes,
+            record_shapes_by_type,
+            imports: self.imports,
+        };
+
+        let main_decls = program
+            .decls
+            .iter()
+            .filter_map(|decl| match decl {
+                AstDecl::Function(function) if function.name == "main" => Some(function),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        if main_decls.len() > 1 {
+            let duplicate = main_decls[1];
+            return Err(ctx
+                .diagnostic(
+                    duplicate.span,
+                    "duplicate main function",
+                    "stage0 requires a single main function per file",
+                    Some("keep only one `fn main() { ... }`"),
+                )
+                .into());
+        }
+
+        if self.mode == CheckMode::Executable && main_decls.is_empty() {
+            let span = first_decl_span(program)
+                .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
+            return Err(ctx
+                .diagnostic(
+                    span,
+                    "missing main function",
+                    "stage0 compile requires one entrypoint named main",
+                    Some("add: fn main() { dbg(\"hello world\") }"),
+                )
+                .into());
+        }
+
+        for decl in &program.decls {
+            match decl {
+                AstDecl::Use(use_) => {
+                    if !self.imports.contains_key(use_.name.as_str()) {
+                        return Err(ctx
+                            .diagnostic(
+                                use_.name_span,
+                                "missing imported signature",
+                                format!("`use {}` did not resolve to a signature", use_.name),
+                                Some("pass --sig-dir with the directory containing the .rsig file"),
+                            )
+                            .into());
+                    }
+                }
+                AstDecl::Module(_) | AstDecl::Include(_) => {}
+                AstDecl::External(external) => {
+                    if external.type_annotation.text.trim().is_empty() {
+                        return Err(ctx
+                            .diagnostic(
+                                external.type_annotation.span,
+                                "empty external type",
+                                "external declarations need a source-level type",
+                                Some(
+                                    "try: external println : String -> unit = \"riot_prim_println\"",
+                                ),
+                            )
+                            .into());
+                    }
+                    TypeAnnotationChecker::new(&ctx)
+                        .validate_source_spelling(&external.type_annotation)?;
+                }
+                AstDecl::Type(type_) => {
+                    if matches!(&type_.body, AstTypeBody::Variant { constructors } if constructors.is_empty())
+                    {
+                        return Err(ctx
+                            .diagnostic(
+                                type_.name_span,
+                                "empty variant type",
+                                "variant types need at least one constructor",
+                                Some("try: type color = Red | Green | Blue"),
+                            )
+                            .into());
+                    }
+                    validate_type_decl_spelling(&ctx, type_)?;
+                }
+                AstDecl::Function(function) => {
+                    TypeAnnotationChecker::new(&ctx).validate_function(function)?;
+                    validate_main_function_signature(&ctx, function)?;
+                    validate_block(
+                        &ctx,
+                        &function.body,
+                        main_requires_output_action(&ctx, function),
+                        &function.params,
+                        &function.param_types,
+                    )?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 struct RecordShape {
     type_name: TypeName,
@@ -144,131 +283,6 @@ struct ConstructorShape {
     type_name: TypeName,
     type_params: Vec<TypeVarName>,
     payload: Vec<RsigType>,
-}
-
-fn validate_program(
-    source_path: &Utf8Path,
-    source: &str,
-    program: &AstProgram,
-    imports: &ImportedSignatures,
-    mode: CheckMode,
-) -> miette::Result<()> {
-    let functions = const_functions(program);
-    let function_names = functions.keys().cloned().collect::<HashSet<_>>();
-    let declared_variants = declared_variant_names(program, imports);
-    let function_results = function_results(program, &declared_variants);
-    let declared_external_names = declared_external_names(program);
-    let external_names = external_names(program);
-    let constructor_types = constructor_types(program, &declared_variants);
-    let (record_shapes, record_shapes_by_type) =
-        record_shapes(program, imports, &declared_variants);
-    let ctx = ValidationContext {
-        source_path,
-        source,
-        functions,
-        function_names,
-        function_results,
-        declared_external_names,
-        external_names,
-        constructor_types,
-        declared_variants,
-        record_shapes,
-        record_shapes_by_type,
-        imports,
-    };
-
-    let main_decls = program
-        .decls
-        .iter()
-        .filter_map(|decl| match decl {
-            AstDecl::Function(function) if function.name == "main" => Some(function),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-
-    if main_decls.len() > 1 {
-        let duplicate = main_decls[1];
-        return Err(ctx
-            .diagnostic(
-                duplicate.span,
-                "duplicate main function",
-                "stage0 requires a single main function per file",
-                Some("keep only one `fn main() { ... }`"),
-            )
-            .into());
-    }
-
-    if mode == CheckMode::Executable && main_decls.is_empty() {
-        let span =
-            first_decl_span(program).unwrap_or_else(|| TextSpan::new(0, source.len().min(1)));
-        return Err(ctx
-            .diagnostic(
-                span,
-                "missing main function",
-                "stage0 compile requires one entrypoint named main",
-                Some("add: fn main() { dbg(\"hello world\") }"),
-            )
-            .into());
-    }
-
-    for decl in &program.decls {
-        match decl {
-            AstDecl::Use(use_) => {
-                if !imports.contains_key(use_.name.as_str()) {
-                    return Err(ctx
-                        .diagnostic(
-                            use_.name_span,
-                            "missing imported signature",
-                            format!("`use {}` did not resolve to a signature", use_.name),
-                            Some("pass --sig-dir with the directory containing the .rsig file"),
-                        )
-                        .into());
-                }
-            }
-            AstDecl::Module(_) | AstDecl::Include(_) => {}
-            AstDecl::External(external) => {
-                if external.type_annotation.text.trim().is_empty() {
-                    return Err(ctx
-                        .diagnostic(
-                            external.type_annotation.span,
-                            "empty external type",
-                            "external declarations need a source-level type",
-                            Some("try: external println : String -> unit = \"riot_prim_println\""),
-                        )
-                        .into());
-                }
-                TypeAnnotationChecker::new(&ctx)
-                    .validate_source_spelling(&external.type_annotation)?;
-            }
-            AstDecl::Type(type_) => {
-                if matches!(&type_.body, AstTypeBody::Variant { constructors } if constructors.is_empty())
-                {
-                    return Err(ctx
-                        .diagnostic(
-                            type_.name_span,
-                            "empty variant type",
-                            "variant types need at least one constructor",
-                            Some("try: type color = Red | Green | Blue"),
-                        )
-                        .into());
-                }
-                validate_type_decl_spelling(&ctx, type_)?;
-            }
-            AstDecl::Function(function) => {
-                TypeAnnotationChecker::new(&ctx).validate_function(function)?;
-                validate_main_function_signature(&ctx, function)?;
-                validate_block(
-                    &ctx,
-                    &function.body,
-                    main_requires_output_action(&ctx, function),
-                    &function.params,
-                    &function.param_types,
-                )?;
-            }
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_type_decl_spelling(
