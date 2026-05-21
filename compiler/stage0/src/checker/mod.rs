@@ -26,7 +26,7 @@ use span::expr_span;
 use type_annotation::TypeAnnotationChecker;
 
 use callable::{
-    CallableKind, CallableResolver, CallableSignature, ExternalSignature,
+    CallableKind, CallableResolver, CallableSignature, ExternalSignature, ExternalTable,
     prelude_external_signatures,
 };
 
@@ -124,7 +124,7 @@ struct ValidationContext<'a> {
     function_names: HashSet<String>,
     function_results: HashMap<String, RsigType>,
     declared_external_names: HashSet<String>,
-    external_signatures: BTreeMap<String, ExternalSignature>,
+    external_signatures: ExternalTable,
     external_names: HashSet<String>,
     constructor_types: HashMap<String, ConstructorShape>,
     declared_variants: BTreeSet<TypeName>,
@@ -542,7 +542,7 @@ fn external_names(program: &AstProgram) -> HashSet<String> {
 fn external_signatures(
     program: &AstProgram,
     declared_variants: &BTreeSet<TypeName>,
-) -> BTreeMap<String, ExternalSignature> {
+) -> ExternalTable {
     let mut signatures = prelude_external_signatures();
     for decl in &program.decls {
         if let AstDecl::External(external) = decl {

@@ -18,7 +18,9 @@ use crate::checker::tyir::{
     TypedRecordField, TypedStmt, TypedTypeBody, TypedTypeDecl, TypedUse, TypedVariantConstructor,
 };
 
-use super::callable::{CallableResolver, ExternalSignature, prelude_external_signatures};
+use super::callable::{
+    CallableResolver, ExternalSignature, ExternalTable, prelude_external_signatures,
+};
 
 pub(crate) fn typed_program_from_ast(
     module_name: ModuleName,
@@ -213,7 +215,7 @@ struct TypeContext<'a> {
     next_binding_id: usize,
     scopes: Vec<BTreeMap<String, TypedBindingInfo>>,
     functions: &'a FunctionTable,
-    externals: &'a BTreeMap<String, ExternalSignature>,
+    externals: &'a ExternalTable,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,
@@ -224,7 +226,7 @@ struct TypeContext<'a> {
 
 struct TypeContextInputs<'a> {
     function_types: &'a FunctionTable,
-    externals: &'a BTreeMap<String, ExternalSignature>,
+    externals: &'a ExternalTable,
     imports: &'a ImportedSignatures,
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,

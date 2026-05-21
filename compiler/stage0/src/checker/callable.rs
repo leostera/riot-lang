@@ -28,6 +28,25 @@ pub(crate) struct ExternalSignature {
     pub(crate) abi: AbiSymbol,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct ExternalTable {
+    signatures: BTreeMap<String, ExternalSignature>,
+}
+
+impl ExternalTable {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn insert(&mut self, name: impl Into<String>, signature: ExternalSignature) {
+        self.signatures.insert(name.into(), signature);
+    }
+
+    pub(crate) fn get(&self, name: &str) -> Option<&ExternalSignature> {
+        self.signatures.get(name)
+    }
+}
+
 impl ExternalSignature {
     pub(crate) fn new(params: Vec<RsigType>, result: RsigType, abi: impl Into<AbiSymbol>) -> Self {
         Self {
@@ -59,14 +78,14 @@ impl CallableSignature {
 
 pub(crate) struct CallableResolver<'a> {
     functions: &'a FunctionTable,
-    externals: &'a BTreeMap<String, ExternalSignature>,
+    externals: &'a ExternalTable,
     imports: &'a ImportedSignatures,
 }
 
 impl<'a> CallableResolver<'a> {
     pub(crate) fn new(
         functions: &'a FunctionTable,
-        externals: &'a BTreeMap<String, ExternalSignature>,
+        externals: &'a ExternalTable,
         imports: &'a ImportedSignatures,
     ) -> Self {
         Self {
@@ -135,28 +154,23 @@ impl<'a> CallableResolver<'a> {
     }
 }
 
-pub(crate) fn prelude_external_signatures() -> BTreeMap<String, ExternalSignature> {
-    crate::stdlib::Stdlib::new()
-        .prelude_signature()
-        .ok()
-        .map(|rsig| {
-            rsig.exports
-                .into_iter()
-                .filter_map(|export| {
-                    let RsigExport::External(external) = export else {
-                        return None;
-                    };
-                    Some((
-                        external.name,
-                        ExternalSignature {
-                            function: FunctionSignature::new(external.params, external.result),
-                            abi: external.abi,
-                        },
-                    ))
-                })
-                .collect()
-        })
-        .unwrap_or_default()
+pub(crate) fn prelude_external_signatures() -> ExternalTable {
+    let mut signatures = ExternalTable::new();
+    if let Ok(rsig) = crate::stdlib::Stdlib::new().prelude_signature() {
+        for export in rsig.exports {
+            let RsigExport::External(external) = export else {
+                continue;
+            };
+            signatures.insert(
+                external.name,
+                ExternalSignature {
+                    function: FunctionSignature::new(external.params, external.result),
+                    abi: external.abi,
+                },
+            );
+        }
+    }
+    signatures
 }
 
 #[cfg(test)]
