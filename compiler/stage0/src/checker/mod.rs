@@ -257,6 +257,14 @@ impl<'a> Checker<'a> {
                 Some("project a tuple value or remove the tuple index"),
             );
         }
+        if matches!(error.unsupported_reason(), Some("record field")) {
+            return diagnostics.at(
+                span,
+                "record literal has no such field",
+                "this inline record literal does not contain the projected field",
+                Some("project a field that exists on the record literal or bind the record before projecting"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),
