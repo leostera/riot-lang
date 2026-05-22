@@ -57,6 +57,16 @@ impl InferError {
         }
     }
 
+    pub(crate) fn type_mismatch_types(&self) -> Option<(RsigType, RsigType)> {
+        match self {
+            InferError::Unify(UnifyError::TypeMismatch { lhs, rhs }) => {
+                Some((infer_type_to_rsig_type(lhs), infer_type_to_rsig_type(rhs)))
+            }
+            InferError::At { error, .. } => error.type_mismatch_types(),
+            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
+        }
+    }
+
     fn at(self, span: TextSpan) -> Self {
         match self {
             InferError::At { .. } => self,

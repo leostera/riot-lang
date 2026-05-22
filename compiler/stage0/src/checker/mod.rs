@@ -119,6 +119,18 @@ impl<'a> Checker<'a> {
                 Some("avoid applying a value to itself or add an explicit non-recursive function type boundary"),
             );
         }
+        if let Some((lhs, rhs)) = error.type_mismatch_types() {
+            return diagnostics.at(
+                span,
+                "inferred types do not match",
+                format!(
+                    "this expression requires `{}`, but another branch or constraint requires `{}`",
+                    lhs.canonical(),
+                    rhs.canonical()
+                ),
+                Some("make both sides of the expression produce the same type or add an annotation at the intended boundary"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),
