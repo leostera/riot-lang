@@ -1509,6 +1509,35 @@ mod tests {
     }
 
     #[test]
+    fn unsupported_empty_value_paths_are_classified() {
+        let program = AstProgram {
+            decls: vec![function("main", vec![], Vec::new(), path_segments(&[]))],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("path"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn unsupported_empty_call_paths_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                call_path(&[], Vec::new()),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("path call"), err.unsupported_reason());
+    }
+
+    #[test]
     fn unsupported_nested_value_paths_are_classified() {
         let program = AstProgram {
             decls: vec![function(

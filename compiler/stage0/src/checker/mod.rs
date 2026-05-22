@@ -281,6 +281,22 @@ impl<'a> Checker<'a> {
                 Some("call a two-segment imported function or bind the intermediate value first"),
             );
         }
+        if matches!(error.unsupported_reason(), Some("path")) {
+            return diagnostics.at(
+                span,
+                "unsupported path",
+                "stage0 can resolve local values and two-segment imported paths",
+                Some("use a local value or a Module.value path"),
+            );
+        }
+        if matches!(error.unsupported_reason(), Some("path call")) {
+            return diagnostics.at(
+                span,
+                "unsupported path call",
+                "stage0 can call local functions and two-segment imported functions",
+                Some("call a local function or a Module.function path"),
+            );
+        }
         if matches!(
             error.unsupported_reason(),
             Some("constructor payload arity")
