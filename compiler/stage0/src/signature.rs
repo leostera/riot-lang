@@ -355,6 +355,32 @@ mod tests {
     }
 
     #[test]
+    fn binary_rsig_roundtrips_generic_record_applications() {
+        let boxed_i64 = RsigType::RecordApp {
+            name: TypeName::new("box"),
+            args: vec![RsigType::I64],
+        };
+        let rsig = Rsig::with_dependencies(
+            "Boxes".to_owned(),
+            Vec::new(),
+            Vec::new(),
+            vec![RsigExport::Function(RsigFunction {
+                name: "make_i64".to_owned(),
+                params: vec![RsigType::I64],
+                result: boxed_i64.clone(),
+                scheme: RsigTypeScheme::from_signature(&[RsigType::I64], &boxed_i64),
+                symbol: "riot_mod_Boxes_make_i64".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+
+        let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
+
+        assert_eq!(decoded, rsig);
+        assert!(decoded.canonical_text().contains("fn make_i64(i64) -> box<i64>"));
+    }
+
+    #[test]
     fn binary_rsig_roundtrips_record_type_names() {
         let point = RsigType::Record(TypeName::new("point"));
         let rsig = Rsig::with_dependencies(
