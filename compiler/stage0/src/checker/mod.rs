@@ -265,6 +265,33 @@ impl<'a> Checker<'a> {
                 Some("project a field that exists on the record literal or bind the record before projecting"),
             );
         }
+        if matches!(error.unsupported_reason(), Some("nested path")) {
+            return diagnostics.at(
+                span,
+                "unsupported nested path",
+                "stage0 can resolve local values and two-segment imported paths, but this path has more segments",
+                Some("use a two-segment imported path or bind the intermediate value first"),
+            );
+        }
+        if matches!(error.unsupported_reason(), Some("nested path call")) {
+            return diagnostics.at(
+                span,
+                "unsupported nested path call",
+                "stage0 can call local functions and two-segment imported functions, but this callee has more segments",
+                Some("call a two-segment imported function or bind the intermediate value first"),
+            );
+        }
+        if matches!(
+            error.unsupported_reason(),
+            Some("constructor payload arity")
+        ) {
+            return diagnostics.at(
+                span,
+                "variant payload pattern arity mismatch",
+                "this constructor pattern has more payload patterns than the constructor carries",
+                Some("match the constructor with the same number of payload patterns"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),

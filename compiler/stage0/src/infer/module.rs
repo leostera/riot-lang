@@ -928,7 +928,14 @@ fn infer_expr_kind(
                 .ok_or_else(|| InferError::UnknownValue(name.clone()))?;
             Ok(state.instantiate(&scheme))
         }
-        AstExpr::Call { .. } | AstExpr::Path { .. } => Err(InferError::Unsupported("path")),
+        AstExpr::Call { callee, .. } if callee.segments.len() > 2 => {
+            Err(InferError::Unsupported("nested path call"))
+        }
+        AstExpr::Call { .. } => Err(InferError::Unsupported("path call")),
+        AstExpr::Path { path, .. } if path.segments.len() > 2 => {
+            Err(InferError::Unsupported("nested path"))
+        }
+        AstExpr::Path { .. } => Err(InferError::Unsupported("path")),
     }
 }
 
@@ -1068,7 +1075,7 @@ fn infer_pattern(
             let mut constructor_type = state.instantiate(&scheme);
             for payload_pattern in payload {
                 let Type::Arrow { parameter, result } = state.resolve(&constructor_type) else {
-                    return Err(InferError::Unsupported("constructor payload pattern"));
+                    return Err(InferError::Unsupported("constructor payload arity"));
                 };
                 let parameter = *parameter;
                 infer_pattern(state, payload_pattern, &parameter)?;
@@ -1291,8 +1298,8 @@ fn qualify_imported_scheme(module_name: &str, scheme: &RsigTypeScheme) -> RsigTy
 #[cfg(test)]
 mod tests {
     use crate::ast::{
-        AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstPattern, AstProgram, AstReceiveArm,
-        AstStmt, TextSpan,
+        AstBlock, AstDecl, AstExpr, AstFnDecl, AstMatchArm, AstPath, AstPattern, AstProgram,
+        AstReceiveArm, AstStmt, TextSpan,
     };
     use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
@@ -1318,9 +1325,16 @@ mod tests {
     }
 
     fn path(name: &str) -> AstExpr {
+        path_segments(&[name])
+    }
+
+    fn path_segments(segments: &[&str]) -> AstExpr {
         AstExpr::Path {
             path: AstPath {
-                segments: vec![name.to_owned()],
+                segments: segments
+                    .iter()
+                    .map(|segment| (*segment).to_owned())
+                    .collect(),
             },
             span: span(),
         }
@@ -1335,9 +1349,16 @@ mod tests {
     }
 
     fn call(name: &str, args: Vec<AstExpr>) -> AstExpr {
+        call_path(&[name], args)
+    }
+
+    fn call_path(segments: &[&str], args: Vec<AstExpr>) -> AstExpr {
         AstExpr::Call {
             callee: AstPath {
-                segments: vec![name.to_owned()],
+                segments: segments
+                    .iter()
+                    .map(|segment| (*segment).to_owned())
+                    .collect(),
             },
             args,
             span: span(),
@@ -1371,6 +1392,31 @@ mod tests {
                 pattern,
                 body: AstExpr::Unit { span: span() },
             }],
+            span: span(),
+        }
+    }
+
+    fn constructor_pattern(name: &str, payload: Vec<AstPattern>) -> AstPattern {
+        AstPattern::Constructor {
+            path: AstPath {
+                segments: vec![name.to_owned()],
+            },
+            payload,
+            span: span(),
+        }
+    }
+
+    fn bind_pattern(name: &str) -> AstPattern {
+        AstPattern::Bind {
+            name: name.to_owned(),
+            span: span(),
+        }
+    }
+
+    fn match_(scrutinee: AstExpr, pattern: AstPattern, body: AstExpr) -> AstExpr {
+        AstExpr::Match {
+            scrutinee: Box::new(scrutinee),
+            arms: vec![AstMatchArm { pattern, body }],
             span: span(),
         }
     }
@@ -1460,6 +1506,64 @@ mod tests {
             &crate::infer::module::InferError::UnknownValue("one".to_owned()),
             root_error(&err)
         );
+    }
+
+    #[test]
+    fn unsupported_nested_value_paths_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                path_segments(&["Module", "value", "field"]),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("nested path"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn unsupported_nested_call_paths_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                call_path(&["Module", "value", "call"], Vec::new()),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("nested path call"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn constructor_payload_pattern_arity_failures_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                match_(
+                    call("Some", vec![int(1)]),
+                    constructor_pattern(
+                        "Some",
+                        vec![bind_pattern("first"), bind_pattern("second")],
+                    ),
+                    AstExpr::Unit { span: span() },
+                ),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("constructor payload arity"), err.unsupported_reason());
     }
 
     #[test]
