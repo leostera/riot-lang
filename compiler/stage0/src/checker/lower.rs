@@ -2024,6 +2024,26 @@ mod tests {
     }
 
     #[test]
+    fn lambda_ir_preserves_generic_variant_pattern_binding_types() {
+        let typed = typed_program_with_inference_facts(
+            "GenericVariantPatternLambda",
+            "type option<'a> = Some('a) | None\nfn main() { let item = Some(1); match item { Some(value) -> value } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let Some(LambdaExpr::Match { arms, .. }) = &lambda.functions[0].body.tail else {
+            panic!("expected match tail");
+        };
+        let LambdaPattern::Constructor { payload, .. } = &arms[0].pattern else {
+            panic!("expected constructor pattern");
+        };
+        let LambdaPattern::Bind { type_, .. } = &payload[0] else {
+            panic!("expected constructor payload binding");
+        };
+
+        assert_eq!(type_, &RsigType::I64);
+    }
+
+    #[test]
     fn lambda_ir_preserves_imported_nested_generic_pattern_binding_types() {
         let typed = typed_program_with_imports_and_inference_facts(
             "ImportedNestedGenericPatternLambda",
