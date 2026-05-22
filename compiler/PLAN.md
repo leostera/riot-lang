@@ -52,6 +52,13 @@ qualified consumer type names for one side and local provider type names for the
 other. LLVM lowering now canonicalizes runtime variant tags to the base type name
 while keeping `.rsig` and type-checker names qualified.
 
+Resolved hardening gap: imported record patterns now follow the same split
+identity model. Checker validation and typed-HIR lowering qualify provider-local
+record field types through the imported module (`token` becomes `Syntax.token`),
+while LLVM record values/tests canonicalize runtime record tags to the base
+record name so provider-local records match consumer-side `Module.record`
+patterns.
+
 Resolved hardening gap: list spread syntax (`..tail`) used to be pattern-only.
 Stage0 now supports list cons expressions such as `[head, ..tail]`, lowered
 through the ordinary `list_cons` std/runtime ABI.
