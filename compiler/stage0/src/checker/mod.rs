@@ -2079,6 +2079,19 @@ fn validate_pattern(
     } = pattern
     {
         let Some(constructor) = pattern_constructor_shape(ctx, path) else {
+            if path.segments.len() > 2 {
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "unsupported nested constructor pattern",
+                        format!(
+                            "stage0 can resolve two-segment imported constructors, but `{}` has more segments",
+                            path.segments.join(".")
+                        ),
+                        Some("use a local constructor or a two-segment imported constructor path"),
+                    )
+                    .into());
+            }
             return Err(ctx
                 .diagnostic(
                     *span,
