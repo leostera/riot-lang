@@ -1,0 +1,19 @@
+---
+source: tests/fixtures.rs
+expression: transcript
+---
+fixture: tests/fixtures/programs/basic/compiler_like_rsig_type_qualification.ml
+
+compile:
+status: success
+stdout:
+<empty>
+stderr:
+<empty>
+
+run:
+status: success
+stdout:
+head:Syntax.token,trail:Syntax.box<Syntax.token,Option<String>>,pair:(Syntax.token,List<Syntax.span>)
+stderr:
+<empty>

@@ -1687,10 +1687,34 @@ mod tests {
                     name: TypeName::new("entry"),
                     params: Vec::new(),
                     body: RsigTypeDeclKind::Record {
-                        fields: vec![RsigRecordField {
-                            name: FieldName::new("head"),
-                            type_: RsigType::Variant(TypeName::new("token")),
-                        }],
+                        fields: vec![
+                            RsigRecordField {
+                                name: FieldName::new("head"),
+                                type_: RsigType::Variant(TypeName::new("token")),
+                            },
+                            RsigRecordField {
+                                name: FieldName::new("trail"),
+                                type_: RsigType::RecordApp {
+                                    name: TypeName::new("box"),
+                                    args: vec![
+                                        RsigType::Variant(TypeName::new("token")),
+                                        RsigType::VariantApp {
+                                            name: TypeName::new("Option"),
+                                            args: vec![RsigType::String],
+                                        },
+                                    ],
+                                },
+                            },
+                            RsigRecordField {
+                                name: FieldName::new("pair"),
+                                type_: RsigType::Tuple(vec![
+                                    RsigType::Variant(TypeName::new("token")),
+                                    RsigType::List(Box::new(RsigType::Record(TypeName::new(
+                                        "span",
+                                    )))),
+                                ]),
+                            },
+                        ],
                     },
                     fingerprint: 0,
                 }],
@@ -1705,11 +1729,35 @@ mod tests {
 
         let fields = record_field_type_map(&[], &uses, &imports);
 
+        let entry_fields = fields
+            .get(&TypeName::new("Syntax.entry"))
+            .expect("expected imported entry fields");
+
         assert_eq!(
-            fields
-                .get(&TypeName::new("Syntax.entry"))
-                .and_then(|fields| fields.get("head")),
+            entry_fields.get("head"),
             Some(&RsigType::Variant(TypeName::new("Syntax.token")))
+        );
+        assert_eq!(
+            entry_fields.get("trail"),
+            Some(&RsigType::RecordApp {
+                name: TypeName::new("Syntax.box"),
+                args: vec![
+                    RsigType::Variant(TypeName::new("Syntax.token")),
+                    RsigType::VariantApp {
+                        name: TypeName::new("Option"),
+                        args: vec![RsigType::String],
+                    },
+                ],
+            })
+        );
+        assert_eq!(
+            entry_fields.get("pair"),
+            Some(&RsigType::Tuple(vec![
+                RsigType::Variant(TypeName::new("Syntax.token")),
+                RsigType::List(Box::new(RsigType::Record(TypeName::new(
+                    "Syntax.span",
+                )))),
+            ]))
         );
     }
 
