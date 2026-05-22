@@ -67,6 +67,14 @@ impl InferError {
         }
     }
 
+    pub(crate) fn tuple_arity_mismatch(&self) -> Option<(usize, usize)> {
+        match self {
+            InferError::Unify(UnifyError::TupleArityMismatch { lhs, rhs }) => Some((*lhs, *rhs)),
+            InferError::At { error, .. } => error.tuple_arity_mismatch(),
+            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
+        }
+    }
+
     fn at(self, span: TextSpan) -> Self {
         match self {
             InferError::At { .. } => self,

@@ -131,6 +131,16 @@ impl<'a> Checker<'a> {
                 Some("make both sides of the expression produce the same type or add an annotation at the intended boundary"),
             );
         }
+        if let Some((lhs, rhs)) = error.tuple_arity_mismatch() {
+            return diagnostics.at(
+                span,
+                "tuple shapes do not match",
+                format!(
+                    "this expression requires a tuple with {lhs} fields, but another branch or constraint requires {rhs} fields"
+                ),
+                Some("make both tuple expressions have the same number of fields"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),
