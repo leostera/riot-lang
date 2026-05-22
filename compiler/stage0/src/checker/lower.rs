@@ -1388,9 +1388,17 @@ mod tests {
     }
 
     fn typed_program_with_inference_facts(module: &str, source: &str) -> super::TypedProgram {
+        let imports = ImportedSignatures::new();
+        typed_program_with_imports_and_inference_facts(module, source, imports)
+    }
+
+    fn typed_program_with_imports_and_inference_facts(
+        module: &str,
+        source: &str,
+        imports: ImportedSignatures,
+    ) -> super::TypedProgram {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new().parse(path, source).unwrap();
-        let imports = ImportedSignatures::new();
         let inferred = ModuleInferencer::new(&program, &imports).infer().unwrap();
         let function_types = inferred.function_signatures(&program);
         let expression_types = inferred.expression_rsig_types();
@@ -1401,6 +1409,31 @@ mod tests {
             Some(&expression_types),
         )
         .build(program)
+    }
+
+    fn imported_boxes_signature() -> ImportedSignatures {
+        let mut imports = ImportedSignatures::new();
+        imports.insert(
+            ModuleName::new("Boxes"),
+            Rsig {
+                module: ModuleName::new("Boxes"),
+                dependencies: Vec::new(),
+                types: vec![RsigTypeDecl {
+                    name: TypeName::new("box"),
+                    params: vec![crate::signature::TypeParamName::new("'a")],
+                    body: RsigTypeDeclKind::Record {
+                        fields: vec![RsigRecordField {
+                            name: FieldName::new("value"),
+                            type_: RsigType::Var(crate::signature::TypeVarName::new("'a")),
+                        }],
+                    },
+                    fingerprint: 0,
+                }],
+                exports: Vec::new(),
+                module_fingerprint: 0,
+            },
+        );
+        imports
     }
 
     #[test]
@@ -1676,6 +1709,75 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_inference_facts_for_generic_record_field_access() {
+        let typed = typed_program_with_inference_facts(
+            "GenericRecordField",
+            "type box<'a> = { value: 'a }\nfn main() { let item = box { value: 1 }; item.value }",
+        );
+        let Some(TypedStmt::Let { value, .. }) = typed.functions[0].body.statements.first() else {
+            panic!("expected generic record let binding");
+        };
+        assert_eq!(
+            value.type_,
+            RsigType::RecordApp {
+                name: TypeName::new("box"),
+                args: vec![RsigType::I64],
+            }
+        );
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected field projection tail");
+        };
+        let TypedExprKind::Field { base, field } = &tail.kind else {
+            panic!("expected generic record field projection");
+        };
+
+        assert_eq!(field, "value");
+        assert_eq!(
+            base.type_,
+            RsigType::RecordApp {
+                name: TypeName::new("box"),
+                args: vec![RsigType::I64],
+            }
+        );
+        assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn typed_hir_uses_inference_facts_for_imported_generic_record_field_access() {
+        let typed = typed_program_with_imports_and_inference_facts(
+            "ImportedGenericRecordField",
+            "use Boxes\nfn main() { let item = Boxes.box { value: 1 }; item.value }",
+            imported_boxes_signature(),
+        );
+        let Some(TypedStmt::Let { value, .. }) = typed.functions[0].body.statements.first() else {
+            panic!("expected imported generic record let binding");
+        };
+        assert_eq!(
+            value.type_,
+            RsigType::RecordApp {
+                name: TypeName::new("Boxes.box"),
+                args: vec![RsigType::I64],
+            }
+        );
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected field projection tail");
+        };
+        let TypedExprKind::Field { base, field } = &tail.kind else {
+            panic!("expected imported generic record field projection");
+        };
+
+        assert_eq!(field, "value");
+        assert_eq!(
+            base.type_,
+            RsigType::RecordApp {
+                name: TypeName::new("Boxes.box"),
+                args: vec![RsigType::I64],
+            }
+        );
+        assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
     fn imported_record_field_maps_qualify_field_types() {
         let mut imports = ImportedSignatures::new();
         imports.insert(
@@ -1754,9 +1856,7 @@ mod tests {
             entry_fields.get("pair"),
             Some(&RsigType::Tuple(vec![
                 RsigType::Variant(TypeName::new("Syntax.token")),
-                RsigType::List(Box::new(RsigType::Record(TypeName::new(
-                    "Syntax.span",
-                )))),
+                RsigType::List(Box::new(RsigType::Record(TypeName::new("Syntax.span",)))),
             ]))
         );
     }
