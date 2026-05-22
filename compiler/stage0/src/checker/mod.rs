@@ -132,6 +132,30 @@ impl<'a> Checker<'a> {
                     Some("make every item in the list have the same type"),
                 );
             }
+            if span_is_if_expression(program, span) {
+                return diagnostics.at(
+                    span,
+                    "if branches have different types",
+                    format!(
+                        "one branch has type `{}`, but another branch has type `{}`",
+                        lhs.canonical(),
+                        rhs.canonical()
+                    ),
+                    Some("make both branches produce the same type"),
+                );
+            }
+            if span_is_match_expression(program, span) {
+                return diagnostics.at(
+                    span,
+                    "match arms have different types",
+                    format!(
+                        "one arm has type `{}`, but another arm has type `{}`",
+                        lhs.canonical(),
+                        rhs.canonical()
+                    ),
+                    Some("make every match arm produce the same type"),
+                );
+            }
             let lhs_is_arrow = matches!(lhs, RsigType::Arrow { .. });
             let rhs_is_arrow = matches!(rhs, RsigType::Arrow { .. });
             if lhs_is_arrow != rhs_is_arrow {
@@ -918,15 +942,25 @@ fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SpanExprKind {
     Call,
+    If,
     List,
+    Match,
 }
 
 fn span_is_call_expression(program: &AstProgram, span: TextSpan) -> bool {
     span_is_expr_kind(program, span, SpanExprKind::Call)
 }
 
+fn span_is_if_expression(program: &AstProgram, span: TextSpan) -> bool {
+    span_is_expr_kind(program, span, SpanExprKind::If)
+}
+
 fn span_is_list_expression(program: &AstProgram, span: TextSpan) -> bool {
     span_is_expr_kind(program, span, SpanExprKind::List)
+}
+
+fn span_is_match_expression(program: &AstProgram, span: TextSpan) -> bool {
+    span_is_expr_kind(program, span, SpanExprKind::Match)
 }
 
 fn span_is_expr_kind(program: &AstProgram, span: TextSpan, kind: SpanExprKind) -> bool {
@@ -955,7 +989,9 @@ fn expr_contains_expr_kind(expr: &AstExpr, span: TextSpan, kind: SpanExprKind) -
     if expr_span(expr) == span {
         let matches_kind = match kind {
             SpanExprKind::Call => matches!(expr, AstExpr::Call { .. } | AstExpr::Apply { .. }),
+            SpanExprKind::If => matches!(expr, AstExpr::If { .. }),
             SpanExprKind::List => matches!(expr, AstExpr::List { .. }),
+            SpanExprKind::Match => matches!(expr, AstExpr::Match { .. }),
         };
         if matches_kind {
             return true;
