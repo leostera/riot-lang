@@ -1719,6 +1719,18 @@ fn validate_expr(
                         .into());
                     }
                 }
+                [module, value, ..] => {
+                    return Err(ctx
+                        .diagnostic(
+                            *span,
+                            "unsupported nested path",
+                            format!(
+                                "stage0 can resolve `{module}.{value}`, but this path has more segments"
+                            ),
+                            Some("use a two-segment imported path or bind the intermediate value first"),
+                        )
+                        .into());
+                }
                 [head, ..] => {
                     return Err(ctx
                         .diagnostic(
