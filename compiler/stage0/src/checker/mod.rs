@@ -1926,13 +1926,7 @@ fn variant_patterns_are_exhaustive(
     let Some(type_name) = variant_type_name(scrutinee_type) else {
         return false;
     };
-    let expected = ctx
-        .constructor_types
-        .iter()
-        .filter_map(|(name, shape)| {
-            (shape.type_name == *type_name).then_some(name.as_str().to_owned())
-        })
-        .collect::<BTreeSet<_>>();
+    let expected = expected_constructor_names(ctx, type_name);
     if expected.is_empty() {
         return false;
     }
@@ -1941,6 +1935,32 @@ fn variant_patterns_are_exhaustive(
         .filter_map(|arm| covered_constructor_name(ctx, &arm.pattern, type_name))
         .collect::<BTreeSet<_>>();
     expected.is_subset(&covered)
+}
+
+fn expected_constructor_names(
+    ctx: &ValidationContext<'_>,
+    type_name: &TypeName,
+) -> BTreeSet<String> {
+    if let Some((module, imported_type)) = type_name.as_str().split_once('.')
+        && let Some(rsig) = ctx.imports.get(module)
+        && let Some(type_) = rsig
+            .types
+            .iter()
+            .find(|type_| type_.name.as_str() == imported_type)
+        && let RsigTypeDeclKind::Variant { constructors } = &type_.body
+    {
+        return constructors
+            .iter()
+            .map(|constructor| constructor.name.as_str().to_owned())
+            .collect();
+    }
+
+    ctx.constructor_types
+        .iter()
+        .filter_map(|(name, shape)| {
+            (shape.type_name == *type_name).then_some(name.as_str().to_owned())
+        })
+        .collect()
 }
 
 fn variant_type_name(type_: &RsigType) -> Option<&TypeName> {

@@ -986,7 +986,7 @@ fn imported_generic_variant_pattern_uses_rsig_type_args() -> FixtureResult {
     )?;
     std::fs::write(
         &main,
-        "use Options\nfn main() { let label = match Options.make_i64(1) { Options.Some(value) -> if value == 1 { \"one\" } else { \"other\" }, _ -> \"none\" }; dbg(label) }\n",
+        "use Options\nfn main() { let label = match Options.make_i64(1) { Options.Some(value) -> if value == 1 { \"one\" } else { \"other\" }, Options.None -> \"none\" }; dbg(label) }\n",
     )?;
 
     let compile_lib = Command::new(cargo_bin("stage0"))
