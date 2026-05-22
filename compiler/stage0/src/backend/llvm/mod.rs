@@ -895,19 +895,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 }
                 self.emit_constructor_payload_pattern_test(scrutinee, tag_matches, payload)
             }
-            LambdaPattern::Tuple(items) => {
-                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
-                self.call_runtime_value(
-                    "riot_rt_value_tuple_arity_is",
-                    &[
-                        scrutinee.into(),
-                        self.context
-                            .i64_type()
-                            .const_int(items.len() as u64, false)
-                            .into(),
-                    ],
-                )
-            }
+            LambdaPattern::Tuple(items) => self.emit_tuple_pattern_test(scrutinee, items),
             LambdaPattern::List { prefix, tail } => {
                 self.emit_list_pattern_test(scrutinee, prefix, tail.as_deref())
             }
@@ -994,6 +982,76 @@ impl<'ctx> Codegen<'ctx, '_> {
         phi.add_incoming(&[
             (&bool_type.const_int(0, false), start_block),
             (&payload_matches, payload_end),
+        ]);
+        Ok(phi.as_basic_value().into_int_value())
+    }
+
+    fn emit_tuple_pattern_test(
+        &mut self,
+        scrutinee: &CgValue<'ctx>,
+        items: &[LambdaPattern],
+    ) -> miette::Result<IntValue<'ctx>> {
+        let bool_type = self.context.bool_type();
+        let tuple = self.value_as_runtime(scrutinee.clone())?;
+        let arity_matches = self.call_runtime_value(
+            "riot_rt_value_tuple_arity_is",
+            &[
+                tuple.into(),
+                self.context
+                    .i64_type()
+                    .const_int(items.len() as u64, false)
+                    .into(),
+            ],
+        )?;
+
+        if items.iter().all(pattern_is_irrefutable) {
+            return Ok(arity_matches);
+        }
+
+        let parent = self
+            .builder
+            .get_insert_block()
+            .and_then(|block| block.get_parent())
+            .ok_or_else(|| miette::miette!("missing function for tuple pattern"))?;
+        let start_block = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing tuple pattern block"))?;
+        let item_block = self.context.append_basic_block(parent, "match.tuple.items");
+        let cont_block = self.context.append_basic_block(parent, "match.tuple.cont");
+        self.builder
+            .build_conditional_branch(arity_matches, item_block, cont_block)
+            .map_err(|error| miette::miette!("failed to emit tuple pattern branch: {error}"))?;
+
+        self.builder.position_at_end(item_block);
+        let mut aggregate = bool_type.const_int(1, false);
+        for (index, pattern) in items.iter().enumerate() {
+            let item = self.call_runtime_value(
+                "riot_rt_value_tuple_get",
+                &[tuple.into(), self.i64_const(index as i64).into()],
+            )?;
+            let item_matches = self.emit_pattern_test(&CgValue::Value(item), pattern)?;
+            aggregate = self
+                .builder
+                .build_and(aggregate, item_matches, "match_tuple_item")
+                .map_err(|error| miette::miette!("failed to emit tuple item test: {error}"))?;
+        }
+        let item_end = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing tuple pattern item block"))?;
+        self.builder
+            .build_unconditional_branch(cont_block)
+            .map_err(|error| miette::miette!("failed to leave tuple pattern test: {error}"))?;
+
+        self.builder.position_at_end(cont_block);
+        let phi = self
+            .builder
+            .build_phi(bool_type, "match_tuple")
+            .map_err(|error| miette::miette!("failed to emit tuple pattern phi: {error}"))?;
+        phi.add_incoming(&[
+            (&bool_type.const_int(0, false), start_block),
+            (&aggregate, item_end),
         ]);
         Ok(phi.as_basic_value().into_int_value())
     }
