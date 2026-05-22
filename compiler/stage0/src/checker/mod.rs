@@ -120,6 +120,18 @@ impl<'a> Checker<'a> {
             );
         }
         if let Some((lhs, rhs)) = error.type_mismatch_types() {
+            if span_is_list_expression(program, span) {
+                return diagnostics.at(
+                    span,
+                    "list items have different types",
+                    format!(
+                        "this list contains both `{}` and `{}` values",
+                        lhs.canonical(),
+                        rhs.canonical()
+                    ),
+                    Some("make every item in the list have the same type"),
+                );
+            }
             let lhs_is_arrow = matches!(lhs, RsigType::Arrow { .. });
             let rhs_is_arrow = matches!(rhs, RsigType::Arrow { .. });
             if lhs_is_arrow != rhs_is_arrow {
@@ -127,7 +139,10 @@ impl<'a> Checker<'a> {
                 return diagnostics.at(
                     span,
                     "called value is not a function",
-                    format!("this value has type `{}`, so it cannot be called", actual.canonical()),
+                    format!(
+                        "this value has type `{}`, so it cannot be called",
+                        actual.canonical()
+                    ),
                     Some("call a function value or remove the function arguments"),
                 );
             }
@@ -159,7 +174,10 @@ impl<'a> Checker<'a> {
             })
         {
             let hint = if function.return_type.is_some()
-                && function.param_types.iter().all(|annotation| annotation.is_some())
+                && function
+                    .param_types
+                    .iter()
+                    .all(|annotation| annotation.is_some())
             {
                 "move the callee above this function or check that every function in the recursion cycle is fully annotated"
             } else {
@@ -450,7 +468,9 @@ fn validate_unique_top_level_names(
                     )?;
                 }
                 match &type_.body {
-                    AstTypeBody::Variant { constructors: variant_constructors } => {
+                    AstTypeBody::Variant {
+                        constructors: variant_constructors,
+                    } => {
                         for constructor in variant_constructors {
                             reject_duplicate_name(
                                 diagnostics,
@@ -835,6 +855,95 @@ fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
         AstDecl::Type(type_) => type_.span,
         AstDecl::Function(function) => function.span,
     })
+}
+
+fn span_is_list_expression(program: &AstProgram, span: TextSpan) -> bool {
+    program.decls.iter().any(|decl| match decl {
+        AstDecl::Function(function) => block_contains_list_span(&function.body, span),
+        AstDecl::Use(_)
+        | AstDecl::Module(_)
+        | AstDecl::Include(_)
+        | AstDecl::External(_)
+        | AstDecl::Type(_) => false,
+    })
+}
+
+fn block_contains_list_span(block: &AstBlock, span: TextSpan) -> bool {
+    block.statements.iter().any(|stmt| match stmt {
+        AstStmt::Let { value, .. } | AstStmt::Expr(value) => expr_contains_list_span(value, span),
+    }) || block
+        .tail
+        .as_ref()
+        .is_some_and(|tail| expr_contains_list_span(tail, span))
+}
+
+fn expr_contains_list_span(expr: &AstExpr, span: TextSpan) -> bool {
+    if expr_span(expr) == span && matches!(expr, AstExpr::List { .. }) {
+        return true;
+    }
+
+    match expr {
+        AstExpr::Add { lhs, rhs, .. }
+        | AstExpr::Sub { lhs, rhs, .. }
+        | AstExpr::Mul { lhs, rhs, .. }
+        | AstExpr::Div { lhs, rhs, .. }
+        | AstExpr::Mod { lhs, rhs, .. }
+        | AstExpr::Eq { lhs, rhs, .. }
+        | AstExpr::Lt { lhs, rhs, .. }
+        | AstExpr::And { lhs, rhs, .. }
+        | AstExpr::Or { lhs, rhs, .. } => {
+            expr_contains_list_span(lhs, span) || expr_contains_list_span(rhs, span)
+        }
+        AstExpr::Neg { expr, .. } | AstExpr::Not { expr, .. } => {
+            expr_contains_list_span(expr, span)
+        }
+        AstExpr::If {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            expr_contains_list_span(condition, span)
+                || expr_contains_list_span(then_branch, span)
+                || expr_contains_list_span(else_branch, span)
+        }
+        AstExpr::Match {
+            scrutinee, arms, ..
+        } => {
+            expr_contains_list_span(scrutinee, span)
+                || arms
+                    .iter()
+                    .any(|arm| expr_contains_list_span(&arm.body, span))
+        }
+        AstExpr::Block { block, .. }
+        | AstExpr::Lambda { body: block, .. }
+        | AstExpr::Spawn { body: block, .. } => block_contains_list_span(block, span),
+        AstExpr::Receive { arms, .. } => arms
+            .iter()
+            .any(|arm| expr_contains_list_span(&arm.body, span)),
+        AstExpr::Call { args, .. }
+        | AstExpr::Tuple { items: args, .. }
+        | AstExpr::List { items: args, .. } => {
+            args.iter().any(|arg| expr_contains_list_span(arg, span))
+        }
+        AstExpr::Apply { callee, args, .. } => {
+            expr_contains_list_span(callee, span)
+                || args.iter().any(|arg| expr_contains_list_span(arg, span))
+        }
+        AstExpr::Record { fields, .. } => fields
+            .iter()
+            .any(|(_, value)| expr_contains_list_span(value, span)),
+        AstExpr::Field { base, .. } | AstExpr::TupleIndex { base, .. } => {
+            expr_contains_list_span(base, span)
+        }
+        AstExpr::Bool { .. }
+        | AstExpr::Unit { .. }
+        | AstExpr::Char { .. }
+        | AstExpr::Float { .. }
+        | AstExpr::Int { .. }
+        | AstExpr::Path { .. }
+        | AstExpr::String { .. } => false,
+    }
 }
 
 fn constructor_types(
