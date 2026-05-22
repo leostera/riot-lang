@@ -403,7 +403,12 @@ fn record_field_type_map(
                 imported_type_name(use_.name.as_str(), &type_.name),
                 fields
                     .iter()
-                    .map(|field| (field.name.as_str().to_owned(), field.type_.clone()))
+                    .map(|field| {
+                        (
+                            field.name.as_str().to_owned(),
+                            qualify_imported_type(use_.name.as_str(), &field.type_),
+                        )
+                    })
                     .collect(),
             );
         }
@@ -1351,13 +1356,16 @@ mod tests {
     use crate::checker::tyir::TyIrBuilder;
     use crate::infer::module::ModuleInferencer;
     use crate::parser::SourceParser;
-    use crate::signature::{ImportedSignatures, ModuleName, RsigType};
+    use crate::signature::{
+        FieldName, ImportedSignatures, ModuleName, Rsig, RsigRecordField, RsigType, RsigTypeDecl,
+        RsigTypeDeclKind, TypeName,
+    };
 
     use crate::lambda::lower::LambdaLowerer;
 
     use crate::lambda::ir::{BindingKey, Capture, LambdaExpr, LambdaStmt};
 
-    use super::{TypedExprKind, TypedStmt};
+    use super::{TypedExprKind, TypedStmt, TypedUse, record_field_type_map};
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -1665,6 +1673,44 @@ mod tests {
         };
 
         assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn imported_record_field_maps_qualify_field_types() {
+        let mut imports = ImportedSignatures::new();
+        imports.insert(
+            ModuleName::new("Syntax"),
+            Rsig {
+                module: ModuleName::new("Syntax"),
+                dependencies: Vec::new(),
+                types: vec![RsigTypeDecl {
+                    name: TypeName::new("entry"),
+                    params: Vec::new(),
+                    body: RsigTypeDeclKind::Record {
+                        fields: vec![RsigRecordField {
+                            name: FieldName::new("head"),
+                            type_: RsigType::Variant(TypeName::new("token")),
+                        }],
+                    },
+                    fingerprint: 0,
+                }],
+                exports: Vec::new(),
+                module_fingerprint: 0,
+            },
+        );
+        let uses = vec![TypedUse {
+            name: ModuleName::new("Syntax"),
+            fingerprint: 0,
+        }];
+
+        let fields = record_field_type_map(&[], &uses, &imports);
+
+        assert_eq!(
+            fields
+                .get(&TypeName::new("Syntax.entry"))
+                .and_then(|fields| fields.get("head")),
+            Some(&RsigType::Variant(TypeName::new("Syntax.token")))
+        );
     }
 
     #[test]
