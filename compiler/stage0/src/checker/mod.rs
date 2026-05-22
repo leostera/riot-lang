@@ -179,6 +179,19 @@ impl<'a> Checker<'a> {
                 Some("make both tuple expressions have the same number of fields"),
             );
         }
+        if let Some((context, actual)) = error.expected_bool_context() {
+            let message = match context {
+                "if condition" => "if condition must be Bool",
+                "not expression" => "not expression requires Bool",
+                _ => "expression must be Bool",
+            };
+            return diagnostics.at(
+                span,
+                message,
+                format!("this {context} has type `{}`", actual.canonical()),
+                Some("use a Bool expression here"),
+            );
+        }
         if matches!(error.unsupported_reason(), Some("tuple projection")) {
             return diagnostics.at(
                 span,

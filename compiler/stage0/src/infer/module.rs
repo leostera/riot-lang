@@ -24,6 +24,11 @@ pub(crate) enum InferError {
     Unsupported(&'static str),
     #[error("unknown value `{0}`")]
     UnknownValue(String),
+    #[error("{context} expected Bool")]
+    ExpectedBool {
+        context: &'static str,
+        actual: RsigType,
+    },
     #[error("{0}")]
     Unify(#[from] UnifyError),
     #[error("{error}")]
@@ -37,7 +42,10 @@ impl InferError {
     pub(crate) fn span(&self) -> Option<TextSpan> {
         match self {
             InferError::At { span, .. } => Some(*span),
-            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::Unify(_) => None,
         }
     }
 
@@ -45,7 +53,9 @@ impl InferError {
         match self {
             InferError::UnknownValue(name) => Some(name.as_str()),
             InferError::At { error, .. } => error.unknown_value_name(),
-            InferError::Unsupported(_) | InferError::Unify(_) => None,
+            InferError::Unsupported(_) | InferError::ExpectedBool { .. } | InferError::Unify(_) => {
+                None
+            }
         }
     }
 
@@ -53,7 +63,9 @@ impl InferError {
         match self {
             InferError::Unsupported(reason) => Some(reason),
             InferError::At { error, .. } => error.unsupported_reason(),
-            InferError::UnknownValue(_) | InferError::Unify(_) => None,
+            InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::Unify(_) => None,
         }
     }
 
@@ -61,7 +73,10 @@ impl InferError {
         match self {
             InferError::Unify(UnifyError::OccursCheck { .. }) => true,
             InferError::At { error, .. } => error.is_occurs_check(),
-            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => false,
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::Unify(_) => false,
         }
     }
 
@@ -71,7 +86,10 @@ impl InferError {
                 Some((infer_type_to_rsig_type(lhs), infer_type_to_rsig_type(rhs)))
             }
             InferError::At { error, .. } => error.type_mismatch_types(),
-            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::Unify(_) => None,
         }
     }
 
@@ -79,6 +97,17 @@ impl InferError {
         match self {
             InferError::Unify(UnifyError::TupleArityMismatch { lhs, rhs }) => Some((*lhs, *rhs)),
             InferError::At { error, .. } => error.tuple_arity_mismatch(),
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::Unify(_) => None,
+        }
+    }
+
+    pub(crate) fn expected_bool_context(&self) -> Option<(&'static str, &RsigType)> {
+        match self {
+            InferError::ExpectedBool { context, actual } => Some((*context, actual)),
+            InferError::At { error, .. } => error.expected_bool_context(),
             InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
         }
     }
@@ -276,7 +305,10 @@ fn annotated_function_type(
         .iter()
         .map(|annotation| {
             annotation.as_ref().map(|annotation| {
-                rsig_type_to_infer_type(&lower_type_annotation(annotation, declared_variants), state)
+                rsig_type_to_infer_type(
+                    &lower_type_annotation(annotation, declared_variants),
+                    state,
+                )
             })
         })
         .collect::<Option<Vec<_>>>()?;
@@ -649,7 +681,12 @@ fn infer_expr_kind(
         }
         AstExpr::Not { expr, .. } => {
             let actual = infer_expr(state, expr, declared_variants, expression_types)?;
-            state.unify(&Type::Bool, &actual)?;
+            if state.unify(&Type::Bool, &actual).is_err() {
+                return Err(InferError::ExpectedBool {
+                    context: "not expression",
+                    actual: infer_type_to_rsig_type(&state.resolve(&actual)),
+                });
+            }
             Ok(Type::Bool)
         }
         AstExpr::If {
@@ -659,7 +696,12 @@ fn infer_expr_kind(
             ..
         } => {
             let condition = infer_expr(state, condition, declared_variants, expression_types)?;
-            state.unify(&Type::Bool, &condition)?;
+            if state.unify(&Type::Bool, &condition).is_err() {
+                return Err(InferError::ExpectedBool {
+                    context: "if condition",
+                    actual: infer_type_to_rsig_type(&state.resolve(&condition)),
+                });
+            }
             let then_type = infer_expr(state, then_branch, declared_variants, expression_types)?;
             let else_type = infer_expr(state, else_branch, declared_variants, expression_types)?;
             state.unify(&then_type, &else_type)?;
