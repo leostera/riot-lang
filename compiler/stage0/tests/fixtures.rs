@@ -1067,7 +1067,9 @@ fn imported_generic_variant_payload_tests_nested_imported_record_pattern() -> Fi
     let boxes = temp_dir.path().join("boxes.ml");
     let options = temp_dir.path().join("options.ml");
     let main = temp_dir.path().join("main.ml");
+    let bad = temp_dir.path().join("bad.ml");
     let output = temp_dir.path().join("main");
+    let bad_output = temp_dir.path().join("bad");
 
     std::fs::write(
         &boxes,
@@ -1076,7 +1078,11 @@ fn imported_generic_variant_payload_tests_nested_imported_record_pattern() -> Fi
     std::fs::write(&options, "type option<'a> = Some('a) | None\n")?;
     std::fs::write(
         &main,
-        "use Boxes\nuse Options\nfn main() { let wrapped = Options.Some(Boxes.make_i64(1)); let label = match wrapped { Options.Some(Boxes.box { value: value }) -> if value == 1 { \"one\" } else { \"other\" }, Options.None -> \"none\" }; dbg(label) }\n",
+        "use Boxes\nuse Options\nfn main() { let wrapped: Options.option<Boxes.box<i64>> = Options.Some(Boxes.make_i64(1)); let label = match wrapped { Options.Some(Boxes.box { value: value }) -> if value == 1 { \"one\" } else { \"other\" }, Options.None -> \"none\" }; dbg(label) }\n",
+    )?;
+    std::fs::write(
+        &bad,
+        "use Boxes\nuse Options\nfn main() { let wrapped: Options.option<Boxes.box<i64>> = Options.Some(Boxes.make_i64(1)); let out = match wrapped { Options.Some(Boxes.box { value: value }) -> string_concat(value, \"\"), Options.None -> \"none\" }; dbg(out) }\n",
     )?;
 
     for source in [&boxes, &options] {
@@ -1119,6 +1125,27 @@ fn imported_generic_variant_payload_tests_nested_imported_record_pattern() -> Fi
         return fail(format!(
             "unexpected imported generic variant nested imported record stdout:\n{}",
             String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    let compile_bad = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&bad_output)
+        .output()?;
+    if compile_bad.status.success() {
+        return fail("expected nested imported generic pattern mismatch to fail".to_owned());
+    }
+    let stderr = String::from_utf8_lossy(&compile_bad.stderr);
+    if !stderr.contains("string_concat argument has the wrong type") {
+        return fail(format!(
+            "expected nested imported generic pattern binder to carry i64 into string_concat diagnostic:\n{stderr}"
         ));
     }
 

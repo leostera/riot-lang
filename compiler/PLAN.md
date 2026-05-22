@@ -72,6 +72,11 @@ Known hardening gaps discovered by compiler-shaped fixtures:
 - Unannotated mutually recursive helpers are not inferred yet. Compiler-shaped
   code that wants mutually recursive `rename_expr`/`rename_args` helpers should
   add annotations today or wait for a future recursive inference slice.
+- Unannotated imported generic constructor expressions can still lose concrete
+  type arguments in nested pattern flows. Annotating the scrutinee (for example
+  `Options.option<Boxes.box<i64>>`) gives validation enough facts today; a
+  future inference slice should propagate imported constructor result type
+  arguments from payload expressions.
 Resolved hardening gap: tuple patterns now test nested item patterns during LLVM
 lowering instead of only checking tuple arity, so tuple scrutinees containing
 variant payload patterns select the correct arm.
