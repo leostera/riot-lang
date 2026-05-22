@@ -1,4 +1,4 @@
-type pattern = PWildcard | PBind(String) | PTuple(List<pattern>) | PRecord(List<field_pattern>) | PConstructor(String, List<pattern>) | PInt(i64) | PList(List<pattern>)
+type pattern = PWildcard | PBind(String) | PTuple(List<pattern>) | PRecord(List<field_pattern>) | PConstructor(String, List<pattern>) | PInt(i64) | PList(List<pattern>) | PListTail(pattern)
 type field_pattern = { name: String, pattern: pattern }
 
 fn irrefutable(pattern: pattern) -> bool {
@@ -7,6 +7,7 @@ fn irrefutable(pattern: pattern) -> bool {
     PBind(_) -> true,
     PTuple(items) -> all_irrefutable(items),
     PRecord(fields) -> all_fields_irrefutable(fields),
+    PListTail(tail) -> irrefutable(tail),
     PConstructor(_, _) -> false,
     PInt(_) -> false,
     PList(_) -> false
@@ -34,5 +35,6 @@ fn render(value: bool) -> String {
 fn main() {
   let structural = PConstructor("Box", [PTuple([PBind("line"), PRecord([field_pattern { name: "text", pattern: PBind("text") }])])]);
   let literal = PTuple([PBind("line"), PInt(0)]);
-  dbg(string_concat(render(all_irrefutable([PTuple([PBind("a"), PWildcard]), PRecord([field_pattern { name: "b", pattern: PBind("b") }])])), string_concat("; ", string_concat(render(irrefutable(structural)), string_concat("; ", render(irrefutable(literal)))))))
+  let tail = PListTail(PBind("items"));
+  dbg(string_concat(render(all_irrefutable([PTuple([PBind("a"), PWildcard]), PRecord([field_pattern { name: "b", pattern: PBind("b") }])])), string_concat("; ", string_concat(render(irrefutable(structural)), string_concat("; ", string_concat(render(irrefutable(literal)), string_concat("; ", render(irrefutable(tail)))))))))
 }

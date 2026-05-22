@@ -15,6 +15,6 @@ stderr:
 run:
 status: success
 stdout:
-irrefutable; refutable; refutable
+irrefutable; refutable; refutable; irrefutable
 stderr:
 <empty>
