@@ -68,7 +68,9 @@ impl ActorSlotType {
             | RsigType::Tuple(_)
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::RecordApp { .. }
             | RsigType::Variant(_)
+            | RsigType::VariantApp { .. }
             | RsigType::Arrow { .. } => Some(ActorSlotType::Value),
             _ => None,
         }

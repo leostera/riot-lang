@@ -1090,6 +1090,66 @@ fn imported_record_construction_uses_rsig() -> FixtureResult {
 }
 
 #[test]
+fn imported_generic_record_pattern_uses_rsig_type_args() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let boxes = temp_dir.path().join("boxes.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &boxes,
+        "type box<'a> = { value: 'a }\nfn make_i64(value: i64) -> box<i64> { box { value: value } }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Boxes\nfn main() { let out = match Boxes.make_i64(1) { Boxes.box { value: _ } -> \"ok\" }; dbg(out) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&boxes)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected generic record compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported generic record pattern compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"ok\n" {
+        return fail(format!(
+            "unexpected imported generic record stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_unknown_abi_call_is_rejected() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");

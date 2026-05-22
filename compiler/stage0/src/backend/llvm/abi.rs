@@ -31,6 +31,7 @@ impl AbiType {
             | RsigType::Tuple(_)
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::RecordApp { .. }
             | RsigType::Variant(_)
             | RsigType::VariantApp { .. }
             | RsigType::Arrow { .. } => AbiType::Value,
@@ -85,6 +86,7 @@ fn external_type_is_boxed(type_: &RsigType) -> bool {
         RsigType::Arrow { .. }
             | RsigType::List(_)
             | RsigType::Record(_)
+            | RsigType::RecordApp { .. }
             | RsigType::Tuple(_)
             | RsigType::Unknown
             | RsigType::Var(_)
