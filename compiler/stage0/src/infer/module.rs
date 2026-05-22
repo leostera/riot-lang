@@ -413,10 +413,14 @@ fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
                 .iter()
                 .map(|type_| qualify_imported_type(module_name, type_))
                 .collect::<Vec<_>>();
-            let type_ = constructor_type(&payload, Type::Variant(type_name.clone()), state);
+            let result = generic_variant_rsig_type(
+                type_name.clone(),
+                type_.params.iter().map(|param| param.as_str()),
+            );
+            let type_ = constructor_type(&payload, &result, state);
             state.add_prelude_value(
                 format!("{module_name}.{}", constructor.name.as_str()),
-                TypeScheme::monomorphic(type_),
+                state.generalize(type_),
             );
         }
     }
@@ -436,11 +440,11 @@ fn install_unqualified_signature(state: &mut State, rsig: &Rsig) {
             continue;
         };
         for constructor in constructors {
-            let type_ = constructor_type(
-                &constructor.payload,
-                Type::Variant(type_.name.clone()),
-                state,
+            let result = generic_variant_rsig_type(
+                type_.name.clone(),
+                type_.params.iter().map(|param| param.as_str()),
             );
+            let type_ = constructor_type(&constructor.payload, &result, state);
             state.add_prelude_value(
                 constructor.name.as_str().to_owned(),
                 state.generalize(type_),
@@ -457,14 +461,30 @@ fn source_function_type(params: Vec<Type>, result: Type) -> Type {
     }
 }
 
-fn constructor_type(payload: &[RsigType], result: Type, state: &mut State) -> Type {
+fn generic_variant_rsig_type<'a>(
+    name: TypeName,
+    params: impl Iterator<Item = &'a str>,
+) -> RsigType {
+    let args = params
+        .map(|param| RsigType::Var(TypeVarName::new(param)))
+        .collect::<Vec<_>>();
+    if args.is_empty() {
+        RsigType::Variant(name)
+    } else {
+        RsigType::VariantApp { name, args }
+    }
+}
+
+fn constructor_type(payload: &[RsigType], result: &RsigType, state: &mut State) -> Type {
+    let mut vars = BTreeMap::new();
+    let result = rsig_type_to_infer_type_with_vars(result, state, &mut vars);
     if payload.is_empty() {
         result
     } else {
         Type::arrows(
             payload
                 .iter()
-                .map(|type_| rsig_type_to_infer_type(type_, state))
+                .map(|type_| rsig_type_to_infer_type_with_vars(type_, state, &mut vars))
                 .collect(),
             result,
         )
@@ -513,8 +533,12 @@ fn infer_decl(
                         .iter()
                         .map(|payload| lower_type_annotation(payload, declared_variants))
                         .collect::<Vec<_>>();
-                    let type_ = constructor_type(&payload, Type::Variant(type_name.clone()), state);
-                    state.add_value(constructor.name.clone(), TypeScheme::monomorphic(type_));
+                    let result = generic_variant_rsig_type(
+                        type_name.clone(),
+                        type_.params.iter().map(|param| param.name.as_str()),
+                    );
+                    let type_ = constructor_type(&payload, &result, state);
+                    state.add_value(constructor.name.clone(), state.generalize(type_));
                 }
             }
             Ok(())
@@ -1184,9 +1208,22 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
         RsigType::I32 => Type::I32,
         RsigType::I64 => Type::I64,
         RsigType::List(element) => Type::List(Box::new(rsig_type_to_infer_type(element, state))),
-        RsigType::Record(name) | RsigType::RecordApp { name, .. } => Type::Record(name.clone()),
+        RsigType::Record(name) => Type::Record(name.clone()),
+        RsigType::RecordApp { name, args } => Type::RecordApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| rsig_type_to_infer_type(arg, state))
+                .collect(),
+        },
         RsigType::Variant(name) => Type::Variant(name.clone()),
-        RsigType::VariantApp { name, .. } => Type::Variant(name.clone()),
+        RsigType::VariantApp { name, args } => Type::VariantApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| rsig_type_to_infer_type(arg, state))
+                .collect(),
+        },
         RsigType::String => Type::String,
         RsigType::Tuple(items) => Type::Tuple(
             items
@@ -1237,19 +1274,21 @@ fn rsig_type_to_infer_type_with_vars(
             element, state, vars,
         ))),
         RsigType::Record(name) => Type::Record(name.clone()),
-        RsigType::RecordApp { name, args } => {
-            for arg in args {
-                let _ = rsig_type_to_infer_type_with_vars(arg, state, vars);
-            }
-            Type::Record(name.clone())
-        }
+        RsigType::RecordApp { name, args } => Type::RecordApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| rsig_type_to_infer_type_with_vars(arg, state, vars))
+                .collect(),
+        },
         RsigType::Variant(name) => Type::Variant(name.clone()),
-        RsigType::VariantApp { name, args } => {
-            for arg in args {
-                let _ = rsig_type_to_infer_type_with_vars(arg, state, vars);
-            }
-            Type::Variant(name.clone())
-        }
+        RsigType::VariantApp { name, args } => Type::VariantApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| rsig_type_to_infer_type_with_vars(arg, state, vars))
+                .collect(),
+        },
         RsigType::String => Type::String,
         RsigType::Tuple(items) => Type::Tuple(
             items
@@ -1280,7 +1319,15 @@ fn infer_type_to_rsig_type(type_: &Type) -> RsigType {
         Type::I64 => RsigType::I64,
         Type::List(element) => RsigType::List(Box::new(infer_type_to_rsig_type(element))),
         Type::Record(name) => RsigType::Record(name.clone()),
+        Type::RecordApp { name, args } => RsigType::RecordApp {
+            name: name.clone(),
+            args: args.iter().map(infer_type_to_rsig_type).collect(),
+        },
         Type::Variant(name) => RsigType::Variant(name.clone()),
+        Type::VariantApp { name, args } => RsigType::VariantApp {
+            name: name.clone(),
+            args: args.iter().map(infer_type_to_rsig_type).collect(),
+        },
         Type::String => RsigType::String,
         Type::Tuple(items) => RsigType::Tuple(items.iter().map(infer_type_to_rsig_type).collect()),
         Type::Unit => RsigType::Unit,
@@ -1816,6 +1863,25 @@ mod tests {
             exports[0].1,
             TypeScheme::monomorphic(Type::arrow(Type::I64, Type::arrow(Type::I64, Type::I64)))
         );
+    }
+
+    #[test]
+    fn generic_constructor_types_link_payload_vars_to_result_args() {
+        let mut state = crate::infer::state::State::default();
+        let payload = vec![RsigType::Var(crate::signature::TypeVarName::new("'value"))];
+        let result =
+            super::generic_variant_rsig_type(TypeName::new("option"), ["'value"].into_iter());
+        let type_ = super::constructor_type(&payload, &result, &mut state);
+
+        let Type::Arrow { parameter, result } = type_ else {
+            panic!("expected constructor to infer as a function");
+        };
+        let Type::VariantApp { name, args } = *result else {
+            panic!("expected generic constructor result to preserve type args");
+        };
+
+        assert_eq!(TypeName::new("option"), name);
+        assert_eq!(vec![*parameter], args);
     }
 
     #[test]

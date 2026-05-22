@@ -32,7 +32,15 @@ pub(crate) enum Type {
     },
     List(Box<Type>),
     Record(TypeName),
+    RecordApp {
+        name: TypeName,
+        args: Vec<Type>,
+    },
     Variant(TypeName),
+    VariantApp {
+        name: TypeName,
+        args: Vec<Type>,
+    },
     Tuple(Vec<Type>),
 }
 
@@ -59,6 +67,9 @@ impl Type {
                 parameter.contains_var(target) || result.contains_var(target)
             }
             Type::Tuple(items) => items.iter().any(|item| item.contains_var(target)),
+            Type::RecordApp { args, .. } | Type::VariantApp { args, .. } => {
+                args.iter().any(|arg| arg.contains_var(target))
+            }
             Type::Bool
             | Type::Char
             | Type::F64
@@ -90,6 +101,11 @@ impl Type {
             Type::Tuple(items) => {
                 for item in items {
                     item.collect_free_vars(vars);
+                }
+            }
+            Type::RecordApp { args, .. } | Type::VariantApp { args, .. } => {
+                for arg in args {
+                    arg.collect_free_vars(vars);
                 }
             }
             Type::Bool

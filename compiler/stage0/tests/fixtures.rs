@@ -167,9 +167,16 @@ fn emit_boundaries_show_compiler_like_fixture_shapes() -> FixtureResult {
         ));
     }
     let typed_stdout = String::from_utf8_lossy(&typed.stdout);
-    for needle in ["TypedTypeDecl", "TypedVariantConstructor", "TypedMatchArm", "summary"] {
+    for needle in [
+        "TypedTypeDecl",
+        "TypedVariantConstructor",
+        "TypedMatchArm",
+        "summary",
+    ] {
         if !typed_stdout.contains(needle) {
-            return fail(format!("typed boundary missing `{needle}`:\n{typed_stdout}"));
+            return fail(format!(
+                "typed boundary missing `{needle}`:\n{typed_stdout}"
+            ));
         }
     }
 
@@ -188,7 +195,9 @@ fn emit_boundaries_show_compiler_like_fixture_shapes() -> FixtureResult {
     let lambda_stdout = String::from_utf8_lossy(&lambda.stdout);
     for needle in ["Lambda", "Capture", "LambdaMatchArm", "Constructor"] {
         if !lambda_stdout.contains(needle) {
-            return fail(format!("lambda boundary missing `{needle}`:\n{lambda_stdout}"));
+            return fail(format!(
+                "lambda boundary missing `{needle}`:\n{lambda_stdout}"
+            ));
         }
     }
 
@@ -1078,11 +1087,11 @@ fn imported_generic_variant_payload_tests_nested_imported_record_pattern() -> Fi
     std::fs::write(&options, "type option<'a> = Some('a) | None\n")?;
     std::fs::write(
         &main,
-        "use Boxes\nuse Options\nfn main() { let wrapped: Options.option<Boxes.box<i64>> = Options.Some(Boxes.make_i64(1)); let label = match wrapped { Options.Some(Boxes.box { value: value }) -> if value == 1 { \"one\" } else { \"other\" }, Options.None -> \"none\" }; dbg(label) }\n",
+        "use Boxes\nuse Options\nfn main() { let wrapped = Options.Some(Boxes.make_i64(1)); let label = match wrapped { Options.Some(Boxes.box { value: value }) -> if value == 1 { \"one\" } else { \"other\" }, Options.None -> \"none\" }; dbg(label) }\n",
     )?;
     std::fs::write(
         &bad,
-        "use Boxes\nuse Options\nfn main() { let wrapped: Options.option<Boxes.box<i64>> = Options.Some(Boxes.make_i64(1)); let out = match wrapped { Options.Some(Boxes.box { value: value }) -> string_concat(value, \"\"), Options.None -> \"none\" }; dbg(out) }\n",
+        "use Boxes\nuse Options\nfn main() { let wrapped = Options.Some(Boxes.make_i64(1)); let out = match wrapped { Options.Some(Boxes.box { value: value }) -> string_concat(value, \"\"), Options.None -> \"none\" }; dbg(out) }\n",
     )?;
 
     for source in [&boxes, &options] {

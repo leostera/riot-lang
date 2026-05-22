@@ -94,6 +94,20 @@ fn instantiate_type(ty: &Type, replacements: &BTreeMap<TypeVar, Type>) -> Type {
                 .map(|item| instantiate_type(item, replacements))
                 .collect(),
         ),
+        Type::RecordApp { name, args } => Type::RecordApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| instantiate_type(arg, replacements))
+                .collect(),
+        },
+        Type::VariantApp { name, args } => Type::VariantApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| instantiate_type(arg, replacements))
+                .collect(),
+        },
         Type::Bool
         | Type::Char
         | Type::F64

@@ -25,6 +25,14 @@ impl Substitution {
             Type::Tuple(items) => {
                 Type::Tuple(items.iter().map(|item| self.resolve(item)).collect())
             }
+            Type::RecordApp { name, args } => Type::RecordApp {
+                name: name.clone(),
+                args: args.iter().map(|arg| self.resolve(arg)).collect(),
+            },
+            Type::VariantApp { name, args } => Type::VariantApp {
+                name: name.clone(),
+                args: args.iter().map(|arg| self.resolve(arg)).collect(),
+            },
             Type::Bool
             | Type::Char
             | Type::F64
@@ -53,7 +61,49 @@ impl Substitution {
             | (Type::String, Type::String)
             | (Type::Unit, Type::Unit) => Ok(()),
             (Type::Record(lhs), Type::Record(rhs)) if lhs == rhs => Ok(()),
+            (Type::Record(lhs), Type::RecordApp { name: rhs, .. })
+            | (Type::RecordApp { name: lhs, .. }, Type::Record(rhs))
+                if lhs == rhs =>
+            {
+                Ok(())
+            }
+            (
+                Type::RecordApp {
+                    name: lhs,
+                    args: lhs_args,
+                },
+                Type::RecordApp {
+                    name: rhs,
+                    args: rhs_args,
+                },
+            ) if lhs == rhs && lhs_args.len() == rhs_args.len() => {
+                for (lhs, rhs) in lhs_args.iter().zip(rhs_args.iter()) {
+                    self.unify(lhs, rhs)?;
+                }
+                Ok(())
+            }
             (Type::Variant(lhs), Type::Variant(rhs)) if lhs == rhs => Ok(()),
+            (Type::Variant(lhs), Type::VariantApp { name: rhs, .. })
+            | (Type::VariantApp { name: lhs, .. }, Type::Variant(rhs))
+                if lhs == rhs =>
+            {
+                Ok(())
+            }
+            (
+                Type::VariantApp {
+                    name: lhs,
+                    args: lhs_args,
+                },
+                Type::VariantApp {
+                    name: rhs,
+                    args: rhs_args,
+                },
+            ) if lhs == rhs && lhs_args.len() == rhs_args.len() => {
+                for (lhs, rhs) in lhs_args.iter().zip(rhs_args.iter()) {
+                    self.unify(lhs, rhs)?;
+                }
+                Ok(())
+            }
             (Type::ActorId(lhs), Type::ActorId(rhs)) | (Type::List(lhs), Type::List(rhs)) => {
                 self.unify(&lhs, &rhs)
             }
