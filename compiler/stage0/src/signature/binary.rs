@@ -259,6 +259,11 @@ fn put_type(bytes: &mut Vec<u8>, type_: &RsigType) {
         }
         RsigType::Unknown => bytes.push(11),
         RsigType::I32 => bytes.push(15),
+        RsigType::RecordApp { name, args } => {
+            bytes.push(16);
+            put_string(bytes, name.as_str());
+            put_types(bytes, args);
+        }
     }
 }
 
@@ -288,6 +293,10 @@ fn get_type(cursor: &mut Cursor<&[u8]>) -> miette::Result<RsigType> {
             args: get_types(cursor)?,
         },
         15 => RsigType::I32,
+        16 => RsigType::RecordApp {
+            name: TypeName::new(get_string(cursor)?),
+            args: get_types(cursor)?,
+        },
         tag => bail!("unknown type tag {tag}"),
     })
 }

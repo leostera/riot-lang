@@ -1177,7 +1177,7 @@ fn rsig_type_to_infer_type(type_: &RsigType, state: &mut State) -> Type {
         RsigType::I32 => Type::I32,
         RsigType::I64 => Type::I64,
         RsigType::List(element) => Type::List(Box::new(rsig_type_to_infer_type(element, state))),
-        RsigType::Record(name) => Type::Record(name.clone()),
+        RsigType::Record(name) | RsigType::RecordApp { name, .. } => Type::Record(name.clone()),
         RsigType::Variant(name) => Type::Variant(name.clone()),
         RsigType::VariantApp { name, .. } => Type::Variant(name.clone()),
         RsigType::String => Type::String,
@@ -1230,6 +1230,12 @@ fn rsig_type_to_infer_type_with_vars(
             element, state, vars,
         ))),
         RsigType::Record(name) => Type::Record(name.clone()),
+        RsigType::RecordApp { name, args } => {
+            for arg in args {
+                let _ = rsig_type_to_infer_type_with_vars(arg, state, vars);
+            }
+            Type::Record(name.clone())
+        }
         RsigType::Variant(name) => Type::Variant(name.clone()),
         RsigType::VariantApp { name, args } => {
             for arg in args {

@@ -62,7 +62,7 @@ fn collect_type_vars(type_: &RsigType, vars: &mut Vec<TypeVarName>) {
                 collect_type_vars(item, vars);
             }
         }
-        RsigType::VariantApp { args, .. } => {
+        RsigType::RecordApp { args, .. } | RsigType::VariantApp { args, .. } => {
             for arg in args {
                 collect_type_vars(arg, vars);
             }
@@ -331,7 +331,7 @@ impl TypeVarCanonicalizer {
                     self.canonicalize(item);
                 }
             }
-            RsigType::VariantApp { args, .. } => {
+            RsigType::RecordApp { args, .. } | RsigType::VariantApp { args, .. } => {
                 for arg in args {
                     self.canonicalize(arg);
                 }
@@ -382,6 +382,9 @@ impl RsigType {
             RsigType::Tuple(items) => format!("({})", render_types(items)),
             RsigType::List(item) => format!("List<{}>", item.canonical()),
             RsigType::Record(name) => name.to_string(),
+            RsigType::RecordApp { name, args } => {
+                format!("{}<{}>", name, render_types(args))
+            }
             RsigType::Variant(name) => name.to_string(),
             RsigType::VariantApp { name, args } => {
                 format!("{}<{}>", name, render_types(args))

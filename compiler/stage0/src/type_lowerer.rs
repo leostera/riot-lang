@@ -100,7 +100,7 @@ fn lower_type_app(
             if variants.contains(&name) {
                 RsigType::VariantApp { name, args }
             } else {
-                RsigType::Record(name)
+                RsigType::RecordApp { name, args }
             }
         }
     }

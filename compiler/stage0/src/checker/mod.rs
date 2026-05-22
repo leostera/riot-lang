@@ -522,6 +522,7 @@ impl<'a> ProgramValidator<'a> {
 #[derive(Debug, Clone)]
 struct RecordShape {
     type_name: TypeName,
+    type_params: Vec<TypeVarName>,
     fields: Vec<(String, RsigType)>,
 }
 
@@ -1183,6 +1184,11 @@ fn record_shapes(
                 let type_name = TypeName::new(type_.name.clone());
                 let shape = RecordShape {
                     type_name: type_name.clone(),
+                    type_params: type_
+                        .params
+                        .iter()
+                        .map(|param| TypeVarName::new(param.name.clone()))
+                        .collect(),
                     fields: fields
                         .iter()
                         .map(|field| {
@@ -1207,6 +1213,11 @@ fn record_shapes(
                     let type_name = imported_type_name(use_.name.as_str(), &type_.name);
                     let shape = RecordShape {
                         type_name: type_name.clone(),
+                        type_params: type_
+                            .params
+                            .iter()
+                            .map(|param| TypeVarName::new(param.as_str()))
+                            .collect(),
                         fields: fields
                             .iter()
                             .map(|field| (field.name.as_str().to_owned(), field.type_.clone()))
@@ -2070,10 +2081,8 @@ fn validate_pattern(
                 )
                 .into());
         };
-        let expected = shape
-            .fields
-            .iter()
-            .map(|(name, type_)| (name.as_str(), type_))
+        let field_types = instantiate_record_fields(&shape, scrutinee_type)
+            .into_iter()
             .collect::<HashMap<_, _>>();
         let mut seen = HashSet::new();
         for (field, field_pattern) in fields {
@@ -2090,7 +2099,7 @@ fn validate_pattern(
                     )
                     .into());
             }
-            let Some(expected_type) = expected.get(field.as_str()) else {
+            let Some(expected_type) = field_types.get(field.as_str()) else {
                 return Err(ctx
                     .diagnostic(
                         pattern_span(field_pattern),
@@ -2174,7 +2183,8 @@ fn bind_pattern(
         }
         AstPattern::Record { path, fields, .. } => {
             let field_types = record_shape_for_pattern(ctx, path)
-                .map(|shape| shape.fields.into_iter().collect::<HashMap<_, _>>())
+                .map(|shape| instantiate_record_fields(&shape, scrutinee_type.as_ref()))
+                .map(|fields| fields.into_iter().collect::<HashMap<_, _>>())
                 .unwrap_or_default();
             for (field, nested) in fields {
                 bind_pattern(ctx, nested, field_types.get(field).cloned(), bindings);
@@ -2211,6 +2221,29 @@ fn instantiate_constructor_payload(
         .collect()
 }
 
+fn instantiate_record_fields(
+    shape: &RecordShape,
+    scrutinee_type: Option<&RsigType>,
+) -> Vec<(String, RsigType)> {
+    let Some(RsigType::RecordApp { name, args }) = scrutinee_type else {
+        return shape.fields.clone();
+    };
+    if *name != shape.type_name || args.len() != shape.type_params.len() {
+        return shape.fields.clone();
+    }
+    let substitutions = shape
+        .type_params
+        .iter()
+        .cloned()
+        .zip(args.iter().cloned())
+        .collect::<BTreeMap<_, _>>();
+    shape
+        .fields
+        .iter()
+        .map(|(field, type_)| (field.clone(), substitute_type_vars(type_, &substitutions)))
+        .collect()
+}
+
 fn substitute_type_vars(
     type_: &RsigType,
     substitutions: &BTreeMap<TypeVarName, RsigType>,
@@ -2234,6 +2267,13 @@ fn substitute_type_vars(
                 .collect(),
         ),
         RsigType::List(item) => RsigType::List(Box::new(substitute_type_vars(item, substitutions))),
+        RsigType::RecordApp { name, args } => RsigType::RecordApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| substitute_type_vars(arg, substitutions))
+                .collect(),
+        },
         RsigType::VariantApp { name, args } => RsigType::VariantApp {
             name: name.clone(),
             args: args
@@ -2861,7 +2901,9 @@ fn signature_arg_needs_static_check(type_: &RsigType) -> bool {
         RsigType::ActorId(_) => false,
         RsigType::List(_) => true,
         RsigType::Tuple(items) => items.iter().any(signature_arg_needs_static_check),
-        RsigType::VariantApp { args, .. } => args.iter().any(signature_arg_needs_static_check),
+        RsigType::RecordApp { args, .. } | RsigType::VariantApp { args, .. } => {
+            args.iter().any(signature_arg_needs_static_check)
+        }
         RsigType::Arrow { .. } => false,
         RsigType::Bool
         | RsigType::Char
@@ -3174,6 +3216,30 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
         || matches!(
             (expected, actual),
             (
+                RsigType::RecordApp {
+                    name: expected_name,
+                    args: expected_args
+                },
+                RsigType::RecordApp {
+                    name: actual_name,
+                    args: actual_args
+                }
+            ) if expected_name == actual_name
+                && expected_args.len() == actual_args.len()
+                && expected_args
+                    .iter()
+                    .zip(actual_args)
+                    .all(|(expected, actual)| type_matches(expected, actual))
+        )
+        || matches!(
+            (expected, actual),
+            (RsigType::RecordApp { name, .. }, RsigType::Record(actual))
+                | (RsigType::Record(actual), RsigType::RecordApp { name, .. })
+                if name == actual
+        )
+        || matches!(
+            (expected, actual),
+            (
                 RsigType::VariantApp {
                     name: expected_name,
                     args: expected_args
@@ -3221,7 +3287,7 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
             rsig_type_has_unknown_abi(parameter) || rsig_type_has_unknown_abi(result)
         }
         RsigType::Tuple(items) => items.iter().any(rsig_type_has_unknown_abi),
-        RsigType::VariantApp { .. } => false,
+        RsigType::RecordApp { .. } | RsigType::VariantApp { .. } => false,
         RsigType::Bool
         | RsigType::Char
         | RsigType::F64
@@ -3237,7 +3303,7 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
 fn rsig_external_type_has_unknown_abi(type_: &RsigType) -> bool {
     match type_ {
         RsigType::Unknown => true,
-        RsigType::Var(_) | RsigType::VariantApp { .. } => false,
+        RsigType::Var(_) | RsigType::RecordApp { .. } | RsigType::VariantApp { .. } => false,
         other => rsig_type_has_unknown_abi(other),
     }
 }

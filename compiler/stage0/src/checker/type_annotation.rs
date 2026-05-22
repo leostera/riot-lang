@@ -150,6 +150,7 @@ impl<'a, 'ctx> TypeAnnotationChecker<'a, 'ctx> {
                 | RsigType::Tuple(_)
                 | RsigType::List(_)
                 | RsigType::Record(_)
+                | RsigType::RecordApp { .. }
                 | RsigType::Variant(_)
                 | RsigType::VariantApp { .. }
                 | RsigType::Arrow { .. }

@@ -147,6 +147,10 @@ pub(crate) enum RsigType {
     Tuple(Vec<RsigType>),
     List(Box<RsigType>),
     Record(TypeName),
+    RecordApp {
+        name: TypeName,
+        args: Vec<RsigType>,
+    },
     Variant(TypeName),
     VariantApp {
         name: TypeName,

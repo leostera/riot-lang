@@ -24,6 +24,13 @@ pub(crate) fn qualify_imported_type(module_name: &str, type_: &RsigType) -> Rsig
                 .collect(),
         ),
         RsigType::Record(name) => RsigType::Record(imported_type_name(module_name, name)),
+        RsigType::RecordApp { name, args } => RsigType::RecordApp {
+            name: imported_type_name(module_name, name),
+            args: args
+                .iter()
+                .map(|arg| qualify_imported_type(module_name, arg))
+                .collect(),
+        },
         RsigType::Variant(name) if Stdlib::new().is_prelude_type_name(name) => {
             RsigType::Variant(name.clone())
         }
