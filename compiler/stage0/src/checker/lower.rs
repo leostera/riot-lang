@@ -289,6 +289,30 @@ impl<'a> TypeContext<'a> {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
     }
 
+    fn binding_type(&self, binding: &BindingId) -> Option<RsigType> {
+        self.scopes
+            .iter()
+            .rev()
+            .filter_map(|scope| scope.get(&binding.name))
+            .find(|info| info.binding.id == binding.id)
+            .map(|info| info.type_.clone())
+    }
+
+    fn update_binding_type(&mut self, binding: &BindingId, type_: RsigType) {
+        if matches!(type_, RsigType::Unknown | RsigType::Var(_)) {
+            return;
+        }
+        for scope in self.scopes.iter_mut().rev() {
+            let Some(info) = scope.get_mut(&binding.name) else {
+                continue;
+            };
+            if info.binding.id == binding.id {
+                info.type_ = type_;
+                return;
+            }
+        }
+    }
+
     fn expression_type(&self, span: TextSpan) -> Option<RsigType> {
         self.expression_types
             .and_then(|types| types.get(span))
@@ -592,7 +616,10 @@ fn type_expr(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
     let span = ast_expr_span(&expr);
     let mut typed = type_expr_inner(expr, context);
     if let Some(type_) = context.expression_type(span) {
-        typed.type_ = type_;
+        typed.type_ = type_.clone();
+        if let TypedExprKind::Local(binding) = &typed.kind {
+            context.update_binding_type(binding, type_);
+        }
     }
     typed
 }
@@ -659,8 +686,9 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             let mut type_ = RsigType::Unknown;
             for arm in arms {
                 context.push_scope();
-                let pattern = type_pattern(arm.pattern, &scrutinee.type_, context);
+                let mut pattern = type_pattern(arm.pattern, &scrutinee.type_, context);
                 let body = type_expr(arm.body, context);
+                refine_pattern_binding_types(&mut pattern, context);
                 type_ = merge_types(type_, body.type_.clone());
                 context.pop_scope();
                 typed_arms.push(TypedMatchArm { pattern, body });
@@ -707,24 +735,34 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 };
             }
             if is_named_call(&callee_path, context) {
-                if let Some(signature) = call_signature(&callee_path, context)
-                    && args.len() < signature.params.len()
-                {
-                    return partial_call_lambda(
-                        callee_path,
-                        args,
-                        signature.params,
-                        signature.result,
-                        context,
-                    );
-                }
-                let type_ = call_result_type(&callee_path, context);
-                TypedExpr {
-                    type_,
-                    kind: TypedExprKind::Call {
-                        callee: EntityId::from_segments(callee_path),
-                        args,
-                    },
+                if let Some(signature) = call_signature(&callee_path, context) {
+                    if args.len() < signature.params.len() {
+                        return partial_call_lambda(
+                            callee_path,
+                            args,
+                            signature.params,
+                            signature.result,
+                            context,
+                        );
+                    }
+                    for (arg, expected) in args.iter().zip(signature.params.iter().cloned()) {
+                        refine_expr_as_type(arg, expected, context);
+                    }
+                    TypedExpr {
+                        type_: signature.result,
+                        kind: TypedExprKind::Call {
+                            callee: EntityId::from_segments(callee_path),
+                            args,
+                        },
+                    }
+                } else {
+                    TypedExpr {
+                        type_: RsigType::Unknown,
+                        kind: TypedExprKind::Call {
+                            callee: EntityId::from_segments(callee_path),
+                            args,
+                        },
+                    }
                 }
             } else {
                 let callee = type_path_expr(callee_path, context);
@@ -800,8 +838,9 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                     .map(|arm| {
                         context.push_scope();
                         let pattern_type = receive_pattern_type(&arm.pattern, context);
-                        let pattern = type_pattern(arm.pattern, &pattern_type, context);
+                        let mut pattern = type_pattern(arm.pattern, &pattern_type, context);
                         let body = type_expr(arm.body, context);
+                        refine_pattern_binding_types(&mut pattern, context);
                         context.pop_scope();
                         TypedReceiveArm { pattern, body }
                     })
@@ -1247,6 +1286,39 @@ fn type_pattern(
     }
 }
 
+fn refine_pattern_binding_types(pattern: &mut TypedPattern, context: &TypeContext<'_>) {
+    match pattern {
+        TypedPattern::Bind { binding, type_ } => {
+            if let Some(refined) = context.binding_type(binding) {
+                *type_ = refined;
+            }
+        }
+        TypedPattern::Constructor { payload, .. } | TypedPattern::Tuple(payload) => {
+            for pattern in payload {
+                refine_pattern_binding_types(pattern, context);
+            }
+        }
+        TypedPattern::List { prefix, tail } => {
+            for pattern in prefix {
+                refine_pattern_binding_types(pattern, context);
+            }
+            if let Some(tail) = tail {
+                refine_pattern_binding_types(tail, context);
+            }
+        }
+        TypedPattern::Record { fields, .. } => {
+            for (_, pattern) in fields {
+                refine_pattern_binding_types(pattern, context);
+            }
+        }
+        TypedPattern::Wildcard
+        | TypedPattern::Unit
+        | TypedPattern::Bool(_)
+        | TypedPattern::Int(_)
+        | TypedPattern::String(_) => {}
+    }
+}
+
 fn instantiate_constructor_payload(
     constructor: &ConstructorSignature,
     scrutinee_type: &RsigType,
@@ -1377,15 +1449,35 @@ fn typed_operator_call(
     result: RsigType,
     context: &mut TypeContext<'_>,
 ) -> TypedExpr {
+    let typed_args = args
+        .into_iter()
+        .map(|arg| type_expr(arg, context))
+        .collect::<Vec<_>>();
+    let expected_args = operator_argument_types(operator, typed_args.len());
+    for (arg, expected) in typed_args.iter().zip(expected_args) {
+        refine_expr_as_type(arg, expected, context);
+    }
     TypedExpr {
         type_: result,
         kind: TypedExprKind::Call {
             callee: EntityId::from_segments(Stdlib::prelude_path(operator)),
-            args: args
-                .into_iter()
-                .map(|arg| type_expr(arg, context))
-                .collect(),
+            args: typed_args,
         },
+    }
+}
+
+fn operator_argument_types(operator: &str, arity: usize) -> Vec<RsigType> {
+    let type_ = match operator {
+        "(+)" | "(-)" | "(*)" | "(/)" | "(%)" | "neg" => Some(RsigType::I64),
+        "(&&)" | "(||)" | "(!)" => Some(RsigType::Bool),
+        _ => None,
+    };
+    type_.into_iter().cycle().take(arity).collect()
+}
+
+fn refine_expr_as_type(expr: &TypedExpr, expected: RsigType, context: &mut TypeContext<'_>) {
+    if let TypedExprKind::Local(binding) = &expr.kind {
+        context.update_binding_type(binding, expected);
     }
 }
 
@@ -1435,12 +1527,6 @@ fn imported_constructor_signature(
                         .collect(),
                 })
         })
-}
-
-fn call_result_type(callee: &[String], context: &TypeContext<'_>) -> RsigType {
-    call_signature(callee, context)
-        .map(|signature| signature.result)
-        .unwrap_or(RsigType::Unknown)
 }
 
 fn call_signature(callee: &[String], context: &TypeContext<'_>) -> Option<FunctionSignature> {
@@ -2150,6 +2236,34 @@ mod tests {
         assert_eq!(actor.frame.captures.len(), 1);
         assert_eq!(actor.frame.captures[0].name.as_str(), "x$0");
         assert_eq!(actor.frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn lambda_ir_receive_patterns_use_inferred_payload_types() {
+        let typed = typed_program_with_inference_facts(
+            "InferredReceivePayload",
+            "type option<'a> = Some('a) | None\nfn main() { spawn { receive { Some(value) -> value + 1, None -> 0 } } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let LambdaExpr::Spawn { body, .. } = &lambda.functions[0]
+            .body
+            .tail
+            .as_ref()
+            .expect("expected spawned actor")
+        else {
+            panic!("expected spawn tail");
+        };
+        let Some(LambdaExpr::Receive { arms }) = &body.tail else {
+            panic!("expected receive tail");
+        };
+        let LambdaPattern::Constructor { payload, .. } = &arms[0].pattern else {
+            panic!("expected constructor receive pattern");
+        };
+        let LambdaPattern::Bind { type_, .. } = &payload[0] else {
+            panic!("expected constructor payload binding");
+        };
+
+        assert_eq!(type_, &RsigType::I64);
     }
 
     #[test]
