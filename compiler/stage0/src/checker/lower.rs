@@ -1357,8 +1357,8 @@ mod tests {
     use crate::infer::module::ModuleInferencer;
     use crate::parser::SourceParser;
     use crate::signature::{
-        FieldName, ImportedSignatures, ModuleName, Rsig, RsigRecordField, RsigType, RsigTypeDecl,
-        RsigTypeDeclKind, TypeName,
+        ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigRecordField,
+        RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigVariantConstructor, TypeName,
     };
 
     use crate::lambda::lower::LambdaLowerer;
@@ -1426,6 +1426,39 @@ mod tests {
                             name: FieldName::new("value"),
                             type_: RsigType::Var(crate::signature::TypeVarName::new("'a")),
                         }],
+                    },
+                    fingerprint: 0,
+                }],
+                exports: Vec::new(),
+                module_fingerprint: 0,
+            },
+        );
+        imports
+    }
+
+    fn imported_options_signature() -> ImportedSignatures {
+        let mut imports = ImportedSignatures::new();
+        imports.insert(
+            ModuleName::new("Options"),
+            Rsig {
+                module: ModuleName::new("Options"),
+                dependencies: Vec::new(),
+                types: vec![RsigTypeDecl {
+                    name: TypeName::new("option"),
+                    params: vec![crate::signature::TypeParamName::new("'a")],
+                    body: RsigTypeDeclKind::Variant {
+                        constructors: vec![
+                            RsigVariantConstructor {
+                                name: ConstructorName::new("Some"),
+                                payload: vec![RsigType::Var(crate::signature::TypeVarName::new(
+                                    "'a",
+                                ))],
+                            },
+                            RsigVariantConstructor {
+                                name: ConstructorName::new("None"),
+                                payload: Vec::new(),
+                            },
+                        ],
                     },
                     fingerprint: 0,
                 }],
@@ -1706,6 +1739,53 @@ mod tests {
         };
 
         assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn typed_hir_uses_inference_facts_for_generic_variant_constructor_results() {
+        let typed = typed_program_with_inference_facts(
+            "GenericVariantResult",
+            "type option<'a> = Some('a) | None\nfn main() { Some(1) }",
+        );
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected constructor call tail");
+        };
+        let TypedExprKind::Constructor { constructor, .. } = &tail.kind else {
+            panic!("expected generic constructor expression");
+        };
+
+        assert_eq!(constructor, &ConstructorName::new("Some"));
+        assert_eq!(
+            tail.type_,
+            RsigType::VariantApp {
+                name: TypeName::new("option"),
+                args: vec![RsigType::I64],
+            }
+        );
+    }
+
+    #[test]
+    fn typed_hir_uses_inference_facts_for_imported_generic_variant_constructor_results() {
+        let typed = typed_program_with_imports_and_inference_facts(
+            "ImportedGenericVariantResult",
+            "use Options\nfn main() { Options.Some(1) }",
+            imported_options_signature(),
+        );
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected imported constructor call tail");
+        };
+        let TypedExprKind::Constructor { constructor, .. } = &tail.kind else {
+            panic!("expected imported generic constructor expression");
+        };
+
+        assert_eq!(constructor, &ConstructorName::new("Some"));
+        assert_eq!(
+            tail.type_,
+            RsigType::VariantApp {
+                name: TypeName::new("Options.option"),
+                args: vec![RsigType::I64],
+            }
+        );
     }
 
     #[test]
