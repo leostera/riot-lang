@@ -1,34 +1,10 @@
 format_version = 1
 
-dependency_hash = "879ae7e1a7edf9cf"
-
-[[packages]]
-name = "raml"
-root = "compiler/raml"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
-
-[[packages]]
-name = "raml-native"
-root = "compiler/raml-native"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
-
-[[packages]]
-name = "riotc"
-root = "compiler/riotc"
-provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
-build_dependencies = []
-dev_dependencies = []
+dependency_hash = "961f187d0dc5e99c"
 
 [[packages]]
 name = "syn"
-root = "compiler/syn"
+root = "packages/syn"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "colors", package = { name = "colors" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = []
@@ -36,7 +12,7 @@ dev_dependencies = []
 
 [[packages]]
 name = "typ"
-root = "compiler/typ"
+root = "packages/typ"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "serde", package = { name = "serde" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
