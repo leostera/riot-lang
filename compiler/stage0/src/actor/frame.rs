@@ -245,3 +245,52 @@ fn actor_ops(block: &LambdaBlock) -> Vec<ActorFrameOp> {
     }
     ops
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use crate::lambda::ir::{BindingKey, LambdaPattern};
+    use crate::signature::{ConstructorName, RsigType, TypeName};
+
+    use super::{ActorSlotType, bind_pattern_actor_slot_types};
+
+    #[test]
+    fn generic_pattern_binders_keep_concrete_actor_slot_types() {
+        let pattern = LambdaPattern::Constructor {
+            type_name: TypeName::new("option"),
+            constructor: ConstructorName::new("Some"),
+            payload: vec![LambdaPattern::Bind {
+                binding: BindingKey::resolved("value", 0),
+                type_: RsigType::I64,
+            }],
+        };
+        let mut locals = BTreeMap::new();
+
+        bind_pattern_actor_slot_types(&pattern, Some(ActorSlotType::Value), &mut locals);
+
+        assert_eq!(locals.get("value$0"), Some(&Some(ActorSlotType::I64)));
+    }
+
+    #[test]
+    fn generic_record_pattern_binders_keep_boxed_actor_slot_types() {
+        let pattern = LambdaPattern::Record {
+            type_name: TypeName::new("box"),
+            fields: vec![(
+                "value".to_owned(),
+                LambdaPattern::Bind {
+                    binding: BindingKey::resolved("value", 0),
+                    type_: RsigType::RecordApp {
+                        name: TypeName::new("inner"),
+                        args: vec![RsigType::String],
+                    },
+                },
+            )],
+        };
+        let mut locals = BTreeMap::new();
+
+        bind_pattern_actor_slot_types(&pattern, Some(ActorSlotType::Value), &mut locals);
+
+        assert_eq!(locals.get("value$0"), Some(&Some(ActorSlotType::Value)));
+    }
+}

@@ -2068,6 +2068,27 @@ mod tests {
     }
 
     #[test]
+    fn lambda_ir_preserves_imported_generic_variant_pattern_binding_types() {
+        let typed = typed_program_with_imports_and_inference_facts(
+            "ImportedGenericVariantPatternLambda",
+            "use Options\nfn main() { let item = Options.Some(1); match item { Options.Some(value) -> value } }",
+            imported_options_signature(),
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let Some(LambdaExpr::Match { arms, .. }) = &lambda.functions[0].body.tail else {
+            panic!("expected match tail");
+        };
+        let LambdaPattern::Constructor { payload, .. } = &arms[0].pattern else {
+            panic!("expected imported constructor pattern");
+        };
+        let LambdaPattern::Bind { type_, .. } = &payload[0] else {
+            panic!("expected imported constructor payload binding");
+        };
+
+        assert_eq!(type_, &RsigType::I64);
+    }
+
+    #[test]
     fn actor_ir_classifies_generic_application_captures_as_values() {
         let typed = typed_program_with_inference_facts(
             "GenericActorCapture",
