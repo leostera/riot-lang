@@ -893,7 +893,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 if payload.is_empty() {
                     return Ok(tag_matches);
                 }
-                Ok(tag_matches)
+                self.emit_constructor_payload_pattern_test(scrutinee, tag_matches, payload)
             }
             LambdaPattern::Tuple(items) => {
                 let scrutinee = self.value_as_runtime(scrutinee.clone())?;
@@ -920,6 +920,82 @@ impl<'ctx> Codegen<'ctx, '_> {
                 )
             }
         }
+    }
+
+    fn emit_constructor_payload_pattern_test(
+        &mut self,
+        scrutinee: IntValue<'ctx>,
+        tag_matches: IntValue<'ctx>,
+        payload: &[LambdaPattern],
+    ) -> miette::Result<IntValue<'ctx>> {
+        let bool_type = self.context.bool_type();
+        let parent = self
+            .builder
+            .get_insert_block()
+            .and_then(|block| block.get_parent())
+            .ok_or_else(|| miette::miette!("missing function for constructor payload pattern"))?;
+        let start_block = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing constructor payload pattern block"))?;
+        let payload_block = self
+            .context
+            .append_basic_block(parent, "match.variant.payload");
+        let cont_block = self
+            .context
+            .append_basic_block(parent, "match.variant.cont");
+        self.builder
+            .build_conditional_branch(tag_matches, payload_block, cont_block)
+            .map_err(|error| {
+                miette::miette!("failed to emit constructor payload branch: {error}")
+            })?;
+
+        self.builder.position_at_end(payload_block);
+        let payload_value =
+            self.call_runtime_value("riot_rt_value_variant_get_payload", &[scrutinee.into()])?;
+        self.push_runtime_root(payload_value)?;
+        let payload_matches = match payload {
+            [] => bool_type.const_int(1, false),
+            [pattern] => self.emit_pattern_test(&CgValue::Value(payload_value), pattern)?,
+            patterns => {
+                let mut aggregate = bool_type.const_int(1, false);
+                for (index, pattern) in patterns.iter().enumerate() {
+                    let item = self.call_runtime_value(
+                        "riot_rt_value_tuple_get",
+                        &[payload_value.into(), self.i64_const(index as i64).into()],
+                    )?;
+                    let item_matches = self.emit_pattern_test(&CgValue::Value(item), pattern)?;
+                    aggregate = self
+                        .builder
+                        .build_and(aggregate, item_matches, "match_variant_payload")
+                        .map_err(|error| {
+                            miette::miette!("failed to combine constructor payload tests: {error}")
+                        })?;
+                }
+                aggregate
+            }
+        };
+        self.pop_runtime_roots(1)?;
+        let payload_end = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing constructor payload end block"))?;
+        self.builder
+            .build_unconditional_branch(cont_block)
+            .map_err(|error| {
+                miette::miette!("failed to leave constructor payload test: {error}")
+            })?;
+
+        self.builder.position_at_end(cont_block);
+        let phi = self
+            .builder
+            .build_phi(bool_type, "match_variant")
+            .map_err(|error| miette::miette!("failed to emit constructor payload phi: {error}"))?;
+        phi.add_incoming(&[
+            (&bool_type.const_int(0, false), start_block),
+            (&payload_matches, payload_end),
+        ]);
+        Ok(phi.as_basic_value().into_int_value())
     }
 
     fn emit_list_pattern_test(

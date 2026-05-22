@@ -1983,13 +1983,7 @@ fn validate_pattern(
                 .into());
         }
         for (payload_pattern, payload_type) in payload.iter().zip(&constructor.payload) {
-            validate_simple_payload_pattern(
-                ctx,
-                payload_pattern,
-                payload_type,
-                "variant payload",
-                "use a binder such as `Some(value)` or `_` for now",
-            )?;
+            validate_pattern(ctx, payload_pattern, Some(payload_type))?;
         }
     }
     if let AstPattern::Tuple { items, span } = pattern
