@@ -1855,10 +1855,19 @@ fn validate_block_expr(
 }
 
 fn pattern_is_irrefutable(pattern: &AstPattern) -> bool {
-    matches!(
-        pattern,
-        AstPattern::Wildcard { .. } | AstPattern::Bind { .. }
-    )
+    match pattern {
+        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => true,
+        AstPattern::Tuple { items, .. } => items.iter().all(pattern_is_irrefutable),
+        AstPattern::Record { fields, .. } => fields
+            .iter()
+            .all(|(_, field_pattern)| pattern_is_irrefutable(field_pattern)),
+        AstPattern::Unit { .. }
+        | AstPattern::Bool { .. }
+        | AstPattern::Int { .. }
+        | AstPattern::String { .. }
+        | AstPattern::List { .. }
+        | AstPattern::Constructor { .. } => false,
+    }
 }
 
 fn match_is_exhaustive(
@@ -2131,12 +2140,7 @@ fn bind_pattern(
                 })
                 .unwrap_or_default();
             for (index, nested) in payload.iter().enumerate() {
-                if let AstPattern::Bind { name, .. } = nested {
-                    bindings.insert(
-                        name.clone(),
-                        BindingKind::Value(payload_types.get(index).cloned()),
-                    );
-                }
+                bind_pattern(ctx, nested, payload_types.get(index).cloned(), bindings);
             }
         }
         AstPattern::Tuple { items, .. } => {
@@ -2145,12 +2149,7 @@ fn bind_pattern(
                 _ => Vec::new(),
             };
             for (index, nested) in items.iter().enumerate() {
-                if let AstPattern::Bind { name, .. } = nested {
-                    bindings.insert(
-                        name.clone(),
-                        BindingKind::Value(item_types.get(index).cloned()),
-                    );
-                }
+                bind_pattern(ctx, nested, item_types.get(index).cloned(), bindings);
             }
         }
         AstPattern::List { prefix, tail, .. } => {
@@ -2175,12 +2174,7 @@ fn bind_pattern(
                 .map(|shape| shape.fields.into_iter().collect::<HashMap<_, _>>())
                 .unwrap_or_default();
             for (field, nested) in fields {
-                if let AstPattern::Bind { name, .. } = nested {
-                    bindings.insert(
-                        name.clone(),
-                        BindingKind::Value(field_types.get(field).cloned()),
-                    );
-                }
+                bind_pattern(ctx, nested, field_types.get(field).cloned(), bindings);
             }
         }
         AstPattern::Wildcard { .. }
