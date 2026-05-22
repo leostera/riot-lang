@@ -2004,13 +2004,7 @@ fn validate_pattern(
                 .into());
         }
         for (item, type_) in items.iter().zip(types) {
-            validate_simple_payload_pattern(
-                ctx,
-                item,
-                type_,
-                "tuple item",
-                "use a binder or `_` for tuple items in this slice",
-            )?;
+            validate_pattern(ctx, item, Some(type_))?;
         }
     } else if let AstPattern::Tuple { items, .. } = pattern {
         for item in items {
@@ -2093,13 +2087,7 @@ fn validate_pattern(
                     )
                     .into());
             };
-            validate_simple_payload_pattern(
-                ctx,
-                field_pattern,
-                expected_type,
-                "record field",
-                "use a binder or `_` for record fields in this slice",
-            )?;
+            validate_pattern(ctx, field_pattern, Some(expected_type))?;
         }
     }
     let Some(expected) = pattern_type(ctx, pattern) else {
