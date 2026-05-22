@@ -34,6 +34,11 @@ pub(crate) enum InferError {
         context: &'static str,
         actual: RsigType,
     },
+    #[error("{context} expected a numeric value")]
+    ExpectedNumeric {
+        context: &'static str,
+        actual: RsigType,
+    },
     #[error("{0}")]
     Unify(#[from] UnifyError),
     #[error("{error}")]
@@ -51,6 +56,7 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -62,6 +68,7 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -73,6 +80,7 @@ impl InferError {
             InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -85,6 +93,7 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => false,
         }
     }
@@ -99,6 +108,7 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -111,6 +121,7 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -122,6 +133,7 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::UnknownValue(_)
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -133,6 +145,19 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
+            | InferError::ExpectedNumeric { .. }
+            | InferError::Unify(_) => None,
+        }
+    }
+
+    pub(crate) fn expected_numeric_context(&self) -> Option<(&'static str, &RsigType)> {
+        match self {
+            InferError::ExpectedNumeric { context, actual } => Some((*context, actual)),
+            InferError::At { error, .. } => error.expected_numeric_context(),
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -681,11 +706,10 @@ fn infer_expr_kind(
                     state.unify(&Type::I64, &actual)?;
                     Ok(Type::I64)
                 }
-                actual => Err(UnifyError::TypeMismatch {
-                    lhs: Type::I64,
-                    rhs: actual,
-                }
-                .into()),
+                actual => Err(InferError::ExpectedNumeric {
+                    context: "negation expression",
+                    actual: infer_type_to_rsig_type(&actual),
+                }),
             }
         }
         AstExpr::Eq { lhs, rhs, .. } => {

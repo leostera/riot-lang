@@ -201,6 +201,14 @@ impl<'a> Checker<'a> {
                 Some("use i64 operands on both sides of this arithmetic expression"),
             );
         }
+        if let Some((context, actual)) = error.expected_numeric_context() {
+            return diagnostics.at(
+                span,
+                "numeric operand required",
+                format!("this {context} has type `{}`", actual.canonical()),
+                Some("use an i64 or f64 value here"),
+            );
+        }
         if matches!(error.unsupported_reason(), Some("tuple projection")) {
             return diagnostics.at(
                 span,
