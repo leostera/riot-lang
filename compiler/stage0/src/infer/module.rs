@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use thiserror::Error;
 
@@ -225,6 +225,13 @@ impl ExpressionTypeTable {
     }
 }
 
+#[derive(Debug, Clone)]
+struct InferRecordShape {
+    type_name: TypeName,
+    type_params: Vec<TypeVarName>,
+    fields: Vec<(String, RsigType)>,
+}
+
 #[derive(Debug)]
 pub(crate) struct ModuleInferencer<'a> {
     program: &'a AstProgram,
@@ -240,11 +247,18 @@ impl<'a> ModuleInferencer<'a> {
         let mut state = State::default();
         let mut expression_types = BTreeMap::new();
         let declared_variants = declared_variant_names(self.program, self.imports);
+        let record_shapes = record_shapes(self.program, self.imports, &declared_variants);
         install_prelude(&mut state);
         install_imports(&mut state, self.program, self.imports);
         install_annotated_functions(&mut state, self.program, &declared_variants);
         for decl in &self.program.decls {
-            infer_decl(&mut state, decl, &declared_variants, &mut expression_types)?;
+            infer_decl(
+                &mut state,
+                decl,
+                &declared_variants,
+                &record_shapes,
+                &mut expression_types,
+            )?;
         }
         Ok(InferredModule {
             env: state.into_env(),
@@ -317,6 +331,110 @@ fn declared_variant_names(
         }
     }
     names
+}
+
+fn record_shapes(
+    program: &AstProgram,
+    imports: &ImportedSignatures,
+    declared_variants: &BTreeSet<TypeName>,
+) -> HashMap<String, InferRecordShape> {
+    let mut shapes = HashMap::new();
+    for decl in &program.decls {
+        match decl {
+            AstDecl::Type(type_) => {
+                let AstTypeBody::Record { fields } = &type_.body else {
+                    continue;
+                };
+                let type_name = TypeName::new(type_.name.clone());
+                let shape = InferRecordShape {
+                    type_name: type_name.clone(),
+                    type_params: type_
+                        .params
+                        .iter()
+                        .map(|param| TypeVarName::new(param.name.clone()))
+                        .collect(),
+                    fields: fields
+                        .iter()
+                        .map(|field| {
+                            (
+                                field.name.clone(),
+                                lower_type_annotation(&field.type_annotation, declared_variants),
+                            )
+                        })
+                        .collect(),
+                };
+                insert_record_shape_aliases(&mut shapes, None, &type_name, shape);
+            }
+            AstDecl::Use(use_) => {
+                let Some(rsig) = imports.get(use_.name.as_str()) else {
+                    continue;
+                };
+                for type_ in &rsig.types {
+                    let RsigTypeDeclKind::Record { fields } = &type_.body else {
+                        continue;
+                    };
+                    let type_name = imported_type_name(use_.name.as_str(), &type_.name);
+                    let shape = InferRecordShape {
+                        type_name,
+                        type_params: type_
+                            .params
+                            .iter()
+                            .map(|param| TypeVarName::new(param.as_str()))
+                            .collect(),
+                        fields: fields
+                            .iter()
+                            .map(|field| {
+                                (
+                                    field.name.as_str().to_owned(),
+                                    qualify_imported_type(use_.name.as_str(), &field.type_),
+                                )
+                            })
+                            .collect(),
+                    };
+                    insert_record_shape_aliases(
+                        &mut shapes,
+                        Some(use_.name.as_str()),
+                        &type_.name,
+                        shape,
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+    shapes
+}
+
+fn insert_record_shape_aliases(
+    shapes: &mut HashMap<String, InferRecordShape>,
+    module: Option<&str>,
+    source_name: &TypeName,
+    shape: InferRecordShape,
+) {
+    let base = source_name.as_str();
+    shapes.insert(base.to_owned(), shape.clone());
+    shapes.insert(type_constructor_name(base), shape.clone());
+    if let Some(module) = module {
+        shapes.insert(format!("{module}.{base}"), shape.clone());
+        shapes.insert(format!("{module}.{}", type_constructor_name(base)), shape);
+    }
+}
+
+fn type_constructor_name(type_name: &str) -> String {
+    let mut output = String::new();
+    let mut capitalize = true;
+    for ch in type_name.chars() {
+        if ch == '_' || ch == '-' || ch == '.' {
+            capitalize = true;
+        } else if capitalize && ch.is_ascii_lowercase() {
+            output.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            output.push(ch);
+            capitalize = false;
+        }
+    }
+    output
 }
 
 fn prelude_variant_names() -> BTreeSet<TypeName> {
@@ -520,6 +638,7 @@ fn infer_decl(
     state: &mut State,
     decl: &AstDecl,
     declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
 ) -> Result<(), InferError> {
     match decl {
@@ -551,7 +670,13 @@ fn infer_decl(
             Ok(())
         }
         AstDecl::Function(function) => {
-            let type_ = infer_function(state, function, declared_variants, expression_types)?;
+            let type_ = infer_function(
+                state,
+                function,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             state.add_value(function.name.clone(), state.generalize(type_));
             Ok(())
         }
@@ -576,6 +701,7 @@ fn infer_function(
     state: &mut State,
     function: &AstFnDecl,
     declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
 ) -> Result<Type, InferError> {
     let params = function
@@ -610,7 +736,13 @@ fn infer_function(
     for (param, type_) in function.params.iter().zip(&params) {
         state.add_value(param.clone(), state.monomorphic(type_.clone()));
     }
-    let result = infer_block(state, &function.body, declared_variants, expression_types)?;
+    let result = infer_block(
+        state,
+        &function.body,
+        declared_variants,
+        record_shapes,
+        expression_types,
+    )?;
     state.unify(&result_constraint, &result)?;
     let result = state.resolve(&result_constraint);
     state.pop_scope();
@@ -621,6 +753,7 @@ fn infer_block(
     state: &mut State,
     block: &AstBlock,
     declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
 ) -> Result<Type, InferError> {
     for stmt in &block.statements {
@@ -631,7 +764,13 @@ fn infer_block(
                 value,
                 ..
             } => {
-                let inferred = infer_expr(state, value, declared_variants, expression_types)?;
+                let inferred = infer_expr(
+                    state,
+                    value,
+                    declared_variants,
+                    record_shapes,
+                    expression_types,
+                )?;
                 let type_ = if let Some(annotation) = type_annotation {
                     let expected = rsig_type_to_infer_type(
                         &lower_type_annotation(annotation, declared_variants),
@@ -646,13 +785,25 @@ fn infer_block(
                 state.add_value(name.clone(), scheme);
             }
             AstStmt::Expr(expr) => {
-                infer_expr(state, expr, declared_variants, expression_types)?;
+                infer_expr(
+                    state,
+                    expr,
+                    declared_variants,
+                    record_shapes,
+                    expression_types,
+                )?;
             }
         }
     }
 
     if let Some(tail) = &block.tail {
-        infer_expr(state, tail, declared_variants, expression_types)
+        infer_expr(
+            state,
+            tail,
+            declared_variants,
+            record_shapes,
+            expression_types,
+        )
     } else {
         Ok(Type::Unit)
     }
@@ -662,11 +813,18 @@ fn infer_expr(
     state: &mut State,
     expr: &AstExpr,
     declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
 ) -> Result<Type, InferError> {
     let span = expr_span(expr);
-    let inferred = infer_expr_kind(state, expr, declared_variants, expression_types)
-        .map_err(|error| error.at(span))?;
+    let inferred = infer_expr_kind(
+        state,
+        expr,
+        declared_variants,
+        record_shapes,
+        expression_types,
+    )
+    .map_err(|error| error.at(span))?;
     let resolved = state.resolve(&inferred);
     expression_types.insert(span, resolved.clone());
     Ok(resolved)
@@ -676,6 +834,7 @@ fn infer_expr_kind(
     state: &mut State,
     expr: &AstExpr,
     declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
 ) -> Result<Type, InferError> {
     match expr {
@@ -712,7 +871,13 @@ fn infer_expr_kind(
             for (name, type_) in names.iter().zip(&parameter_types) {
                 state.add_value(name.clone(), state.monomorphic(type_.clone()));
             }
-            let result = infer_block(state, body, declared_variants, expression_types)?;
+            let result = infer_block(
+                state,
+                body,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             state.pop_scope();
             Ok(source_function_type(
                 parameter_types,
@@ -732,8 +897,20 @@ fn infer_expr_kind(
         | AstExpr::Mul { lhs, rhs, .. }
         | AstExpr::Div { lhs, rhs, .. }
         | AstExpr::Mod { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs, declared_variants, expression_types)?;
-            let rhs = infer_expr(state, rhs, declared_variants, expression_types)?;
+            let lhs = infer_expr(
+                state,
+                lhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            let rhs = infer_expr(
+                state,
+                rhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             if state.unify(&Type::I64, &lhs).is_err() {
                 return Err(InferError::ExpectedI64 {
                     context: "arithmetic expression",
@@ -749,7 +926,13 @@ fn infer_expr_kind(
             Ok(Type::I64)
         }
         AstExpr::Neg { expr, .. } => {
-            let actual = infer_expr(state, expr, declared_variants, expression_types)?;
+            let actual = infer_expr(
+                state,
+                expr,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             match state.resolve(&actual) {
                 Type::I64 => Ok(Type::I64),
                 Type::F64 => Ok(Type::F64),
@@ -764,14 +947,38 @@ fn infer_expr_kind(
             }
         }
         AstExpr::Eq { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs, declared_variants, expression_types)?;
-            let rhs = infer_expr(state, rhs, declared_variants, expression_types)?;
+            let lhs = infer_expr(
+                state,
+                lhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            let rhs = infer_expr(
+                state,
+                rhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             state.unify(&lhs, &rhs)?;
             Ok(Type::Bool)
         }
         AstExpr::Lt { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs, declared_variants, expression_types)?;
-            let rhs = infer_expr(state, rhs, declared_variants, expression_types)?;
+            let lhs = infer_expr(
+                state,
+                lhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            let rhs = infer_expr(
+                state,
+                rhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             state.unify(&lhs, &rhs)?;
             match state.resolve(&lhs) {
                 Type::I64 | Type::String | Type::Var(_) => Ok(Type::Bool),
@@ -782,8 +989,20 @@ fn infer_expr_kind(
             }
         }
         AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {
-            let lhs = infer_expr(state, lhs, declared_variants, expression_types)?;
-            let rhs = infer_expr(state, rhs, declared_variants, expression_types)?;
+            let lhs = infer_expr(
+                state,
+                lhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            let rhs = infer_expr(
+                state,
+                rhs,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             if state.unify(&Type::Bool, &lhs).is_err() {
                 return Err(InferError::ExpectedBool {
                     context: "logical expression",
@@ -799,7 +1018,13 @@ fn infer_expr_kind(
             Ok(Type::Bool)
         }
         AstExpr::Not { expr, .. } => {
-            let actual = infer_expr(state, expr, declared_variants, expression_types)?;
+            let actual = infer_expr(
+                state,
+                expr,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             if state.unify(&Type::Bool, &actual).is_err() {
                 return Err(InferError::ExpectedBool {
                     context: "not expression",
@@ -814,15 +1039,33 @@ fn infer_expr_kind(
             else_branch,
             ..
         } => {
-            let condition = infer_expr(state, condition, declared_variants, expression_types)?;
+            let condition = infer_expr(
+                state,
+                condition,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             if state.unify(&Type::Bool, &condition).is_err() {
                 return Err(InferError::ExpectedBool {
                     context: "if condition",
                     actual: infer_type_to_rsig_type(&state.resolve(&condition)),
                 });
             }
-            let then_type = infer_expr(state, then_branch, declared_variants, expression_types)?;
-            let else_type = infer_expr(state, else_branch, declared_variants, expression_types)?;
+            let then_type = infer_expr(
+                state,
+                then_branch,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            let else_type = infer_expr(
+                state,
+                else_branch,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             state.unify(&then_type, &else_type)?;
             Ok(state.resolve(&then_type))
         }
@@ -832,12 +1075,24 @@ fn infer_expr_kind(
             if arms.is_empty() {
                 return Err(InferError::Unsupported("empty match"));
             }
-            let scrutinee_type = infer_expr(state, scrutinee, declared_variants, expression_types)?;
+            let scrutinee_type = infer_expr(
+                state,
+                scrutinee,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             let result = state.fresh_var();
             for arm in arms {
                 state.push_scope();
                 infer_pattern(state, &arm.pattern, &scrutinee_type)?;
-                let body_type = infer_expr(state, &arm.body, declared_variants, expression_types)?;
+                let body_type = infer_expr(
+                    state,
+                    &arm.body,
+                    declared_variants,
+                    record_shapes,
+                    expression_types,
+                )?;
                 state.unify(&result, &body_type)?;
                 state.pop_scope();
             }
@@ -846,20 +1101,40 @@ fn infer_expr_kind(
         }
         AstExpr::Block { block, .. } => {
             state.push_scope();
-            let result = infer_block(state, block, declared_variants, expression_types);
+            let result = infer_block(
+                state,
+                block,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            );
             state.pop_scope();
             result
         }
         AstExpr::Tuple { items, .. } => Ok(Type::Tuple(
             items
                 .iter()
-                .map(|item| infer_expr(state, item, declared_variants, expression_types))
+                .map(|item| {
+                    infer_expr(
+                        state,
+                        item,
+                        declared_variants,
+                        record_shapes,
+                        expression_types,
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()?,
         )),
         AstExpr::List { items, .. } => {
             let element = state.fresh_var();
             for item in items {
-                let actual = infer_expr(state, item, declared_variants, expression_types)?;
+                let actual = infer_expr(
+                    state,
+                    item,
+                    declared_variants,
+                    record_shapes,
+                    expression_types,
+                )?;
                 state.unify(&element, &actual)?;
             }
             Ok(Type::List(Box::new(state.resolve(&element))))
@@ -873,30 +1148,71 @@ fn infer_expr_kind(
             let callee_type = state.instantiate(&scheme);
             let arg_types = args
                 .iter()
-                .map(|arg| infer_expr(state, arg, declared_variants, expression_types))
+                .map(|arg| {
+                    infer_expr(
+                        state,
+                        arg,
+                        declared_variants,
+                        record_shapes,
+                        expression_types,
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
         AstExpr::Apply { callee, args, .. } => {
-            let callee_type = infer_expr(state, callee, declared_variants, expression_types)?;
+            let callee_type = infer_expr(
+                state,
+                callee,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             let arg_types = args
                 .iter()
-                .map(|arg| infer_expr(state, arg, declared_variants, expression_types))
+                .map(|arg| {
+                    infer_expr(
+                        state,
+                        arg,
+                        declared_variants,
+                        record_shapes,
+                        expression_types,
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
         AstExpr::Spawn { body, .. } => {
             state.push_scope();
-            infer_block(state, body, declared_variants, expression_types)?;
+            infer_block(
+                state,
+                body,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             state.pop_scope();
             let message_type = actor_block_message_type(state, body)
                 .map(|type_| rsig_type_to_infer_type(&type_, state))
                 .unwrap_or_else(|| state.fresh_var());
             Ok(Type::ActorId(Box::new(message_type)))
         }
-        AstExpr::Record { path, .. } => Ok(Type::Record(TypeName::new(path.segments.join(".")))),
+        AstExpr::Record { path, fields, .. } => infer_record_literal(
+            state,
+            path,
+            fields,
+            record_shapes,
+            declared_variants,
+            expression_types,
+        ),
         AstExpr::TupleIndex { base, index, .. } => {
-            let inferred_base = infer_expr(state, base, declared_variants, expression_types)?;
+            let inferred_base = infer_expr(
+                state,
+                base,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
             let base_type = state.resolve(&inferred_base);
             match base_type {
                 Type::Tuple(items) => items
@@ -912,12 +1228,25 @@ fn infer_expr_kind(
                 fields
                     .iter()
                     .find_map(|(name, value)| {
-                        (name == field)
-                            .then(|| infer_expr(state, value, declared_variants, expression_types))
+                        (name == field).then(|| {
+                            infer_expr(
+                                state,
+                                value,
+                                declared_variants,
+                                record_shapes,
+                                expression_types,
+                            )
+                        })
                     })
                     .unwrap_or(Err(InferError::Unsupported("record field")))
             } else {
-                infer_expr(state, base, declared_variants, expression_types)?;
+                infer_expr(
+                    state,
+                    base,
+                    declared_variants,
+                    record_shapes,
+                    expression_types,
+                )?;
                 Ok(state.fresh_var())
             }
         }
@@ -926,7 +1255,13 @@ fn infer_expr_kind(
             for arm in arms {
                 state.push_scope();
                 infer_pattern(state, &arm.pattern, &message)?;
-                infer_expr(state, &arm.body, declared_variants, expression_types)?;
+                infer_expr(
+                    state,
+                    &arm.body,
+                    declared_variants,
+                    record_shapes,
+                    expression_types,
+                )?;
                 state.pop_scope();
             }
             Ok(Type::Unit)
@@ -940,7 +1275,15 @@ fn infer_expr_kind(
             let callee_type = state.instantiate(&scheme);
             let arg_types = args
                 .iter()
-                .map(|arg| infer_expr(state, arg, declared_variants, expression_types))
+                .map(|arg| {
+                    infer_expr(
+                        state,
+                        arg,
+                        declared_variants,
+                        record_shapes,
+                        expression_types,
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             apply_call(state, callee_type, arg_types)
         }
@@ -1180,6 +1523,56 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Int { span, .. }
         | AstExpr::Path { span, .. }
         | AstExpr::String { span, .. } => *span,
+    }
+}
+
+fn infer_record_literal(
+    state: &mut State,
+    path: &crate::ast::AstPath,
+    fields: &[(String, AstExpr)],
+    record_shapes: &HashMap<String, InferRecordShape>,
+    declared_variants: &BTreeSet<TypeName>,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<Type, InferError> {
+    let key = path.segments.join(".");
+    let Some(shape) = record_shapes.get(&key) else {
+        return Ok(Type::Record(TypeName::new(key)));
+    };
+    let result = generic_record_rsig_type(
+        shape.type_name.clone(),
+        shape.type_params.iter().map(|param| param.as_str()),
+    );
+    let mut vars = BTreeMap::new();
+    let result = rsig_type_to_infer_type_with_vars(&result, state, &mut vars);
+    for (name, value) in fields {
+        let Some((_, expected)) = shape
+            .fields
+            .iter()
+            .find(|(field_name, _)| field_name == name)
+        else {
+            continue;
+        };
+        let expected = rsig_type_to_infer_type_with_vars(expected, state, &mut vars);
+        let actual = infer_expr(
+            state,
+            value,
+            declared_variants,
+            record_shapes,
+            expression_types,
+        )?;
+        state.unify(&expected, &actual)?;
+    }
+    Ok(state.resolve(&result))
+}
+
+fn generic_record_rsig_type<'a>(name: TypeName, params: impl Iterator<Item = &'a str>) -> RsigType {
+    let args = params
+        .map(|param| RsigType::Var(TypeVarName::new(param)))
+        .collect::<Vec<_>>();
+    if args.is_empty() {
+        RsigType::Record(name)
+    } else {
+        RsigType::RecordApp { name, args }
     }
 }
 
