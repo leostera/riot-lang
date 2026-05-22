@@ -39,6 +39,11 @@ pub(crate) enum InferError {
         context: &'static str,
         actual: RsigType,
     },
+    #[error("{context} expected a comparable value")]
+    ExpectedComparable {
+        context: &'static str,
+        actual: RsigType,
+    },
     #[error("{0}")]
     Unify(#[from] UnifyError),
     #[error("{error}")]
@@ -57,6 +62,7 @@ impl InferError {
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -69,6 +75,7 @@ impl InferError {
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -81,6 +88,7 @@ impl InferError {
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -94,6 +102,7 @@ impl InferError {
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => false,
         }
     }
@@ -109,6 +118,7 @@ impl InferError {
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -122,6 +132,7 @@ impl InferError {
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -134,6 +145,7 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedI64 { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -146,6 +158,7 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedNumeric { .. }
+            | InferError::ExpectedComparable { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -158,6 +171,20 @@ impl InferError {
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
             | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedComparable { .. }
+            | InferError::Unify(_) => None,
+        }
+    }
+
+    pub(crate) fn expected_comparable_context(&self) -> Option<(&'static str, &RsigType)> {
+        match self {
+            InferError::ExpectedComparable { context, actual } => Some((*context, actual)),
+            InferError::At { error, .. } => error.expected_comparable_context(),
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
+            | InferError::ExpectedNumeric { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -724,11 +751,10 @@ fn infer_expr_kind(
             state.unify(&lhs, &rhs)?;
             match state.resolve(&lhs) {
                 Type::I64 | Type::String | Type::Var(_) => Ok(Type::Bool),
-                actual => Err(UnifyError::TypeMismatch {
-                    lhs: Type::I64,
-                    rhs: actual,
-                }
-                .into()),
+                actual => Err(InferError::ExpectedComparable {
+                    context: "ordering expression",
+                    actual: infer_type_to_rsig_type(&actual),
+                }),
             }
         }
         AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {

@@ -209,6 +209,14 @@ impl<'a> Checker<'a> {
                 Some("use an i64 or f64 value here"),
             );
         }
+        if let Some((context, actual)) = error.expected_comparable_context() {
+            return diagnostics.at(
+                span,
+                "ordering operands are not comparable",
+                format!("this {context} has type `{}`", actual.canonical()),
+                Some("compare i64 values with i64 values or string values with string values"),
+            );
+        }
         if matches!(error.unsupported_reason(), Some("tuple projection")) {
             return diagnostics.at(
                 span,
