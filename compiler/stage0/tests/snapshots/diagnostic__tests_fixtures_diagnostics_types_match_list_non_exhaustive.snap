@@ -1,0 +1,24 @@
+---
+source: tests/fixtures.rs
+assertion_line: 1422
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/match_list_non_exhaustive.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × non-exhaustive match expression
+   ╭─[tests/fixtures/diagnostics/types/match_list_non_exhaustive.ml:3:7]
+ 2 │       let items = [1, 2];
+ 3 │ ╭─▶   dbg(match items {
+ 4 │ │       [] -> 0
+ 5 │ ├─▶   })
+   · ╰──── the match arms do not cover every value of the scrutinee type
+ 6 │     }
+   ╰────
+  help: add the missing constructors, list cases, or a final `_ -> ...` arm
