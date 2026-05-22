@@ -1304,7 +1304,9 @@ mod tests {
     use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
-    use crate::signature::{FunctionSignature, FunctionTable, ImportedSignatures, RsigType};
+    use crate::signature::{
+        FunctionSignature, FunctionTable, ImportedSignatures, RsigType, TypeName,
+    };
 
     fn span() -> TextSpan {
         TextSpan::new(0, 0)
@@ -1382,6 +1384,42 @@ mod tests {
         AstExpr::Apply {
             callee: Box::new(callee),
             args,
+            span: span(),
+        }
+    }
+
+    fn tuple(items: Vec<AstExpr>) -> AstExpr {
+        AstExpr::Tuple {
+            items,
+            span: span(),
+        }
+    }
+
+    fn tuple_index(base: AstExpr, index: usize) -> AstExpr {
+        AstExpr::TupleIndex {
+            base: Box::new(base),
+            index,
+            span: span(),
+        }
+    }
+
+    fn record(type_name: &str, fields: Vec<(&str, AstExpr)>) -> AstExpr {
+        AstExpr::Record {
+            path: AstPath {
+                segments: vec![type_name.to_owned()],
+            },
+            fields: fields
+                .into_iter()
+                .map(|(name, value)| (name.to_owned(), value))
+                .collect(),
+            span: span(),
+        }
+    }
+
+    fn field(base: AstExpr, name: &str) -> AstExpr {
+        AstExpr::Field {
+            base: Box::new(base),
+            field: name.to_owned(),
             span: span(),
         }
     }
@@ -1569,6 +1607,119 @@ mod tests {
 
         assert_eq!(Some(span()), err.span());
         assert_eq!(Some("nested path call"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn empty_matches_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                AstExpr::Match {
+                    scrutinee: Box::new(int(1)),
+                    arms: Vec::new(),
+                    span: span(),
+                },
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("empty match"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn tuple_projection_index_failures_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                tuple_index(tuple(vec![int(1)]), 1),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("tuple projection index"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn tuple_projection_shape_failures_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                tuple_index(bool_(true), 0),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("tuple projection"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn inline_record_field_failures_are_classified() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                field(record("point", vec![("x", int(1))]), "y"),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(Some("record field"), err.unsupported_reason());
+    }
+
+    #[test]
+    fn inline_record_field_successes_infer_the_field_type() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                field(record("point", vec![("x", int(1))]), "x"),
+            )],
+        };
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("main"),
+            Some(&FunctionSignature::new(Vec::new(), RsigType::I64))
+        );
+    }
+
+    #[test]
+    fn record_literals_infer_nominal_record_types() {
+        let program = AstProgram {
+            decls: vec![function(
+                "main",
+                vec![],
+                Vec::new(),
+                record("point", vec![("x", int(1))]),
+            )],
+        };
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("main"),
+            Some(&FunctionSignature::new(
+                Vec::new(),
+                RsigType::Record(TypeName::new("point"))
+            ))
+        );
     }
 
     #[test]
