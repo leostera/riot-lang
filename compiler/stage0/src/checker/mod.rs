@@ -2183,6 +2183,19 @@ fn validate_pattern(
     }
     if let AstPattern::Record { path, fields, span } = pattern {
         let Some(shape) = record_shape_for_pattern(ctx, path) else {
+            if path.segments.len() > 2 {
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "unsupported nested record pattern",
+                        format!(
+                            "stage0 can resolve local records and two-segment imported records, but `{}` has more segments",
+                            path.segments.join(".")
+                        ),
+                        Some("use a local record type or a two-segment imported record path"),
+                    )
+                    .into());
+            }
             return Err(ctx
                 .diagnostic(
                     *span,
