@@ -1951,6 +1951,7 @@ fn validate_pattern(
     pattern: &AstPattern,
     scrutinee_type: Option<&RsigType>,
 ) -> miette::Result<()> {
+    validate_unique_pattern_bindings(ctx, pattern)?;
     if let AstPattern::Constructor {
         path,
         payload,
@@ -2336,6 +2337,59 @@ fn pattern_span(pattern: &AstPattern) -> TextSpan {
         | AstPattern::Int { span, .. }
         | AstPattern::String { span, .. } => *span,
     }
+}
+
+fn validate_unique_pattern_bindings(
+    ctx: &ValidationContext<'_>,
+    pattern: &AstPattern,
+) -> miette::Result<()> {
+    let mut seen = HashSet::new();
+    validate_unique_pattern_bindings_inner(ctx, pattern, &mut seen)
+}
+
+fn validate_unique_pattern_bindings_inner(
+    ctx: &ValidationContext<'_>,
+    pattern: &AstPattern,
+    seen: &mut HashSet<String>,
+) -> miette::Result<()> {
+    match pattern {
+        AstPattern::Bind { name, span } => {
+            if !seen.insert(name.clone()) {
+                return Err(ctx
+                    .diagnostic(
+                        *span,
+                        "duplicate pattern binding",
+                        format!("`{name}` is already bound by this pattern"),
+                        Some("use a unique name for each binding in the pattern"),
+                    )
+                    .into());
+            }
+        }
+        AstPattern::Constructor { payload, .. } | AstPattern::Tuple { items: payload, .. } => {
+            for nested in payload {
+                validate_unique_pattern_bindings_inner(ctx, nested, seen)?;
+            }
+        }
+        AstPattern::List { prefix, tail, .. } => {
+            for nested in prefix {
+                validate_unique_pattern_bindings_inner(ctx, nested, seen)?;
+            }
+            if let Some(tail) = tail {
+                validate_unique_pattern_bindings_inner(ctx, tail, seen)?;
+            }
+        }
+        AstPattern::Record { fields, .. } => {
+            for (_, nested) in fields {
+                validate_unique_pattern_bindings_inner(ctx, nested, seen)?;
+            }
+        }
+        AstPattern::Wildcard { .. }
+        | AstPattern::Unit { .. }
+        | AstPattern::Bool { .. }
+        | AstPattern::Int { .. }
+        | AstPattern::String { .. } => {}
+    }
+    Ok(())
 }
 
 fn record_shape_for_pattern(
