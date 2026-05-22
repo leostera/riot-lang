@@ -15,6 +15,6 @@ stderr:
 run:
 status: success
 stdout:
-None;[_]
+None;[_];ok
 stderr:
 <empty>

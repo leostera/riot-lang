@@ -1,5 +1,5 @@
 type constructor = { name: String }
-type pattern = PWildcard | PConstructor(String) | PListEmpty | PListCons
+type pattern = PWildcard | PConstructor(String) | PListEmpty | PListCons | PListTail
 type typ = TVariant(List<constructor>) | TList | TInt
 
 type coverage = { exhaustive: bool, missing: List<String> }
@@ -32,6 +32,7 @@ fn has_empty(patterns: List<pattern>) -> bool {
     [] -> false,
     [PWildcard, .._] -> true,
     [PListEmpty, .._] -> true,
+    [PListTail, .._] -> true,
     [_, ..rest] -> has_empty(rest)
   }
 }
@@ -41,6 +42,7 @@ fn has_cons(patterns: List<pattern>) -> bool {
     [] -> false,
     [PWildcard, .._] -> true,
     [PListCons, .._] -> true,
+    [PListTail, .._] -> true,
     [_, ..rest] -> has_cons(rest)
   }
 }
@@ -77,5 +79,6 @@ fn join(items: List<String>) -> String {
 fn main() {
   let variant = check(TVariant([constructor { name: "Some" }, constructor { name: "None" }]), [PConstructor("Some")]);
   let list = check(TList, [PListEmpty]);
-  dbg(string_concat(join(variant.missing), string_concat(";", join(list.missing))))
+  let tail = check(TList, [PListTail]);
+  dbg(string_concat(join(variant.missing), string_concat(";", string_concat(join(list.missing), string_concat(";", join(tail.missing))))))
 }
