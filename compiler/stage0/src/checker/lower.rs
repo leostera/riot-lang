@@ -743,8 +743,12 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             params,
             param_types,
             body,
-            ..
+            span,
         } => {
+            let inferred_param_types = context
+                .expression_type(span)
+                .map(|type_| arrow_parameter_types(&type_, params.len()))
+                .unwrap_or_default();
             context.push_scope();
             let typed_params = params
                 .iter()
@@ -756,6 +760,7 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                         .map(|annotation| {
                             lower_type_annotation(annotation, context.declared_variants)
                         })
+                        .or_else(|| inferred_param_types.get(index).cloned())
                         .unwrap_or(RsigType::Unknown);
                     let binding = context.bind(name, type_.clone());
                     TypedParam { binding, type_ }
@@ -1052,6 +1057,19 @@ fn ast_expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Path { span, .. }
         | AstExpr::String { span, .. } => *span,
     }
+}
+
+fn arrow_parameter_types(type_: &RsigType, arity: usize) -> Vec<RsigType> {
+    let mut params = Vec::new();
+    let mut current = type_;
+    while params.len() < arity {
+        let RsigType::Arrow { parameter, result } = current else {
+            break;
+        };
+        params.push(parameter.as_ref().clone());
+        current = result;
+    }
+    params
 }
 
 fn rsig_source_function_type(params: Vec<RsigType>, result: RsigType) -> RsigType {
@@ -1805,6 +1823,22 @@ mod tests {
         assert_eq!(second_a.name, "a");
         assert_ne!(first_a, second_a);
         assert_eq!(captured_a, first_a);
+    }
+
+    #[test]
+    fn typed_hir_uses_inference_facts_for_lambda_parameter_types() {
+        let typed = typed_program_with_inference_facts(
+            "LambdaParamFacts",
+            "fn main() { let inc = fn(x) { x + 1 }; inc }",
+        );
+        let Some(TypedStmt::Let { value, .. }) = typed.functions[0].body.statements.first() else {
+            panic!("expected a let-bound lambda");
+        };
+        let TypedExprKind::Lambda { params, .. } = &value.kind else {
+            panic!("expected lambda value");
+        };
+
+        assert_eq!(params[0].type_, RsigType::I64);
     }
 
     #[test]
