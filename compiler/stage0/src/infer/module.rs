@@ -49,6 +49,14 @@ impl InferError {
         }
     }
 
+    pub(crate) fn unsupported_reason(&self) -> Option<&'static str> {
+        match self {
+            InferError::Unsupported(reason) => Some(reason),
+            InferError::At { error, .. } => error.unsupported_reason(),
+            InferError::UnknownValue(_) | InferError::Unify(_) => None,
+        }
+    }
+
     pub(crate) fn is_occurs_check(&self) -> bool {
         match self {
             InferError::Unify(UnifyError::OccursCheck { .. }) => true,

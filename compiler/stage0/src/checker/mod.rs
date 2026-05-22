@@ -179,6 +179,14 @@ impl<'a> Checker<'a> {
                 Some("make both tuple expressions have the same number of fields"),
             );
         }
+        if matches!(error.unsupported_reason(), Some("tuple projection")) {
+            return diagnostics.at(
+                span,
+                "tuple projection on non-tuple value",
+                "only tuple values can be projected with `.0`, `.1`, and similar indexes",
+                Some("project a tuple value or remove the tuple index"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),
