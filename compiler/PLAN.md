@@ -65,6 +65,9 @@ Known hardening gaps discovered by compiler-shaped fixtures:
 - Unannotated mutually recursive helpers are not inferred yet. Compiler-shaped
   code that wants mutually recursive `rename_expr`/`rename_args` helpers should
   add annotations today or wait for a future recursive inference slice.
+- Matching on a tuple scrutinee with nested variant payload patterns currently
+  appears unreliable in executable fixtures; prefer sequential matches until a
+  focused lowering/runtime slice pins and fixes tuple-of-constructor patterns.
 
 `compiler/riotc` may remain as an eventual consumer, but it should not drive the
 loop until stage0 is sturdy enough to serve as the reference implementation.
