@@ -1240,14 +1240,23 @@ fn infer_expr_kind(
                     })
                     .unwrap_or(Err(InferError::Unsupported("record field")))
             } else {
-                infer_expr(
+                let inferred_base = infer_expr(
                     state,
                     base,
                     declared_variants,
                     record_shapes,
                     expression_types,
                 )?;
-                Ok(state.fresh_var())
+                let base_type = state.resolve(&inferred_base);
+                if let Some(type_) =
+                    infer_record_field_type(state, &base_type, field, record_shapes)
+                {
+                    Ok(type_)
+                } else if matches!(base_type, Type::Var(_)) {
+                    Ok(state.fresh_var())
+                } else {
+                    Ok(state.fresh_var())
+                }
             }
         }
         AstExpr::Receive { arms, .. } => {
@@ -1565,6 +1574,31 @@ fn infer_record_literal(
     Ok(state.resolve(&result))
 }
 
+fn infer_record_field_type(
+    state: &mut State,
+    base_type: &Type,
+    field: &str,
+    record_shapes: &HashMap<String, InferRecordShape>,
+) -> Option<Type> {
+    let (name, args) = match base_type {
+        Type::Record(name) => (name, Vec::new()),
+        Type::RecordApp { name, args } => (name, args.clone()),
+        _ => return None,
+    };
+    let shape = record_shapes.get(name.as_str())?;
+    let mut vars = shape
+        .type_params
+        .iter()
+        .cloned()
+        .zip(args)
+        .collect::<BTreeMap<_, _>>();
+    shape
+        .fields
+        .iter()
+        .find_map(|(name, type_)| (name == field).then_some(type_))
+        .map(|type_| rsig_type_to_infer_type_with_vars(type_, state, &mut vars))
+}
+
 fn generic_record_rsig_type<'a>(name: TypeName, params: impl Iterator<Item = &'a str>) -> RsigType {
     let args = params
         .map(|param| RsigType::Var(TypeVarName::new(param)))
@@ -1739,7 +1773,8 @@ fn qualify_imported_scheme(module_name: &str, scheme: &RsigTypeScheme) -> RsigTy
 mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstMatchArm, AstPath, AstPattern, AstProgram,
-        AstReceiveArm, AstStmt, AstUseDecl, TextSpan,
+        AstReceiveArm, AstRecordTypeField, AstStmt, AstTypeAnnotation, AstTypeBody, AstTypeDecl,
+        AstTypeExpr, AstTypeParam, AstUseDecl, TextSpan,
     };
     use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
@@ -1871,6 +1906,35 @@ mod tests {
             field: name.to_owned(),
             span: span(),
         }
+    }
+
+    fn type_var(name: &str) -> AstTypeAnnotation {
+        AstTypeAnnotation {
+            text: name.to_owned(),
+            syntax: AstTypeExpr::Var {
+                name: name.to_owned(),
+                span: span(),
+            },
+            span: span(),
+        }
+    }
+
+    fn generic_record_type(name: &str, param: &str, field: &str) -> AstDecl {
+        AstDecl::Type(AstTypeDecl {
+            name: name.to_owned(),
+            name_span: span(),
+            params: vec![AstTypeParam {
+                name: param.to_owned(),
+                span: span(),
+            }],
+            body: AstTypeBody::Record {
+                fields: vec![AstRecordTypeField {
+                    name: field.to_owned(),
+                    type_annotation: type_var(param),
+                }],
+            },
+            span: span(),
+        })
     }
 
     fn receive(pattern: AstPattern) -> AstExpr {
@@ -2291,6 +2355,32 @@ mod tests {
 
         assert_eq!(TypeName::new("option"), name);
         assert_eq!(vec![*parameter], args);
+    }
+
+    #[test]
+    fn generic_record_field_access_infers_substituted_field_type() {
+        let program = AstProgram {
+            decls: vec![
+                generic_record_type("box", "'a", "value"),
+                function(
+                    "main",
+                    vec![],
+                    vec![AstStmt::Let {
+                        name: "item".to_owned(),
+                        type_annotation: None,
+                        value: record("box", vec![("value", int(1))]),
+                    }],
+                    field(path("item"), "value"),
+                ),
+            ],
+        };
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("main"),
+            Some(&FunctionSignature::new(vec![], RsigType::I64))
+        );
     }
 
     #[test]

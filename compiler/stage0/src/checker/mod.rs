@@ -1939,7 +1939,10 @@ fn non_exhaustive_match_message(
     if let Some(RsigType::List(_)) = scrutinee_type {
         let missing = missing_list_cases(arms);
         if !missing.is_empty() {
-            return format!("the match arms are missing list case(s): {}", missing.join(", "));
+            return format!(
+                "the match arms are missing list case(s): {}",
+                missing.join(", ")
+            );
         }
     }
     if let Some(type_) = scrutinee_type {
@@ -2828,21 +2831,25 @@ fn validate_declared_record_field(
     let Some(base_type) = simple_expr_type(ctx, base, bindings) else {
         return Ok(());
     };
-    let RsigType::Record(type_name) = base_type else {
-        if matches!(base_type, RsigType::Unknown | RsigType::Var(_)) {
-            return Ok(());
+    let type_name = match base_type {
+        RsigType::Record(type_name)
+        | RsigType::RecordApp {
+            name: type_name, ..
+        } => type_name,
+        RsigType::Unknown | RsigType::Var(_) => return Ok(()),
+        _ => {
+            return Err(ctx
+                .diagnostic(
+                    span,
+                    "field access requires a record",
+                    format!(
+                        "this value has type `{}`, so it has no field named `{field}`",
+                        base_type.canonical()
+                    ),
+                    Some("access a field on a record value or remove the field projection"),
+                )
+                .into());
         }
-        return Err(ctx
-            .diagnostic(
-                span,
-                "field access requires a record",
-                format!(
-                    "this value has type `{}`, so it has no field named `{field}`",
-                    base_type.canonical()
-                ),
-                Some("access a field on a record value or remove the field projection"),
-            )
-            .into());
     };
     let Some(shape) = ctx.record_shapes_by_type.get(&type_name) else {
         return Ok(());
