@@ -120,6 +120,17 @@ impl<'a> Checker<'a> {
             );
         }
         if let Some((lhs, rhs)) = error.type_mismatch_types() {
+            let lhs_is_arrow = matches!(lhs, RsigType::Arrow { .. });
+            let rhs_is_arrow = matches!(rhs, RsigType::Arrow { .. });
+            if lhs_is_arrow != rhs_is_arrow {
+                let actual = if lhs_is_arrow { &rhs } else { &lhs };
+                return diagnostics.at(
+                    span,
+                    "called value is not a function",
+                    format!("this value has type `{}`, so it cannot be called", actual.canonical()),
+                    Some("call a function value or remove the function arguments"),
+                );
+            }
             return diagnostics.at(
                 span,
                 "inferred types do not match",
