@@ -973,6 +973,66 @@ fn imported_variant_annotations_use_rsig() -> FixtureResult {
 }
 
 #[test]
+fn imported_generic_variant_pattern_uses_rsig_type_args() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let options = temp_dir.path().join("options.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &options,
+        "type option<'a> = Some('a) | None\nfn make_i64(value: i64) -> option<i64> { Some(value) }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Options\nfn main() { let label = match Options.make_i64(1) { Options.Some(value) -> if value == 1 { \"one\" } else { \"other\" }, _ -> \"none\" }; dbg(label) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&options)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected generic variant compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported generic variant pattern compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"one\n" {
+        return fail(format!(
+            "unexpected imported generic variant stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_compiler_data_model_flows_through_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
