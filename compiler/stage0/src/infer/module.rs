@@ -49,6 +49,14 @@ impl InferError {
         }
     }
 
+    pub(crate) fn is_occurs_check(&self) -> bool {
+        match self {
+            InferError::Unify(UnifyError::OccursCheck { .. }) => true,
+            InferError::At { error, .. } => error.is_occurs_check(),
+            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => false,
+        }
+    }
+
     fn at(self, span: TextSpan) -> Self {
         match self {
             InferError::At { .. } => self,

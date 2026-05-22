@@ -111,6 +111,14 @@ impl<'a> Checker<'a> {
             .or_else(|| first_decl_span(program))
             .unwrap_or_else(|| TextSpan::new(0, self.source.len().min(1)));
         let diagnostics = SourceDiagnostics::new(self.source_path, self.source);
+        if error.is_occurs_check() {
+            return diagnostics.at(
+                span,
+                "recursive type inferred",
+                "this expression would require a value to have a type that contains itself",
+                Some("avoid applying a value to itself or add an explicit non-recursive function type boundary"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),
