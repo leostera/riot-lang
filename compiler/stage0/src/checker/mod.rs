@@ -1861,11 +1861,13 @@ fn pattern_is_irrefutable(pattern: &AstPattern) -> bool {
         AstPattern::Record { fields, .. } => fields
             .iter()
             .all(|(_, field_pattern)| pattern_is_irrefutable(field_pattern)),
+        AstPattern::List { prefix, tail, .. } => {
+            prefix.is_empty() && tail.as_deref().is_some_and(pattern_is_irrefutable)
+        }
         AstPattern::Unit { .. }
         | AstPattern::Bool { .. }
         | AstPattern::Int { .. }
         | AstPattern::String { .. }
-        | AstPattern::List { .. }
         | AstPattern::Constructor { .. } => false,
     }
 }
