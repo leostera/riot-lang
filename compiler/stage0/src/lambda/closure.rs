@@ -55,6 +55,7 @@ fn closure_convert_expr(expr: &mut LambdaExpr) {
             params,
             captures,
             body,
+            ..
         } => {
             closure_convert_block(body);
             let bound = params

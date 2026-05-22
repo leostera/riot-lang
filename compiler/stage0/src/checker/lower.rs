@@ -2138,6 +2138,21 @@ mod tests {
     }
 
     #[test]
+    fn actor_ir_classifies_inferred_lambda_param_captures_as_i64() {
+        let typed = typed_program_with_inference_facts(
+            "InferredLambdaParamActorCapture",
+            "fn main() { let f = fn(x) { let actor = spawn { let kept = x; () }; x + 1 }; f }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let actor_ir = ActorIrLowerer::new(&ImportedSignatures::new()).lower(&lambda);
+        let actor = actor_ir.actors.first().expect("expected spawned actor");
+
+        assert_eq!(actor.frame.captures.len(), 1);
+        assert_eq!(actor.frame.captures[0].name.as_str(), "x$0");
+        assert_eq!(actor.frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
     fn imported_record_field_maps_qualify_field_types() {
         let mut imports = ImportedSignatures::new();
         imports.insert(

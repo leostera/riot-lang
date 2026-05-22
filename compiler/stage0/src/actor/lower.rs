@@ -122,10 +122,15 @@ fn collect_actors_from_expr(
                 collect_actors_from_expr(arg, locals, context, actors);
             }
         }
-        LambdaExpr::Lambda { params, body, .. } => {
+        LambdaExpr::Lambda {
+            params,
+            param_types,
+            body,
+            ..
+        } => {
             let mut lambda_locals = locals.clone();
-            for param in params {
-                lambda_locals.insert(param.as_str().to_owned(), None);
+            for (param, type_) in params.iter().zip(param_types) {
+                lambda_locals.insert(param.as_str().to_owned(), ActorSlotType::from_rsig(type_));
             }
             collect_actors_from_block(body, &mut lambda_locals, context, actors);
         }

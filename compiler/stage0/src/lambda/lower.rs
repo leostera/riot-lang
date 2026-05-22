@@ -174,14 +174,17 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> LambdaExpr {
         },
         TypedExprKind::Lambda { params, body } => {
             context.push_scope();
-            let params = params
-                .into_iter()
-                .map(|param| Param::from_key(context.bind_existing(&param.binding)))
-                .collect::<Vec<_>>();
+            let mut lowered_params = Vec::new();
+            let mut param_types = Vec::new();
+            for param in params {
+                lowered_params.push(Param::from_key(context.bind_existing(&param.binding)));
+                param_types.push(param.type_);
+            }
             let body = lower_block(*body, context);
             context.pop_scope();
             LambdaExpr::Lambda {
-                params,
+                params: lowered_params,
+                param_types,
                 captures: Vec::new(),
                 body: Box::new(body),
             }

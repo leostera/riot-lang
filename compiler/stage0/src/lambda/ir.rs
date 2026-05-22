@@ -227,6 +227,7 @@ pub(crate) enum LambdaExpr {
     },
     Lambda {
         params: Vec<Param>,
+        param_types: Vec<RsigType>,
         captures: Vec<Capture>,
         body: Box<LambdaBlock>,
     },

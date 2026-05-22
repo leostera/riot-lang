@@ -509,9 +509,10 @@ impl<'ctx> Codegen<'ctx, '_> {
             } => self.emit_apply(callee, args, result, env),
             LambdaExpr::Lambda {
                 params,
+                param_types,
                 captures,
                 body,
-            } => self.emit_lambda_value(params, captures, body, env),
+            } => self.emit_lambda_value(params, param_types, captures, body, env),
             LambdaExpr::Unit => Ok(CgValue::Unit),
             LambdaExpr::Tuple(items) => self.emit_value_sequence("riot_rt_value_tuple", items, env),
             LambdaExpr::List(items) => self.emit_value_sequence("riot_rt_value_list", items, env),
@@ -1547,11 +1548,12 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn emit_lambda_value(
         &mut self,
         params: &[Param],
+        param_types: &[RsigType],
         captures: &[Capture],
         body: &LambdaBlock,
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        let apply = self.declare_lambda_apply_function(params, captures, body)?;
+        let apply = self.declare_lambda_apply_function(params, param_types, captures, body)?;
         let mut values = Vec::with_capacity(captures.len());
         let mut rooted_values = 0;
         for capture in captures {
@@ -1650,6 +1652,7 @@ impl<'ctx> Codegen<'ctx, '_> {
     fn declare_lambda_apply_function(
         &mut self,
         params: &[Param],
+        param_types: &[RsigType],
         captures: &[Capture],
         body: &LambdaBlock,
     ) -> miette::Result<PointerValue<'ctx>> {
@@ -1706,6 +1709,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 nested_captures.push(Capture::from_key(param.key().clone()));
                 let nested = LambdaExpr::Lambda {
                     params: rest.to_vec(),
+                    param_types: param_types.iter().skip(1).cloned().collect(),
                     captures: nested_captures,
                     body: Box::new(body.clone()),
                 };
@@ -3277,14 +3281,18 @@ fn mark_expr_constraints(
         }
         LambdaExpr::Lambda {
             params: lambda_params,
+            param_types,
             body,
             ..
         } => {
             let mut nested_locals = locals.clone();
-            for param in lambda_params {
-                nested_locals.insert(param.as_str().to_owned(), AbiType::Unknown);
+            for (param, type_) in lambda_params.iter().zip(param_types) {
+                nested_locals.insert(param.as_str().to_owned(), AbiType::from_rsig(type_));
             }
-            let mut nested_params = vec![AbiType::Unknown; lambda_params.len()];
+            let mut nested_params = param_types
+                .iter()
+                .map(AbiType::from_rsig)
+                .collect::<Vec<_>>();
             infer_block_abi(
                 body,
                 lambda_params,
@@ -3449,6 +3457,7 @@ mod tests {
                     }],
                     tail: Some(LambdaExpr::Lambda {
                         params: vec![Param::from_key(x)],
+                        param_types: vec![RsigType::Unknown],
                         captures: vec![Capture::from_key(n.clone())],
                         body: Box::new(LambdaBlock {
                             statements: Vec::new(),
@@ -3489,6 +3498,7 @@ mod tests {
                     tail: Some(LambdaExpr::Apply {
                         callee: Box::new(LambdaExpr::Lambda {
                             params: vec![Param::from_key(x.clone())],
+                            param_types: vec![RsigType::I64],
                             captures: Vec::new(),
                             body: Box::new(LambdaBlock {
                                 statements: Vec::new(),
