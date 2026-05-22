@@ -1060,6 +1060,72 @@ fn imported_generic_variant_pattern_uses_rsig_type_args() -> FixtureResult {
 }
 
 #[test]
+fn imported_generic_variant_payload_tests_nested_imported_record_pattern() -> FixtureResult {
+    ensure_release_runtime_built()?;
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let boxes = temp_dir.path().join("boxes.ml");
+    let options = temp_dir.path().join("options.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &boxes,
+        "type box<'a> = { value: 'a }\nfn make_i64(value: i64) -> box<i64> { box { value: value } }\n",
+    )?;
+    std::fs::write(&options, "type option<'a> = Some('a) | None\n")?;
+    std::fs::write(
+        &main,
+        "use Boxes\nuse Options\nfn main() { let wrapped = Options.Some(Boxes.make_i64(1)); let label = match wrapped { Options.Some(Boxes.box { value: value }) -> if value == 1 { \"one\" } else { \"other\" }, Options.None -> \"none\" }; dbg(label) }\n",
+    )?;
+
+    for source in [&boxes, &options] {
+        let compile_lib = Command::new(cargo_bin("stage0"))
+            .current_dir(manifest_dir())
+            .arg("compile-lib")
+            .arg(source)
+            .arg("--out-dir")
+            .arg(&out_dir)
+            .output()?;
+        if !compile_lib.status.success() {
+            return fail(format!(
+                "expected imported nested payload dependency compile-lib to succeed for {}:\n{}",
+                source.display(),
+                String::from_utf8_lossy(&compile_lib.stderr)
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported generic variant nested imported record pattern compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"one\n" {
+        return fail(format!(
+            "unexpected imported generic variant nested imported record stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_variant_non_exhaustive_names_missing_constructor() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
