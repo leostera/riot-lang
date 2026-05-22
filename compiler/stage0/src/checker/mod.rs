@@ -1263,7 +1263,12 @@ fn record_shapes(
                             .collect(),
                         fields: fields
                             .iter()
-                            .map(|field| (field.name.as_str().to_owned(), field.type_.clone()))
+                            .map(|field| {
+                                (
+                                    field.name.as_str().to_owned(),
+                                    qualify_imported_type(use_.name.as_str(), &field.type_),
+                                )
+                            })
                             .collect(),
                     };
                     insert_record_shape_aliases(

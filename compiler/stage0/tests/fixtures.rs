@@ -1265,6 +1265,186 @@ fn imported_generic_record_pattern_uses_rsig_type_args() -> FixtureResult {
 }
 
 #[test]
+fn imported_tuple_pattern_tests_nested_items_through_rsig() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64)\nfn good() -> (token, token) { (Ident(\"ok\"), Number(7)) }\nfn bad() -> (token, token) { (Ident(\"bad\"), Ident(\"not-number\")) }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Syntax\nfn classify(pair: (Syntax.token, Syntax.token)) { match pair { (Syntax.Ident(\"ok\"), Syntax.Number(7)) -> \"ok\", _ -> \"fallback\" } }\nfn main() { dbg(classify(Syntax.good())); dbg(classify(Syntax.bad())) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected imported tuple-pattern provider to compile:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported nested tuple-pattern compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"ok\nfallback\n" {
+        return fail(format!(
+            "unexpected imported tuple-pattern stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn imported_record_pattern_tests_nested_fields_through_rsig() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64)\ntype entry = { head: token, tail: token }\nfn good() -> entry { entry { head: Ident(\"ok\"), tail: Number(7) } }\nfn bad() -> entry { entry { head: Ident(\"bad\"), tail: Ident(\"not-number\") } }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Syntax\nfn classify(entry: Syntax.entry) { match entry { Syntax.entry { head: Syntax.Ident(\"ok\"), tail: Syntax.Number(7) } -> \"ok\", _ -> \"fallback\" } }\nfn main() { dbg(classify(Syntax.good())); dbg(classify(Syntax.bad())) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected imported record-pattern provider to compile:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported nested record-pattern compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"ok\nfallback\n" {
+        return fail(format!(
+            "unexpected imported record-pattern stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn imported_list_pattern_tests_nested_items_through_rsig() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64)\nfn good() -> List<token> { [Ident(\"ok\"), Number(7)] }\nfn bad() -> List<token> { [Ident(\"bad\"), Ident(\"not-number\")] }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Syntax\nfn classify(tokens: List<Syntax.token>) { match tokens { [Syntax.Ident(\"ok\"), Syntax.Number(7), ..rest] -> \"ok\", _ -> \"fallback\" } }\nfn main() { dbg(classify(Syntax.good())); dbg(classify(Syntax.bad())) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected imported list-pattern provider to compile:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported nested list-pattern compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"ok\nfallback\n" {
+        return fail(format!(
+            "unexpected imported list-pattern stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_unknown_abi_call_is_rejected() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("sigs");

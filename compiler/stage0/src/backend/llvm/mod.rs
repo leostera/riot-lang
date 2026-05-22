@@ -913,7 +913,8 @@ impl<'ctx> Codegen<'ctx, '_> {
     ) -> miette::Result<IntValue<'ctx>> {
         let bool_type = self.context.bool_type();
         let record = self.value_as_runtime(scrutinee.clone())?;
-        let (path_ptr, path_len) = self.string_literal(type_name.as_str())?;
+        let runtime_type_name = runtime_record_type_name(type_name);
+        let (path_ptr, path_len) = self.string_literal(&runtime_type_name)?;
         let record_matches = self.call_runtime_value(
             "riot_rt_value_record_is",
             &[record.into(), path_ptr.into(), path_len.into()],
@@ -1729,7 +1730,7 @@ impl<'ctx> Codegen<'ctx, '_> {
         fields: &[(String, LambdaExpr)],
         env: &mut Env<'ctx>,
     ) -> miette::Result<CgValue<'ctx>> {
-        let path = path.join(".");
+        let path = runtime_record_path_name(path);
         let (path_ptr, path_len) = self.string_literal(&path)?;
         let record = self.call_runtime_value(
             "riot_rt_value_record_begin",
@@ -3382,12 +3383,19 @@ fn unify_abi(lhs: AbiType, rhs: AbiType) -> AbiType {
 }
 
 fn runtime_variant_type_name(type_name: &TypeName) -> String {
-    type_name
-        .as_str()
-        .rsplit('.')
-        .next()
-        .unwrap_or_else(|| type_name.as_str())
-        .to_owned()
+    runtime_type_name(type_name.as_str())
+}
+
+fn runtime_record_type_name(type_name: &TypeName) -> String {
+    runtime_type_name(type_name.as_str())
+}
+
+fn runtime_record_path_name(path: &[String]) -> String {
+    runtime_type_name(&path.join("."))
+}
+
+fn runtime_type_name(name: &str) -> String {
+    name.rsplit('.').next().unwrap_or(name).to_owned()
 }
 
 fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTable> {
