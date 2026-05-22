@@ -112,6 +112,7 @@ pub(crate) fn typed_program_from_ast(
     let constructors = constructor_type_map(&types);
     let records = record_type_map(&types, &uses, imports);
     let record_fields = record_field_type_map(&types, &uses, imports);
+    let record_type_params = record_type_param_map(&types, &uses, imports);
 
     let mut external_types = prelude_external_signatures();
     for external in &externals {
@@ -142,6 +143,7 @@ pub(crate) fn typed_program_from_ast(
             constructors: &constructors,
             records: &records,
             record_fields: &record_fields,
+            record_type_params: &record_type_params,
             declared_variants: &declared_variants,
             expression_types,
         });
@@ -209,6 +211,7 @@ struct TypedBindingInfo {
 #[derive(Debug, Clone)]
 struct ConstructorSignature {
     type_name: TypeName,
+    type_params: Vec<TypeParamName>,
     payload: Vec<RsigType>,
 }
 
@@ -221,6 +224,7 @@ struct TypeContext<'a> {
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,
     record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
+    record_type_params: &'a BTreeMap<TypeName, Vec<TypeParamName>>,
     declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a ExpressionTypeTable>,
 }
@@ -232,6 +236,7 @@ struct TypeContextInputs<'a> {
     constructors: &'a BTreeMap<String, ConstructorSignature>,
     records: &'a BTreeMap<String, TypeName>,
     record_fields: &'a BTreeMap<TypeName, BTreeMap<String, RsigType>>,
+    record_type_params: &'a BTreeMap<TypeName, Vec<TypeParamName>>,
     declared_variants: &'a BTreeSet<TypeName>,
     expression_types: Option<&'a ExpressionTypeTable>,
 }
@@ -247,6 +252,7 @@ impl<'a> TypeContext<'a> {
             constructors: inputs.constructors,
             records: inputs.records,
             record_fields: inputs.record_fields,
+            record_type_params: inputs.record_type_params,
             declared_variants: inputs.declared_variants,
             expression_types: inputs.expression_types,
         }
@@ -307,6 +313,7 @@ fn constructor_type_map(types: &[TypedTypeDecl]) -> BTreeMap<String, Constructor
                     constructor.name.as_str().to_owned(),
                     ConstructorSignature {
                         type_name: type_.name.clone(),
+                        type_params: type_.params.clone(),
                         payload: constructor.payload.clone(),
                     },
                 )
@@ -336,6 +343,7 @@ fn constructor_type_map_from_rsig(
                         constructor.name.as_str().to_owned(),
                         ConstructorSignature {
                             type_name: type_name.clone(),
+                            type_params: type_.params.clone(),
                             payload: constructor.payload.clone(),
                         },
                     )
@@ -371,6 +379,33 @@ fn record_type_map(
         }
     }
     records
+}
+
+fn record_type_param_map(
+    types: &[TypedTypeDecl],
+    uses: &[TypedUse],
+    imports: &ImportedSignatures,
+) -> BTreeMap<TypeName, Vec<TypeParamName>> {
+    let mut params_by_type = BTreeMap::new();
+    for type_ in types {
+        if matches!(type_.body, TypedTypeBody::Record { .. }) {
+            params_by_type.insert(type_.name.clone(), type_.params.clone());
+        }
+    }
+    for use_ in uses {
+        let Some(rsig) = imports.get(use_.name.as_str()) else {
+            continue;
+        };
+        for type_ in &rsig.types {
+            if matches!(type_.body, RsigTypeDeclKind::Record { .. }) {
+                params_by_type.insert(
+                    imported_type_name(use_.name.as_str(), &type_.name),
+                    type_.params.clone(),
+                );
+            }
+        }
+    }
+    params_by_type
 }
 
 fn record_field_type_map(
@@ -1117,7 +1152,7 @@ fn type_pattern(
         },
         AstPattern::Constructor { path, payload, .. } => {
             let payload_types = pattern_constructor_signature(&path.segments, context)
-                .map(|constructor| constructor.payload)
+                .map(|constructor| instantiate_constructor_payload(&constructor, scrutinee_type))
                 .unwrap_or_default();
             let payload = payload
                 .into_iter()
@@ -1175,11 +1210,7 @@ fn type_pattern(
         }
         AstPattern::Record { path, fields, .. } => {
             let type_name = record_expr_type(&path.segments, context);
-            let field_types = context
-                .record_fields
-                .get(&type_name)
-                .cloned()
-                .unwrap_or_default();
+            let field_types = instantiate_record_fields(&type_name, scrutinee_type, context);
             TypedPattern::Record {
                 type_name,
                 fields: fields
@@ -1195,6 +1226,108 @@ fn type_pattern(
         AstPattern::Bool { value, .. } => TypedPattern::Bool(value),
         AstPattern::Int { value, .. } => TypedPattern::Int(value),
         AstPattern::String { value, .. } => TypedPattern::String(value),
+    }
+}
+
+fn instantiate_constructor_payload(
+    constructor: &ConstructorSignature,
+    scrutinee_type: &RsigType,
+) -> Vec<RsigType> {
+    let substitutions = generic_type_substitutions(
+        &constructor.type_name,
+        &constructor.type_params,
+        scrutinee_type,
+    );
+    constructor
+        .payload
+        .iter()
+        .map(|type_| substitute_generic_type_vars(type_, &substitutions))
+        .collect()
+}
+
+fn instantiate_record_fields(
+    type_name: &TypeName,
+    scrutinee_type: &RsigType,
+    context: &TypeContext<'_>,
+) -> BTreeMap<String, RsigType> {
+    let field_types = context
+        .record_fields
+        .get(type_name)
+        .cloned()
+        .unwrap_or_default();
+    let params = context
+        .record_type_params
+        .get(type_name)
+        .cloned()
+        .unwrap_or_default();
+    let substitutions = generic_type_substitutions(type_name, &params, scrutinee_type);
+    field_types
+        .into_iter()
+        .map(|(field, type_)| (field, substitute_generic_type_vars(&type_, &substitutions)))
+        .collect()
+}
+
+fn generic_type_substitutions(
+    type_name: &TypeName,
+    params: &[TypeParamName],
+    scrutinee_type: &RsigType,
+) -> BTreeMap<String, RsigType> {
+    let args = match scrutinee_type {
+        RsigType::RecordApp { name, args } | RsigType::VariantApp { name, args }
+            if name == type_name =>
+        {
+            args
+        }
+        _ => return BTreeMap::new(),
+    };
+    params
+        .iter()
+        .zip(args)
+        .map(|(param, arg)| (param.as_str().to_owned(), arg.clone()))
+        .collect()
+}
+
+fn substitute_generic_type_vars(
+    type_: &RsigType,
+    substitutions: &BTreeMap<String, RsigType>,
+) -> RsigType {
+    match type_ {
+        RsigType::Var(name) => substitutions
+            .get(name.as_str())
+            .cloned()
+            .unwrap_or_else(|| type_.clone()),
+        RsigType::ActorId(message) => RsigType::ActorId(Box::new(substitute_generic_type_vars(
+            message,
+            substitutions,
+        ))),
+        RsigType::Arrow { parameter, result } => RsigType::Arrow {
+            parameter: Box::new(substitute_generic_type_vars(parameter, substitutions)),
+            result: Box::new(substitute_generic_type_vars(result, substitutions)),
+        },
+        RsigType::Tuple(items) => RsigType::Tuple(
+            items
+                .iter()
+                .map(|item| substitute_generic_type_vars(item, substitutions))
+                .collect(),
+        ),
+        RsigType::List(item) => {
+            RsigType::List(Box::new(substitute_generic_type_vars(item, substitutions)))
+        }
+        RsigType::RecordApp { name, args } => RsigType::RecordApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| substitute_generic_type_vars(arg, substitutions))
+                .collect(),
+        },
+        RsigType::VariantApp { name, args } => RsigType::VariantApp {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| substitute_generic_type_vars(arg, substitutions))
+                .collect(),
+        },
+        _ => type_.clone(),
     }
 }
 
@@ -1276,6 +1409,7 @@ fn imported_constructor_signature(
                 .find(|candidate| candidate.name.as_str() == constructor)
                 .map(|candidate| ConstructorSignature {
                     type_name: imported_type_name(module, &type_.name),
+                    type_params: type_.params.clone(),
                     payload: candidate
                         .payload
                         .iter()
@@ -1361,9 +1495,11 @@ mod tests {
         RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigVariantConstructor, TypeName,
     };
 
+    use crate::actor::air::ActorSlotType;
+    use crate::actor::lower::ActorIrLowerer;
     use crate::lambda::lower::LambdaLowerer;
 
-    use crate::lambda::ir::{BindingKey, Capture, LambdaExpr, LambdaStmt};
+    use crate::lambda::ir::{BindingKey, Capture, LambdaExpr, LambdaPattern, LambdaStmt};
 
     use super::{TypedExprKind, TypedStmt, TypedUse, record_field_type_map};
 
@@ -1438,6 +1574,17 @@ mod tests {
 
     fn imported_options_signature() -> ImportedSignatures {
         let mut imports = ImportedSignatures::new();
+        insert_options_signature(&mut imports);
+        imports
+    }
+
+    fn imported_boxes_and_options_signature() -> ImportedSignatures {
+        let mut imports = imported_boxes_signature();
+        insert_options_signature(&mut imports);
+        imports
+    }
+
+    fn insert_options_signature(imports: &mut ImportedSignatures) {
         imports.insert(
             ModuleName::new("Options"),
             Rsig {
@@ -1466,7 +1613,6 @@ mod tests {
                 module_fingerprint: 0,
             },
         );
-        imports
     }
 
     #[test]
@@ -1855,6 +2001,65 @@ mod tests {
             }
         );
         assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn lambda_ir_preserves_generic_record_pattern_binding_types() {
+        let typed = typed_program_with_inference_facts(
+            "GenericRecordPatternLambda",
+            "type box<'a> = { value: 'a }\nfn main() { let item = box { value: 1 }; match item { box { value } -> value } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let Some(LambdaExpr::Match { arms, .. }) = &lambda.functions[0].body.tail else {
+            panic!("expected match tail");
+        };
+        let LambdaPattern::Record { fields, .. } = &arms[0].pattern else {
+            panic!("expected record pattern");
+        };
+        let LambdaPattern::Bind { type_, .. } = &fields[0].1 else {
+            panic!("expected record field binding");
+        };
+
+        assert_eq!(type_, &RsigType::I64);
+    }
+
+    #[test]
+    fn lambda_ir_preserves_imported_nested_generic_pattern_binding_types() {
+        let typed = typed_program_with_imports_and_inference_facts(
+            "ImportedNestedGenericPatternLambda",
+            "use Boxes\nuse Options\nfn main() { match Options.Some(Boxes.box { value: 1 }) {\nOptions.Some(Boxes.box { value }) -> value\n} }",
+            imported_boxes_and_options_signature(),
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let Some(LambdaExpr::Match { arms, .. }) = &lambda.functions[0].body.tail else {
+            panic!("expected match tail");
+        };
+        let LambdaPattern::Constructor { payload, .. } = &arms[0].pattern else {
+            panic!("expected imported constructor pattern");
+        };
+        let LambdaPattern::Record { fields, .. } = &payload[0] else {
+            panic!("expected nested imported record pattern");
+        };
+        let LambdaPattern::Bind { type_, .. } = &fields[0].1 else {
+            panic!("expected nested record field binding");
+        };
+
+        assert_eq!(type_, &RsigType::I64);
+    }
+
+    #[test]
+    fn actor_ir_classifies_generic_application_captures_as_values() {
+        let typed = typed_program_with_inference_facts(
+            "GenericActorCapture",
+            "type box<'a> = { value: 'a }\ntype option<'a> = Some('a) | None\nfn main() { let item = box { value: 1 }; let maybe = Some(item); spawn { let kept = maybe; () } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let actor_ir = ActorIrLowerer::new(&ImportedSignatures::new()).lower(&lambda);
+        let actor = actor_ir.actors.first().expect("expected spawned actor");
+
+        assert_eq!(actor.frame.captures.len(), 1);
+        assert_eq!(actor.frame.captures[0].name.as_str(), "maybe$1");
+        assert_eq!(actor.frame.captures[0].type_, ActorSlotType::Value);
     }
 
     #[test]

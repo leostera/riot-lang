@@ -101,7 +101,7 @@ fn external_type_is_boxed_with_string(type_: &RsigType) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::signature::RsigType;
+    use crate::signature::{RsigType, TypeName};
 
     use super::{AbiType, ExternalAbi};
 
@@ -124,5 +124,25 @@ mod tests {
         let abi = ExternalAbi::new("riot_rt_value_string_concat");
 
         assert_eq!(abi.result_abi(&RsigType::String), AbiType::Value);
+    }
+
+    #[test]
+    fn generic_applications_use_boxed_runtime_abi() {
+        let record = RsigType::RecordApp {
+            name: TypeName::new("box"),
+            args: vec![RsigType::I64],
+        };
+        let variant = RsigType::VariantApp {
+            name: TypeName::new("option"),
+            args: vec![RsigType::String],
+        };
+        let abi = ExternalAbi::new("riot_rt_value_identity");
+
+        assert_eq!(AbiType::from_rsig(&record), AbiType::Value);
+        assert_eq!(AbiType::from_rsig(&variant), AbiType::Value);
+        assert!(abi.param_is_boxed(&record));
+        assert!(abi.param_is_boxed(&variant));
+        assert_eq!(abi.result_abi(&record), AbiType::Value);
+        assert_eq!(abi.result_abi(&variant), AbiType::Value);
     }
 }
