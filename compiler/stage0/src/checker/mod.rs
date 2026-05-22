@@ -2540,8 +2540,24 @@ fn validate_declared_record_field(
     span: TextSpan,
     bindings: &HashMap<String, BindingKind>,
 ) -> miette::Result<()> {
-    let Some(RsigType::Record(type_name)) = simple_expr_type(ctx, base, bindings) else {
+    let Some(base_type) = simple_expr_type(ctx, base, bindings) else {
         return Ok(());
+    };
+    let RsigType::Record(type_name) = base_type else {
+        if matches!(base_type, RsigType::Unknown | RsigType::Var(_)) {
+            return Ok(());
+        }
+        return Err(ctx
+            .diagnostic(
+                span,
+                "field access requires a record",
+                format!(
+                    "this value has type `{}`, so it has no field named `{field}`",
+                    base_type.canonical()
+                ),
+                Some("access a field on a record value or remove the field projection"),
+            )
+            .into());
     };
     let Some(shape) = ctx.record_shapes_by_type.get(&type_name) else {
         return Ok(());
