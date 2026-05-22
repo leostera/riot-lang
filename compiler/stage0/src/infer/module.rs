@@ -2383,8 +2383,7 @@ mod tests {
         );
     }
 
-    #[test]
-    fn imported_generic_record_literals_infer_result_args_from_fields() {
+    fn boxes_imports() -> ImportedSignatures {
         let mut imports = ImportedSignatures::new();
         imports.insert(
             ModuleName::new("Boxes"),
@@ -2406,6 +2405,12 @@ mod tests {
                 module_fingerprint: 0,
             },
         );
+        imports
+    }
+
+    #[test]
+    fn imported_generic_record_literals_infer_result_args_from_fields() {
+        let imports = boxes_imports();
         let program = AstProgram {
             decls: vec![
                 AstDecl::Use(AstUseDecl {
@@ -2434,6 +2439,38 @@ mod tests {
                     args: vec![Type::I64],
                 }
             ))
+        );
+    }
+
+    #[test]
+    fn imported_generic_record_field_access_infers_substituted_field_type() {
+        let imports = boxes_imports();
+        let program = AstProgram {
+            decls: vec![
+                AstDecl::Use(AstUseDecl {
+                    name: "Boxes".to_owned(),
+                    name_span: span(),
+                    span: span(),
+                }),
+                function(
+                    "main",
+                    vec![],
+                    vec![AstStmt::Let {
+                        name: "item".to_owned(),
+                        type_annotation: None,
+                        value: record_path(&["Boxes", "box"], vec![("value", int(1))]),
+                    }],
+                    field(path("item"), "value"),
+                ),
+            ],
+        };
+
+        let inferred = infer_with_imports(&program, &imports).unwrap();
+        let signatures = inferred.function_signatures(&program);
+
+        assert_eq!(
+            signatures.get("main"),
+            Some(&FunctionSignature::new(vec![], RsigType::I64))
         );
     }
 

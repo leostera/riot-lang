@@ -1479,6 +1479,91 @@ fn imported_generic_record_literal_infers_rsig_type_args() -> FixtureResult {
 }
 
 #[test]
+fn imported_generic_record_field_access_infers_rsig_type_args() -> FixtureResult {
+    ensure_release_runtime_built()?;
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let boxes = temp_dir.path().join("boxes.ml");
+    let main = temp_dir.path().join("main.ml");
+    let bad = temp_dir.path().join("bad.ml");
+    let output = temp_dir.path().join("main");
+    let bad_output = temp_dir.path().join("bad");
+
+    std::fs::write(&boxes, "type box<'a> = { value: 'a }\n")?;
+    std::fs::write(
+        &main,
+        "use Boxes\nfn main() { let item = Boxes.box { value: 41 }; dbg(item.value + 1) }\n",
+    )?;
+    std::fs::write(
+        &bad,
+        "use Boxes\nfn main() { let item = Boxes.box { value: 1 }; dbg(string_concat(item.value, \"\")) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&boxes)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected generic record provider to compile:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported generic record field access to compile:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"42\n" {
+        return fail(format!(
+            "unexpected imported generic record field stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    let compile_bad = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&bad_output)
+        .output()?;
+    if compile_bad.status.success() {
+        return fail("expected imported generic record field mismatch to fail".to_owned());
+    }
+    let stderr = String::from_utf8_lossy(&compile_bad.stderr);
+    if !stderr.contains("function argument type does not match") || !stderr.contains("i64") {
+        return fail(format!(
+            "expected imported generic record field access to report i64 argument mismatch:\n{stderr}"
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_generic_record_pattern_binds_rsig_type_args() -> FixtureResult {
     ensure_release_runtime_built()?;
     let temp_dir = TempDir::new()?;
