@@ -1994,7 +1994,8 @@ fn validate_pattern(
                 )
                 .into());
         }
-        for (payload_pattern, payload_type) in payload.iter().zip(&constructor.payload) {
+        let payload_types = instantiate_constructor_payload(&constructor, scrutinee_type);
+        for (payload_pattern, payload_type) in payload.iter().zip(&payload_types) {
             validate_pattern(ctx, payload_pattern, Some(payload_type))?;
         }
     }
