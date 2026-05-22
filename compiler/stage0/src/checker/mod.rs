@@ -183,6 +183,7 @@ impl<'a> Checker<'a> {
             let message = match context {
                 "if condition" => "if condition must be Bool",
                 "not expression" => "not expression requires Bool",
+                "logical expression" => "logical operands must be Bool",
                 _ => "expression must be Bool",
             };
             return diagnostics.at(
@@ -190,6 +191,14 @@ impl<'a> Checker<'a> {
                 message,
                 format!("this {context} has type `{}`", actual.canonical()),
                 Some("use a Bool expression here"),
+            );
+        }
+        if let Some((context, actual)) = error.expected_i64_context() {
+            return diagnostics.at(
+                span,
+                "arithmetic operands must be i64",
+                format!("this {context} has type `{}`", actual.canonical()),
+                Some("use i64 operands on both sides of this arithmetic expression"),
             );
         }
         if matches!(error.unsupported_reason(), Some("tuple projection")) {

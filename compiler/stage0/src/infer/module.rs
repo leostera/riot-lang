@@ -29,6 +29,11 @@ pub(crate) enum InferError {
         context: &'static str,
         actual: RsigType,
     },
+    #[error("{context} expected i64")]
+    ExpectedI64 {
+        context: &'static str,
+        actual: RsigType,
+    },
     #[error("{0}")]
     Unify(#[from] UnifyError),
     #[error("{error}")]
@@ -45,6 +50,7 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -53,9 +59,10 @@ impl InferError {
         match self {
             InferError::UnknownValue(name) => Some(name.as_str()),
             InferError::At { error, .. } => error.unknown_value_name(),
-            InferError::Unsupported(_) | InferError::ExpectedBool { .. } | InferError::Unify(_) => {
-                None
-            }
+            InferError::Unsupported(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
+            | InferError::Unify(_) => None,
         }
     }
 
@@ -65,6 +72,7 @@ impl InferError {
             InferError::At { error, .. } => error.unsupported_reason(),
             InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -76,6 +84,7 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
             | InferError::Unify(_) => false,
         }
     }
@@ -89,6 +98,7 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -100,6 +110,7 @@ impl InferError {
             InferError::Unsupported(_)
             | InferError::UnknownValue(_)
             | InferError::ExpectedBool { .. }
+            | InferError::ExpectedI64 { .. }
             | InferError::Unify(_) => None,
         }
     }
@@ -108,7 +119,21 @@ impl InferError {
         match self {
             InferError::ExpectedBool { context, actual } => Some((*context, actual)),
             InferError::At { error, .. } => error.expected_bool_context(),
-            InferError::Unsupported(_) | InferError::UnknownValue(_) | InferError::Unify(_) => None,
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedI64 { .. }
+            | InferError::Unify(_) => None,
+        }
+    }
+
+    pub(crate) fn expected_i64_context(&self) -> Option<(&'static str, &RsigType)> {
+        match self {
+            InferError::ExpectedI64 { context, actual } => Some((*context, actual)),
+            InferError::At { error, .. } => error.expected_i64_context(),
+            InferError::Unsupported(_)
+            | InferError::UnknownValue(_)
+            | InferError::ExpectedBool { .. }
+            | InferError::Unify(_) => None,
         }
     }
 
@@ -633,8 +658,18 @@ fn infer_expr_kind(
         | AstExpr::Mod { lhs, rhs, .. } => {
             let lhs = infer_expr(state, lhs, declared_variants, expression_types)?;
             let rhs = infer_expr(state, rhs, declared_variants, expression_types)?;
-            state.unify(&Type::I64, &lhs)?;
-            state.unify(&Type::I64, &rhs)?;
+            if state.unify(&Type::I64, &lhs).is_err() {
+                return Err(InferError::ExpectedI64 {
+                    context: "arithmetic expression",
+                    actual: infer_type_to_rsig_type(&state.resolve(&lhs)),
+                });
+            }
+            if state.unify(&Type::I64, &rhs).is_err() {
+                return Err(InferError::ExpectedI64 {
+                    context: "arithmetic expression",
+                    actual: infer_type_to_rsig_type(&state.resolve(&rhs)),
+                });
+            }
             Ok(Type::I64)
         }
         AstExpr::Neg { expr, .. } => {
@@ -675,8 +710,18 @@ fn infer_expr_kind(
         AstExpr::And { lhs, rhs, .. } | AstExpr::Or { lhs, rhs, .. } => {
             let lhs = infer_expr(state, lhs, declared_variants, expression_types)?;
             let rhs = infer_expr(state, rhs, declared_variants, expression_types)?;
-            state.unify(&Type::Bool, &lhs)?;
-            state.unify(&Type::Bool, &rhs)?;
+            if state.unify(&Type::Bool, &lhs).is_err() {
+                return Err(InferError::ExpectedBool {
+                    context: "logical expression",
+                    actual: infer_type_to_rsig_type(&state.resolve(&lhs)),
+                });
+            }
+            if state.unify(&Type::Bool, &rhs).is_err() {
+                return Err(InferError::ExpectedBool {
+                    context: "logical expression",
+                    actual: infer_type_to_rsig_type(&state.resolve(&rhs)),
+                });
+            }
             Ok(Type::Bool)
         }
         AstExpr::Not { expr, .. } => {
