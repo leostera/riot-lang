@@ -241,6 +241,14 @@ impl<'a> Checker<'a> {
                 Some("compare i64 values with i64 values or string values with string values"),
             );
         }
+        if matches!(error.unsupported_reason(), Some("tuple projection index")) {
+            return diagnostics.at(
+                span,
+                "tuple projection is out of bounds",
+                "this tuple does not have a field at the requested index",
+                Some("use a tuple projection index that exists"),
+            );
+        }
         if matches!(error.unsupported_reason(), Some("tuple projection")) {
             return diagnostics.at(
                 span,
