@@ -1739,13 +1739,15 @@ fn qualify_imported_scheme(module_name: &str, scheme: &RsigTypeScheme) -> RsigTy
 mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstMatchArm, AstPath, AstPattern, AstProgram,
-        AstReceiveArm, AstStmt, TextSpan,
+        AstReceiveArm, AstStmt, AstUseDecl, TextSpan,
     };
     use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
     use crate::signature::{
-        FunctionSignature, FunctionTable, ImportedSignatures, RsigType, TypeName,
+        FieldName, FunctionSignature, FunctionTable, ImportedSignatures, ModuleName, Rsig,
+        RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, TypeName, TypeParamName,
+        TypeVarName,
     };
 
     fn span() -> TextSpan {
@@ -1844,9 +1846,16 @@ mod tests {
     }
 
     fn record(type_name: &str, fields: Vec<(&str, AstExpr)>) -> AstExpr {
+        record_path(&[type_name], fields)
+    }
+
+    fn record_path(segments: &[&str], fields: Vec<(&str, AstExpr)>) -> AstExpr {
         AstExpr::Record {
             path: AstPath {
-                segments: vec![type_name.to_owned()],
+                segments: segments
+                    .iter()
+                    .map(|segment| (*segment).to_owned())
+                    .collect(),
             },
             fields: fields
                 .into_iter()
@@ -1928,6 +1937,13 @@ mod tests {
 
     fn infer(program: &AstProgram) -> Result<InferredModule, InferError> {
         ModuleInferencer::new(program, &ImportedSignatures::new()).infer()
+    }
+
+    fn infer_with_imports(
+        program: &AstProgram,
+        imports: &ImportedSignatures,
+    ) -> Result<InferredModule, InferError> {
+        ModuleInferencer::new(program, imports).infer()
     }
 
     fn signatures(program: &AstProgram) -> Result<FunctionTable, InferError> {
@@ -2275,6 +2291,60 @@ mod tests {
 
         assert_eq!(TypeName::new("option"), name);
         assert_eq!(vec![*parameter], args);
+    }
+
+    #[test]
+    fn imported_generic_record_literals_infer_result_args_from_fields() {
+        let mut imports = ImportedSignatures::new();
+        imports.insert(
+            ModuleName::new("Boxes"),
+            Rsig {
+                module: ModuleName::new("Boxes"),
+                dependencies: Vec::new(),
+                types: vec![RsigTypeDecl {
+                    name: TypeName::new("box"),
+                    params: vec![TypeParamName::new("'a")],
+                    body: RsigTypeDeclKind::Record {
+                        fields: vec![RsigRecordField {
+                            name: FieldName::new("value"),
+                            type_: RsigType::Var(TypeVarName::new("'a")),
+                        }],
+                    },
+                    fingerprint: 0,
+                }],
+                exports: Vec::new(),
+                module_fingerprint: 0,
+            },
+        );
+        let program = AstProgram {
+            decls: vec![
+                AstDecl::Use(AstUseDecl {
+                    name: "Boxes".to_owned(),
+                    name_span: span(),
+                    span: span(),
+                }),
+                function(
+                    "make",
+                    vec![],
+                    Vec::new(),
+                    record_path(&["Boxes", "box"], vec![("value", int(1))]),
+                ),
+            ],
+        };
+
+        let inferred = infer_with_imports(&program, &imports).unwrap();
+        let exports = inferred.env.exported_values();
+
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(
+                Type::Unit,
+                Type::RecordApp {
+                    name: TypeName::new("Boxes.box"),
+                    args: vec![Type::I64],
+                }
+            ))
+        );
     }
 
     #[test]
