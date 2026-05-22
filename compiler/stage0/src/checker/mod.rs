@@ -1458,6 +1458,18 @@ fn validate_expr(
             }
 
             let [name] = callee.segments.as_slice() else {
+                if let [module, value, ..] = callee.segments.as_slice() {
+                    return Err(ctx
+                        .diagnostic(
+                            *span,
+                            "unsupported nested path call",
+                            format!(
+                                "stage0 can call `{module}.{value}(...)`, but this callee has more path segments"
+                            ),
+                            Some("call a two-segment imported function or bind the intermediate value first"),
+                        )
+                        .into());
+                }
                 return Err(ctx
                     .diagnostic(
                         *span,
