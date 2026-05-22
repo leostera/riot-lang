@@ -2693,12 +2693,10 @@ fn validate_receive_arms(
 ) -> miette::Result<()> {
     let pattern_validator = PatternValidator::new(ctx);
     for arm in arms {
-        pattern_validator.validate(&arm.pattern, None)?;
+        let pattern_type = pattern_validator.pattern_type(&arm.pattern);
+        pattern_validator.validate(&arm.pattern, pattern_type.as_ref())?;
         let mut receive_bindings = bindings.clone();
-        let pattern_type = pattern_validator
-            .pattern_type(&arm.pattern)
-            .unwrap_or(RsigType::Unknown);
-        pattern_validator.bind(&arm.pattern, Some(pattern_type), &mut receive_bindings);
+        pattern_validator.bind(&arm.pattern, pattern_type, &mut receive_bindings);
         validate_expr(ctx, &arm.body, &receive_bindings, true)?;
     }
     Ok(())
