@@ -1659,7 +1659,7 @@ fn validate_expr(
                     .diagnostic(
                         *span,
                         "non-exhaustive match expression",
-                        "the match arms do not cover every value of the scrutinee type",
+                        non_exhaustive_match_message(ctx, arms, scrutinee_type.as_ref()),
                         Some("add the missing constructors, list cases, or a final `_ -> ...` arm"),
                     )
                     .into());
@@ -1881,6 +1881,84 @@ fn pattern_is_irrefutable(pattern: &AstPattern) -> bool {
         | AstPattern::String { .. }
         | AstPattern::Constructor { .. } => false,
     }
+}
+
+fn non_exhaustive_match_message(
+    ctx: &ValidationContext<'_>,
+    arms: &[crate::ast::AstMatchArm],
+    scrutinee_type: Option<&RsigType>,
+) -> String {
+    if let Some(RsigType::List(_)) = scrutinee_type {
+        let missing = missing_list_cases(arms);
+        if !missing.is_empty() {
+            return format!("the match arms are missing list case(s): {}", missing.join(", "));
+        }
+    }
+    if let Some(type_) = scrutinee_type {
+        let missing = missing_variant_constructors(ctx, arms, type_);
+        if !missing.is_empty() {
+            return format!(
+                "the match arms are missing constructor(s): {}",
+                missing.join(", ")
+            );
+        }
+    }
+    "the match arms do not cover every value of the scrutinee type".to_owned()
+}
+
+fn missing_list_cases(arms: &[crate::ast::AstMatchArm]) -> Vec<String> {
+    let mut covers_empty = false;
+    let mut covers_non_empty = false;
+    for arm in arms {
+        let AstPattern::List { prefix, tail, .. } = &arm.pattern else {
+            continue;
+        };
+        if prefix.is_empty() && tail.is_none() {
+            covers_empty = true;
+        }
+        if prefix.is_empty() && tail.as_deref().is_some_and(pattern_is_irrefutable) {
+            covers_empty = true;
+            covers_non_empty = true;
+        }
+        if prefix.len() == 1 && tail.as_deref().is_some_and(pattern_is_irrefutable) {
+            covers_non_empty = true;
+        }
+    }
+    let mut missing = Vec::new();
+    if !covers_empty {
+        missing.push("[]".to_owned());
+    }
+    if !covers_non_empty {
+        missing.push("[head, ..tail]".to_owned());
+    }
+    missing
+}
+
+fn missing_variant_constructors(
+    ctx: &ValidationContext<'_>,
+    arms: &[crate::ast::AstMatchArm],
+    scrutinee_type: &RsigType,
+) -> Vec<String> {
+    let Some(type_name) = variant_type_name(scrutinee_type) else {
+        return Vec::new();
+    };
+    let expected = expected_constructor_names(ctx, type_name);
+    let covered = arms
+        .iter()
+        .filter_map(|arm| covered_constructor_name(ctx, &arm.pattern, type_name))
+        .collect::<BTreeSet<_>>();
+    expected
+        .difference(&covered)
+        .map(|name| qualify_constructor_for_message(type_name, name))
+        .collect()
+}
+
+fn qualify_constructor_for_message(type_name: &TypeName, constructor: &str) -> String {
+    type_name
+        .as_str()
+        .split_once('.')
+        .map(|(module, _)| format!("{module}.{constructor}"))
+        .unwrap_or_else(|| constructor.to_owned())
 }
 
 fn match_is_exhaustive(

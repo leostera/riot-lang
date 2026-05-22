@@ -1,6 +1,6 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 1422
+assertion_line: 1542
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/types/match_list_non_exhaustive.ml
@@ -18,7 +18,7 @@ Error: stage0::source
  3 │ ╭─▶   dbg(match items {
  4 │ │       [] -> 0
  5 │ ├─▶   })
-   · ╰──── the match arms do not cover every value of the scrutinee type
+   · ╰──── the match arms are missing list case(s): [head, ..tail]
  6 │     }
    ╰────
   help: add the missing constructors, list cases, or a final `_ -> ...` arm
