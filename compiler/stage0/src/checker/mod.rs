@@ -146,6 +146,18 @@ impl<'a> Checker<'a> {
                     Some("call a function value or remove the function arguments"),
                 );
             }
+            if span_is_call_expression(program, span) {
+                return diagnostics.at(
+                    span,
+                    "function argument type does not match",
+                    format!(
+                        "this call requires `{}`, but the argument provides `{}`",
+                        lhs.canonical(),
+                        rhs.canonical()
+                    ),
+                    Some("pass an argument with the parameter type expected by the function"),
+                );
+            }
             return diagnostics.at(
                 span,
                 "inferred types do not match",
@@ -857,9 +869,23 @@ fn first_decl_span(program: &AstProgram) -> Option<TextSpan> {
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SpanExprKind {
+    Call,
+    List,
+}
+
+fn span_is_call_expression(program: &AstProgram, span: TextSpan) -> bool {
+    span_is_expr_kind(program, span, SpanExprKind::Call)
+}
+
 fn span_is_list_expression(program: &AstProgram, span: TextSpan) -> bool {
+    span_is_expr_kind(program, span, SpanExprKind::List)
+}
+
+fn span_is_expr_kind(program: &AstProgram, span: TextSpan, kind: SpanExprKind) -> bool {
     program.decls.iter().any(|decl| match decl {
-        AstDecl::Function(function) => block_contains_list_span(&function.body, span),
+        AstDecl::Function(function) => block_contains_expr_kind(&function.body, span, kind),
         AstDecl::Use(_)
         | AstDecl::Module(_)
         | AstDecl::Include(_)
@@ -868,18 +894,26 @@ fn span_is_list_expression(program: &AstProgram, span: TextSpan) -> bool {
     })
 }
 
-fn block_contains_list_span(block: &AstBlock, span: TextSpan) -> bool {
+fn block_contains_expr_kind(block: &AstBlock, span: TextSpan, kind: SpanExprKind) -> bool {
     block.statements.iter().any(|stmt| match stmt {
-        AstStmt::Let { value, .. } | AstStmt::Expr(value) => expr_contains_list_span(value, span),
+        AstStmt::Let { value, .. } | AstStmt::Expr(value) => {
+            expr_contains_expr_kind(value, span, kind)
+        }
     }) || block
         .tail
         .as_ref()
-        .is_some_and(|tail| expr_contains_list_span(tail, span))
+        .is_some_and(|tail| expr_contains_expr_kind(tail, span, kind))
 }
 
-fn expr_contains_list_span(expr: &AstExpr, span: TextSpan) -> bool {
-    if expr_span(expr) == span && matches!(expr, AstExpr::List { .. }) {
-        return true;
+fn expr_contains_expr_kind(expr: &AstExpr, span: TextSpan, kind: SpanExprKind) -> bool {
+    if expr_span(expr) == span {
+        let matches_kind = match kind {
+            SpanExprKind::Call => matches!(expr, AstExpr::Call { .. } | AstExpr::Apply { .. }),
+            SpanExprKind::List => matches!(expr, AstExpr::List { .. }),
+        };
+        if matches_kind {
+            return true;
+        }
     }
 
     match expr {
@@ -892,10 +926,10 @@ fn expr_contains_list_span(expr: &AstExpr, span: TextSpan) -> bool {
         | AstExpr::Lt { lhs, rhs, .. }
         | AstExpr::And { lhs, rhs, .. }
         | AstExpr::Or { lhs, rhs, .. } => {
-            expr_contains_list_span(lhs, span) || expr_contains_list_span(rhs, span)
+            expr_contains_expr_kind(lhs, span, kind) || expr_contains_expr_kind(rhs, span, kind)
         }
         AstExpr::Neg { expr, .. } | AstExpr::Not { expr, .. } => {
-            expr_contains_list_span(expr, span)
+            expr_contains_expr_kind(expr, span, kind)
         }
         AstExpr::If {
             condition,
@@ -903,38 +937,40 @@ fn expr_contains_list_span(expr: &AstExpr, span: TextSpan) -> bool {
             else_branch,
             ..
         } => {
-            expr_contains_list_span(condition, span)
-                || expr_contains_list_span(then_branch, span)
-                || expr_contains_list_span(else_branch, span)
+            expr_contains_expr_kind(condition, span, kind)
+                || expr_contains_expr_kind(then_branch, span, kind)
+                || expr_contains_expr_kind(else_branch, span, kind)
         }
         AstExpr::Match {
             scrutinee, arms, ..
         } => {
-            expr_contains_list_span(scrutinee, span)
+            expr_contains_expr_kind(scrutinee, span, kind)
                 || arms
                     .iter()
-                    .any(|arm| expr_contains_list_span(&arm.body, span))
+                    .any(|arm| expr_contains_expr_kind(&arm.body, span, kind))
         }
         AstExpr::Block { block, .. }
         | AstExpr::Lambda { body: block, .. }
-        | AstExpr::Spawn { body: block, .. } => block_contains_list_span(block, span),
+        | AstExpr::Spawn { body: block, .. } => block_contains_expr_kind(block, span, kind),
         AstExpr::Receive { arms, .. } => arms
             .iter()
-            .any(|arm| expr_contains_list_span(&arm.body, span)),
+            .any(|arm| expr_contains_expr_kind(&arm.body, span, kind)),
         AstExpr::Call { args, .. }
         | AstExpr::Tuple { items: args, .. }
-        | AstExpr::List { items: args, .. } => {
-            args.iter().any(|arg| expr_contains_list_span(arg, span))
-        }
+        | AstExpr::List { items: args, .. } => args
+            .iter()
+            .any(|arg| expr_contains_expr_kind(arg, span, kind)),
         AstExpr::Apply { callee, args, .. } => {
-            expr_contains_list_span(callee, span)
-                || args.iter().any(|arg| expr_contains_list_span(arg, span))
+            expr_contains_expr_kind(callee, span, kind)
+                || args
+                    .iter()
+                    .any(|arg| expr_contains_expr_kind(arg, span, kind))
         }
         AstExpr::Record { fields, .. } => fields
             .iter()
-            .any(|(_, value)| expr_contains_list_span(value, span)),
+            .any(|(_, value)| expr_contains_expr_kind(value, span, kind)),
         AstExpr::Field { base, .. } | AstExpr::TupleIndex { base, .. } => {
-            expr_contains_list_span(base, span)
+            expr_contains_expr_kind(base, span, kind)
         }
         AstExpr::Bool { .. }
         | AstExpr::Unit { .. }
