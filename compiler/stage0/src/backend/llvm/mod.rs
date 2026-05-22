@@ -899,15 +899,82 @@ impl<'ctx> Codegen<'ctx, '_> {
             LambdaPattern::List { prefix, tail } => {
                 self.emit_list_pattern_test(scrutinee, prefix, tail.as_deref())
             }
-            LambdaPattern::Record { type_name, .. } => {
-                let scrutinee = self.value_as_runtime(scrutinee.clone())?;
-                let (path_ptr, path_len) = self.string_literal(type_name.as_str())?;
-                self.call_runtime_value(
-                    "riot_rt_value_record_is",
-                    &[scrutinee.into(), path_ptr.into(), path_len.into()],
-                )
+            LambdaPattern::Record { type_name, fields } => {
+                self.emit_record_pattern_test(scrutinee, type_name, fields)
             }
         }
+    }
+
+    fn emit_record_pattern_test(
+        &mut self,
+        scrutinee: &CgValue<'ctx>,
+        type_name: &TypeName,
+        fields: &[(String, LambdaPattern)],
+    ) -> miette::Result<IntValue<'ctx>> {
+        let bool_type = self.context.bool_type();
+        let record = self.value_as_runtime(scrutinee.clone())?;
+        let (path_ptr, path_len) = self.string_literal(type_name.as_str())?;
+        let record_matches = self.call_runtime_value(
+            "riot_rt_value_record_is",
+            &[record.into(), path_ptr.into(), path_len.into()],
+        )?;
+
+        if fields
+            .iter()
+            .all(|(_, pattern)| pattern_is_irrefutable(pattern))
+        {
+            return Ok(record_matches);
+        }
+
+        let parent = self
+            .builder
+            .get_insert_block()
+            .and_then(|block| block.get_parent())
+            .ok_or_else(|| miette::miette!("missing function for record pattern"))?;
+        let start_block = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing record pattern block"))?;
+        let field_block = self
+            .context
+            .append_basic_block(parent, "match.record.fields");
+        let cont_block = self.context.append_basic_block(parent, "match.record.cont");
+        self.builder
+            .build_conditional_branch(record_matches, field_block, cont_block)
+            .map_err(|error| miette::miette!("failed to emit record pattern branch: {error}"))?;
+
+        self.builder.position_at_end(field_block);
+        let mut aggregate = bool_type.const_int(1, false);
+        for (field, pattern) in fields {
+            let (field_ptr, field_len) = self.string_literal(field)?;
+            let value = self.call_runtime_value(
+                "riot_rt_value_record_get",
+                &[record.into(), field_ptr.into(), field_len.into()],
+            )?;
+            let field_matches = self.emit_pattern_test(&CgValue::Value(value), pattern)?;
+            aggregate = self
+                .builder
+                .build_and(aggregate, field_matches, "match_record_field")
+                .map_err(|error| miette::miette!("failed to emit record field test: {error}"))?;
+        }
+        let field_end = self
+            .builder
+            .get_insert_block()
+            .ok_or_else(|| miette::miette!("missing record pattern field block"))?;
+        self.builder
+            .build_unconditional_branch(cont_block)
+            .map_err(|error| miette::miette!("failed to leave record pattern test: {error}"))?;
+
+        self.builder.position_at_end(cont_block);
+        let phi = self
+            .builder
+            .build_phi(bool_type, "match_record")
+            .map_err(|error| miette::miette!("failed to emit record pattern phi: {error}"))?;
+        phi.add_incoming(&[
+            (&bool_type.const_int(0, false), start_block),
+            (&aggregate, field_end),
+        ]);
+        Ok(phi.as_basic_value().into_int_value())
     }
 
     fn emit_constructor_payload_pattern_test(
