@@ -1,4 +1,4 @@
-type boundary = UnknownPath | EmptyListElement | MissingTupleItem | MissingRecordField | ReceiveBinder | FallbackCallSignature | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
+type boundary = UnknownPath | EmptyListElement | MissingTupleItem | MissingRecordField | ReceiveBinder | FallbackCallSignature | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
 
 type decision = { name: String, policy: String }
 
@@ -10,6 +10,8 @@ fn boundary_name(boundary: boundary) -> String {
     MissingRecordField -> "missing record field",
     ReceiveBinder -> "receive binder",
     FallbackCallSignature -> "fallback call signature",
+    ApplyExpressionResult -> "apply expression result",
+    LambdaExpressionValue -> "lambda expression value",
     UnannotatedLambdaParam -> "unannotated lambda param",
     SpawnWithoutReceiveShape -> "spawn without receive shape",
     PartialReceiveWrapper -> "partial receive wrapper"
@@ -24,6 +26,8 @@ fn classify(boundary: boundary) -> decision {
     MissingRecordField -> decision { name: boundary_name(boundary), policy: "conservative" },
     ReceiveBinder -> decision { name: boundary_name(boundary), policy: "conservative" },
     FallbackCallSignature -> decision { name: boundary_name(boundary), policy: "conservative" },
+    ApplyExpressionResult -> decision { name: boundary_name(boundary), policy: "needs inference facts" },
+    LambdaExpressionValue -> decision { name: boundary_name(boundary), policy: "needs arrow facts" },
     UnannotatedLambdaParam -> decision { name: boundary_name(boundary), policy: "conservative" },
     SpawnWithoutReceiveShape -> decision { name: boundary_name(boundary), policy: "conservative actor id" },
     PartialReceiveWrapper -> decision { name: boundary_name(boundary), policy: "merge nested facts" }
@@ -43,6 +47,6 @@ fn render_all(boundaries: List<boundary>) -> String {
 }
 
 fn main() {
-  let boundaries = [UnknownPath, EmptyListElement, MissingTupleItem, MissingRecordField, ReceiveBinder, FallbackCallSignature, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
+  let boundaries = [UnknownPath, EmptyListElement, MissingTupleItem, MissingRecordField, ReceiveBinder, FallbackCallSignature, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
   dbg(render_all(boundaries))
 }
