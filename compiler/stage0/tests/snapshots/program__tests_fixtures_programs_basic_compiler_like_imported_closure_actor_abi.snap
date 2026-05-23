@@ -1,0 +1,24 @@
+---
+source: tests/fixtures.rs
+assertion_line: 3249
+expression: transcript
+---
+fixture: tests/fixtures/programs/basic/compiler_like_imported_closure_actor_abi.ml
+
+compile:
+status: success
+stdout:
+<empty>
+stderr:
+<empty>
+
+run:
+status: success
+stdout:
+identity closure: old=unknown, new=concrete
+actor factory closure: old=concrete, new=concrete
+nested actor factory closure: old=unknown, new=concrete
+raw type variable: old=unknown, new=unknown
+list of unknown: old=unknown, new=unknown
+stderr:
+<empty>
