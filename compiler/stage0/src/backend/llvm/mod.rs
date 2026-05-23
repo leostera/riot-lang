@@ -4026,6 +4026,80 @@ mod tests {
     }
 
     #[test]
+    fn local_function_abi_keeps_wildcard_only_match_scrutinees_unknown() {
+        let value = Param::from_key(BindingKey::new("value"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiWildcardMatchScrutineeTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "classify".to_owned(),
+                params: vec![value.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Match {
+                        scrutinee: Box::new(LambdaExpr::Local(BindingKey::new("value"))),
+                        arms: vec![LambdaMatchArm {
+                            pattern: LambdaPattern::Wildcard,
+                            body: LambdaExpr::Int(1),
+                        }],
+                    }),
+                },
+                symbol: "riot_mod_AbiWildcardMatchScrutineeTest_classify".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("classify").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Unknown]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(!abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_keeps_incompatible_match_scrutinees_unknown() {
+        let value = Param::from_key(BindingKey::new("value"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiIncompatibleMatchScrutineeTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "classify".to_owned(),
+                params: vec![value.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Match {
+                        scrutinee: Box::new(LambdaExpr::Local(BindingKey::new("value"))),
+                        arms: vec![
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Int(0),
+                                body: LambdaExpr::Int(1),
+                            },
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Bool(false),
+                                body: LambdaExpr::Int(2),
+                            },
+                        ],
+                    }),
+                },
+                symbol: "riot_mod_AbiIncompatibleMatchScrutineeTest_classify".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("classify").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Unknown]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(!abi.is_supported_local());
+    }
+
+    #[test]
     fn local_function_abi_inference_uses_local_call_argument_constraints() {
         let x = Param::from_key(BindingKey::new("x"));
         let program = LambdaProgram {
