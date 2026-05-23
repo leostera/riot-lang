@@ -2239,6 +2239,25 @@ mod tests {
     }
 
     #[test]
+    fn actor_ir_classifies_inferred_apply_result_captures_as_i64() {
+        let typed = typed_program_with_inference_facts(
+            "InferredApplyResultActorCapture",
+            "fn main() { let inc = fn(x) { x + 1 }; let y = inc(41); spawn { let kept = y; () } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let actor_ir = ActorIrLowerer::new(&ImportedSignatures::new()).lower(&lambda);
+        let actor = actor_ir.actors.first().expect("expected spawned actor");
+        let capture = actor
+            .frame
+            .captures
+            .iter()
+            .find(|slot| slot.name.as_str().starts_with("y$"))
+            .expect("expected spawned actor to capture apply result");
+
+        assert_eq!(capture.type_, ActorSlotType::I64);
+    }
+
+    #[test]
     fn lambda_ir_receive_patterns_use_inferred_payload_types() {
         let typed = typed_program_with_inference_facts(
             "InferredReceivePayload",
