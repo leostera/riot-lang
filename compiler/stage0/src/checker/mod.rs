@@ -3394,6 +3394,20 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
         )
         || matches!(
             (expected, actual),
+            (
+                RsigType::Arrow {
+                    parameter: expected_parameter,
+                    result: expected_result,
+                },
+                RsigType::Arrow {
+                    parameter: actual_parameter,
+                    result: actual_result,
+                }
+            ) if type_matches(expected_parameter, actual_parameter)
+                && type_matches(expected_result, actual_result)
+        )
+        || matches!(
+            (expected, actual),
             (RsigType::Tuple(expected), RsigType::Tuple(actual))
                 if expected.len() == actual.len()
                     && expected

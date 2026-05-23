@@ -1131,6 +1131,150 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_higher_order_variant_and_list_closure_params_have_concrete_abi() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let bad_main = temp_dir.path().join("bad_main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &funcs,
+        r#"type cell<'f> = One('f)
+
+fn keep_cell(cell: cell<('a -> i64)>) -> cell<('a -> i64)> {
+  cell
+}
+
+fn keep_list(callbacks: List<('a -> i64)>) -> List<('a -> i64)> {
+  callbacks
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+fn main() {
+  let callbacks = Funcs.keep_list([fn(_value: String) { 20 }]);
+  let list_value = match callbacks {
+    [id, .._] -> id("ignored") + 1,
+    [] -> 0,
+  };
+  dbg(list_value);
+
+  let cell = Funcs.keep_cell(Funcs.One(fn(_value: String) { 40 }));
+  let cell_value = match cell {
+    Funcs.One(id) -> id("ignored") + 1,
+  };
+  dbg(cell_value);
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected variant/list closure-param compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected variant/list closure-param emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in ["fn keep_cell(cell<('", "fn keep_list(List<('"] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "variant/list closure-param rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported variant/list closure-param compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"21\n41\n" {
+        return fail(format!(
+            "unexpected imported variant/list closure-param stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    std::fs::write(
+        &bad_main,
+        r#"use Funcs
+
+fn main() {
+  let _callbacks = Funcs.keep_list([fn(_value: String) { "not an int" }]);
+  dbg("done")
+}
+"#,
+    )?;
+    let bad_compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad_main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(temp_dir.path().join("bad_main"))
+        .output()?;
+    if bad_compile.status.success() {
+        return fail("expected bad imported variant/list closure-param compile to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&bad_compile.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `i64`, but the argument provides `String`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "bad variant/list closure-param diagnostic missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_higher_order_tuple_of_polymorphic_closures_has_concrete_abi() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
