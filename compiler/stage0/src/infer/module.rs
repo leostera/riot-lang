@@ -2214,6 +2214,65 @@ mod tests {
     }
 
     #[test]
+    fn annotated_functions_cannot_see_later_unannotated_functions() {
+        let i64_type = || type_path("i64");
+        let program = AstProgram {
+            decls: vec![
+                annotated_function(
+                    "caller",
+                    vec![("n", i64_type())],
+                    i64_type(),
+                    call("callee", vec![path("n")]),
+                ),
+                function("callee", vec!["n"], Vec::new(), path("n")),
+            ],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(
+            &crate::infer::module::InferError::UnknownValue("callee".to_owned()),
+            root_error(&err)
+        );
+    }
+
+    #[test]
+    fn partially_annotated_functions_are_not_predeclared() {
+        let program = AstProgram {
+            decls: vec![
+                annotated_function(
+                    "caller",
+                    vec![("n", type_path("i64"))],
+                    type_path("i64"),
+                    call("partial", vec![path("n")]),
+                ),
+                AstDecl::Function(AstFnDecl {
+                    name: "partial".to_owned(),
+                    name_span: span(),
+                    params: vec!["n".to_owned()],
+                    param_types: vec![Some(type_path("i64"))],
+                    return_type: None,
+                    body: AstBlock {
+                        statements: Vec::new(),
+                        tail: Some(path("n")),
+                        span: span(),
+                    },
+                    span: span(),
+                }),
+            ],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(
+            &crate::infer::module::InferError::UnknownValue("partial".to_owned()),
+            root_error(&err)
+        );
+    }
+
+    #[test]
     fn unsupported_empty_value_paths_are_classified() {
         let program = AstProgram {
             decls: vec![function("main", vec![], Vec::new(), path_segments(&[]))],
