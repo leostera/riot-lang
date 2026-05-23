@@ -1557,9 +1557,9 @@ fn validate_expr(
                 _ => Err(ctx
                     .diagnostic(
                         *span,
-                        "unsupported function call",
-                        format!("stage0 does not know `{name}`"),
-                        Some("try: dbg(\"hello world\")"),
+                        "unknown value",
+                        format!("`{name}` is not bound in this scope"),
+                        Some("bind the function with `let` or define it before calling it"),
                     )
                     .into()),
             }
