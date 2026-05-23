@@ -1285,8 +1285,8 @@ fn compile_lib_imported_higher_order_nested_closure_params_match_arrows() -> Fix
 
     std::fs::write(
         &funcs,
-        r#"fn accept_nested(callback: (('a -> i64) -> i64)) {
-  ()
+        r#"fn run_with_i64(callback: (('a -> i64) -> i64)) -> i64 {
+  callback(fn(_value) { 40 })
 }
 "#,
     )?;
@@ -1295,10 +1295,10 @@ fn compile_lib_imported_higher_order_nested_closure_params_match_arrows() -> Fix
         r#"use Funcs
 
 fn main() {
-  Funcs.accept_nested(fn(callback: (String -> i64)) {
+  let result = Funcs.run_with_i64(fn(callback: (String -> i64)) {
     callback("ignored") + 1
   });
-  dbg(42);
+  dbg(result + 1);
   ()
 }
 "#,
@@ -1331,7 +1331,7 @@ fn main() {
         ));
     }
     let stdout = String::from_utf8_lossy(&emit.stdout);
-    for expected in ["fn accept_nested(((", "-> i64) -> i64)"] {
+    for expected in ["fn run_with_i64(((", "-> i64) -> i64)"] {
         if !stdout.contains(expected) {
             return fail(format!(
                 "nested closure-param rsig missed `{expected}`:\n{stdout}"
@@ -1370,7 +1370,7 @@ fn main() {
         r#"use Funcs
 
 fn main() {
-  Funcs.accept_nested(fn(callback: (String -> String)) {
+  let _result = Funcs.run_with_i64(fn(callback: (String -> String)) {
     string_concat(callback("ignored"), "!");
     0
   });

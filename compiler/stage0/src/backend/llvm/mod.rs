@@ -244,6 +244,22 @@ impl Env<'_> {
     }
 }
 
+fn llvm_symbol_fragment(input: &str) -> String {
+    let mut fragment = String::new();
+    for character in input.chars() {
+        if character.is_ascii_alphanumeric() || character == '_' {
+            fragment.push(character);
+        } else {
+            fragment.push('_');
+        }
+    }
+    if fragment.is_empty() {
+        "module".to_owned()
+    } else {
+        fragment
+    }
+}
+
 struct Codegen<'ctx, 'a> {
     context: &'ctx Context,
     module: Module<'ctx>,
@@ -1658,7 +1674,8 @@ impl<'ctx> Codegen<'ctx, '_> {
     ) -> miette::Result<PointerValue<'ctx>> {
         let index = self.string_counter;
         self.string_counter += 1;
-        let name = format!("riot_lambda_apply_{index}");
+        let module = llvm_symbol_fragment(self.program.module_name.as_str());
+        let name = format!("riot_lambda_apply_{module}_{index}");
         let i64_type = self.context.i64_type();
         let apply_type = self.context.i64_type().fn_type(
             &[self.ptr_type().into(), i64_type.into(), i64_type.into()],
@@ -3435,7 +3452,7 @@ mod tests {
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use super::{CodegenMode, LlvmBackend};
+    use super::{CodegenMode, LlvmBackend, llvm_symbol_fragment};
 
     #[test]
     fn lambda_values_lower_to_runtime_closure_calls() {
@@ -3478,7 +3495,13 @@ mod tests {
             .unwrap();
 
         assert!(llvm.contains("riot_rt_value_closure"));
-        assert!(llvm.contains("riot_lambda_apply_"));
+        assert!(llvm.contains("riot_lambda_apply_ClosureTest_"));
+    }
+
+    #[test]
+    fn lambda_apply_helpers_sanitize_module_symbol_fragments() {
+        assert_eq!(llvm_symbol_fragment("My.Module-1"), "My_Module_1");
+        assert_eq!(llvm_symbol_fragment(""), "module");
     }
 
     #[test]
@@ -3528,6 +3551,6 @@ mod tests {
 
         assert!(llvm.contains("riot_rt_value_apply"));
         assert!(llvm.contains("riot_rt_value_as_i64"));
-        assert!(llvm.contains("riot_lambda_apply_"));
+        assert!(llvm.contains("riot_lambda_apply_ClosureApplyTest_"));
     }
 }
