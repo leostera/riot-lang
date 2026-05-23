@@ -3448,7 +3448,7 @@ fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTa
 mod tests {
     use crate::lambda::ir::{
         BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaExternalTable, LambdaFunction,
-        LambdaProgram, LambdaStmt, Param,
+        LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
@@ -3611,6 +3611,87 @@ mod tests {
         let abi = abis.get("identity").unwrap();
 
         assert_eq!(abi.params, vec![AbiType::Unknown]);
+        assert_eq!(abi.result, AbiType::Unknown);
+        assert!(!abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_concrete_match_arm_when_other_arm_unknown() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiMatchPartialTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Match {
+                        scrutinee: Box::new(LambdaExpr::Bool(true)),
+                        arms: vec![
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Bool(true),
+                                body: LambdaExpr::Int(1),
+                            },
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Wildcard,
+                                body: LambdaExpr::Call {
+                                    callee: vec!["opaque".to_owned()],
+                                    args: Vec::new(),
+                                    arg_types: Vec::new(),
+                                    result: RsigType::Unknown,
+                                },
+                            },
+                        ],
+                    }),
+                },
+                symbol: "riot_mod_AbiMatchPartialTest_main".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("main").unwrap();
+
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_keeps_incompatible_match_results_unknown() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiMatchUnknownTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Match {
+                        scrutinee: Box::new(LambdaExpr::Bool(true)),
+                        arms: vec![
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Bool(true),
+                                body: LambdaExpr::Int(1),
+                            },
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Wildcard,
+                                body: LambdaExpr::Bool(false),
+                            },
+                        ],
+                    }),
+                },
+                symbol: "riot_mod_AbiMatchUnknownTest_main".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("main").unwrap();
+
         assert_eq!(abi.result, AbiType::Unknown);
         assert!(!abi.is_supported_local());
     }
