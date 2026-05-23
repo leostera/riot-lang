@@ -1,4 +1,4 @@
-type boundary = UnknownPath | UnknownCallCallee | EmptyListElement | MissingTupleItem | MissingRecordField | UnknownMatchPattern | IncompatibleIfBranches | IncompatibleMatchArms | ReceiveBinder | FallbackCallSignature | LocalBindingFacts | OperatorFacts | AggregateLiteralFacts | ConstructorFacts | ImportedAggregateFacts | ImportedConstructorFacts | NamedSignatureFacts | ImportedSignatureFacts | FunctionAnnotationFacts | LetAnnotationFacts | ReceivePatternShapeFacts | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
+type boundary = UnknownPath | UnknownCallCallee | EmptyListElement | MissingTupleItem | MissingRecordField | UnknownMatchPattern | IncompatibleIfBranches | IncompatibleMatchArms | ReceiveBinder | FallbackCallSignature | LocalBindingFacts | OperatorFacts | AggregateLiteralFacts | ConstructorFacts | ImportedAggregateFacts | ImportedConstructorFacts | NamedSignatureFacts | ImportedSignatureFacts | ExternalSignatureFacts | FunctionAnnotationFacts | LambdaAnnotationFacts | LetAnnotationFacts | ReceivePatternShapeFacts | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
 
 type decision = { name: String, policy: String }
 
@@ -22,7 +22,9 @@ fn boundary_name(boundary: boundary) -> String {
     ImportedConstructorFacts -> "imported constructor facts",
     NamedSignatureFacts -> "named signature facts",
     ImportedSignatureFacts -> "imported signature facts",
+    ExternalSignatureFacts -> "external signature facts",
     FunctionAnnotationFacts -> "function annotation facts",
+    LambdaAnnotationFacts -> "lambda annotation facts",
     LetAnnotationFacts -> "let annotation facts",
     ReceivePatternShapeFacts -> "receive pattern shape facts",
     ApplyExpressionResult -> "apply expression result",
@@ -53,7 +55,9 @@ fn classify(boundary: boundary) -> decision {
     ImportedConstructorFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
     NamedSignatureFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
     ImportedSignatureFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
+    ExternalSignatureFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
     FunctionAnnotationFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
+    LambdaAnnotationFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
     LetAnnotationFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
     ReceivePatternShapeFacts -> decision { name: boundary_name(boundary), policy: "concrete without message facts" },
     ApplyExpressionResult -> decision { name: boundary_name(boundary), policy: "needs inference facts" },
@@ -77,6 +81,6 @@ fn render_all(boundaries: List<boundary>) -> String {
 }
 
 fn main() {
-  let boundaries = [UnknownPath, UnknownCallCallee, EmptyListElement, MissingTupleItem, MissingRecordField, UnknownMatchPattern, IncompatibleIfBranches, IncompatibleMatchArms, ReceiveBinder, FallbackCallSignature, LocalBindingFacts, OperatorFacts, AggregateLiteralFacts, ConstructorFacts, ImportedAggregateFacts, ImportedConstructorFacts, NamedSignatureFacts, ImportedSignatureFacts, FunctionAnnotationFacts, LetAnnotationFacts, ReceivePatternShapeFacts, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
+  let boundaries = [UnknownPath, UnknownCallCallee, EmptyListElement, MissingTupleItem, MissingRecordField, UnknownMatchPattern, IncompatibleIfBranches, IncompatibleMatchArms, ReceiveBinder, FallbackCallSignature, LocalBindingFacts, OperatorFacts, AggregateLiteralFacts, ConstructorFacts, ImportedAggregateFacts, ImportedConstructorFacts, NamedSignatureFacts, ImportedSignatureFacts, ExternalSignatureFacts, FunctionAnnotationFacts, LambdaAnnotationFacts, LetAnnotationFacts, ReceivePatternShapeFacts, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
   dbg(render_all(boundaries))
 }

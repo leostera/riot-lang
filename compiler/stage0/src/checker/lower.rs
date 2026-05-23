@@ -2313,6 +2313,73 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_lambda_annotations_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(path, "fn main() { let id = fn(value: i64) { value }; id }")
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("LambdaAnnotationFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [TypedStmt::Let { value: id, .. }] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected lambda let statement");
+        };
+        let TypedExprKind::Lambda { params, body, .. } = &id.kind else {
+            panic!("expected lambda expression");
+        };
+        let Some(tail) = &body.tail else {
+            panic!("expected lambda tail");
+        };
+
+        assert_eq!(params[0].type_, RsigType::I64);
+        assert_eq!(tail.type_, RsigType::I64);
+        assert_eq!(
+            id.type_,
+            RsigType::Arrow {
+                parameter: Box::new(RsigType::I64),
+                result: Box::new(RsigType::I64),
+            }
+        );
+    }
+
+    #[test]
+    fn typed_hir_uses_external_signatures_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "external trace : i64 -> unit = \"riot_rt_dbg_value\"\n\
+                 fn main() { trace(41) }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ExternalSignatureFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected external call tail");
+        };
+        let TypedExprKind::Call { args, .. } = &tail.kind else {
+            panic!("expected external call");
+        };
+
+        assert_eq!(args[0].type_, RsigType::I64);
+        assert_eq!(tail.type_, RsigType::Unit);
+    }
+
+    #[test]
     fn typed_hir_keeps_lambda_and_spawn_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
