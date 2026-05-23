@@ -423,6 +423,71 @@ mod tests {
     }
 
     #[test]
+    fn closure_conversion_captures_let_binders_for_later_lambdas() {
+        let value = bind("value", 0);
+        let mut expr = LambdaExpr::Block(Box::new(LambdaBlock {
+            statements: vec![LambdaStmt::Let {
+                name: value.clone(),
+                value: LambdaExpr::Int(41),
+            }],
+            tail: Some(LambdaExpr::Lambda {
+                params: vec![Param::from_key(bind("ignored", 1))],
+                param_types: vec![RsigType::Unit],
+                captures: Vec::new(),
+                body: Box::new(LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Local(value.clone())),
+                }),
+            }),
+        }));
+
+        closure_convert_expr(&mut expr);
+        let LambdaExpr::Block(block) = expr else {
+            panic!("expected block");
+        };
+        let Some(LambdaExpr::Lambda { captures, .. }) = block.tail else {
+            panic!("expected block tail lambda");
+        };
+
+        assert_eq!(captures.as_slice(), &[Capture::from_key(value)]);
+    }
+
+    #[test]
+    fn closure_conversion_uses_outer_binding_for_lambdas_inside_shadowing_initializers() {
+        let outer = bind("value", 0);
+        let shadow = bind("value", 1);
+        let mut expr = LambdaExpr::Block(Box::new(LambdaBlock {
+            statements: vec![LambdaStmt::Let {
+                name: shadow,
+                value: LambdaExpr::Lambda {
+                    params: vec![Param::from_key(bind("ignored", 2))],
+                    param_types: vec![RsigType::Unit],
+                    captures: Vec::new(),
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Local(outer.clone())),
+                    }),
+                },
+            }],
+            tail: Some(LambdaExpr::Unit),
+        }));
+
+        closure_convert_expr(&mut expr);
+        let LambdaExpr::Block(block) = expr else {
+            panic!("expected block");
+        };
+        let LambdaStmt::Let {
+            value: LambdaExpr::Lambda { captures, .. },
+            ..
+        } = &block.statements[0]
+        else {
+            panic!("expected lambda initializer");
+        };
+
+        assert_eq!(captures.as_slice(), &[Capture::from_key(outer)]);
+    }
+
+    #[test]
     fn closure_conversion_captures_outer_values_but_not_match_binders() {
         let outer = bind("outer", 0);
         let inner = bind("inner", 1);
