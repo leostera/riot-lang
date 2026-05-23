@@ -81,6 +81,13 @@ Resolved hardening gap: tuple patterns now test nested item patterns during LLVM
 lowering instead of only checking tuple arity, so tuple scrutinees containing
 variant payload patterns select the correct arm.
 
+Actor metadata note: imported generic record and variant containers can preserve
+`actor_id<'msg>` payload facts through `.rsig` boundaries, including concrete
+payload diagnostics. A single generic variant-pattern binder still behaves like a
+normal type variable within one arm, so sending two incompatible message shapes
+through the same binder currently needs either separate projections/matches or a
+future existential-unknown actor-id treatment.
+
 `compiler/riotc` may remain as an eventual consumer, but it should not drive the
 loop until stage0 is sturdy enough to serve as the reference implementation.
 
