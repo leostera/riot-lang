@@ -2331,6 +2331,94 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_actor_id_unknown_params_have_concrete_abi() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let helpers = temp_dir.path().join("helpers.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &helpers,
+        r#"fn observe(worker: actor_id<_>) {
+  monitor(worker);
+  link(worker);
+  ()
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Helpers
+
+fn main() {
+  let worker = spawn {
+    receive { "go" -> dbg("helper string") };
+    receive { 1 -> dbg("helper int") }
+  };
+  Helpers.observe(worker);
+  send(worker, "go");
+  send(worker, 1);
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&helpers)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected actor-id helper compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&helpers)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected actor-id helper emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    if !stdout.contains("fn observe(actor_id<'") {
+        return fail(format!(
+            "actor-id helper rsig should expose an unknown actor message parameter:\n{stdout}"
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported actor-id helper compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_actor_operation_rejects_non_actor_factories() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
