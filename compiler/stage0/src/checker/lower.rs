@@ -1607,7 +1607,8 @@ mod tests {
     use crate::parser::SourceParser;
     use crate::signature::{
         ConstructorName, FieldName, FunctionTable, ImportedSignatures, ModuleName, Rsig,
-        RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigVariantConstructor, TypeName,
+        RsigExport, RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind,
+        RsigTypeScheme, RsigVariantConstructor, TypeName,
     };
 
     use crate::actor::air::ActorSlotType;
@@ -1690,6 +1691,28 @@ mod tests {
     fn imported_options_signature() -> ImportedSignatures {
         let mut imports = ImportedSignatures::new();
         insert_options_signature(&mut imports);
+        imports
+    }
+
+    fn imported_math_signature() -> ImportedSignatures {
+        let mut imports = ImportedSignatures::new();
+        imports.insert(
+            ModuleName::new("Math"),
+            Rsig {
+                module: ModuleName::new("Math"),
+                dependencies: Vec::new(),
+                types: Vec::new(),
+                exports: vec![RsigExport::Function(RsigFunction {
+                    name: "add_one".to_owned(),
+                    params: vec![RsigType::I64],
+                    result: RsigType::I64,
+                    scheme: RsigTypeScheme::from_signature(&[RsigType::I64], &RsigType::I64),
+                    symbol: "Math.add_one".to_owned(),
+                    fingerprint: 0,
+                })],
+                module_fingerprint: 0,
+            },
+        );
         imports
     }
 
@@ -2059,6 +2082,51 @@ mod tests {
         };
         let TypedExprKind::Call { .. } = &value.kind else {
             panic!("expected direct named call");
+        };
+
+        assert_eq!(params[0].type_, RsigType::I64);
+        assert_eq!(
+            inc.type_,
+            RsigType::Arrow {
+                parameter: Box::new(RsigType::I64),
+                result: Box::new(RsigType::I64),
+            }
+        );
+        assert_eq!(value.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn typed_hir_uses_imported_signatures_for_named_partial_calls_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n\
+                   let inc = Math.add_one;\n\
+                   let value = Math.add_one(41);\n\
+                   (inc, value)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = imported_math_signature();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ImportedNamedSignatureFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [TypedStmt::Let { value: inc, .. }, TypedStmt::Let { value, .. }] =
+            typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected imported named partial and direct call let statements");
+        };
+        let TypedExprKind::Lambda { params, .. } = &inc.kind else {
+            panic!("expected imported function value to lower as a partial-call lambda");
+        };
+        let TypedExprKind::Call { .. } = &value.kind else {
+            panic!("expected direct imported call");
         };
 
         assert_eq!(params[0].type_, RsigType::I64);

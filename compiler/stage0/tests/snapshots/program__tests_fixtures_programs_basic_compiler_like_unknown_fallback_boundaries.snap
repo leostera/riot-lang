@@ -14,6 +14,6 @@ stderr:
 run:
 status: success
 stdout:
-unknown path:conservative;unknown call callee:conservative apply;empty list element:conservative;missing tuple item:conservative;missing record field:conservative;unknown match pattern:conservative;incompatible if branches:conservative result;incompatible match arms:conservative result;receive binder:conservative;fallback call signature:conservative;named signature facts:concrete without expression facts;apply expression result:needs inference facts;lambda expression value:needs arrow facts;unannotated lambda param:conservative;spawn without receive shape:conservative actor id;partial receive wrapper:merge nested facts
+unknown path:conservative;unknown call callee:conservative apply;empty list element:conservative;missing tuple item:conservative;missing record field:conservative;unknown match pattern:conservative;incompatible if branches:conservative result;incompatible match arms:conservative result;receive binder:conservative;fallback call signature:conservative;named signature facts:concrete without expression facts;imported signature facts:concrete without expression facts;apply expression result:needs inference facts;lambda expression value:needs arrow facts;unannotated lambda param:conservative;spawn without receive shape:conservative actor id;partial receive wrapper:merge nested facts
 stderr:
 <empty>
