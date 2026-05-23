@@ -3144,7 +3144,7 @@ fn infer_expr_abi(
             .map(|arm| infer_match_arm_abi(arm, locals, functions, externals))
             .fold(AbiType::Unknown, unify_abi),
         LambdaExpr::Block(block) => infer_block_expr_abi(block, locals, functions, externals),
-        LambdaExpr::Call { result, .. } => AbiType::from_rsig(result),
+        LambdaExpr::Call { callee, result, .. } => infer_call_abi(callee, result, functions, externals),
         LambdaExpr::Unit => AbiType::Unit,
         LambdaExpr::Apply { result, .. } => AbiType::from_rsig(result),
         LambdaExpr::Lambda { .. } => AbiType::Value,
@@ -3166,6 +3166,40 @@ fn infer_expr_abi(
         | LambdaExpr::String(_) => AbiType::Value,
         LambdaExpr::Spawn { .. } => AbiType::ActorId,
         LambdaExpr::Receive { .. } | LambdaExpr::Char(_) | LambdaExpr::Float(_) => AbiType::Unknown,
+    }
+}
+
+fn infer_call_abi(
+    callee: &[String],
+    result: &RsigType,
+    functions: &FunctionAbiTable,
+    externals: &LambdaExternalTable,
+) -> AbiType {
+    let annotated = AbiType::from_rsig(result);
+    if annotated != AbiType::Unknown {
+        return annotated;
+    }
+
+    if let Some(name) = Stdlib::prelude_member_name(callee) {
+        if let Some(external) = externals.get(name) {
+            return AbiType::from_rsig(&external.result);
+        }
+    }
+
+    match callee {
+        [name] => functions
+            .get(name)
+            .map(|abi| abi.result)
+            .or_else(|| externals.get(name).map(|external| AbiType::from_rsig(&external.result)))
+            .unwrap_or(AbiType::Unknown),
+        [module, name] => {
+            let qualified = format!("{module}.{name}");
+            externals
+                .get(&qualified)
+                .map(|external| AbiType::from_rsig(&external.result))
+                .unwrap_or(AbiType::Unknown)
+        }
+        _ => AbiType::Unknown,
     }
 }
 
@@ -3587,6 +3621,56 @@ mod tests {
         assert_eq!(abi.params, vec![AbiType::I64]);
         assert_eq!(abi.result, AbiType::I64);
         assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_local_call_result_constraints() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiLocalCallTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![
+                LambdaFunction {
+                    name: "answer".to_owned(),
+                    params: Vec::new(),
+                    param_types: Vec::new(),
+                    result: RsigType::Unknown,
+                    body: LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Int(42)),
+                    },
+                    symbol: "riot_mod_AbiLocalCallTest_answer".to_owned(),
+                },
+                LambdaFunction {
+                    name: "main".to_owned(),
+                    params: Vec::new(),
+                    param_types: Vec::new(),
+                    result: RsigType::Unknown,
+                    body: LambdaBlock {
+                        statements: vec![LambdaStmt::Let {
+                            name: BindingKey::new("value"),
+                            value: LambdaExpr::Call {
+                                callee: vec!["answer".to_owned()],
+                                args: Vec::new(),
+                                arg_types: Vec::new(),
+                                result: RsigType::Unknown,
+                            },
+                        }],
+                        tail: Some(LambdaExpr::Local(BindingKey::new("value"))),
+                    },
+                    symbol: "riot_mod_AbiLocalCallTest_main".to_owned(),
+                },
+            ],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let answer = abis.get("answer").unwrap();
+        let main = abis.get("main").unwrap();
+
+        assert_eq!(answer.result, AbiType::I64);
+        assert_eq!(main.result, AbiType::I64);
+        assert!(answer.is_supported_local());
+        assert!(main.is_supported_local());
     }
 
     #[test]
