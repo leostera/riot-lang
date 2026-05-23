@@ -2163,6 +2163,46 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_keeps_incompatible_branch_result_metadata_unknown_without_inference_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n\
+                   let branched = if true { 1 } else { \"one\" };\n\
+                   let matched = match true { true -> 1, false -> \"zero\" };\n\
+                   (branched, matched)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ConservativeBranchFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let { value: branched, .. },
+            TypedStmt::Let { value: matched, .. },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected incompatible branch result let statements");
+        };
+        let TypedExprKind::If { .. } = &branched.kind else {
+            panic!("expected if expression");
+        };
+        let TypedExprKind::Match { .. } = &matched.kind else {
+            panic!("expected match expression");
+        };
+
+        assert_eq!(branched.type_, RsigType::Unknown);
+        assert_eq!(matched.type_, RsigType::Unknown);
+    }
+
+    #[test]
     fn typed_hir_keeps_projection_and_empty_list_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()

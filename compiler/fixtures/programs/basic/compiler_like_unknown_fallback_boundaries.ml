@@ -1,4 +1,4 @@
-type boundary = UnknownPath | EmptyListElement | MissingTupleItem | MissingRecordField | UnknownMatchPattern | ReceiveBinder | FallbackCallSignature | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
+type boundary = UnknownPath | EmptyListElement | MissingTupleItem | MissingRecordField | UnknownMatchPattern | IncompatibleIfBranches | IncompatibleMatchArms | ReceiveBinder | FallbackCallSignature | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
 
 type decision = { name: String, policy: String }
 
@@ -9,6 +9,8 @@ fn boundary_name(boundary: boundary) -> String {
     MissingTupleItem -> "missing tuple item",
     MissingRecordField -> "missing record field",
     UnknownMatchPattern -> "unknown match pattern",
+    IncompatibleIfBranches -> "incompatible if branches",
+    IncompatibleMatchArms -> "incompatible match arms",
     ReceiveBinder -> "receive binder",
     FallbackCallSignature -> "fallback call signature",
     ApplyExpressionResult -> "apply expression result",
@@ -26,6 +28,8 @@ fn classify(boundary: boundary) -> decision {
     MissingTupleItem -> decision { name: boundary_name(boundary), policy: "conservative" },
     MissingRecordField -> decision { name: boundary_name(boundary), policy: "conservative" },
     UnknownMatchPattern -> decision { name: boundary_name(boundary), policy: "conservative" },
+    IncompatibleIfBranches -> decision { name: boundary_name(boundary), policy: "conservative result" },
+    IncompatibleMatchArms -> decision { name: boundary_name(boundary), policy: "conservative result" },
     ReceiveBinder -> decision { name: boundary_name(boundary), policy: "conservative" },
     FallbackCallSignature -> decision { name: boundary_name(boundary), policy: "conservative" },
     ApplyExpressionResult -> decision { name: boundary_name(boundary), policy: "needs inference facts" },
@@ -49,6 +53,6 @@ fn render_all(boundaries: List<boundary>) -> String {
 }
 
 fn main() {
-  let boundaries = [UnknownPath, EmptyListElement, MissingTupleItem, MissingRecordField, UnknownMatchPattern, ReceiveBinder, FallbackCallSignature, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
+  let boundaries = [UnknownPath, EmptyListElement, MissingTupleItem, MissingRecordField, UnknownMatchPattern, IncompatibleIfBranches, IncompatibleMatchArms, ReceiveBinder, FallbackCallSignature, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
   dbg(render_all(boundaries))
 }
