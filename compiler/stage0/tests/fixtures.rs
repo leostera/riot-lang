@@ -811,6 +811,117 @@ fn imported_higher_order_function_uses_arrow_rsig() -> FixtureResult {
 }
 
 #[test]
+fn compile_lib_imported_higher_order_polymorphic_closure_values_have_concrete_abi() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &funcs,
+        r#"fn make_identity() {
+  fn(value) { value }
+}
+
+fn make_int_const() {
+  fn(_) { 42 }
+}
+
+fn make_string_const() {
+  fn(_) { "imported" }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+fn main() {
+  let int_id = Funcs.make_identity();
+  dbg(int_id(41) + 1);
+  let string_id = Funcs.make_identity();
+  dbg(string_concat(string_id("poly"), " closure"));
+  let answer = Funcs.make_int_const();
+  dbg(answer("ignored"));
+  let label = Funcs.make_string_const();
+  dbg(string_concat(label(()), " const"));
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected polymorphic closure compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected polymorphic closure emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "fn make_identity() -> ('",
+        "fn make_int_const() -> ('",
+        "-> i64",
+        "fn make_string_const() -> ('",
+        "-> String",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "polymorphic closure rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported polymorphic closure compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"42\npoly closure\n42\nimported const\n" {
+        return fail(format!(
+            "unexpected imported polymorphic closure stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_function_values_use_arrow_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
