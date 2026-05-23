@@ -1,0 +1,1 @@
+annotated even odd:infer group:seed placeholders and solve constraints;param annotated numeric helpers:infer group:seed placeholders and solve constraints;unannotated but constrained:infer group:seed placeholders and solve constraints;missing param facts:keep diagnostic:missing parameter facts for predeclaration;mismatched returns:reject group:return constraints do not converge

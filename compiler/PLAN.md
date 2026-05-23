@@ -1118,7 +1118,10 @@ complete annotations to every function in the recursion cycle.
   annotated.
 - **Validation:** Even/odd and compiler-like mutual-recursion fixtures print
   expected output; diagnostics cover missing constraints or mismatched types
-  across the group.
+  across the group. `compiler_like_mutual_recursion_group_plan` models the
+  planned group-inference boundary before implementation: seeded placeholder
+  groups may solve from complete annotations or concrete constraints, while
+  missing parameter facts and mismatched return constraints remain diagnostics.
 
 ### 44. Lambda Expression and Closure Boundaries
 
@@ -1275,7 +1278,9 @@ families, and eventually while-loop lowering once that feature is implemented.
   `compiler_like_while_lowering_plan` records the next larger control-flow
   boundary before implementation by modeling while-condition checking, loop
   block/backedge/safepoint accounting, and diagnostic-only non-bool/unknown
-  conditions.
+  conditions. `compiler_like_mutual_recursion_group_plan` records the adjacent
+  recursive-group implementation boundary by modeling seeded placeholders,
+  constraint convergence, and diagnostic-only missing-fact/mismatch cases.
 
 ## Documentation Slice Acceptance
 
