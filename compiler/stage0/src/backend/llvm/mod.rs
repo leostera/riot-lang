@@ -3447,12 +3447,12 @@ fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTa
 #[cfg(test)]
 mod tests {
     use crate::lambda::ir::{
-        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaFunction, LambdaProgram, LambdaStmt,
-        Param,
+        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaExternalTable, LambdaFunction,
+        LambdaProgram, LambdaStmt, Param,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
-    use super::{CodegenMode, LlvmBackend, llvm_symbol_fragment};
+    use super::{AbiType, CodegenMode, LlvmBackend, infer_function_abis, llvm_symbol_fragment};
 
     #[test]
     fn lambda_values_lower_to_runtime_closure_calls() {
@@ -3552,5 +3552,66 @@ mod tests {
         assert!(llvm.contains("riot_rt_value_apply"));
         assert!(llvm.contains("riot_rt_value_as_i64"));
         assert!(llvm.contains("riot_lambda_apply_ClosureApplyTest_"));
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_call_constraints_for_unknown_params() {
+        let x = Param::from_key(BindingKey::new("x"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiConstraintTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "id_after_add".to_owned(),
+                params: vec![x.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Expr(LambdaExpr::Call {
+                        callee: vec!["(+)".to_owned()],
+                        args: vec![LambdaExpr::Local(BindingKey::new("x")), LambdaExpr::Int(1)],
+                        arg_types: vec![RsigType::I64, RsigType::I64],
+                        result: RsigType::I64,
+                    })],
+                    tail: Some(LambdaExpr::Local(BindingKey::new("x"))),
+                },
+                symbol: "riot_mod_AbiConstraintTest_id_after_add".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("id_after_add").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::I64]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_keeps_unconstrained_unknown_params_unsupported() {
+        let x = Param::from_key(BindingKey::new("x"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiUnknownTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "identity".to_owned(),
+                params: vec![x],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Local(BindingKey::new("x"))),
+                },
+                symbol: "riot_mod_AbiUnknownTest_identity".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("identity").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Unknown]);
+        assert_eq!(abi.result, AbiType::Unknown);
+        assert!(!abi.is_supported_local());
     }
 }
