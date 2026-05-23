@@ -1,4 +1,4 @@
-type boundary = RawUnknownParam | UnresolvedPath | UnresolvedCall | WildcardMatchScrutinee | IncompatibleMatchScrutinee | IncompatibleMatchResult | ReceiveExpression | UnsupportedScalarLiteral | UnknownExternalAbi | CodegenUnknownGuard | UnknownAggregateItem | LetBoundAggregateItem | ConcreteAggregateItem | ApplyUnknownOperand | IfPredicate | CallSignatureFact
+type boundary = RawUnknownParam | UnresolvedPath | UnresolvedCall | WildcardMatchScrutinee | IncompatibleMatchScrutinee | IncompatibleMatchResult | ReceiveExpression | LocalFunctionScalarLiteral | EntrypointScalarLiteral | UnknownExternalAbi | CodegenUnknownGuard | UnknownAggregateItem | LetBoundAggregateItem | ConcreteAggregateItem | ApplyUnknownOperand | IfPredicate | CallSignatureFact
 
 type decision = { name: String, policy: String }
 
@@ -11,7 +11,8 @@ fn boundary_name(boundary: boundary) -> String {
     IncompatibleMatchScrutinee -> "incompatible match scrutinee",
     IncompatibleMatchResult -> "incompatible match result",
     ReceiveExpression -> "receive expression",
-    UnsupportedScalarLiteral -> "unsupported scalar literal",
+    LocalFunctionScalarLiteral -> "local function scalar literal",
+    EntrypointScalarLiteral -> "entrypoint scalar literal",
     UnknownExternalAbi -> "unknown external abi",
     CodegenUnknownGuard -> "codegen unknown guard",
     UnknownAggregateItem -> "unknown aggregate item",
@@ -32,7 +33,8 @@ fn classify(boundary: boundary) -> decision {
     IncompatibleMatchScrutinee -> decision { name: boundary_name(boundary), policy: "conservative unknown" },
     IncompatibleMatchResult -> decision { name: boundary_name(boundary), policy: "unsupported unknown" },
     ReceiveExpression -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
-    UnsupportedScalarLiteral -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
+    LocalFunctionScalarLiteral -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
+    EntrypointScalarLiteral -> decision { name: boundary_name(boundary), policy: "static output value" },
     UnknownExternalAbi -> decision { name: boundary_name(boundary), policy: "boxed value bridge" },
     CodegenUnknownGuard -> decision { name: boundary_name(boundary), policy: "diagnostic only" },
     UnknownAggregateItem -> decision { name: boundary_name(boundary), policy: "refine boxed value" },
@@ -57,6 +59,6 @@ fn render_all(boundaries: List<boundary>) -> String {
 }
 
 fn main() {
-  let boundaries = [RawUnknownParam, UnresolvedPath, UnresolvedCall, WildcardMatchScrutinee, IncompatibleMatchScrutinee, IncompatibleMatchResult, ReceiveExpression, UnsupportedScalarLiteral, UnknownExternalAbi, CodegenUnknownGuard, UnknownAggregateItem, LetBoundAggregateItem, ConcreteAggregateItem, ApplyUnknownOperand, IfPredicate, CallSignatureFact];
+  let boundaries = [RawUnknownParam, UnresolvedPath, UnresolvedCall, WildcardMatchScrutinee, IncompatibleMatchScrutinee, IncompatibleMatchResult, ReceiveExpression, LocalFunctionScalarLiteral, EntrypointScalarLiteral, UnknownExternalAbi, CodegenUnknownGuard, UnknownAggregateItem, LetBoundAggregateItem, ConcreteAggregateItem, ApplyUnknownOperand, IfPredicate, CallSignatureFact];
   dbg(render_all(boundaries))
 }
