@@ -1,6 +1,6 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 4481
+assertion_line: 4618
 expression: transcript
 ---
 fixture: tests/fixtures/programs/basic/compiler_like_imported_arrow_container_matching.ml
@@ -20,6 +20,7 @@ new list: match
 bad result: reject
 variant: match
 record nested: match
+variant nested: match
 actor callback: match
 bad actor callback: reject
 stderr:

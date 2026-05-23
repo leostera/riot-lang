@@ -56,6 +56,8 @@ fn main() {
   let actual_cell = TVariant("cell", [TArrow(TString, TInt)]);
   let expected_runner = TRecord("runner", [TArrow(TArrow(TVar("a"), TInt), TInt)]);
   let actual_runner = TRecord("runner", [TArrow(TArrow(TString, TInt), TInt)]);
+  let expected_task = TVariant("task", [TArrow(TArrow(TVar("a"), TInt), TInt)]);
+  let actual_task = TVariant("task", [TArrow(TArrow(TString, TInt), TInt)]);
   let expected_callback = TArrow(TActor(TVar("msg")), TInt);
   let actual_callback = TArrow(TActor(TString), TInt);
   let concrete_callback = TArrow(TActor(TString), TInt);
@@ -66,6 +68,7 @@ fn main() {
   dbg(string_concat("bad result: ", render_bool(new_type_matches(expected_list, bad_list))));
   dbg(string_concat("variant: ", render_bool(new_type_matches(expected_cell, actual_cell))));
   dbg(string_concat("record nested: ", render_bool(new_type_matches(expected_runner, actual_runner))));
+  dbg(string_concat("variant nested: ", render_bool(new_type_matches(expected_task, actual_task))));
   dbg(string_concat("actor callback: ", render_bool(new_type_matches(expected_callback, actual_callback))));
   dbg(string_concat("bad actor callback: ", render_bool(new_type_matches(concrete_callback, bad_actor_callback))));
   ()
