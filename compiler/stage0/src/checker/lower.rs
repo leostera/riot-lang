@@ -2226,6 +2226,45 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_imported_aggregate_and_constructor_facts_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "use Boxes\n\
+                 use Options\n\
+                 fn main() {\n\
+                   let boxed = Boxes.box { value: 1 };\n\
+                   let some = Options.Some(1);\n\
+                   let none = Options.None;\n\
+                   (boxed, some, none)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = imported_boxes_and_options_signature();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ImportedAggregateConstructorFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let { value: boxed, .. },
+            TypedStmt::Let { value: some, .. },
+            TypedStmt::Let { value: none, .. },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected imported aggregate and constructor let statements");
+        };
+
+        assert_eq!(boxed.type_, RsigType::Record(TypeName::new("Boxes.box")));
+        assert_eq!(some.type_, RsigType::Variant(TypeName::new("Options.option")));
+        assert_eq!(none.type_, RsigType::Variant(TypeName::new("Options.option")));
+    }
+
+    #[test]
     fn typed_hir_uses_let_annotations_without_expression_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
