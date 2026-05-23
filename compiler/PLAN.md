@@ -1060,34 +1060,43 @@ cross-core scheduler queues.
   diagnostics reject non-bool conditions; LLVM snapshots show loop branch
   structure.
 
-### 42. Support Recursive Functions
+### 42. Recursive Function Boundaries
 
-- **Commit:** `feat(stage0): support recursive functions`
-- **Intent:** Recursion is essential for parsers, tree walks, and list
-  processing.
-- **Frontend:** Resolve a function name inside its own body. Require explicit
-  result annotations initially if inference is ambiguous.
-- **Lowering/backend/runtime:** Ensure function declarations are emitted before
-  bodies and recursive calls lower to the declared symbol.
-- **Fixtures/tests:** Add factorial/fibonacci/list-length recursion fixtures.
-- **Done when:** A recursive function compiles to native code without relying on
-  static evaluation.
-- **Validation:** Recursive factorial/fibonacci fixtures run with arguments that
-  cannot be const-folded; LLVM contains a self-call to the generated symbol.
+Resolved hardening gap: direct self-recursive functions compile and run through
+normal inference/lowering/backend paths, with `recursive_factorial` and LLVM
+self-call coverage pinning the behavior. Annotated mutually recursive top-level
+functions are also supported when every function in the cycle has parameter and
+return annotations.
 
-### 43. Support Mutual Recursion Groups
+Remaining boundary: unannotated and partially annotated mutual recursion stays
+unsupported. Stage0 resolves unannotated declarations top-to-bottom, and the
+source-backed diagnostic tells users to either move the callee earlier or add
+complete annotations to every function in the recursion cycle.
 
-- **Commit:** `feat(stage0): support mutual recursion groups`
-- **Intent:** Real compiler modules often use mutually recursive helpers.
+- **Validation:** `recursive_factorial`, `mutual_recursion_annotated`,
+  `compile_lib_exports_annotated_mutual_recursion`,
+  `mutual_recursion_unsupported`, and
+  `mutual_recursion_partial_annotation_unsupported`.
+
+### 43. Support Unannotated Mutual Recursion Groups
+
+- **Commit:** `feat(stage0): support unannotated mutual recursion groups`
+- **Intent:** Real compiler modules often use mutually recursive helpers where
+  annotating every helper is noisy.
 - **Frontend:** Resolve all top-level function declarations before checking any
-  body. Detect cycles that lack enough annotation to type-check.
-- **Lowering/backend/runtime:** Declare all local LLVM functions before defining
-  them, preserving existing object export behavior.
-- **Fixtures/tests:** Add even/odd mutual recursion fixture and arity/type
-  diagnostics across the group.
-- **Done when:** Mutually recursive top-level functions compile and run.
-- **Validation:** Even/odd mutual recursion fixture prints expected output;
-  diagnostics cover missing annotations or mismatched types across the group.
+  body. Detect cycles that lack enough constraints to type-check, without
+  weakening the current source-backed diagnostics for unannotated or partially
+  annotated cycles.
+- **Lowering/backend/runtime:** Preserve the existing local LLVM declaration
+  ordering and object export behavior already exercised by annotated recursion.
+- **Fixtures/tests:** Add compiler-like mutually recursive helpers plus arity and
+  type diagnostics across the group.
+- **Done when:** Mutually recursive top-level functions with enough inferred
+  constraints compile and run without requiring every function in the cycle to be
+  annotated.
+- **Validation:** Even/odd and compiler-like mutual-recursion fixtures print
+  expected output; diagnostics cover missing constraints or mismatched types
+  across the group.
 
 ### 44. Add Non-Capturing Lambdas
 
