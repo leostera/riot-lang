@@ -2903,10 +2903,10 @@ fn validate_actor_block(
                 type_annotation,
                 ..
             } => {
-                if type_annotation.is_some() {
+                if let Some(annotation) = type_annotation {
                     return Err(ctx
                         .diagnostic(
-                            expr_span(value),
+                            annotation.span,
                             "unsupported actor local annotation",
                             "stage0 actor locals do not support type annotations yet",
                             Some("omit the annotation"),
