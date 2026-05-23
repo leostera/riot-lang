@@ -779,6 +779,78 @@ fn compile_lib_three_module_interfaces_link_through_object_dir() -> FixtureResul
 }
 
 #[test]
+fn compile_lib_compiler_shaped_actor_smoke() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let analyze = temp_dir.path().join("analyze.ml");
+    let worker = temp_dir.path().join("worker.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64) | Plus\nfn ident(name: String) -> token { Ident(name) }\nfn number(value: i64) -> token { Number(value) }\nfn plus() -> token { Plus }\n",
+    )?;
+    std::fs::write(
+        &analyze,
+        "use Syntax\ntype classification = Word(String) | Int(i64) | Symbol(String)\nfn classify(token: Syntax.token) -> classification { match token { Syntax.Ident(name) -> Word(name), Syntax.Number(value) -> Int(value), Syntax.Plus -> Symbol(\"plus\") } }\n",
+    )?;
+    std::fs::write(
+        &worker,
+        "use Syntax\nuse Analyze\nfn print_classification(token: Syntax.token) { match Analyze.classify(token) { Analyze.Word(name) -> println(name), Analyze.Int(value) -> dbg(value), Analyze.Symbol(name) -> println(name) } }\nfn start() -> actor_id<Syntax.token> { spawn { receive { token -> print_classification(token) }; receive { token -> print_classification(token) }; receive { token -> print_classification(token) } } }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Syntax\nuse Worker\nfn main() { let worker = Worker.start(); send(worker, Syntax.ident(\"ident\")); send(worker, Syntax.number(42)); send(worker, Syntax.plus()) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&worker)
+        .arg(&analyze)
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected compiler-shaped smoke compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected compiler-shaped smoke executable compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"ident\n42\nplus\n" {
+        return fail(format!(
+            "unexpected compiler-shaped smoke stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_exports_annotated_mutual_recursion() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");

@@ -1235,22 +1235,24 @@ snapshots for large multi-module workspaces.
 
 ### 50. Add Compiler-Shaped Smoke Fixture
 
-- **Commit:** `feat(stage0): add compiler-shaped smoke fixture`
-- **Intent:** The roadmap needs a capstone proving Stage0 can express a small
-  compiler-like program.
-- **Frontend:** Use only features implemented by prior slices: modules, records,
-  variants, match, functions, loops/recursion, actor send/receive, and runtime
-  values.
-- **Lowering/backend/runtime:** Compile the fixture through normal native
-  codegen and actor runtime. Do not special-case it.
-- **Fixtures/tests:** Add a multi-module fixture that tokenizes or classifies a
-  small hardcoded source string, sends work to an actor, receives a structured
-  result, and prints a deterministic summary.
-- **Done when:** The fixture passes as a normal stage0 integration test and acts
-  as the first “can write compiler-shaped code” milestone.
-- **Validation:** The multi-module smoke fixture builds through `compile-lib`,
-  links as a native executable, runs deterministically, and has typed/RIR/Actor
-  IR snapshots for its representative source file.
+Resolved hardening gap: stage0 now has an initial multi-module compiler-shaped
+smoke test. `Syntax` defines token variants, `Analyze` classifies tokens into
+structured variants, `Worker` exports an `actor_id<Syntax.token>` factory that
+receives token work and prints deterministic summaries, and a consumer links only
+against the emitted `.rsig`/object artifacts. The fixture builds through
+`compile-lib`, resolves transitive signatures/objects, runs through normal native
+codegen and the actor runtime, and prints `ident`, `42`, and `plus` without any
+special-case compiler path.
+
+Remaining boundary: this is still a compact smoke fixture over hardcoded token
+values rather than a real tokenizer/parser pipeline. Future self-hosting slices
+can grow it with richer source scanning, typed/IR/Actor-IR snapshot assertions for
+representative modules, and eventually while-loop lowering once that feature is
+implemented.
+
+- **Validation:** `compile_lib_compiler_shaped_actor_smoke` builds the smoke
+  modules through `compile-lib`, links the consumer as a native executable, and
+  runs deterministically through actor send/receive.
 
 ## Documentation Slice Acceptance
 
