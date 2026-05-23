@@ -2291,6 +2291,85 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_tuple_containing_unknown_keeps_unknown_abi_diagnostic() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(&funcs, "fn make_pair() { ([], 1) }\n")?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+fn main() {
+  let pair = Funcs.make_pair();
+  dbg(0)
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected tuple unknown compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected tuple unknown emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    if !stdout.contains("fn make_pair() -> (List<'") {
+        return fail(format!("tuple rsig missed unknown nested element type:\n{stdout}"));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if compile.status.success() {
+        return fail(
+            "expected imported tuple containing unknown compile to fail unknown ABI".to_string(),
+        );
+    }
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    for expected in ["imported value has unknown ABI", "make_pair"] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "tuple unknown ABI diagnostic missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_function_values_use_arrow_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
