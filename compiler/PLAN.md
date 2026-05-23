@@ -1074,9 +1074,12 @@ cross-core scheduler queues.
 - **Done when:** A native binary can run a while loop and print the accumulated
   result.
 - **Validation:** Current unsupported boundary is pinned by
-  `while_loop_unsupported`. A loop accumulator fixture prints the expected result;
-  typed diagnostics reject non-bool conditions; LLVM snapshots show loop branch
-  structure.
+  `while_loop_unsupported`. `compiler_like_while_lowering_plan` models the
+  planned checker/lowering boundary: bool conditions produce loop blocks,
+  backedges, and safepoints, while non-bool or unknown conditions stay
+  diagnostic-only until the syntax is implemented. A loop accumulator fixture
+  prints the expected result; typed diagnostics reject non-bool conditions; LLVM
+  snapshots show loop branch structure.
 
 ### 42. Recursive Function Boundaries
 
@@ -1269,6 +1272,10 @@ families, and eventually while-loop lowering once that feature is implemented.
   `compiler_like_checker_lowering_pipeline` adds a compact checker-to-lowering
   model, carrying typed expression facts into scalar/value slot classification
   while keeping unknown calls and missing locals explicit.
+  `compiler_like_while_lowering_plan` records the next larger control-flow
+  boundary before implementation by modeling while-condition checking, loop
+  block/backedge/safepoint accounting, and diagnostic-only non-bool/unknown
+  conditions.
 
 ## Documentation Slice Acceptance
 
