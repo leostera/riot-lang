@@ -2035,6 +2035,44 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_function_signatures_for_named_partial_calls_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn add_one(value: i64) -> i64 { value + 1 }\n\
+                 fn main() {\n\
+                   let inc = add_one;\n\
+                   let value = add_one(41);\n\
+                   (inc, value)\n\
+                 }",
+            )
+            .unwrap();
+        let typed = typed_program("NamedSignatureFacts", program);
+        let [TypedStmt::Let { value: inc, .. }, TypedStmt::Let { value, .. }] =
+            typed.functions[1].body.statements.as_slice()
+        else {
+            panic!("expected named partial and direct call let statements");
+        };
+        let TypedExprKind::Lambda { params, .. } = &inc.kind else {
+            panic!("expected named function value to lower as a partial-call lambda");
+        };
+        let TypedExprKind::Call { .. } = &value.kind else {
+            panic!("expected direct named call");
+        };
+
+        assert_eq!(params[0].type_, RsigType::I64);
+        assert_eq!(
+            inc.type_,
+            RsigType::Arrow {
+                parameter: Box::new(RsigType::I64),
+                result: Box::new(RsigType::I64),
+            }
+        );
+        assert_eq!(value.type_, RsigType::I64);
+    }
+
+    #[test]
     fn typed_hir_keeps_lambda_and_spawn_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
