@@ -64,6 +64,11 @@ module qualifier when another module imports and re-exports/calls through them.
 For example, an `Analyze` interface that accepts `Syntax.token` is imported by
 consumers as `Syntax.token`, not incorrectly rewritten to `Analyze.Syntax.token`.
 
+Resolved hardening gap: transitive `.rsig` dependency object resolution now
+checks dependency fingerprints even when a module was already seen as a direct
+import. Direct imports and transitive dependency edges must agree on the same
+signature fingerprint instead of letting traversal order hide stale interfaces.
+
 Resolved hardening gap: list spread syntax (`..tail`) used to be pattern-only.
 Stage0 now supports list cons expressions such as `[head, ..tail]`, lowered
 through the ordinary `list_cons` std/runtime ABI.

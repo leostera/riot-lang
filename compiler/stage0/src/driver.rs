@@ -649,10 +649,7 @@ impl<'a> ImportedObjectResolver<'a> {
         seen: &mut BTreeSet<ModuleName>,
         objects: &mut Vec<Utf8PathBuf>,
     ) -> miette::Result<()> {
-        if !seen.insert(module.clone()) {
-            return Ok(());
-        }
-
+        let already_seen = seen.contains(module);
         let rsig = self.resolve_signature(module)?;
         if let Some(expected) = expected_fingerprint {
             if rsig.module_fingerprint != expected {
@@ -662,6 +659,10 @@ impl<'a> ImportedObjectResolver<'a> {
                 );
             }
         }
+        if already_seen {
+            return Ok(());
+        }
+        seen.insert(module.clone());
         if crate::stdlib::Stdlib::new().contains_signature(&rsig) {
             return Ok(());
         }
@@ -847,6 +848,56 @@ mod tests {
             RsigStore::new(),
         )
         .resolve(&[ModuleName::new("Analyze")])
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("signature fingerprint mismatch for dependency Syntax"));
+    }
+
+    #[test]
+    fn imported_object_resolver_checks_fingerprint_for_previously_seen_direct_imports() {
+        let temp_dir = TempDir::new().unwrap();
+        let sig_dir = Utf8PathBuf::from_path_buf(temp_dir.path().join("sigs")).unwrap();
+        let object_dir = Utf8PathBuf::from_path_buf(temp_dir.path().join("objects")).unwrap();
+        std::fs::create_dir_all(sig_dir.as_std_path()).unwrap();
+        std::fs::create_dir_all(object_dir.as_std_path()).unwrap();
+
+        let old_syntax = Rsig::with_dependencies(
+            "Syntax",
+            vec![RsigDependency {
+                module: ModuleName::new("Other"),
+                fingerprint: 1,
+            }],
+            Vec::new(),
+            Vec::new(),
+        );
+        let new_syntax = Rsig::with_dependencies("Syntax", Vec::new(), Vec::new(), Vec::new());
+        let analyze = Rsig::with_dependencies(
+            "Analyze",
+            vec![RsigDependency {
+                module: ModuleName::new("Syntax"),
+                fingerprint: old_syntax.module_fingerprint,
+            }],
+            Vec::new(),
+            Vec::new(),
+        );
+        std::fs::write(object_dir.join("Syntax.o").as_std_path(), b"").unwrap();
+        std::fs::write(object_dir.join("Analyze.o").as_std_path(), b"").unwrap();
+
+        let mut imports = ImportedSignatures::new();
+        imports.insert(ModuleName::new("Syntax"), new_syntax);
+        imports.insert(ModuleName::new("Analyze"), analyze);
+        let available_signatures = ImportedSignatures::new();
+        let error = ImportedObjectResolver::new(
+            &imports,
+            &available_signatures,
+            &BTreeMap::new(),
+            &[],
+            std::slice::from_ref(&object_dir),
+            std::slice::from_ref(&sig_dir),
+            RsigStore::new(),
+        )
+        .resolve(&[ModuleName::new("Syntax"), ModuleName::new("Analyze")])
         .unwrap_err()
         .to_string();
 
