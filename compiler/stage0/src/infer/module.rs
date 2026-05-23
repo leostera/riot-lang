@@ -1994,6 +1994,19 @@ mod tests {
         }
     }
 
+    fn type_path(name: &str) -> AstTypeAnnotation {
+        AstTypeAnnotation {
+            text: name.to_owned(),
+            syntax: AstTypeExpr::Path {
+                path: AstPath {
+                    segments: vec![name.to_owned()],
+                },
+                span: span(),
+            },
+            span: span(),
+        }
+    }
+
     fn generic_record_type(name: &str, param: &str, field: &str) -> AstDecl {
         AstDecl::Type(AstTypeDecl {
             name: name.to_owned(),
@@ -2074,6 +2087,30 @@ mod tests {
         })
     }
 
+    fn annotated_function(
+        name: &str,
+        params: Vec<(&str, AstTypeAnnotation)>,
+        result: AstTypeAnnotation,
+        tail: AstExpr,
+    ) -> AstDecl {
+        AstDecl::Function(AstFnDecl {
+            name: name.to_owned(),
+            name_span: span(),
+            params: params.iter().map(|(name, _)| (*name).to_owned()).collect(),
+            param_types: params
+                .into_iter()
+                .map(|(_, annotation)| Some(annotation))
+                .collect(),
+            return_type: Some(result),
+            body: AstBlock {
+                statements: Vec::new(),
+                tail: Some(tail),
+                span: span(),
+            },
+            span: span(),
+        })
+    }
+
     fn infer(program: &AstProgram) -> Result<InferredModule, InferError> {
         ModuleInferencer::new(program, &ImportedSignatures::new()).infer()
     }
@@ -2138,6 +2175,41 @@ mod tests {
         assert_eq!(
             &crate::infer::module::InferError::UnknownValue("one".to_owned()),
             root_error(&err)
+        );
+    }
+
+    #[test]
+    fn annotated_functions_can_see_later_annotated_functions() {
+        let i64_type = || type_path("i64");
+        let program = AstProgram {
+            decls: vec![
+                annotated_function(
+                    "even",
+                    vec![("n", i64_type())],
+                    i64_type(),
+                    call("odd", vec![path("n")]),
+                ),
+                annotated_function(
+                    "odd",
+                    vec![("n", i64_type())],
+                    i64_type(),
+                    call("even", vec![path("n")]),
+                ),
+            ],
+        };
+
+        let exports = infer(&program).unwrap().env.exported_values();
+
+        assert_eq!(exports.len(), 2);
+        assert_eq!(exports[0].0, "even");
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::I64))
+        );
+        assert_eq!(exports[1].0, "odd");
+        assert_eq!(
+            exports[1].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::I64))
         );
     }
 
