@@ -1089,8 +1089,9 @@ complete annotations to every function in the recursion cycle.
 
 - **Validation:** `recursive_factorial`, `mutual_recursion_annotated`,
   `compile_lib_exports_annotated_mutual_recursion`,
-  `mutual_recursion_unsupported`, and
-  `mutual_recursion_partial_annotation_unsupported`.
+  `mutual_recursion_unsupported`,
+  `mutual_recursion_partial_annotation_unsupported`, and
+  `mutual_recursion_param_annotation_unsupported`.
 
 ### 43. Support Unannotated Mutual Recursion Groups
 
