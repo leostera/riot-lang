@@ -3483,10 +3483,10 @@ fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTa
 #[cfg(test)]
 mod tests {
     use crate::lambda::ir::{
-        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaExternalTable, LambdaFunction,
-        LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
+        BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaExternalTable,
+        LambdaFunction, LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
     };
-    use crate::signature::{ImportedSignatures, ModuleName, RsigType};
+    use crate::signature::{AbiSymbol, ImportedSignatures, ModuleName, RsigType};
 
     use super::{AbiType, CodegenMode, LlvmBackend, infer_function_abis, llvm_symbol_fragment};
 
@@ -3671,6 +3671,47 @@ mod tests {
         assert_eq!(main.result, AbiType::I64);
         assert!(answer.is_supported_local());
         assert!(main.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_external_call_result_constraints() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiExternalCallTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Let {
+                        name: BindingKey::new("value"),
+                        value: LambdaExpr::Call {
+                            callee: vec!["native_answer".to_owned()],
+                            args: Vec::new(),
+                            arg_types: Vec::new(),
+                            result: RsigType::Unknown,
+                        },
+                    }],
+                    tail: Some(LambdaExpr::Local(BindingKey::new("value"))),
+                },
+                symbol: "riot_mod_AbiExternalCallTest_main".to_owned(),
+            }],
+        };
+        let mut externals = LambdaExternalTable::new();
+        externals.insert(LambdaExternal {
+            name: "native_answer".to_owned(),
+            params: Vec::new(),
+            result: RsigType::I64,
+            abi: AbiSymbol::new("native_answer"),
+        });
+
+        let abis = infer_function_abis(&program, &externals);
+        let abi = abis.get("main").unwrap();
+
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
     }
 
     #[test]
