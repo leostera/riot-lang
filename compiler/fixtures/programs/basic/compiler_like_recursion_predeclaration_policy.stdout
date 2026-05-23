@@ -1,0 +1,1 @@
+direct annotated:predeclare:self recursion ok;annotated mutual:predeclare:later annotated visible;annotated to unannotated:top-down:later unannotated hidden;partial mutual:top-down:caller not fully annotated;unannotated forward:top-down:future values hidden
