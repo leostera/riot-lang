@@ -3472,9 +3472,7 @@ fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
         RsigType::Unknown | RsigType::Var(_) => true,
         RsigType::ActorId(_) => false,
         RsigType::List(message) => rsig_type_has_unknown_abi(message),
-        RsigType::Arrow { parameter, result } => {
-            rsig_type_has_unknown_abi(parameter) || rsig_type_has_unknown_abi(result)
-        }
+        RsigType::Arrow { .. } => false,
         RsigType::Tuple(items) => items.iter().any(rsig_type_has_unknown_abi),
         RsigType::RecordApp { .. } | RsigType::VariantApp { .. } => false,
         RsigType::Bool

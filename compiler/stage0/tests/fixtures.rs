@@ -2064,6 +2064,173 @@ fn emit_all_distinguishes_concrete_and_unknown_actor_message_types() -> FixtureR
 }
 
 #[test]
+fn compile_lib_imported_higher_order_actor_factories_preserve_message_types() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let actors = temp_dir.path().join("actors.ml");
+    let main = temp_dir.path().join("main.ml");
+    let bad = temp_dir.path().join("bad.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &actors,
+        r#"fn make_sender_factory() {
+  fn(_) {
+    spawn { receive { "go" -> dbg("import higher sent") } }
+  }
+}
+
+fn make_any_factory() {
+  fn(_) {
+    spawn {
+      receive { "go" -> dbg("import higher any string") };
+      receive { 1 -> dbg("import higher any int") }
+    }
+  }
+}
+
+fn make_idle_closure() {
+  let idle = spawn { receive { () -> () } };
+  fn(_) { idle }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Actors
+
+type monitor_down = Down(actor_id<_>)
+
+fn main() {
+  let sender_factory = Actors.make_sender_factory();
+  send(sender_factory(()), "go");
+  let any_factory = Actors.make_any_factory();
+  let any = any_factory(());
+  send(any, "go");
+  send(any, 1);
+  let idle_factory = Actors.make_idle_closure();
+  spawn {
+    monitor(idle_factory(()));
+    dbg("import higher monitored");
+    receive { Down(_) -> () }
+  };
+  spawn {
+    link(idle_factory(()));
+    dbg("import higher linked");
+    receive { () -> () }
+  };
+  ()
+}
+"#,
+    )?;
+    std::fs::write(
+        &bad,
+        r#"use Actors
+fn main() {
+  let sender_factory = Actors.make_sender_factory();
+  send(sender_factory(()), 1)
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&actors)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected higher-order actor factory compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&actors)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected higher-order actor factory emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "fn make_sender_factory() -> ('",
+        "-> actor_id<String>",
+        "fn make_any_factory() -> ('",
+        "-> actor_id<'",
+        "fn make_idle_closure() -> ('",
+        "-> actor_id<unit>",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "higher-order actor factory rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported higher-order actor factory compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"import higher sent\nimport higher any string\nimport higher any int\nimport higher monitored\nimport higher linked\n" {
+        return fail(format!(
+            "unexpected imported higher-order actor factory stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    let bad_compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(temp_dir.path().join("bad"))
+        .output()?;
+    if bad_compile.status.success() {
+        return fail("expected imported higher-order actor message mismatch to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&bad_compile.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `String`, but the argument provides `i64`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "imported higher-order actor mismatch missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_actor_factory_targets_work() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
