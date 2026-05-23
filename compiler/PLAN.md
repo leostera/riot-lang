@@ -1246,13 +1246,15 @@ special-case compiler path.
 
 Remaining boundary: this is still a compact smoke fixture over hardcoded token
 values rather than a real tokenizer/parser pipeline. Future self-hosting slices
-can grow it with richer source scanning, typed/IR/Actor-IR snapshot assertions for
-representative modules, and eventually while-loop lowering once that feature is
-implemented.
+can grow it with richer source scanning, dedicated snapshots for larger module
+families, and eventually while-loop lowering once that feature is implemented.
 
 - **Validation:** `compile_lib_compiler_shaped_actor_smoke` builds the smoke
   modules through `compile-lib`, links the consumer as a native executable, and
   runs deterministically through actor send/receive.
+  `compiler_shaped_actor_smoke_emit_boundaries` emits the `Worker` module with
+  dependency signatures and checks representative typed, `.rsig`, lambda IR, and
+  Actor-IR sections stay source/interface-backed.
 
 ## Documentation Slice Acceptance
 

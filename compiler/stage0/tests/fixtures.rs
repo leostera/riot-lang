@@ -851,6 +851,78 @@ fn compile_lib_compiler_shaped_actor_smoke() -> FixtureResult {
 }
 
 #[test]
+fn compiler_shaped_actor_smoke_emit_boundaries() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let analyze = temp_dir.path().join("analyze.ml");
+    let worker = temp_dir.path().join("worker.ml");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64) | Plus\nfn ident(name: String) -> token { Ident(name) }\nfn number(value: i64) -> token { Number(value) }\nfn plus() -> token { Plus }\n",
+    )?;
+    std::fs::write(
+        &analyze,
+        "use Syntax\ntype classification = Word(String) | Int(i64) | Symbol(String)\nfn classify(token: Syntax.token) -> classification { match token { Syntax.Ident(name) -> Word(name), Syntax.Number(value) -> Int(value), Syntax.Plus -> Symbol(\"plus\") } }\n",
+    )?;
+    std::fs::write(
+        &worker,
+        "use Syntax\nuse Analyze\nfn print_classification(token: Syntax.token) { match Analyze.classify(token) { Analyze.Word(name) -> println(name), Analyze.Int(value) -> dbg(value), Analyze.Symbol(name) -> println(name) } }\nfn start() -> actor_id<Syntax.token> { spawn { receive { token -> print_classification(token) }; receive { token -> print_classification(token) }; receive { token -> print_classification(token) } } }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&analyze)
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected smoke dependency compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&worker)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected compiler-shaped smoke emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    let typed = emit_all_section(&stdout, "== typed ==", "== rsig ==")?;
+    let rsig = emit_all_section(&stdout, "== rsig ==", "== ir ==")?;
+    let lambda = emit_all_section(&stdout, "== ir ==", "== actor-ir ==")?;
+    let actor_ir = emit_all_section(&stdout, "== actor-ir ==", "== llvm ==")?;
+    for (section_name, section, expected) in [
+        ("typed", typed.as_str(), "Analyze.classification"),
+        ("rsig", rsig.as_str(), "fn start() -> actor_id<Syntax.token>"),
+        ("lambda", lambda.as_str(), "\"classify\""),
+        ("actor-ir", actor_ir.as_str(), "ActorFrameLayout"),
+    ] {
+        if !section.contains(expected) {
+            return fail(format!(
+                "expected compiler-shaped smoke {section_name} emit section to contain `{expected}`:\n{section}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_exports_annotated_mutual_recursion() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
