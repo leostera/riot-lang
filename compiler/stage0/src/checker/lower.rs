@@ -2035,6 +2035,32 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_keeps_lambda_and_spawn_metadata_unknown_without_inference_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n  let id = fn(x) { x };\n  let worker = spawn { receive { 1 -> () } };\n  (id, worker)\n}",
+            )
+            .unwrap();
+        let typed = typed_program("ConservativeUnknownFacts", program);
+        let [TypedStmt::Let { value: id, .. }, TypedStmt::Let { value: worker, .. }] =
+            typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected lambda and spawn let statements");
+        };
+        let TypedExprKind::Lambda { params, .. } = &id.kind else {
+            panic!("expected lambda value");
+        };
+        let TypedExprKind::Spawn { .. } = &worker.kind else {
+            panic!("expected spawn value");
+        };
+
+        assert_eq!(params[0].type_, RsigType::Unknown);
+        assert_eq!(worker.type_, RsigType::ActorId(Box::new(RsigType::Unknown)));
+    }
+
+    #[test]
     fn typed_hir_uses_inference_facts_for_partial_receive_message_wrappers() {
         let typed = typed_program_with_inference_facts(
             "PartialReceiveMessageWrappers",
