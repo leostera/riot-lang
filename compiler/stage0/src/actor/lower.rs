@@ -168,3 +168,95 @@ fn collect_actors_from_expr(
         | LambdaExpr::String(_) => {}
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::lambda::ir::{
+        BindingKey, LambdaBlock, LambdaExpr, LambdaFunction, LambdaMatchArm, LambdaPattern,
+        LambdaProgram, LambdaReceiveArm,
+    };
+    use crate::signature::{ImportedSignatures, ModuleName, RsigType};
+
+    use super::{ActorIrLowerer, ActorSlotType};
+
+    fn bind(name: &str, id: usize) -> BindingKey {
+        BindingKey::resolved(name, id)
+    }
+
+    fn binding_pattern(name: &str, id: usize, type_: RsigType) -> LambdaPattern {
+        LambdaPattern::Bind {
+            binding: bind(name, id),
+            type_,
+        }
+    }
+
+    fn program_with_tail(tail: LambdaExpr) -> LambdaProgram {
+        LambdaProgram {
+            module_name: ModuleName::new("ActorCaptureTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unit,
+                symbol: "riot_mod_ActorCaptureTest_main".to_owned(),
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(tail),
+                },
+            }],
+        }
+    }
+
+    #[test]
+    fn actor_ir_captures_match_binders_for_nested_spawns() {
+        let value = bind("value", 0);
+        let program = program_with_tail(LambdaExpr::Match {
+            scrutinee: Box::new(LambdaExpr::Int(41)),
+            arms: vec![LambdaMatchArm {
+                pattern: binding_pattern("value", 0, RsigType::Unknown),
+                body: LambdaExpr::Spawn {
+                    actor_id: 7,
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Local(value)),
+                    }),
+                },
+            }],
+        });
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 7);
+        assert_eq!(actors.actors[0].frame.captures.len(), 1);
+        assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$0");
+        assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_ir_captures_receive_binders_for_nested_spawns() {
+        let msg = bind("msg", 0);
+        let program = program_with_tail(LambdaExpr::Receive {
+            arms: vec![LambdaReceiveArm {
+                pattern: binding_pattern("msg", 0, RsigType::I64),
+                body: LambdaExpr::Spawn {
+                    actor_id: 11,
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Local(msg)),
+                    }),
+                },
+            }],
+        });
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 11);
+        assert_eq!(actors.actors[0].frame.captures.len(), 1);
+        assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "msg$0");
+        assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
+    }
+}
