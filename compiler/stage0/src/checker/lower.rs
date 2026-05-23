@@ -2296,6 +2296,63 @@ mod tests {
     }
 
     #[test]
+    fn lambda_ir_receive_record_patterns_use_inferred_field_types() {
+        let typed = typed_program_with_inference_facts(
+            "InferredReceiveRecordPayload",
+            "type box<'a> = { value: 'a }\nfn main() { spawn { receive { box { value } -> value + 1 } } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let LambdaExpr::Spawn { body, .. } = &lambda.functions[0]
+            .body
+            .tail
+            .as_ref()
+            .expect("expected spawned actor")
+        else {
+            panic!("expected spawn tail");
+        };
+        let Some(LambdaExpr::Receive { arms }) = &body.tail else {
+            panic!("expected receive tail");
+        };
+        let LambdaPattern::Record { fields, .. } = &arms[0].pattern else {
+            panic!("expected record receive pattern");
+        };
+        let LambdaPattern::Bind { type_, .. } = &fields[0].1 else {
+            panic!("expected record field binding");
+        };
+
+        assert_eq!(type_, &RsigType::I64);
+    }
+
+    #[test]
+    fn actor_ir_classifies_inferred_receive_record_field_captures_as_i64() {
+        let typed = typed_program_with_inference_facts(
+            "InferredReceiveRecordFieldCapture",
+            "type box<'a> = { value: 'a }\nfn main() { spawn { receive { box { value } -> { let y = value + 1; spawn { let kept = value; () } } } } }",
+        );
+        let lambda = LambdaLowerer::new().lower(typed);
+        let actor_ir = ActorIrLowerer::new(&ImportedSignatures::new()).lower(&lambda);
+        let inner_actor = actor_ir
+            .actors
+            .iter()
+            .find(|actor| {
+                actor
+                    .frame
+                    .captures
+                    .iter()
+                    .any(|slot| slot.name.as_str() == "value$0")
+            })
+            .expect("expected nested actor to capture receive record field");
+        let capture = inner_actor
+            .frame
+            .captures
+            .iter()
+            .find(|slot| slot.name.as_str() == "value$0")
+            .expect("expected receive record field capture");
+
+        assert_eq!(capture.type_, ActorSlotType::I64);
+    }
+
+    #[test]
     fn imported_record_field_maps_qualify_field_types() {
         let mut imports = ImportedSignatures::new();
         imports.insert(
