@@ -1602,7 +1602,7 @@ mod tests {
     use crate::ast::{
         AstBlock, AstDecl, AstExpr, AstFnDecl, AstPath, AstProgram, AstStmt, TextSpan,
     };
-    use crate::checker::tyir::TyIrBuilder;
+    use crate::checker::tyir::{TyIrBuilder, TypedPattern};
     use crate::infer::module::ModuleInferencer;
     use crate::parser::SourceParser;
     use crate::signature::{
@@ -2072,6 +2072,94 @@ mod tests {
         assert_eq!(params[0].type_, RsigType::Unknown);
         assert_eq!(applied.type_, RsigType::Unknown);
         assert_eq!(worker.type_, RsigType::ActorId(Box::new(RsigType::Unknown)));
+    }
+
+    #[test]
+    fn typed_hir_keeps_match_pattern_metadata_unknown_without_scrutinee_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "type option<'a> = Some('a) | None\n\
+                 type box<'a> = { value: 'a }\n\
+                 fn main() {\n\
+                   let variant = match message { Some(value) -> value, None -> 0 };\n\
+                   let tupled = match message { (left, right) -> left };\n\
+                   let listed = match message { [head, ..tail] -> head };\n\
+                   let recorded = match message { box { value } -> value };\n\
+                   (variant, tupled, listed, recorded)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ConservativePatternFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let { value: variant, .. },
+            TypedStmt::Let { value: tupled, .. },
+            TypedStmt::Let { value: listed, .. },
+            TypedStmt::Let { value: recorded, .. },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected pattern fallback let statements");
+        };
+
+        let TypedExprKind::Match { arms, .. } = &variant.kind else {
+            panic!("expected variant match");
+        };
+        let TypedPattern::Constructor { payload, .. } = &arms[0].pattern else {
+            panic!("expected constructor pattern");
+        };
+        let TypedPattern::Bind { type_, .. } = &payload[0] else {
+            panic!("expected constructor payload binder");
+        };
+        assert!(matches!(type_, RsigType::Unknown | RsigType::Var(_)));
+
+        let TypedExprKind::Match { arms, .. } = &tupled.kind else {
+            panic!("expected tuple match");
+        };
+        let TypedPattern::Tuple(items) = &arms[0].pattern else {
+            panic!("expected tuple pattern");
+        };
+        let TypedPattern::Bind { type_, .. } = &items[0] else {
+            panic!("expected tuple item binder");
+        };
+        assert_eq!(type_, &RsigType::Unknown);
+
+        let TypedExprKind::Match { arms, .. } = &listed.kind else {
+            panic!("expected list match");
+        };
+        let TypedPattern::List { prefix, tail } = &arms[0].pattern else {
+            panic!("expected list pattern");
+        };
+        let TypedPattern::Bind { type_, .. } = &prefix[0] else {
+            panic!("expected list head binder");
+        };
+        assert_eq!(type_, &RsigType::Unknown);
+        let Some(tail) = tail else {
+            panic!("expected list tail binder");
+        };
+        let TypedPattern::Bind { type_, .. } = tail.as_ref() else {
+            panic!("expected list tail binder");
+        };
+        assert_eq!(type_, &RsigType::List(Box::new(RsigType::Unknown)));
+
+        let TypedExprKind::Match { arms, .. } = &recorded.kind else {
+            panic!("expected record match");
+        };
+        let TypedPattern::Record { fields, .. } = &arms[0].pattern else {
+            panic!("expected record pattern");
+        };
+        let TypedPattern::Bind { type_, .. } = &fields[0].1 else {
+            panic!("expected record field binder");
+        };
+        assert!(matches!(type_, RsigType::Unknown | RsigType::Var(_)));
     }
 
     #[test]
