@@ -1548,6 +1548,143 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_higher_order_variant_nested_closure_params_match_arrows() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let bad_main = temp_dir.path().join("bad_main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &funcs,
+        r#"type task<'callback> = Run('callback)
+
+fn use_task(task: task<(('a -> i64) -> i64)>) -> i64 {
+  match task {
+    Run(run) -> run(fn(_value) { 40 }),
+  }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+fn main() {
+  let result = Funcs.use_task(Funcs.Run(fn(callback: (String -> i64)) {
+    callback("ignored") + 1
+  }));
+  dbg(result + 1);
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected variant nested closure-param compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected variant nested closure-param emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in ["fn use_task(task<((", "-> i64) -> i64)>"] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "variant nested closure-param rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported variant nested closure-param compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"42\n" {
+        return fail(format!(
+            "unexpected imported variant nested closure-param stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    std::fs::write(
+        &bad_main,
+        r#"use Funcs
+
+fn main() {
+  let _result = Funcs.use_task(Funcs.Run(fn(callback: (String -> String)) {
+    string_concat(callback("ignored"), "!");
+    0
+  }));
+  dbg("done")
+}
+"#,
+    )?;
+    let bad_compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad_main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(temp_dir.path().join("bad_main"))
+        .output()?;
+    if bad_compile.status.success() {
+        return fail("expected bad imported variant nested closure-param compile to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&bad_compile.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `i64`, but the argument provides `String`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "bad variant nested closure-param diagnostic missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_higher_order_actor_id_closure_params_match_nested_messages() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
