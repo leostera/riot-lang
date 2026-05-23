@@ -145,4 +145,21 @@ mod tests {
         assert_eq!(abi.result_abi(&record), AbiType::Value);
         assert_eq!(abi.result_abi(&variant), AbiType::Value);
     }
+
+    #[test]
+    fn local_abi_keeps_wrappers_concrete_but_raw_unknowns_unknown() {
+        let arrow = RsigType::Arrow {
+            parameter: Box::new(RsigType::Var("a".into())),
+            result: Box::new(RsigType::Var("a".into())),
+        };
+        let actor = RsigType::ActorId(Box::new(RsigType::Var("msg".into())));
+
+        assert_eq!(AbiType::from_rsig(&arrow), AbiType::Value);
+        assert_eq!(AbiType::from_rsig(&actor), AbiType::ActorId);
+        assert_eq!(AbiType::from_rsig(&RsigType::Unknown), AbiType::Unknown);
+        assert_eq!(
+            AbiType::from_rsig(&RsigType::Var("raw".into())),
+            AbiType::Unknown
+        );
+    }
 }
