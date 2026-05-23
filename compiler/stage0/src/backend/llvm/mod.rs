@@ -3294,6 +3294,7 @@ fn mark_expr_constraints(
             mark_expr_as(params, locals, param_types, callee, AbiType::Value);
             mark_expr_constraints(callee, params, locals, param_types, functions, externals);
             for arg in args {
+                mark_expr_as(params, locals, param_types, arg, AbiType::Value);
                 mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
@@ -3614,6 +3615,47 @@ mod tests {
 
         let abis = infer_function_abis(&program, &LambdaExternalTable::new());
         let abi = abis.get("invoke").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Value]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_apply_args_as_values() {
+        let x = Param::from_key(BindingKey::new("x"));
+        let y = BindingKey::new("y");
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiApplyArgTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "invoke_with".to_owned(),
+                params: vec![x.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Apply {
+                        callee: Box::new(LambdaExpr::Lambda {
+                            params: vec![Param::from_key(y.clone())],
+                            param_types: vec![RsigType::Unknown],
+                            captures: Vec::new(),
+                            body: Box::new(LambdaBlock {
+                                statements: Vec::new(),
+                                tail: Some(LambdaExpr::Int(1)),
+                            }),
+                        }),
+                        args: vec![LambdaExpr::Local(BindingKey::new("x"))],
+                        result: RsigType::I64,
+                    }),
+                },
+                symbol: "riot_mod_AbiApplyArgTest_invoke_with".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("invoke_with").unwrap();
 
         assert_eq!(abi.params, vec![AbiType::Value]);
         assert_eq!(abi.result, AbiType::I64);
