@@ -3421,15 +3421,18 @@ fn mark_expr_constraints(
         }
         LambdaExpr::Tuple(items) | LambdaExpr::List(items) => {
             for item in items {
+                mark_expr_as(params, locals, param_types, item, AbiType::Value);
                 mark_expr_constraints(item, params, locals, param_types, functions, externals);
             }
         }
         LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
+                mark_expr_as(params, locals, param_types, value, AbiType::Value);
                 mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
         LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
+            mark_expr_as(params, locals, param_types, base, AbiType::Value);
             mark_expr_constraints(base, params, locals, param_types, functions, externals);
         }
         LambdaExpr::Receive { arms } => {
@@ -3451,6 +3454,7 @@ fn mark_expr_constraints(
         }
         LambdaExpr::Variant { payload, .. } => {
             for value in payload {
+                mark_expr_as(params, locals, param_types, value, AbiType::Value);
                 mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
@@ -3550,7 +3554,9 @@ mod tests {
         BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaExternalTable,
         LambdaFunction, LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
     };
-    use crate::signature::{AbiSymbol, ImportedSignatures, ModuleName, RsigType};
+    use crate::signature::{
+        AbiSymbol, ConstructorName, ImportedSignatures, ModuleName, RsigType, TypeName,
+    };
 
     use super::{AbiType, CodegenMode, LlvmBackend, infer_function_abis, llvm_symbol_fragment};
 
@@ -3735,6 +3741,113 @@ mod tests {
         assert_eq!(main.result, AbiType::I64);
         assert!(answer.is_supported_local());
         assert!(main.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_aggregate_items_as_values() {
+        let x = Param::from_key(BindingKey::new("x"));
+        let y = Param::from_key(BindingKey::new("y"));
+        let z = Param::from_key(BindingKey::new("z"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiAggregateItemTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "pack".to_owned(),
+                params: vec![x.clone(), y.clone(), z.clone()],
+                param_types: vec![RsigType::Unknown, RsigType::Unknown, RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Tuple(vec![
+                        LambdaExpr::Local(BindingKey::new("x")),
+                        LambdaExpr::List(vec![LambdaExpr::Local(BindingKey::new("y"))]),
+                        LambdaExpr::Record {
+                            path: vec!["box".to_owned()],
+                            fields: vec![(
+                                "value".to_owned(),
+                                LambdaExpr::Local(BindingKey::new("z")),
+                            )],
+                        },
+                    ])),
+                },
+                symbol: "riot_mod_AbiAggregateItemTest_pack".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("pack").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Value, AbiType::Value, AbiType::Value]);
+        assert_eq!(abi.result, AbiType::Value);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_variant_payloads_as_values() {
+        let payload = Param::from_key(BindingKey::new("payload"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiVariantPayloadTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "some".to_owned(),
+                params: vec![payload.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Variant {
+                        type_name: TypeName::new("option"),
+                        constructor: ConstructorName::new("Some"),
+                        payload: vec![LambdaExpr::Local(BindingKey::new("payload"))],
+                    }),
+                },
+                symbol: "riot_mod_AbiVariantPayloadTest_some".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("some").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Value]);
+        assert_eq!(abi.result, AbiType::Value);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_projection_bases_as_values() {
+        let tuple = Param::from_key(BindingKey::new("tuple"));
+        let record = Param::from_key(BindingKey::new("record"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiProjectionBaseTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "project".to_owned(),
+                params: vec![tuple.clone(), record.clone()],
+                param_types: vec![RsigType::Unknown, RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Expr(LambdaExpr::TupleIndex {
+                        base: Box::new(LambdaExpr::Local(BindingKey::new("tuple"))),
+                        index: 0,
+                    })],
+                    tail: Some(LambdaExpr::Field {
+                        base: Box::new(LambdaExpr::Local(BindingKey::new("record"))),
+                        field: "value".to_owned(),
+                    }),
+                },
+                symbol: "riot_mod_AbiProjectionBaseTest_project".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("project").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Value, AbiType::Value]);
+        assert_eq!(abi.result, AbiType::Value);
+        assert!(abi.is_supported_local());
     }
 
     #[test]
