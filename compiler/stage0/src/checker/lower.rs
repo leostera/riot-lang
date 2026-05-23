@@ -2181,6 +2181,51 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_aggregate_and_constructor_facts_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "type option = Some(i64) | None\n\
+                 type point = { x: i64, y: i64 }\n\
+                 fn main() {\n\
+                   let tupled = (1, \"one\");\n\
+                   let listed = [1, 2];\n\
+                   let recorded = point { x: 1, y: 2 };\n\
+                   let some = Some(1);\n\
+                   let none = None;\n\
+                   (tupled, listed, recorded, some, none)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("AggregateConstructorFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let { value: tupled, .. },
+            TypedStmt::Let { value: listed, .. },
+            TypedStmt::Let { value: recorded, .. },
+            TypedStmt::Let { value: some, .. },
+            TypedStmt::Let { value: none, .. },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected aggregate and constructor let statements");
+        };
+
+        assert_eq!(tupled.type_, RsigType::Tuple(vec![RsigType::I64, RsigType::String]));
+        assert_eq!(listed.type_, RsigType::List(Box::new(RsigType::I64)));
+        assert_eq!(recorded.type_, RsigType::Record(TypeName::new("point")));
+        assert_eq!(some.type_, RsigType::Variant(TypeName::new("option")));
+        assert_eq!(none.type_, RsigType::Variant(TypeName::new("option")));
+    }
+
+    #[test]
     fn typed_hir_uses_let_annotations_without_expression_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
