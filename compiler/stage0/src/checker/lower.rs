@@ -2040,23 +2040,37 @@ mod tests {
         let program = SourceParser::new()
             .parse(
                 path,
-                "fn main() {\n  let id = fn(x) { x };\n  let worker = spawn { receive { 1 -> () } };\n  (id, worker)\n}",
+                "fn main() {\n  let id = fn(x) { x };\n  let applied = id(1);\n  let worker = spawn { receive { 1 -> () } };\n  (id, applied, worker)\n}",
             )
             .unwrap();
         let typed = typed_program("ConservativeUnknownFacts", program);
-        let [TypedStmt::Let { value: id, .. }, TypedStmt::Let { value: worker, .. }] =
-            typed.functions[0].body.statements.as_slice()
+        let [
+            TypedStmt::Let { value: id, .. },
+            TypedStmt::Let { value: applied, .. },
+            TypedStmt::Let { value: worker, .. },
+        ] = typed.functions[0].body.statements.as_slice()
         else {
-            panic!("expected lambda and spawn let statements");
+            panic!("expected lambda, apply, and spawn let statements");
         };
         let TypedExprKind::Lambda { params, .. } = &id.kind else {
             panic!("expected lambda value");
+        };
+        let TypedExprKind::Apply { .. } = &applied.kind else {
+            panic!("expected apply value");
         };
         let TypedExprKind::Spawn { .. } = &worker.kind else {
             panic!("expected spawn value");
         };
 
+        assert_eq!(
+            id.type_,
+            RsigType::Arrow {
+                parameter: Box::new(RsigType::Unknown),
+                result: Box::new(RsigType::Unknown),
+            }
+        );
         assert_eq!(params[0].type_, RsigType::Unknown);
+        assert_eq!(applied.type_, RsigType::Unknown);
         assert_eq!(worker.type_, RsigType::ActorId(Box::new(RsigType::Unknown)));
     }
 
