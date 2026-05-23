@@ -2419,6 +2419,71 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_actor_id_unknown_param_rejects_non_actor() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let helpers = temp_dir.path().join("helpers.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &helpers,
+        r#"fn observe(worker: actor_id<_>) {
+  monitor(worker);
+  ()
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        "use Helpers\nfn main() { let _ignored = Helpers.observe(42); dbg(\"done\") }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&helpers)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected actor-id helper compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if compile.status.success() {
+        return fail("expected imported actor-id helper argument mismatch to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `actor_id<'",
+        "but the argument provides `i64`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "imported actor-id helper argument mismatch missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_actor_operation_rejects_non_actor_factories() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
