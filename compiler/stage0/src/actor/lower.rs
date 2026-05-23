@@ -175,7 +175,7 @@ mod tests {
         BindingKey, LambdaBlock, LambdaExpr, LambdaFunction, LambdaMatchArm, LambdaPattern,
         LambdaProgram, LambdaReceiveArm, LambdaStmt, Param,
     };
-    use crate::signature::{ImportedSignatures, ModuleName, RsigType};
+    use crate::signature::{ConstructorName, ImportedSignatures, ModuleName, RsigType, TypeName};
 
     use super::{ActorIrLowerer, ActorSlotType};
 
@@ -221,6 +221,15 @@ mod tests {
         )
     }
 
+    fn capture_type(actors: &super::ActorIrProgram, name: &str) -> Option<ActorSlotType> {
+        actors.actors[0]
+            .frame
+            .captures
+            .iter()
+            .find(|capture| capture.name.as_str() == name)
+            .map(|capture| capture.type_)
+    }
+
     #[test]
     fn actor_ir_captures_match_binders_for_nested_spawns() {
         let value = bind("value", 0);
@@ -245,6 +254,59 @@ mod tests {
         assert_eq!(actors.actors[0].frame.captures.len(), 1);
         assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$0");
         assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_ir_captures_nested_match_binders_for_nested_spawns() {
+        let scalar = bind("scalar", 0);
+        let boxed = bind("boxed", 1);
+        let program = program_with_tail(LambdaExpr::Match {
+            scrutinee: Box::new(LambdaExpr::Tuple(vec![
+                LambdaExpr::Int(41),
+                LambdaExpr::String("payload".to_owned()),
+            ])),
+            arms: vec![LambdaMatchArm {
+                pattern: LambdaPattern::Tuple(vec![
+                    LambdaPattern::Constructor {
+                        type_name: TypeName::new("option"),
+                        constructor: ConstructorName::new("Some"),
+                        payload: vec![binding_pattern("scalar", 0, RsigType::I64)],
+                    },
+                    LambdaPattern::Record {
+                        type_name: TypeName::new("box"),
+                        fields: vec![(
+                            "value".to_owned(),
+                            binding_pattern(
+                                "boxed",
+                                1,
+                                RsigType::RecordApp {
+                                    name: TypeName::new("payload"),
+                                    args: vec![RsigType::String],
+                                },
+                            ),
+                        )],
+                    },
+                ]),
+                body: LambdaExpr::Spawn {
+                    actor_id: 8,
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Tuple(vec![
+                            LambdaExpr::Local(scalar),
+                            LambdaExpr::Local(boxed),
+                        ])),
+                    }),
+                },
+            }],
+        });
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 8);
+        assert_eq!(actors.actors[0].frame.captures.len(), 2);
+        assert_eq!(capture_type(&actors, "scalar$0"), Some(ActorSlotType::I64));
+        assert_eq!(capture_type(&actors, "boxed$1"), Some(ActorSlotType::Value));
     }
 
     #[test]
@@ -308,6 +370,42 @@ mod tests {
         assert_eq!(actors.actors[0].id, 10);
         assert_eq!(actors.actors[0].frame.captures.len(), 1);
         assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$0");
+        assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_ir_captures_lambda_params_for_nested_spawns() {
+        let outer = bind("value", 0);
+        let param = bind("value", 1);
+        let program = program_with_body(
+            vec![Param::from_key(outer)],
+            vec![RsigType::String],
+            LambdaBlock {
+                statements: Vec::new(),
+                tail: Some(LambdaExpr::Lambda {
+                    params: vec![Param::from_key(param.clone())],
+                    param_types: vec![RsigType::I64],
+                    captures: Vec::new(),
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Spawn {
+                            actor_id: 12,
+                            body: Box::new(LambdaBlock {
+                                statements: Vec::new(),
+                                tail: Some(LambdaExpr::Local(param)),
+                            }),
+                        }),
+                    }),
+                }),
+            },
+        );
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 12);
+        assert_eq!(actors.actors[0].frame.captures.len(), 1);
+        assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$1");
         assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
     }
 
