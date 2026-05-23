@@ -821,8 +821,11 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 },
             }
         }
-        AstExpr::Spawn { body, .. } => TypedExpr {
-            type_: RsigType::ActorId(Box::new(RsigType::Unknown)),
+        AstExpr::Spawn { body, span } => TypedExpr {
+            type_: context
+                .expression_type(span)
+                .filter(concrete_actor_id_type)
+                .unwrap_or_else(|| RsigType::ActorId(Box::new(RsigType::Unknown))),
             kind: {
                 let body = type_block(*body, context);
                 TypedExprKind::Spawn {
@@ -1060,6 +1063,14 @@ fn partial_call_lambda(
             }),
         },
     }
+}
+
+fn concrete_actor_id_type(type_: &RsigType) -> bool {
+    matches!(
+        type_,
+        RsigType::ActorId(message)
+            if !matches!(message.as_ref(), RsigType::Unknown | RsigType::Var(_))
+    )
 }
 
 fn ast_expr_span(expr: &AstExpr) -> TextSpan {
@@ -2005,6 +2016,22 @@ mod tests {
         };
 
         assert_eq!(tail.type_, RsigType::I64);
+    }
+
+    #[test]
+    fn typed_hir_uses_inference_facts_for_spawn_message_types() {
+        let typed = typed_program_with_inference_facts(
+            "SpawnMessageFacts",
+            "fn main() { spawn { receive { 1 -> (), 2 -> () } } }",
+        );
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected a tail expression");
+        };
+        let TypedExprKind::Spawn { .. } = &tail.kind else {
+            panic!("expected spawn tail");
+        };
+
+        assert_eq!(tail.type_, RsigType::ActorId(Box::new(RsigType::I64)));
     }
 
     #[test]
