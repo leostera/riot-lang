@@ -1181,21 +1181,23 @@ per-export fingerprints.
 
 ### 47. Per-Export Rsig Fingerprints
 
-Remaining boundary: `.rsig` files have stable module/interface fingerprints and
-record dependency fingerprints, but they do not yet expose a separate fingerprint
-for each exported function, external, type, constructor, or actor summary.
+Resolved hardening gap: `.rsig` signatures store deterministic fingerprints for
+exported functions, externals, and type declarations, and canonical signature
+text exposes those fingerprints beside each declaration. The fingerprints are
+computed from canonical declaration text after sorting, so export/type reordering
+is stable while changed export or type shapes change the affected fingerprint and
+the enclosing module fingerprint.
 
-- **Intent:** Fine-grained dependency invalidation needs stable export identity.
-- **Frontend:** No syntax change.
-- **Lowering/backend/runtime:** Store fingerprints per exported function,
-  external, type, constructor, and actor summary. Bump `.rsig` if the binary
-  shape changes.
-- **Fixtures/tests:** Add roundtrip tests proving stable fingerprints under
-  reorder and changed fingerprints under type changes.
-- **Done when:** `emit all` or canonical signature text shows per-export
-  fingerprints deterministically.
-- **Validation:** Signature tests prove reorder-stable fingerprints and changed
-  fingerprints after export type changes; binary roundtrip preserves them.
+Remaining boundary: dependency invalidation still consumes module-level
+fingerprints. Constructors and future actor summaries are represented through
+their enclosing type/signature shapes today; future build-planner work can add
+more granular dependency edges if it needs constructor- or actor-summary-level
+invalidation.
+
+- **Validation:** `rsig_export_fingerprints_are_stable_under_reorder`,
+  `rsig_fingerprints_change_when_export_or_type_shape_changes`,
+  `binary_rsig_roundtrips_dependency_fingerprints`, and `.rsig` binary
+  roundtrip tests for functions, externals, and type declarations.
 
 ### 48. Rsig Dependency Metadata
 

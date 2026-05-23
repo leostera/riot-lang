@@ -217,11 +217,19 @@ impl ImportedSignatures {
 #[cfg(test)]
 mod tests {
     use super::{
-        ConstructorName, FieldName, Rsig, RsigDependency, RsigExport, RsigFunction,
-        RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeParser, RsigTypeScheme,
-        RsigVariantConstructor, TypeName, TypeParamName, TypeVarName, decode_rsig, encode_rsig,
+        AbiSymbol, ConstructorName, FieldName, Rsig, RsigDependency, RsigExport, RsigExternal,
+        RsigFunction, RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigTypeParser,
+        RsigTypeScheme, RsigVariantConstructor, TypeName, TypeParamName, TypeVarName, decode_rsig,
+        encode_rsig,
     };
     use std::collections::BTreeSet;
+
+    fn export_fingerprint(export: &RsigExport) -> u64 {
+        match export {
+            RsigExport::Function(function) => function.fingerprint,
+            RsigExport::External(external) => external.fingerprint,
+        }
+    }
 
     #[test]
     fn parses_parenthesized_arrow_parameter_types() {
@@ -355,6 +363,135 @@ mod tests {
     }
 
     #[test]
+    fn rsig_export_fingerprints_are_stable_under_reorder() {
+        let point_type = RsigTypeDecl {
+            name: TypeName::new("point"),
+            params: Vec::new(),
+            body: RsigTypeDeclKind::Record {
+                fields: vec![RsigRecordField {
+                    name: FieldName::new("x"),
+                    type_: RsigType::I64,
+                }],
+            },
+            fingerprint: 0,
+        };
+        let color_type = RsigTypeDecl {
+            name: TypeName::new("color"),
+            params: Vec::new(),
+            body: RsigTypeDeclKind::Variant {
+                constructors: vec![RsigVariantConstructor {
+                    name: ConstructorName::new("Red"),
+                    payload: Vec::new(),
+                }],
+            },
+            fingerprint: 0,
+        };
+        let origin = RsigExport::Function(RsigFunction {
+            name: "origin".to_owned(),
+            params: Vec::new(),
+            result: RsigType::Record(TypeName::new("point")),
+            scheme: RsigTypeScheme::from_signature(&[], &RsigType::Record(TypeName::new("point"))),
+            symbol: "riot_mod_Geometry_origin".to_owned(),
+            fingerprint: 0,
+        });
+        let trace = RsigExport::External(RsigExternal {
+            name: "trace".to_owned(),
+            params: vec![RsigType::String],
+            result: RsigType::Unit,
+            scheme: RsigTypeScheme::from_signature(&[RsigType::String], &RsigType::Unit),
+            abi: AbiSymbol::new("riot_trace"),
+            fingerprint: 0,
+        });
+
+        let first = Rsig::with_dependencies(
+            "Geometry".to_owned(),
+            Vec::new(),
+            vec![point_type.clone(), color_type.clone()],
+            vec![origin.clone(), trace.clone()],
+        );
+        let second = Rsig::with_dependencies(
+            "Geometry".to_owned(),
+            Vec::new(),
+            vec![color_type, point_type],
+            vec![trace, origin],
+        );
+
+        assert_eq!(first, second);
+        assert_eq!(first.canonical_text(), second.canonical_text());
+        assert!(first.types.iter().all(|type_| type_.fingerprint != 0));
+        assert!(
+            first
+                .exports
+                .iter()
+                .all(|export| export_fingerprint(export) != 0)
+        );
+    }
+
+    #[test]
+    fn rsig_fingerprints_change_when_export_or_type_shape_changes() {
+        let base = Rsig::with_dependencies(
+            "Api".to_owned(),
+            Vec::new(),
+            vec![RsigTypeDecl {
+                name: TypeName::new("box"),
+                params: Vec::new(),
+                body: RsigTypeDeclKind::Record {
+                    fields: vec![RsigRecordField {
+                        name: FieldName::new("value"),
+                        type_: RsigType::I64,
+                    }],
+                },
+                fingerprint: 0,
+            }],
+            vec![RsigExport::Function(RsigFunction {
+                name: "read".to_owned(),
+                params: Vec::new(),
+                result: RsigType::I64,
+                scheme: RsigTypeScheme::from_signature(&[], &RsigType::I64),
+                symbol: "riot_mod_Api_read".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+        let changed_export = Rsig::with_dependencies(
+            "Api".to_owned(),
+            Vec::new(),
+            base.types.clone(),
+            vec![RsigExport::Function(RsigFunction {
+                name: "read".to_owned(),
+                params: Vec::new(),
+                result: RsigType::String,
+                scheme: RsigTypeScheme::from_signature(&[], &RsigType::String),
+                symbol: "riot_mod_Api_read".to_owned(),
+                fingerprint: 0,
+            })],
+        );
+        let changed_type = Rsig::with_dependencies(
+            "Api".to_owned(),
+            Vec::new(),
+            vec![RsigTypeDecl {
+                name: TypeName::new("box"),
+                params: Vec::new(),
+                body: RsigTypeDeclKind::Record {
+                    fields: vec![RsigRecordField {
+                        name: FieldName::new("value"),
+                        type_: RsigType::String,
+                    }],
+                },
+                fingerprint: 0,
+            }],
+            base.exports.clone(),
+        );
+
+        assert_ne!(
+            export_fingerprint(&base.exports[0]),
+            export_fingerprint(&changed_export.exports[0])
+        );
+        assert_ne!(base.types[0].fingerprint, changed_type.types[0].fingerprint);
+        assert_ne!(base.module_fingerprint, changed_export.module_fingerprint);
+        assert_ne!(base.module_fingerprint, changed_type.module_fingerprint);
+    }
+
+    #[test]
     fn binary_rsig_roundtrips_generic_record_applications() {
         let boxed_i64 = RsigType::RecordApp {
             name: TypeName::new("box"),
@@ -377,7 +514,11 @@ mod tests {
         let decoded = decode_rsig(&encode_rsig(&rsig)).unwrap();
 
         assert_eq!(decoded, rsig);
-        assert!(decoded.canonical_text().contains("fn make_i64(i64) -> box<i64>"));
+        assert!(
+            decoded
+                .canonical_text()
+                .contains("fn make_i64(i64) -> box<i64>")
+        );
     }
 
     #[test]
