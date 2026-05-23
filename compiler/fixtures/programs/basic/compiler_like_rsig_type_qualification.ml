@@ -7,8 +7,12 @@ fn is_prelude_type(name: String) -> bool {
   name == "Option"
 }
 
+fn already_qualified(name: String) -> bool {
+  name == "Syntax.token" || name == "Syntax.span" || name == "Syntax.box"
+}
+
 fn qualify_name(module_name: String, name: String) -> String {
-  if is_prelude_type(name) { name } else { string_concat(module_name, string_concat(".", name)) }
+  if is_prelude_type(name) { name } else { if already_qualified(name) { name } else { string_concat(module_name, string_concat(".", name)) } }
 }
 
 fn qualify_type(module_name: String, type_: typ) -> typ {
@@ -72,7 +76,8 @@ fn main() {
     fields: [
       field { name: "head", type_: TVariant("token", []) },
       field { name: "trail", type_: TRecord("box", [TVariant("token", []), TVariant("Option", [TString])]) },
-      field { name: "pair", type_: TTuple([TVariant("token", []), TList(TRecord("span", []))]) }
+      field { name: "pair", type_: TTuple([TVariant("token", []), TList(TRecord("span", []))]) },
+      field { name: "forwarded", type_: TVariant("Syntax.token", []) }
     ]
   };
   dbg(render_fields(qualify_fields(provider.module_name, provider.fields)))
