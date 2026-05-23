@@ -101,6 +101,10 @@ payload diagnostics. A single `actor_id<_>` parameter or generic variant-pattern
 binder still behaves like a normal type variable within one scope/arm, so sending
 two incompatible message shapes through the same binder currently needs either
 separate projections/matches or a future existential-unknown actor-id treatment.
+A local `let worker: actor_id<_> = spawn { ... }` binding to an already
+heterogeneous actor remains a concrete runtime actor id with unknown message
+shape and can still send multiple shapes; the scoped conflict applies when one
+unknown actor-id binder is refined by sends in that scope.
 
 `compiler/riotc` may remain as an eventual consumer, but it should not drive the
 loop until stage0 is sturdy enough to serve as the reference implementation.
