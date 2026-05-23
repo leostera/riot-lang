@@ -1606,8 +1606,8 @@ mod tests {
     use crate::infer::module::ModuleInferencer;
     use crate::parser::SourceParser;
     use crate::signature::{
-        ConstructorName, FieldName, ImportedSignatures, ModuleName, Rsig, RsigRecordField,
-        RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigVariantConstructor, TypeName,
+        ConstructorName, FieldName, FunctionTable, ImportedSignatures, ModuleName, Rsig,
+        RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, RsigVariantConstructor, TypeName,
     };
 
     use crate::actor::air::ActorSlotType;
@@ -2058,6 +2058,52 @@ mod tests {
 
         assert_eq!(params[0].type_, RsigType::Unknown);
         assert_eq!(worker.type_, RsigType::ActorId(Box::new(RsigType::Unknown)));
+    }
+
+    #[test]
+    fn typed_hir_keeps_projection_and_empty_list_metadata_unknown_without_inference_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "type point = { x: i64, y: i64 }\n\
+                 fn main() {\n\
+                   let empty = [];\n\
+                   let missing_item = (1, 2).2;\n\
+                   let p = point { x: 1, y: 2 };\n\
+                   let missing_field = p.z;\n\
+                   (empty, missing_item, missing_field)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ConservativeProjectionFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let { value: empty, .. },
+            TypedStmt::Let {
+                value: missing_item,
+                ..
+            },
+            TypedStmt::Let { .. },
+            TypedStmt::Let {
+                value: missing_field,
+                ..
+            },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected empty-list and projection let statements");
+        };
+
+        assert_eq!(empty.type_, RsigType::List(Box::new(RsigType::Unknown)));
+        assert_eq!(missing_item.type_, RsigType::Unknown);
+        assert_eq!(missing_field.type_, RsigType::Unknown);
     }
 
     #[test]
