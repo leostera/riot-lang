@@ -1,4 +1,4 @@
-type boundary = RawUnknownParam | UnresolvedCall | WildcardMatchScrutinee | IncompatibleMatchResult | ReceiveExpression | UnsupportedScalarLiteral | UnknownExternalAbi | UnknownAggregateItem | LetBoundAggregateItem | ConcreteAggregateItem | ApplyUnknownOperand | IfPredicate | CallSignatureFact
+type boundary = RawUnknownParam | UnresolvedCall | WildcardMatchScrutinee | IncompatibleMatchScrutinee | IncompatibleMatchResult | ReceiveExpression | UnsupportedScalarLiteral | UnknownExternalAbi | UnknownAggregateItem | LetBoundAggregateItem | ConcreteAggregateItem | ApplyUnknownOperand | IfPredicate | CallSignatureFact
 
 type decision = { name: String, policy: String }
 
@@ -7,6 +7,7 @@ fn boundary_name(boundary: boundary) -> String {
     RawUnknownParam -> "raw unknown param",
     UnresolvedCall -> "unresolved call",
     WildcardMatchScrutinee -> "wildcard match scrutinee",
+    IncompatibleMatchScrutinee -> "incompatible match scrutinee",
     IncompatibleMatchResult -> "incompatible match result",
     ReceiveExpression -> "receive expression",
     UnsupportedScalarLiteral -> "unsupported scalar literal",
@@ -25,6 +26,7 @@ fn classify(boundary: boundary) -> decision {
     RawUnknownParam -> decision { name: boundary_name(boundary), policy: "unsupported" },
     UnresolvedCall -> decision { name: boundary_name(boundary), policy: "conservative unknown" },
     WildcardMatchScrutinee -> decision { name: boundary_name(boundary), policy: "conservative unknown" },
+    IncompatibleMatchScrutinee -> decision { name: boundary_name(boundary), policy: "conservative unknown" },
     IncompatibleMatchResult -> decision { name: boundary_name(boundary), policy: "unsupported unknown" },
     ReceiveExpression -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
     UnsupportedScalarLiteral -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
@@ -51,6 +53,6 @@ fn render_all(boundaries: List<boundary>) -> String {
 }
 
 fn main() {
-  let boundaries = [RawUnknownParam, UnresolvedCall, WildcardMatchScrutinee, IncompatibleMatchResult, ReceiveExpression, UnsupportedScalarLiteral, UnknownExternalAbi, UnknownAggregateItem, LetBoundAggregateItem, ConcreteAggregateItem, ApplyUnknownOperand, IfPredicate, CallSignatureFact];
+  let boundaries = [RawUnknownParam, UnresolvedCall, WildcardMatchScrutinee, IncompatibleMatchScrutinee, IncompatibleMatchResult, ReceiveExpression, UnsupportedScalarLiteral, UnknownExternalAbi, UnknownAggregateItem, LetBoundAggregateItem, ConcreteAggregateItem, ApplyUnknownOperand, IfPredicate, CallSignatureFact];
   dbg(render_all(boundaries))
 }
