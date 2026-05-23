@@ -1201,6 +1201,175 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_higher_order_list_of_polymorphic_closures_has_concrete_abi() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &funcs,
+        r#"fn make_ids() {
+  [fn(value) { value }]
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+fn main() {
+  let ids = Funcs.make_ids();
+  let result = match ids {
+    [id, .._] -> id(41) + 1,
+    [] -> 0
+  };
+  dbg(result)
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected list closure compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected list closure emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in ["fn make_ids() -> List<(", "-> '"] {
+        if !stdout.contains(expected) {
+            return fail(format!("list closure rsig missed `{expected}`:\n{stdout}"));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported list closure compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"42\n" {
+        return fail(format!(
+            "unexpected imported list closure stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn compile_lib_imported_higher_order_empty_list_keeps_unknown_abi_diagnostic() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(&funcs, "fn make_empty() { [] }\n")?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+fn main() {
+  let items = Funcs.make_empty();
+  dbg(0)
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected empty list compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected empty list emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    if !stdout.contains("fn make_empty() -> List<'") {
+        return fail(format!("empty list rsig missed unknown element type:\n{stdout}"));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if compile.status.success() {
+        return fail("expected imported empty list compile to fail unknown ABI".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    for expected in ["imported value has unknown ABI", "make_empty"] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "empty list unknown ABI diagnostic missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_function_values_use_arrow_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
