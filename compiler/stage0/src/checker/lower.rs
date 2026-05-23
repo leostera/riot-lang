@@ -2141,6 +2141,46 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_local_binding_and_operator_facts_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n\
+                   let scalar = 41;\n\
+                   let alias = scalar;\n\
+                   let sum = scalar + 1;\n\
+                   let ordered = scalar < 42;\n\
+                   (alias, sum, ordered)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("LocalBindingFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let { value: scalar, .. },
+            TypedStmt::Let { value: alias, .. },
+            TypedStmt::Let { value: sum, .. },
+            TypedStmt::Let { value: ordered, .. },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected local fact let statements");
+        };
+
+        assert_eq!(scalar.type_, RsigType::I64);
+        assert_eq!(alias.type_, RsigType::I64);
+        assert_eq!(sum.type_, RsigType::I64);
+        assert_eq!(ordered.type_, RsigType::Bool);
+    }
+
+    #[test]
     fn typed_hir_uses_let_annotations_without_expression_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
