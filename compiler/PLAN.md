@@ -72,6 +72,11 @@ Known hardening gaps discovered by compiler-shaped fixtures:
 - Unannotated mutually recursive helpers are not inferred yet. Compiler-shaped
   code that wants mutually recursive `rename_expr`/`rename_args` helpers should
   add annotations today or wait for a future recursive inference slice.
+- Cross-module generated helper symbols are not fully uniqued yet. An imported
+  provider that applies a higher-order callback and a consumer that also lowers a
+  lambda application can both emit `_riot_lambda_apply_0`, causing a duplicate
+  symbol at link time. Imported nested-closure matching is covered with an
+  accept-only provider until helper symbol names are module-qualified.
 Resolved hardening gap: imported and local generic constructor inference now
 preserves result type arguments instead of erasing applications to their base
 variant names. Nested pattern flows such as `Options.Some(Boxes.box { value })`
