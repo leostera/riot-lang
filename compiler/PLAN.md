@@ -1262,6 +1262,10 @@ families, and eventually while-loop lowering once that feature is implemented.
   consuming token variants into a tiny function/statement/expression AST,
   summarizing declarations, lets, calls, literals, and pinning representative
   parser recovery/error paths for missing delimiters and unexpected starts.
+  `compiler_like_parser_name_pipeline` extends that smoke boundary from parser
+  output into a tiny name/arity checking pass, preserving let-initializer order,
+  function signatures, parse-error accounting, unknown callee diagnostics, and
+  arity mismatch accounting in one executable compiler-shaped pipeline.
 
 ## Documentation Slice Acceptance
 
