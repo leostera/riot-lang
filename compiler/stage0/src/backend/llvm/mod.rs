@@ -3291,6 +3291,7 @@ fn mark_expr_constraints(
             }
         }
         LambdaExpr::Apply { callee, args, .. } => {
+            mark_expr_as(params, locals, param_types, callee, AbiType::Value);
             mark_expr_constraints(callee, params, locals, param_types, functions, externals);
             for arg in args {
                 mark_expr_constraints(arg, params, locals, param_types, functions, externals);
@@ -3583,6 +3584,38 @@ mod tests {
         let abi = abis.get("id_after_add").unwrap();
 
         assert_eq!(abi.params, vec![AbiType::I64]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_apply_callee_as_value() {
+        let f = Param::from_key(BindingKey::new("f"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiApplyCalleeTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "invoke".to_owned(),
+                params: vec![f.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Apply {
+                        callee: Box::new(LambdaExpr::Local(BindingKey::new("f"))),
+                        args: vec![LambdaExpr::Int(41)],
+                        result: RsigType::I64,
+                    }),
+                },
+                symbol: "riot_mod_AbiApplyCalleeTest_invoke".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("invoke").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Value]);
         assert_eq!(abi.result, AbiType::I64);
         assert!(abi.is_supported_local());
     }
