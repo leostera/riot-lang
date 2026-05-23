@@ -3590,7 +3590,7 @@ fn codegen_externals(program: &LambdaProgram) -> miette::Result<LambdaExternalTa
 mod tests {
     use crate::lambda::ir::{
         BindingKey, Capture, LambdaBlock, LambdaExpr, LambdaExternal, LambdaExternalTable,
-        LambdaFunction, LambdaMatchArm, LambdaPattern, LambdaProgram, LambdaStmt, Param,
+        LambdaFunction, LambdaMatchArm, LambdaPath, LambdaPattern, LambdaProgram, LambdaStmt, Param,
     };
     use crate::signature::{
         AbiSymbol, ConstructorName, ImportedSignatures, ModuleName, RsigType, TypeName,
@@ -4323,6 +4323,34 @@ mod tests {
         let abi = abis.get("identity").unwrap();
 
         assert_eq!(abi.params, vec![AbiType::Unknown]);
+        assert_eq!(abi.result, AbiType::Unknown);
+        assert!(!abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_keeps_unresolved_path_results_unknown() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiUnresolvedPathTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Path(LambdaPath::from_segments(vec![
+                        "opaque".to_owned(),
+                    ]))),
+                },
+                symbol: "riot_mod_AbiUnresolvedPathTest_main".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("main").unwrap();
+
         assert_eq!(abi.result, AbiType::Unknown);
         assert!(!abi.is_supported_local());
     }
