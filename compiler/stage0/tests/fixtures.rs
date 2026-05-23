@@ -2238,6 +2238,67 @@ fn main() { send(Actors.make_string_worker(), 1) }
 }
 
 #[test]
+fn compile_lib_imported_actor_operation_rejects_non_actor_factories() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let values = temp_dir.path().join("values.ml");
+
+    std::fs::write(&values, "fn answer() { 42 }\n")?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&values)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected value factory compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    for operation in ["monitor", "link"] {
+        let main = temp_dir.path().join(format!("{operation}.ml"));
+        let output = temp_dir.path().join(operation);
+        std::fs::write(
+            &main,
+            format!("use Values\nfn main() {{ {operation}(Values.answer()) }}\n"),
+        )?;
+
+        let compile = Command::new(cargo_bin("stage0"))
+            .current_dir(manifest_dir())
+            .arg("compile")
+            .arg(&main)
+            .arg("--sig-dir")
+            .arg(&out_dir)
+            .arg("--object-dir")
+            .arg(&out_dir)
+            .arg("-o")
+            .arg(&output)
+            .output()?;
+        if compile.status.success() {
+            return fail(format!("expected imported {operation} target mismatch to fail"));
+        }
+        let stderr = String::from_utf8_lossy(&compile.stderr);
+        for expected in [
+            "function argument type does not match",
+            "this call requires `actor_id<'",
+            "but the argument provides `i64`",
+        ] {
+            if !stderr.contains(expected) {
+                return fail(format!(
+                    "imported {operation} target mismatch missed `{expected}`:\n{stderr}"
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_actor_ir_snapshots_frame_contracts() -> FixtureResult {
     for (name, fixture) in [
         (
