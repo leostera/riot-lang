@@ -3203,6 +3203,36 @@ fn infer_call_abi(
     }
 }
 
+fn infer_call_param_abis(
+    callee: &[String],
+    functions: &FunctionAbiTable,
+    externals: &LambdaExternalTable,
+) -> Option<Vec<AbiType>> {
+    if let Some(name) = Stdlib::prelude_member_name(callee) {
+        if let Some(external) = externals.get(name) {
+            return Some(external.params.iter().map(AbiType::from_rsig).collect());
+        }
+    }
+
+    match callee {
+        [name] => functions
+            .get(name)
+            .map(|abi| abi.params.clone())
+            .or_else(|| {
+                externals
+                    .get(name)
+                    .map(|external| external.params.iter().map(AbiType::from_rsig).collect())
+            }),
+        [module, name] => {
+            let qualified = format!("{module}.{name}");
+            externals
+                .get(&qualified)
+                .map(|external| external.params.iter().map(AbiType::from_rsig).collect())
+        }
+        _ => None,
+    }
+}
+
 fn infer_match_arm_abi(
     arm: &LambdaMatchArm,
     outer_locals: &HashMap<String, AbiType>,
@@ -3314,10 +3344,21 @@ fn mark_expr_constraints(
             );
         }
         LambdaExpr::Call {
-            args, arg_types, ..
+            callee,
+            args,
+            arg_types,
+            ..
         } => {
-            for (arg, type_) in args.iter().zip(arg_types) {
-                let abi = AbiType::from_rsig(type_);
+            let callee_param_abis = infer_call_param_abis(callee, functions, externals);
+            for (index, (arg, type_)) in args.iter().zip(arg_types).enumerate() {
+                let abi = unify_abi(
+                    AbiType::from_rsig(type_),
+                    callee_param_abis
+                        .as_ref()
+                        .and_then(|abis| abis.get(index))
+                        .copied()
+                        .unwrap_or(AbiType::Unknown),
+                );
                 if abi != AbiType::Unknown {
                     mark_expr_as(params, locals, param_types, arg, abi);
                 }
@@ -3671,6 +3712,92 @@ mod tests {
         assert_eq!(main.result, AbiType::I64);
         assert!(answer.is_supported_local());
         assert!(main.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_local_call_argument_constraints() {
+        let x = Param::from_key(BindingKey::new("x"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiLocalCallArgTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![
+                LambdaFunction {
+                    name: "accept_i64".to_owned(),
+                    params: vec![Param::from_key(BindingKey::new("value"))],
+                    param_types: vec![RsigType::I64],
+                    result: RsigType::Unit,
+                    body: LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Unit),
+                    },
+                    symbol: "riot_mod_AbiLocalCallArgTest_accept_i64".to_owned(),
+                },
+                LambdaFunction {
+                    name: "use_value".to_owned(),
+                    params: vec![x.clone()],
+                    param_types: vec![RsigType::Unknown],
+                    result: RsigType::Unknown,
+                    body: LambdaBlock {
+                        statements: vec![LambdaStmt::Expr(LambdaExpr::Call {
+                            callee: vec!["accept_i64".to_owned()],
+                            args: vec![LambdaExpr::Local(BindingKey::new("x"))],
+                            arg_types: vec![RsigType::Unknown],
+                            result: RsigType::Unit,
+                        })],
+                        tail: Some(LambdaExpr::Local(BindingKey::new("x"))),
+                    },
+                    symbol: "riot_mod_AbiLocalCallArgTest_use_value".to_owned(),
+                },
+            ],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("use_value").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::I64]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_external_call_argument_constraints() {
+        let x = Param::from_key(BindingKey::new("x"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiExternalCallArgTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "use_value".to_owned(),
+                params: vec![x.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Expr(LambdaExpr::Call {
+                        callee: vec!["native_accept_i64".to_owned()],
+                        args: vec![LambdaExpr::Local(BindingKey::new("x"))],
+                        arg_types: vec![RsigType::Unknown],
+                        result: RsigType::Unit,
+                    })],
+                    tail: Some(LambdaExpr::Local(BindingKey::new("x"))),
+                },
+                symbol: "riot_mod_AbiExternalCallArgTest_use_value".to_owned(),
+            }],
+        };
+        let mut externals = LambdaExternalTable::new();
+        externals.insert(LambdaExternal {
+            name: "native_accept_i64".to_owned(),
+            params: vec![RsigType::I64],
+            result: RsigType::Unit,
+            abi: AbiSymbol::new("native_accept_i64"),
+        });
+
+        let abis = infer_function_abis(&program, &externals);
+        let abi = abis.get("use_value").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::I64]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
     }
 
     #[test]
