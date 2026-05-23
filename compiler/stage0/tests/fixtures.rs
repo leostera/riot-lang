@@ -694,6 +694,91 @@ fn compile_multiple_sources_links_dependency_objects() -> FixtureResult {
 }
 
 #[test]
+fn compile_lib_three_module_interfaces_link_through_object_dir() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let analyze = temp_dir.path().join("analyze.ml");
+    let render = temp_dir.path().join("render.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64)\nfn ident(name: String) -> token { Ident(name) }\nfn number(value: i64) -> token { Number(value) }\n",
+    )?;
+    std::fs::write(
+        &analyze,
+        "use Syntax\nfn weight(token: Syntax.token) -> i64 { match token { Syntax.Ident(_) -> 1, Syntax.Number(value) -> value } }\n",
+    )?;
+    std::fs::write(
+        &render,
+        "use Syntax\nuse Analyze\nfn describe(token: Syntax.token) -> String { if Analyze.weight(token) == 1 { \"ident\" } else { \"number\" } }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Syntax\nuse Analyze\nuse Render\nfn main() { dbg(Analyze.weight(Syntax.number(41))); println(Render.describe(Syntax.ident(\"name\"))) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&render)
+        .arg(&analyze)
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected three-module compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    for artifact in [
+        out_dir.join("Syntax.rsig"),
+        out_dir.join("Syntax.o"),
+        out_dir.join("Analyze.rsig"),
+        out_dir.join("Analyze.o"),
+        out_dir.join("Render.rsig"),
+        out_dir.join("Render.o"),
+    ] {
+        if !artifact.exists() {
+            return fail(format!("missing three-module artifact: {}", artifact.display()));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected three-module executable compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"41\nident\n" {
+        return fail(format!(
+            "unexpected three-module stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_exports_annotated_mutual_recursion() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");

@@ -59,6 +59,11 @@ while LLVM record values/tests canonicalize runtime record tags to the base
 record name so provider-local records match consumer-side `Module.record`
 patterns.
 
+Resolved hardening gap: transitive `.rsig` type references now keep their original
+module qualifier when another module imports and re-exports/calls through them.
+For example, an `Analyze` interface that accepts `Syntax.token` is imported by
+consumers as `Syntax.token`, not incorrectly rewritten to `Analyze.Syntax.token`.
+
 Resolved hardening gap: list spread syntax (`..tail`) used to be pattern-only.
 Stage0 now supports list cons expressions such as `[head, ..tail]`, lowered
 through the ordinary `list_cons` std/runtime ABI.

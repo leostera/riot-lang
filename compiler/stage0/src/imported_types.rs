@@ -2,6 +2,9 @@ use crate::signature::{RsigType, TypeName};
 use crate::stdlib::Stdlib;
 
 pub(crate) fn imported_type_name(module_name: &str, type_name: &TypeName) -> TypeName {
+    if type_name.as_str().contains('.') {
+        return type_name.clone();
+    }
     TypeName::new(format!("{module_name}.{}", type_name.as_str()))
 }
 
@@ -52,5 +55,29 @@ pub(crate) fn qualify_imported_type(module_name: &str, type_: &RsigType) -> Rsig
                 .collect(),
         },
         other => other.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn qualify_imported_type_preserves_dependency_qualified_names() {
+        let qualified = qualify_imported_type(
+            "Analyze",
+            &RsigType::Arrow {
+                parameter: Box::new(RsigType::Variant(TypeName::new("Syntax.token"))),
+                result: Box::new(RsigType::Record(TypeName::new("Syntax.span"))),
+            },
+        );
+
+        assert_eq!(
+            qualified,
+            RsigType::Arrow {
+                parameter: Box::new(RsigType::Variant(TypeName::new("Syntax.token"))),
+                result: Box::new(RsigType::Record(TypeName::new("Syntax.span"))),
+            }
+        );
     }
 }
