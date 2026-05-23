@@ -250,10 +250,14 @@ fn actor_ops(block: &LambdaBlock) -> Vec<ActorFrameOp> {
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::lambda::ir::{BindingKey, LambdaPattern};
+    use crate::lambda::ir::{
+        BindingKey, LambdaBlock, LambdaExpr, LambdaPattern, LambdaReceiveArm, LambdaStmt,
+    };
     use crate::signature::{ConstructorName, RsigType, TypeName};
 
-    use super::{ActorSlotType, bind_pattern_actor_slot_types};
+    use super::{
+        ActorSlotType, ActorSlotTypeContext, actor_frame_from_block, bind_pattern_actor_slot_types,
+    };
 
     #[test]
     fn generic_pattern_binders_keep_concrete_actor_slot_types() {
@@ -292,5 +296,68 @@ mod tests {
         bind_pattern_actor_slot_types(&pattern, Some(ActorSlotType::Value), &mut locals);
 
         assert_eq!(locals.get("value$0"), Some(&Some(ActorSlotType::Value)));
+    }
+
+    #[test]
+    fn actor_frame_receive_ops_capture_outer_values_but_not_pattern_binders() {
+        let outer = BindingKey::resolved("outer", 0);
+        let msg = BindingKey::resolved("msg", 1);
+        let block = LambdaBlock {
+            statements: Vec::new(),
+            tail: Some(LambdaExpr::Receive {
+                arms: vec![LambdaReceiveArm {
+                    pattern: LambdaPattern::Bind {
+                        binding: msg.clone(),
+                        type_: RsigType::I64,
+                    },
+                    body: LambdaExpr::Tuple(vec![
+                        LambdaExpr::Local(outer.clone()),
+                        LambdaExpr::Local(msg),
+                    ]),
+                }],
+            }),
+        };
+        let mut outer_locals = BTreeMap::new();
+        outer_locals.insert(outer.as_str().to_owned(), Some(ActorSlotType::I64));
+
+        let actor = actor_frame_from_block(7, &block, &outer_locals, &ActorSlotTypeContext);
+
+        assert_eq!(actor.frame.captures.len(), 1);
+        assert_eq!(actor.frame.captures[0].name.as_str(), "outer$0");
+        assert_eq!(actor.frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_frame_receive_ops_use_prior_let_slots_without_capturing_them() {
+        let value = BindingKey::resolved("value", 0);
+        let msg = BindingKey::resolved("msg", 1);
+        let block = LambdaBlock {
+            statements: vec![
+                LambdaStmt::Let {
+                    name: value.clone(),
+                    value: LambdaExpr::Int(41),
+                },
+                LambdaStmt::Expr(LambdaExpr::Receive {
+                    arms: vec![LambdaReceiveArm {
+                        pattern: LambdaPattern::Bind {
+                            binding: msg.clone(),
+                            type_: RsigType::I64,
+                        },
+                        body: LambdaExpr::Tuple(vec![
+                            LambdaExpr::Local(value.clone()),
+                            LambdaExpr::Local(msg),
+                        ]),
+                    }],
+                }),
+            ],
+            tail: None,
+        };
+
+        let actor = actor_frame_from_block(8, &block, &BTreeMap::new(), &ActorSlotTypeContext);
+
+        assert!(actor.frame.captures.is_empty());
+        assert_eq!(actor.frame.slots.len(), 1);
+        assert_eq!(actor.frame.slots[0].name.as_str(), "value$0");
+        assert_eq!(actor.frame.slots[0].type_, ActorSlotType::I64);
     }
 }
