@@ -152,3 +152,17 @@ impl Lexer {
         Ok(tokens)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Lexer, TokenKind};
+
+    #[test]
+    fn reserves_while_as_control_flow_keyword() {
+        let tokens = Lexer::new().lex("while worker").unwrap();
+
+        assert_eq!(tokens[0].kind, TokenKind::While);
+        assert_eq!(tokens[1].kind, TokenKind::Ident);
+        assert_eq!(tokens[2].kind, TokenKind::Eof);
+    }
+}

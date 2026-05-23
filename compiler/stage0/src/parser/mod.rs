@@ -1557,9 +1557,26 @@ fn is_operator_token(kind: TokenKind) -> bool {
 mod tests {
     use camino::Utf8Path;
 
-    use crate::ast::{AstDecl, AstExpr, AstStmt, AstTypeBody};
+    use crate::{
+        ast::{AstDecl, AstExpr, AstStmt, AstTypeBody},
+        lexer::Lexer,
+    };
 
-    use super::SourceParser;
+    use super::{Parser, SourceParser};
+
+    #[test]
+    fn rejects_reserved_while_before_loop_lowering_exists() {
+        let source = "fn main() { while true { dbg(1) } }\n";
+        let tokens = Lexer::new().lex(source).unwrap();
+        let error = Parser::new(source, tokens).parse_program().unwrap_err();
+
+        assert_eq!(error.message, "while loops are not supported yet");
+        assert_eq!(
+            error.help,
+            Some("use recursion for now, or wait for the planned while-loop lowering slice")
+        );
+        assert_eq!(&source[error.span.start..error.span.end], "while");
+    }
 
     #[test]
     fn parses_expression_lambdas() {

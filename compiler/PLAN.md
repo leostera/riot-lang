@@ -1074,8 +1074,10 @@ cross-core scheduler queues.
 - **Done when:** A native binary can run a while loop and print the accumulated
   result.
 - **Validation:** Current unsupported boundary is pinned by
-  `while_loop_unsupported`. `compiler_like_while_lowering_plan` models the
-  planned checker/lowering boundary: bool conditions produce loop blocks,
+  `while_loop_unsupported` plus lexer/parser unit tests that reserve `while` as
+  control-flow syntax before lowering exists.
+  `compiler_like_while_lowering_plan` models the planned checker/lowering
+  boundary: bool conditions produce loop blocks,
   backedges, and safepoints, while non-bool or unknown conditions stay
   diagnostic-only until the syntax is implemented. A loop accumulator fixture
   prints the expected result; typed diagnostics reject non-bool conditions; LLVM
