@@ -1275,6 +1275,164 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_higher_order_actor_id_closure_params_match_nested_messages() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let funcs = temp_dir.path().join("funcs.ml");
+    let main = temp_dir.path().join("main.ml");
+    let bad_main = temp_dir.path().join("bad_main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &funcs,
+        r#"fn observe(worker: actor_id<'msg>, callback: actor_id<'msg> -> i64) -> i64 {
+  callback(worker)
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Funcs
+
+type monitor_down = Down(actor_id<_>)
+
+fn make_worker() {
+  spawn {
+    receive {
+      "go" -> dbg("worker:go"),
+    }
+  }
+}
+
+fn main() {
+  spawn {
+    let worker = make_worker();
+    monitor(worker);
+    let result = Funcs.observe(worker, fn(target: actor_id<String>) {
+      send(target, "go");
+      41
+    });
+    receive {
+      Down(_) -> dbg(result + 1),
+    }
+  };
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&funcs)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected actor-id closure-param compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&funcs)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected actor-id closure-param emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in ["fn observe(actor_id<'", "actor_id<'", "-> i64"] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "actor-id closure-param rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported actor-id closure-param compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"worker:go\n42\n" {
+        return fail(format!(
+            "unexpected imported actor-id closure-param stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    std::fs::write(
+        &bad_main,
+        r#"use Funcs
+
+fn make_string_worker() {
+  spawn {
+    receive {
+      "go" -> (),
+    }
+  }
+}
+
+fn main() {
+  let _result = Funcs.observe(make_string_worker(), fn(target: actor_id<i64>) {
+    send(target, 1);
+    0
+  });
+  dbg("done")
+}
+"#,
+    )?;
+    let bad_compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad_main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(temp_dir.path().join("bad_main"))
+        .output()?;
+    if bad_compile.status.success() {
+        return fail("expected bad imported actor-id closure-param compile to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&bad_compile.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `String`, but the argument provides `i64`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "bad actor-id closure-param diagnostic missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_higher_order_tuple_of_polymorphic_closures_has_concrete_abi() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
