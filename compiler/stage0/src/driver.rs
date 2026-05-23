@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use miette::{IntoDiagnostic, WrapErr, bail};
@@ -13,7 +13,7 @@ use crate::lambda::LambdaSimplifier;
 use crate::linker::Linker;
 use crate::parser::SourceParser;
 use crate::runtime::RuntimeBuilder;
-use crate::signature::{ImportedSignatures, ModuleName, RsigStore};
+use crate::signature::{ImportedSignatures, ModuleName, Rsig, RsigStore};
 
 #[derive(Debug, Default)]
 pub(crate) struct Stage0Driver {
@@ -107,9 +107,12 @@ impl Stage0Driver {
 
         let imported_objects = ImportedObjectResolver::new(
             &main_imports,
+            &compiled,
             &compiled_objects,
             &args.objects,
             &args.object_dirs,
+            &args.sig_dirs,
+            self.rsig_store,
         )
         .resolve(&lambda_ir.uses)?;
         let imported_objects = Self::with_compiled_objects(imported_objects, &compiled_objects);
@@ -595,23 +598,32 @@ impl<'a> ImportResolver<'a> {
 #[derive(Debug)]
 struct ImportedObjectResolver<'a> {
     imports: &'a ImportedSignatures,
+    available_signatures: &'a ImportedSignatures,
     available_objects: &'a BTreeMap<ModuleName, Utf8PathBuf>,
     mappings: &'a [ObjectMapping],
     object_dirs: &'a [Utf8PathBuf],
+    sig_dirs: &'a [Utf8PathBuf],
+    rsig_store: RsigStore,
 }
 
 impl<'a> ImportedObjectResolver<'a> {
     fn new(
         imports: &'a ImportedSignatures,
+        available_signatures: &'a ImportedSignatures,
         available_objects: &'a BTreeMap<ModuleName, Utf8PathBuf>,
         mappings: &'a [ObjectMapping],
         object_dirs: &'a [Utf8PathBuf],
+        sig_dirs: &'a [Utf8PathBuf],
+        rsig_store: RsigStore,
     ) -> Self {
         Self {
             imports,
+            available_signatures,
             available_objects,
             mappings,
             object_dirs,
+            sig_dirs,
+            rsig_store,
         }
     }
 
@@ -622,40 +634,97 @@ impl<'a> ImportedObjectResolver<'a> {
             .map(|mapping| (mapping.module.as_str(), mapping.path.clone()))
             .collect::<BTreeMap<_, _>>();
         let mut objects = Vec::new();
+        let mut seen = BTreeSet::new();
         for module in uses {
-            if self
-                .imports
-                .get(module)
-                .is_some_and(|rsig| crate::stdlib::Stdlib::new().contains_signature(rsig))
-            {
-                continue;
-            }
-            if let Some(path) = self.available_objects.get(module) {
-                objects.push(path.clone());
-                continue;
-            }
-            if let Some(path) = explicit.get(module.as_str()) {
-                objects.push(path.clone());
-                continue;
-            }
-            let mut candidates = Vec::new();
-            for dir in self.object_dirs {
-                candidates.push(dir.join(format!("{module}.o")));
-            }
-            if let Some(found) = candidates.iter().find(|path| path.exists()) {
-                objects.push(found.clone());
-                continue;
-            }
-            bail!(
-                "missing object for imported module {module}\nsearched:\n{}",
-                candidates
-                    .iter()
-                    .map(|path| format!("  - {path}"))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
+            self.resolve_module(module, None, &explicit, &mut seen, &mut objects)?;
         }
         Ok(objects)
+    }
+
+    fn resolve_module(
+        &self,
+        module: &ModuleName,
+        expected_fingerprint: Option<u64>,
+        explicit: &BTreeMap<&str, Utf8PathBuf>,
+        seen: &mut BTreeSet<ModuleName>,
+        objects: &mut Vec<Utf8PathBuf>,
+    ) -> miette::Result<()> {
+        if !seen.insert(module.clone()) {
+            return Ok(());
+        }
+
+        let rsig = self.resolve_signature(module)?;
+        if let Some(expected) = expected_fingerprint {
+            if rsig.module_fingerprint != expected {
+                bail!(
+                    "signature fingerprint mismatch for dependency {module}: expected {expected:016x}, found {:016x}",
+                    rsig.module_fingerprint
+                );
+            }
+        }
+        if crate::stdlib::Stdlib::new().contains_signature(&rsig) {
+            return Ok(());
+        }
+
+        for dependency in &rsig.dependencies {
+            self.resolve_module(
+                &dependency.module,
+                Some(dependency.fingerprint),
+                explicit,
+                seen,
+                objects,
+            )?;
+        }
+
+        objects.push(self.resolve_object(module, explicit)?);
+        Ok(())
+    }
+
+    fn resolve_signature(&self, module: &ModuleName) -> miette::Result<Rsig> {
+        if let Some(rsig) = self.imports.get(module) {
+            return Ok(rsig.clone());
+        }
+        if let Some(rsig) = self.available_signatures.get(module) {
+            return Ok(rsig.clone());
+        }
+        if let Some((_, rsig)) = self
+            .rsig_store
+            .resolve(module.as_str(), None, self.sig_dirs)
+            .ok()
+        {
+            return Ok(rsig);
+        }
+        crate::stdlib::Stdlib::new()
+            .signature(module.as_str())?
+            .ok_or_else(|| miette::miette!("missing signature for transitive dependency {module}"))
+    }
+
+    fn resolve_object(
+        &self,
+        module: &ModuleName,
+        explicit: &BTreeMap<&str, Utf8PathBuf>,
+    ) -> miette::Result<Utf8PathBuf> {
+        if let Some(path) = self.available_objects.get(module) {
+            return Ok(path.clone());
+        }
+        if let Some(path) = explicit.get(module.as_str()) {
+            return Ok(path.clone());
+        }
+        let mut candidates = Vec::new();
+        for dir in self.object_dirs {
+            candidates.push(dir.join(format!("{module}.o")));
+        }
+        if let Some(found) = candidates.iter().find(|path| path.exists()) {
+            return Ok(found.clone());
+        }
+        bail!(
+            "missing object for imported module {module}\nsearched:\n{}",
+            candidates
+                .iter()
+                .map(|path| format!("  - {path}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
     }
 }
 
@@ -681,9 +750,108 @@ impl OutputWriter {
 
 #[cfg(test)]
 mod tests {
-    use super::{SourceGraph, SourceLoader, SourceUnit};
+    use super::{ImportedObjectResolver, SourceGraph, SourceLoader, SourceUnit};
     use crate::parser::SourceParser;
+    use crate::signature::{ImportedSignatures, ModuleName, Rsig, RsigDependency, RsigStore};
     use camino::Utf8PathBuf;
+    use std::collections::BTreeMap;
+    use tempfile::TempDir;
+
+    #[test]
+    fn imported_object_resolver_includes_transitive_dependency_objects() {
+        let temp_dir = TempDir::new().unwrap();
+        let sig_dir = Utf8PathBuf::from_path_buf(temp_dir.path().join("sigs")).unwrap();
+        let object_dir = Utf8PathBuf::from_path_buf(temp_dir.path().join("objects")).unwrap();
+        std::fs::create_dir_all(sig_dir.as_std_path()).unwrap();
+        std::fs::create_dir_all(object_dir.as_std_path()).unwrap();
+
+        let syntax = Rsig::with_dependencies("Syntax", Vec::new(), Vec::new(), Vec::new());
+        let analyze = Rsig::with_dependencies(
+            "Analyze",
+            vec![RsigDependency {
+                module: ModuleName::new("Syntax"),
+                fingerprint: syntax.module_fingerprint,
+            }],
+            Vec::new(),
+            Vec::new(),
+        );
+        RsigStore::new()
+            .write(&sig_dir.join("Syntax.rsig"), &syntax)
+            .unwrap();
+        std::fs::write(object_dir.join("Syntax.o").as_std_path(), b"").unwrap();
+        std::fs::write(object_dir.join("Analyze.o").as_std_path(), b"").unwrap();
+
+        let mut imports = ImportedSignatures::new();
+        imports.insert(ModuleName::new("Analyze"), analyze);
+        let available_signatures = ImportedSignatures::new();
+        let objects = ImportedObjectResolver::new(
+            &imports,
+            &available_signatures,
+            &BTreeMap::new(),
+            &[],
+            std::slice::from_ref(&object_dir),
+            std::slice::from_ref(&sig_dir),
+            RsigStore::new(),
+        )
+        .resolve(&[ModuleName::new("Analyze")])
+        .unwrap();
+
+        assert_eq!(
+            objects,
+            vec![object_dir.join("Syntax.o"), object_dir.join("Analyze.o")]
+        );
+    }
+
+    #[test]
+    fn imported_object_resolver_rejects_transitive_dependency_fingerprint_mismatch() {
+        let temp_dir = TempDir::new().unwrap();
+        let sig_dir = Utf8PathBuf::from_path_buf(temp_dir.path().join("sigs")).unwrap();
+        let object_dir = Utf8PathBuf::from_path_buf(temp_dir.path().join("objects")).unwrap();
+        std::fs::create_dir_all(sig_dir.as_std_path()).unwrap();
+        std::fs::create_dir_all(object_dir.as_std_path()).unwrap();
+
+        let old_syntax = Rsig::with_dependencies("Syntax", Vec::new(), Vec::new(), Vec::new());
+        let new_syntax = Rsig::with_dependencies(
+            "Syntax",
+            vec![RsigDependency {
+                module: ModuleName::new("Other"),
+                fingerprint: 1,
+            }],
+            Vec::new(),
+            Vec::new(),
+        );
+        let analyze = Rsig::with_dependencies(
+            "Analyze",
+            vec![RsigDependency {
+                module: ModuleName::new("Syntax"),
+                fingerprint: old_syntax.module_fingerprint,
+            }],
+            Vec::new(),
+            Vec::new(),
+        );
+        RsigStore::new()
+            .write(&sig_dir.join("Syntax.rsig"), &new_syntax)
+            .unwrap();
+        std::fs::write(object_dir.join("Analyze.o").as_std_path(), b"").unwrap();
+
+        let mut imports = ImportedSignatures::new();
+        imports.insert(ModuleName::new("Analyze"), analyze);
+        let available_signatures = ImportedSignatures::new();
+        let error = ImportedObjectResolver::new(
+            &imports,
+            &available_signatures,
+            &BTreeMap::new(),
+            &[],
+            std::slice::from_ref(&object_dir),
+            std::slice::from_ref(&sig_dir),
+            RsigStore::new(),
+        )
+        .resolve(&[ModuleName::new("Analyze")])
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("signature fingerprint mismatch for dependency Syntax"));
+    }
 
     #[test]
     fn source_order_tracks_use_mod_and_include_edges() {

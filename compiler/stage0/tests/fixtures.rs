@@ -713,11 +713,11 @@ fn compile_lib_three_module_interfaces_link_through_object_dir() -> FixtureResul
     )?;
     std::fs::write(
         &render,
-        "use Syntax\nuse Analyze\nfn describe(token: Syntax.token) -> String { if Analyze.weight(token) == 1 { \"ident\" } else { \"number\" } }\n",
+        "use Syntax\nuse Analyze\nfn describe(token: Syntax.token) -> String { if Analyze.weight(token) == 1 { \"ident\" } else { \"number\" } }\nfn describe_ident() -> String { describe(Syntax.ident(\"name\")) }\nfn number_weight() -> i64 { Analyze.weight(Syntax.number(41)) }\n",
     )?;
     std::fs::write(
         &main,
-        "use Syntax\nuse Analyze\nuse Render\nfn main() { dbg(Analyze.weight(Syntax.number(41))); println(Render.describe(Syntax.ident(\"name\"))) }\n",
+        "use Render\nfn main() { dbg(Render.number_weight()); println(Render.describe_ident()) }\n",
     )?;
 
     let compile_lib = Command::new(cargo_bin("stage0"))
