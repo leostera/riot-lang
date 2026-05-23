@@ -229,7 +229,7 @@ pub(crate) fn bind_pattern_names(pattern: &LambdaPattern, bound: &mut BTreeSet<B
 mod tests {
     use super::*;
     use crate::lambda::ir::{LambdaFunction, LambdaMatchArm, LambdaReceiveArm, Param};
-    use crate::signature::{ModuleName, RsigType};
+    use crate::signature::{ConstructorName, ModuleName, RsigType, TypeName};
 
     fn bind(name: &str, id: usize) -> BindingKey {
         BindingKey::resolved(name, id)
@@ -274,6 +274,50 @@ mod tests {
         collect_free_expr(&expr, &BTreeSet::new(), &mut free);
 
         assert!(free.is_empty());
+    }
+
+    #[test]
+    fn free_variable_collection_treats_nested_pattern_binders_as_bound() {
+        let outer = bind("outer", 0);
+        let tuple_item = bind("tuple_item", 1);
+        let list_head = bind("list_head", 2);
+        let record_field = bind("record_field", 3);
+        let constructor_payload = bind("constructor_payload", 4);
+        let list_tail = bind("list_tail", 5);
+        let expr = LambdaExpr::Match {
+            scrutinee: Box::new(LambdaExpr::Local(outer.clone())),
+            arms: vec![LambdaMatchArm {
+                pattern: LambdaPattern::Tuple(vec![
+                    binding_pattern("tuple_item", 1),
+                    LambdaPattern::List {
+                        prefix: vec![binding_pattern("list_head", 2)],
+                        tail: Some(Box::new(binding_pattern("list_tail", 5))),
+                    },
+                    LambdaPattern::Record {
+                        type_name: TypeName::new("entry"),
+                        fields: vec![("value".to_owned(), binding_pattern("record_field", 3))],
+                    },
+                    LambdaPattern::Constructor {
+                        type_name: TypeName::new("option"),
+                        constructor: ConstructorName::new("Some"),
+                        payload: vec![binding_pattern("constructor_payload", 4)],
+                    },
+                ]),
+                body: LambdaExpr::Tuple(vec![
+                    LambdaExpr::Local(tuple_item),
+                    LambdaExpr::Local(list_head),
+                    LambdaExpr::Local(record_field),
+                    LambdaExpr::Local(constructor_payload),
+                    LambdaExpr::Local(list_tail),
+                    LambdaExpr::Local(outer.clone()),
+                ]),
+            }],
+        };
+
+        let mut free = BTreeSet::new();
+        collect_free_expr(&expr, &BTreeSet::new(), &mut free);
+
+        assert_eq!(free, BTreeSet::from([outer]));
     }
 
     #[test]
