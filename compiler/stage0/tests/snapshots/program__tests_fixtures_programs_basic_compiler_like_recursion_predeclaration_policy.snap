@@ -1,6 +1,6 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 4697
+assertion_line: 4782
 expression: transcript
 ---
 fixture: tests/fixtures/programs/basic/compiler_like_recursion_predeclaration_policy.ml
@@ -15,6 +15,6 @@ stderr:
 run:
 status: success
 stdout:
-direct annotated:predeclare:self recursion ok;annotated mutual:predeclare:later annotated visible;annotated to unannotated:top-down:later unannotated hidden;partial mutual:top-down:caller not fully annotated;unannotated forward:top-down:future values hidden
+direct annotated:predeclare:self recursion ok;annotated mutual:predeclare:later annotated visible;annotated to unannotated:top-down:later unannotated hidden;partial missing return:top-down:caller not fully annotated;partial missing param:top-down:caller not fully annotated;unannotated forward:top-down:future values hidden
 stderr:
 <empty>

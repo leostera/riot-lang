@@ -78,7 +78,8 @@ fn main() {
     declaration { name: "direct annotated", annotation: Complete, dependency: SelfCall },
     declaration { name: "annotated mutual", annotation: Complete, dependency: LaterAnnotated },
     declaration { name: "annotated to unannotated", annotation: Complete, dependency: LaterUnannotated },
-    declaration { name: "partial mutual", annotation: MissingReturn, dependency: LaterAnnotated },
+    declaration { name: "partial missing return", annotation: MissingReturn, dependency: LaterAnnotated },
+    declaration { name: "partial missing param", annotation: MissingParam, dependency: LaterAnnotated },
     declaration { name: "unannotated forward", annotation: Unannotated, dependency: LaterValue }
   ];
   dbg(render_all(decls))
