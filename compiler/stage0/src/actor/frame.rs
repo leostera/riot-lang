@@ -328,6 +328,80 @@ mod tests {
     }
 
     #[test]
+    fn actor_frame_receive_ops_treat_nested_pattern_binders_as_arm_local() {
+        let outer = BindingKey::resolved("outer", 0);
+        let scalar = BindingKey::resolved("scalar", 1);
+        let boxed = BindingKey::resolved("boxed", 2);
+        let block = LambdaBlock {
+            statements: Vec::new(),
+            tail: Some(LambdaExpr::Receive {
+                arms: vec![LambdaReceiveArm {
+                    pattern: LambdaPattern::Tuple(vec![
+                        LambdaPattern::Constructor {
+                            type_name: TypeName::new("option"),
+                            constructor: ConstructorName::new("Some"),
+                            payload: vec![LambdaPattern::Bind {
+                                binding: scalar.clone(),
+                                type_: RsigType::I64,
+                            }],
+                        },
+                        LambdaPattern::Record {
+                            type_name: TypeName::new("box"),
+                            fields: vec![(
+                                "value".to_owned(),
+                                LambdaPattern::Bind {
+                                    binding: boxed.clone(),
+                                    type_: RsigType::RecordApp {
+                                        name: TypeName::new("payload"),
+                                        args: vec![RsigType::String],
+                                    },
+                                },
+                            )],
+                        },
+                    ]),
+                    body: LambdaExpr::Tuple(vec![
+                        LambdaExpr::Local(outer.clone()),
+                        LambdaExpr::Local(scalar),
+                        LambdaExpr::Local(boxed),
+                    ]),
+                }],
+            }),
+        };
+        let mut outer_locals = BTreeMap::new();
+        outer_locals.insert(outer.as_str().to_owned(), Some(ActorSlotType::I64));
+
+        let actor = actor_frame_from_block(8, &block, &outer_locals, &ActorSlotTypeContext);
+
+        assert_eq!(actor.frame.captures.len(), 1);
+        assert_eq!(actor.frame.captures[0].name.as_str(), "outer$0");
+        assert_eq!(actor.frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_frame_receive_pattern_binders_shadow_outer_bindings() {
+        let outer = BindingKey::resolved("value", 0);
+        let pattern_value = BindingKey::resolved("value", 1);
+        let block = LambdaBlock {
+            statements: Vec::new(),
+            tail: Some(LambdaExpr::Receive {
+                arms: vec![LambdaReceiveArm {
+                    pattern: LambdaPattern::Bind {
+                        binding: pattern_value.clone(),
+                        type_: RsigType::I64,
+                    },
+                    body: LambdaExpr::Local(pattern_value),
+                }],
+            }),
+        };
+        let mut outer_locals = BTreeMap::new();
+        outer_locals.insert(outer.as_str().to_owned(), Some(ActorSlotType::Value));
+
+        let actor = actor_frame_from_block(9, &block, &outer_locals, &ActorSlotTypeContext);
+
+        assert!(actor.frame.captures.is_empty());
+    }
+
+    #[test]
     fn actor_frame_receive_ops_use_prior_let_slots_without_capturing_them() {
         let value = BindingKey::resolved("value", 0);
         let msg = BindingKey::resolved("msg", 1);
