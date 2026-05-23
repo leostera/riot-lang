@@ -173,7 +173,7 @@ fn collect_actors_from_expr(
 mod tests {
     use crate::lambda::ir::{
         BindingKey, LambdaBlock, LambdaExpr, LambdaFunction, LambdaMatchArm, LambdaPattern,
-        LambdaProgram, LambdaReceiveArm,
+        LambdaProgram, LambdaReceiveArm, LambdaStmt, Param,
     };
     use crate::signature::{ImportedSignatures, ModuleName, RsigType};
 
@@ -190,23 +190,35 @@ mod tests {
         }
     }
 
-    fn program_with_tail(tail: LambdaExpr) -> LambdaProgram {
+    fn program_with_body(
+        params: Vec<Param>,
+        param_types: Vec<RsigType>,
+        body: LambdaBlock,
+    ) -> LambdaProgram {
         LambdaProgram {
             module_name: ModuleName::new("ActorCaptureTest"),
             uses: Vec::new(),
             externals: Vec::new(),
             functions: vec![LambdaFunction {
                 name: "main".to_owned(),
-                params: Vec::new(),
-                param_types: Vec::new(),
+                params,
+                param_types,
                 result: RsigType::Unit,
                 symbol: "riot_mod_ActorCaptureTest_main".to_owned(),
-                body: LambdaBlock {
-                    statements: Vec::new(),
-                    tail: Some(tail),
-                },
+                body,
             }],
         }
+    }
+
+    fn program_with_tail(tail: LambdaExpr) -> LambdaProgram {
+        program_with_body(
+            Vec::new(),
+            Vec::new(),
+            LambdaBlock {
+                statements: Vec::new(),
+                tail: Some(tail),
+            },
+        )
     }
 
     #[test]
@@ -230,6 +242,70 @@ mod tests {
 
         assert_eq!(actors.actors.len(), 1);
         assert_eq!(actors.actors[0].id, 7);
+        assert_eq!(actors.actors[0].frame.captures.len(), 1);
+        assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$0");
+        assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_ir_captures_let_binders_for_later_nested_spawns() {
+        let value = bind("value", 0);
+        let program = program_with_body(
+            Vec::new(),
+            Vec::new(),
+            LambdaBlock {
+                statements: vec![
+                    LambdaStmt::Let {
+                        name: value.clone(),
+                        value: LambdaExpr::Int(41),
+                    },
+                    LambdaStmt::Expr(LambdaExpr::Spawn {
+                        actor_id: 9,
+                        body: Box::new(LambdaBlock {
+                            statements: Vec::new(),
+                            tail: Some(LambdaExpr::Local(value)),
+                        }),
+                    }),
+                ],
+                tail: None,
+            },
+        );
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 9);
+        assert_eq!(actors.actors[0].frame.captures.len(), 1);
+        assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$0");
+        assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
+    }
+
+    #[test]
+    fn actor_ir_uses_outer_binding_for_nested_spawns_inside_shadowing_initializers() {
+        let outer = bind("value", 0);
+        let shadow = bind("value", 1);
+        let program = program_with_body(
+            vec![Param::from_key(outer.clone())],
+            vec![RsigType::I64],
+            LambdaBlock {
+                statements: vec![LambdaStmt::Let {
+                    name: shadow,
+                    value: LambdaExpr::Spawn {
+                        actor_id: 10,
+                        body: Box::new(LambdaBlock {
+                            statements: Vec::new(),
+                            tail: Some(LambdaExpr::Local(outer)),
+                        }),
+                    },
+                }],
+                tail: None,
+            },
+        );
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 10);
         assert_eq!(actors.actors[0].frame.captures.len(), 1);
         assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "value$0");
         assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
