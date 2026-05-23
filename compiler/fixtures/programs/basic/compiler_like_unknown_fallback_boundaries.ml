@@ -1,4 +1,4 @@
-type boundary = UnknownPath | UnknownCallCallee | EmptyListElement | MissingTupleItem | MissingRecordField | UnknownMatchPattern | IncompatibleIfBranches | IncompatibleMatchArms | ReceiveBinder | FallbackCallSignature | NamedSignatureFacts | ImportedSignatureFacts | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
+type boundary = UnknownPath | UnknownCallCallee | EmptyListElement | MissingTupleItem | MissingRecordField | UnknownMatchPattern | IncompatibleIfBranches | IncompatibleMatchArms | ReceiveBinder | FallbackCallSignature | NamedSignatureFacts | ImportedSignatureFacts | LetAnnotationFacts | ReceivePatternShapeFacts | ApplyExpressionResult | LambdaExpressionValue | UnannotatedLambdaParam | SpawnWithoutReceiveShape | PartialReceiveWrapper
 
 type decision = { name: String, policy: String }
 
@@ -16,6 +16,8 @@ fn boundary_name(boundary: boundary) -> String {
     FallbackCallSignature -> "fallback call signature",
     NamedSignatureFacts -> "named signature facts",
     ImportedSignatureFacts -> "imported signature facts",
+    LetAnnotationFacts -> "let annotation facts",
+    ReceivePatternShapeFacts -> "receive pattern shape facts",
     ApplyExpressionResult -> "apply expression result",
     LambdaExpressionValue -> "lambda expression value",
     UnannotatedLambdaParam -> "unannotated lambda param",
@@ -38,6 +40,8 @@ fn classify(boundary: boundary) -> decision {
     FallbackCallSignature -> decision { name: boundary_name(boundary), policy: "conservative" },
     NamedSignatureFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
     ImportedSignatureFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
+    LetAnnotationFacts -> decision { name: boundary_name(boundary), policy: "concrete without expression facts" },
+    ReceivePatternShapeFacts -> decision { name: boundary_name(boundary), policy: "concrete without message facts" },
     ApplyExpressionResult -> decision { name: boundary_name(boundary), policy: "needs inference facts" },
     LambdaExpressionValue -> decision { name: boundary_name(boundary), policy: "needs arrow facts" },
     UnannotatedLambdaParam -> decision { name: boundary_name(boundary), policy: "conservative" },
@@ -59,6 +63,6 @@ fn render_all(boundaries: List<boundary>) -> String {
 }
 
 fn main() {
-  let boundaries = [UnknownPath, UnknownCallCallee, EmptyListElement, MissingTupleItem, MissingRecordField, UnknownMatchPattern, IncompatibleIfBranches, IncompatibleMatchArms, ReceiveBinder, FallbackCallSignature, NamedSignatureFacts, ImportedSignatureFacts, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
+  let boundaries = [UnknownPath, UnknownCallCallee, EmptyListElement, MissingTupleItem, MissingRecordField, UnknownMatchPattern, IncompatibleIfBranches, IncompatibleMatchArms, ReceiveBinder, FallbackCallSignature, NamedSignatureFacts, ImportedSignatureFacts, LetAnnotationFacts, ReceivePatternShapeFacts, ApplyExpressionResult, LambdaExpressionValue, UnannotatedLambdaParam, SpawnWithoutReceiveShape, PartialReceiveWrapper];
   dbg(render_all(boundaries))
 }

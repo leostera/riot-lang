@@ -2141,6 +2141,37 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_let_annotations_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n\
+                   let annotated: i64 = missing;\n\
+                   annotated\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("LetAnnotationFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [TypedStmt::Let { value, .. }] = typed.functions[0].body.statements.as_slice() else {
+            panic!("expected annotated let statement");
+        };
+        let TypedExprKind::Entity(_) = &value.kind else {
+            panic!("expected unresolved value entity");
+        };
+
+        assert_eq!(value.type_, RsigType::I64);
+    }
+
+    #[test]
     fn typed_hir_keeps_lambda_and_spawn_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
@@ -2300,6 +2331,57 @@ mod tests {
 
         assert_eq!(receive.type_, RsigType::Unit);
         assert_eq!(type_, &RsigType::Unknown);
+    }
+
+    #[test]
+    fn typed_hir_uses_receive_pattern_shapes_without_message_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "type box = { value: i64 }\n\
+                 fn main() {\n\
+                   let record_worker = receive { box { value } -> () };\n\
+                   let list_worker = receive { [head, 0] -> () };\n\
+                   (record_worker, list_worker)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ReceivePatternShapeFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [TypedStmt::Let { value: record_worker, .. }, TypedStmt::Let { value: list_worker, .. }] =
+            typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected receive let statements");
+        };
+        let TypedExprKind::Receive { arms } = &record_worker.kind else {
+            panic!("expected record receive expression");
+        };
+        let TypedPattern::Record { fields, .. } = &arms[0].pattern else {
+            panic!("expected record receive pattern");
+        };
+        let TypedPattern::Bind { type_, .. } = &fields[0].1 else {
+            panic!("expected record field binder");
+        };
+        assert_eq!(type_, &RsigType::I64);
+
+        let TypedExprKind::Receive { arms } = &list_worker.kind else {
+            panic!("expected list receive expression");
+        };
+        let TypedPattern::List { prefix, .. } = &arms[0].pattern else {
+            panic!("expected list receive pattern");
+        };
+        let TypedPattern::Bind { type_, .. } = &prefix[0] else {
+            panic!("expected list head binder");
+        };
+        assert_eq!(type_, &RsigType::I64);
     }
 
     #[test]
