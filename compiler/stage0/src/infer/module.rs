@@ -1085,7 +1085,7 @@ fn infer_expr_kind(
             let result = state.fresh_var();
             for arm in arms {
                 state.push_scope();
-                infer_pattern(state, &arm.pattern, &scrutinee_type)?;
+                infer_pattern(state, &arm.pattern, &scrutinee_type, record_shapes)?;
                 let body_type = infer_expr(
                     state,
                     &arm.body,
@@ -1192,9 +1192,14 @@ fn infer_expr_kind(
                 expression_types,
             )?;
             state.pop_scope();
-            let message_type = actor_block_message_type(state, body)
-                .map(|type_| rsig_type_to_infer_type(&type_, state))
-                .unwrap_or_else(|| state.fresh_var());
+            let message_type = infer_actor_block_message_type(
+                state,
+                body,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?
+            .unwrap_or_else(|| state.fresh_var());
             Ok(Type::ActorId(Box::new(message_type)))
         }
         AstExpr::Record { path, fields, .. } => infer_record_literal(
@@ -1263,7 +1268,7 @@ fn infer_expr_kind(
             let message = state.fresh_var();
             for arm in arms {
                 state.push_scope();
-                infer_pattern(state, &arm.pattern, &message)?;
+                infer_pattern(state, &arm.pattern, &message, record_shapes)?;
                 infer_expr(
                     state,
                     &arm.body,
@@ -1315,77 +1320,66 @@ fn infer_expr_kind(
     }
 }
 
-fn actor_block_message_type(state: &mut State, block: &AstBlock) -> Option<RsigType> {
+fn infer_actor_block_message_type(
+    state: &mut State,
+    block: &AstBlock,
+    declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
+) -> Result<Option<Type>, InferError> {
     let mut message_type = None;
     for stmt in &block.statements {
         if let AstStmt::Expr(AstExpr::Receive { arms, .. }) = stmt {
-            merge_receive_message_type(state, arms, &mut message_type)?;
+            merge_inferred_receive_message_type(
+                state,
+                arms,
+                declared_variants,
+                record_shapes,
+                expression_types,
+                &mut message_type,
+            )?;
         }
     }
     if let Some(AstExpr::Receive { arms, .. }) = &block.tail {
-        merge_receive_message_type(state, arms, &mut message_type)?;
+        merge_inferred_receive_message_type(
+            state,
+            arms,
+            declared_variants,
+            record_shapes,
+            expression_types,
+            &mut message_type,
+        )?;
     }
-    message_type
+    Ok(message_type.map(|type_| rsig_type_to_infer_type(&type_, state)))
 }
 
-fn merge_receive_message_type(
+fn merge_inferred_receive_message_type(
     state: &mut State,
     arms: &[crate::ast::AstReceiveArm],
+    declared_variants: &BTreeSet<TypeName>,
+    record_shapes: &HashMap<String, InferRecordShape>,
+    expression_types: &mut BTreeMap<TextSpan, Type>,
     message_type: &mut Option<RsigType>,
-) -> Option<()> {
+) -> Result<(), InferError> {
+    let message = state.fresh_var();
     for arm in arms {
-        let arm_type = pattern_message_type(state, &arm.pattern)?;
-        *message_type = Some(match message_type.take() {
-            Some(current) => merge_message_type(current, arm_type)?,
-            None => arm_type,
-        });
+        state.push_scope();
+        infer_pattern(state, &arm.pattern, &message, record_shapes)?;
+        infer_expr(
+            state,
+            &arm.body,
+            declared_variants,
+            record_shapes,
+            expression_types,
+        )?;
+        state.pop_scope();
     }
-    Some(())
-}
-
-fn pattern_message_type(state: &mut State, pattern: &AstPattern) -> Option<RsigType> {
-    match pattern {
-        AstPattern::Wildcard { .. } | AstPattern::Bind { .. } => None,
-        AstPattern::Unit { .. } => Some(RsigType::Unit),
-        AstPattern::Bool { .. } => Some(RsigType::Bool),
-        AstPattern::Int { .. } => Some(RsigType::I64),
-        AstPattern::String { .. } => Some(RsigType::String),
-        AstPattern::Tuple { items, .. } => Some(RsigType::Tuple(
-            items
-                .iter()
-                .map(|item| pattern_message_type(state, item).unwrap_or(RsigType::Unknown))
-                .collect(),
-        )),
-        AstPattern::List { prefix, tail, .. } => {
-            let item = prefix
-                .iter()
-                .filter_map(|item| pattern_message_type(state, item))
-                .next()
-                .or_else(|| {
-                    tail.as_ref()
-                        .and_then(|tail| match pattern_message_type(state, tail) {
-                            Some(RsigType::List(item)) => Some(*item),
-                            _ => None,
-                        })
-                })
-                .unwrap_or(RsigType::Unknown);
-            Some(RsigType::List(Box::new(item)))
-        }
-        AstPattern::Record { path, .. } => {
-            Some(RsigType::Record(TypeName::new(path.segments.join("."))))
-        }
-        AstPattern::Constructor { path, .. } => {
-            let name = path.segments.join(".");
-            let scheme = state.get_value(&name)?.clone();
-            let mut type_ = state.instantiate(&scheme);
-            loop {
-                match state.resolve(&type_) {
-                    Type::Arrow { result, .. } => type_ = *result,
-                    result => return Some(infer_type_to_rsig_type(&result)),
-                }
-            }
-        }
-    }
+    let arm_type = infer_type_to_rsig_type(&state.resolve(&message));
+    *message_type = Some(match message_type.take() {
+        Some(current) => merge_message_type(current, arm_type).unwrap_or(RsigType::Unknown),
+        None => arm_type,
+    });
+    Ok(())
 }
 
 fn merge_message_type(lhs: RsigType, rhs: RsigType) -> Option<RsigType> {
@@ -1432,6 +1426,7 @@ fn infer_pattern(
     state: &mut State,
     pattern: &AstPattern,
     scrutinee_type: &Type,
+    record_shapes: &HashMap<String, InferRecordShape>,
 ) -> Result<(), InferError> {
     match pattern {
         AstPattern::Wildcard { .. } => Ok(()),
@@ -1454,7 +1449,7 @@ fn infer_pattern(
                     return Err(InferError::Unsupported("constructor payload arity"));
                 };
                 let parameter = *parameter;
-                infer_pattern(state, payload_pattern, &parameter)?;
+                infer_pattern(state, payload_pattern, &parameter, record_shapes)?;
                 constructor_type = *result;
             }
             state.unify(&constructor_type, scrutinee_type)?;
@@ -1464,7 +1459,7 @@ fn infer_pattern(
             let item_types = items.iter().map(|_| state.fresh_var()).collect::<Vec<_>>();
             state.unify(scrutinee_type, &Type::Tuple(item_types.clone()))?;
             for (item, item_type) in items.iter().zip(&item_types) {
-                infer_pattern(state, item, item_type)?;
+                infer_pattern(state, item, item_type, record_shapes)?;
             }
             Ok(())
         }
@@ -1472,23 +1467,41 @@ fn infer_pattern(
             let item_type = state.fresh_var();
             state.unify(scrutinee_type, &Type::List(Box::new(item_type.clone())))?;
             for item in prefix {
-                infer_pattern(state, item, &item_type)?;
+                infer_pattern(state, item, &item_type, record_shapes)?;
             }
             if let Some(tail) = tail {
-                infer_pattern(state, tail, &Type::List(Box::new(item_type)))?;
+                infer_pattern(state, tail, &Type::List(Box::new(item_type)), record_shapes)?;
             }
             Ok(())
         }
         AstPattern::Record { path, fields, .. } => {
-            state.unify(
-                scrutinee_type,
-                &Type::Record(TypeName::new(path.segments.join("."))),
-            )?;
-            for (_, field_pattern) in fields {
-                let field_type = state.fresh_var();
-                infer_pattern(state, field_pattern, &field_type)?;
+            let key = path.segments.join(".");
+            if let Some(shape) = record_shapes.get(&key) {
+                let result = generic_record_rsig_type(
+                    shape.type_name.clone(),
+                    shape.type_params.iter().map(|param| param.as_str()),
+                );
+                let mut vars = BTreeMap::new();
+                let result = rsig_type_to_infer_type_with_vars(&result, state, &mut vars);
+                state.unify(scrutinee_type, &result)?;
+                for (field_name, field_pattern) in fields {
+                    let field_type = shape
+                        .fields
+                        .iter()
+                        .find_map(|(name, type_)| (name == field_name).then_some(type_))
+                        .map(|type_| rsig_type_to_infer_type_with_vars(type_, state, &mut vars))
+                        .unwrap_or_else(|| state.fresh_var());
+                    infer_pattern(state, field_pattern, &field_type, record_shapes)?;
+                }
+                Ok(())
+            } else {
+                state.unify(scrutinee_type, &Type::Record(TypeName::new(key)))?;
+                for (_, field_pattern) in fields {
+                    let field_type = state.fresh_var();
+                    infer_pattern(state, field_pattern, &field_type, record_shapes)?;
+                }
+                Ok(())
             }
-            Ok(())
         }
         AstPattern::Unit { .. } => state.unify(&Type::Unit, scrutinee_type).map_err(Into::into),
         AstPattern::Bool { .. } => state.unify(&Type::Bool, scrutinee_type).map_err(Into::into),
@@ -1779,6 +1792,7 @@ mod tests {
     use crate::infer::module::{InferError, InferredModule, ModuleInferencer};
     use crate::infer::scheme::TypeScheme;
     use crate::infer::types::Type;
+    use crate::parser::SourceParser;
     use crate::signature::{
         FieldName, FunctionSignature, FunctionTable, ImportedSignatures, ModuleName, Rsig,
         RsigRecordField, RsigType, RsigTypeDecl, RsigTypeDeclKind, TypeName, TypeParamName,
@@ -2638,6 +2652,29 @@ mod tests {
             Some(&FunctionSignature::new(
                 vec![],
                 RsigType::ActorId(Box::new(RsigType::String))
+            ))
+        );
+    }
+
+    #[test]
+    fn actor_message_types_use_receive_body_constraints_for_generic_records() {
+        let program = SourceParser::new()
+            .parse(
+                camino::Utf8Path::new("test.ml"),
+                "type box<'a> = { value: 'a }\nfn make_worker() { spawn { receive { box { value } -> value + 1 } } }",
+            )
+            .unwrap();
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("make_worker"),
+            Some(&FunctionSignature::new(
+                vec![],
+                RsigType::ActorId(Box::new(RsigType::RecordApp {
+                    name: TypeName::new("box"),
+                    args: vec![RsigType::I64],
+                }))
             ))
         );
     }
