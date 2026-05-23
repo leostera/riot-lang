@@ -1117,37 +1117,47 @@ complete annotations to every function in the recursion cycle.
   expected output; diagnostics cover missing constraints or mismatched types
   across the group.
 
-### 44. Add Non-Capturing Lambdas
+### 44. Lambda Expression and Closure Boundaries
 
-- **Commit:** `feat(stage0): add non-capturing lambdas`
-- **Intent:** Higher-order compiler utilities can start with the simplest lambda
-  shape.
-- **Frontend:** Parse `fn (x: T) { expr }` or the agreed lambda syntax. Reject
-  captures in this first slice with a clear diagnostic.
-- **Lowering/backend/runtime:** Lower non-capturing lambdas to private functions
-  or function-value handles, whichever fits current call lowering best.
-- **Fixtures/tests:** Add passing lambda-as-argument fixture and capture
-  rejection diagnostic.
-- **Done when:** A non-capturing lambda can be passed to a known higher-order
-  helper or called directly if direct-call syntax is implemented.
-- **Validation:** Positive fixture compiles a non-capturing lambda through the
-  chosen call path; capture attempt fixture fails with a clear diagnostic.
+Resolved hardening gap: expression-position lambdas now use the agreed
+`fn(...) { ... }` syntax, infer parameter/result types from body and application
+constraints, lower through Lambda IR, and apply as callable runtime values.
+Captured closures are also supported: closure conversion computes capture sets,
+LLVM helper symbols are module-scoped, and runtime/GC behavior is covered by
+fixtures that capture both scalars and boxed values.
 
-### 45. Add Captured Closures
+Remaining boundary: lambda and apply metadata stays conservative when typed HIR
+is built without expression-type facts. This is intentional and is covered by the
+no-facts metadata tests; normal source compilation runs inference first and gets
+concrete metadata whenever constraints are available.
 
-- **Commit:** `feat(stage0): add captured closures`
-- **Intent:** Compiler code needs callbacks and local helpers that close over
-  context.
-- **Frontend:** Permit lambda captures, compute capture sets, and type closure
-  values.
-- **Lowering/backend/runtime:** Represent closures as RtValues containing a
-  function pointer plus environment tuple/record. Add runtime/codegen support for
-  indirect closure calls.
-- **Fixtures/tests:** Add closure fixtures for captured scalars, captured boxed
-  values, and closure returned from a function.
-- **Done when:** Captured closures survive allocation and call correctly.
-- **Validation:** Closure fixtures capture scalar and boxed values, allocate
-  after capture, and call the closure successfully after GC pressure.
+- **Validation:** `lambda_multi_arg_apply`, `lambda_multi_param_curried`,
+  `lambda_curried_capture`, `lambda_gc_captures`, `lambda_shadowing_capture`,
+  `function_value`, `function_partial_application`,
+  `typed_hir_uses_inference_facts_for_lambda_parameter_types`,
+  `typed_hir_uses_inference_facts_for_lambda_apply_results`, and the
+  lambda/actor capture-boundary unit tests.
+
+### 45. Closure ABI and Imported Callable Boundaries
+
+Resolved hardening gap: closure values have a concrete runtime ABI, including
+imported polymorphic closure values and closure values nested in tuple, list,
+record, and variant wrappers. `.rsig` callable matching now recurses through
+arrows, actor ids, and generic record/variant applications while preserving raw
+unknown/type-variable ABI rejection.
+
+Remaining boundary: raw unknown imported values, empty lists with unknown element
+ABI, and tuples that contain raw unknown ABI still report `imported value has
+unknown ABI`; only wrappers with unambiguous runtime representations are treated
+as concrete.
+
+- **Validation:** `imported_higher_order_function_uses_arrow_rsig`,
+  `compile_lib_imported_higher_order_polymorphic_closure_values_have_concrete_abi`,
+  `compile_lib_imported_higher_order_container_closure_params_have_concrete_abi`,
+  `compile_lib_imported_higher_order_variant_and_list_closure_params_have_concrete_abi`,
+  `compile_lib_imported_tuple_containing_unknown_keeps_unknown_abi_diagnostic`,
+  `compiler_like_imported_closure_actor_abi`, and
+  `compiler_like_imported_arrow_container_matching`.
 
 ### 46. Add Typed Multi-Module Linking Fixtures
 
