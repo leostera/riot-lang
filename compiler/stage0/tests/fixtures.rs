@@ -2064,6 +2064,115 @@ fn emit_all_distinguishes_concrete_and_unknown_actor_message_types() -> FixtureR
 }
 
 #[test]
+fn compile_lib_imported_actor_factory_targets_work() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let actors = temp_dir.path().join("actors.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &actors,
+        r#"fn make_string_worker() {
+  spawn { receive { "go" -> dbg("import sent") } }
+}
+
+fn make_idle_worker() {
+  spawn { receive { () -> () } }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Actors
+
+type monitor_down = Down(actor_id<_>)
+
+fn main() {
+  send(Actors.make_string_worker(), "go");
+  spawn {
+    monitor(Actors.make_idle_worker());
+    dbg("import monitored");
+    receive { Down(_) -> () }
+  };
+  spawn {
+    link(Actors.make_idle_worker());
+    dbg("import linked");
+    receive { () -> () }
+  };
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&actors)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected actor factory compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&actors)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected actor factory emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "fn make_string_worker() -> actor_id<String>",
+        "fn make_idle_worker() -> actor_id<unit>",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "actor factory rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported actor factory compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"import sent\nimport monitored\nimport linked\n" {
+        return fail(format!(
+            "unexpected imported actor factory stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_actor_ir_snapshots_frame_contracts() -> FixtureResult {
     for (name, fixture) in [
         (
