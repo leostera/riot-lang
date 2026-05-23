@@ -1,0 +1,24 @@
+---
+source: tests/fixtures.rs
+assertion_line: 4697
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/types/mutual_recursion_partial_annotation_unsupported.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × top-level function used before definition
+   ╭─[tests/fixtures/diagnostics/types/mutual_recursion_partial_annotation_unsupported.ml:2:28]
+ 1 │ fn is_even(n: i64) -> bool {
+ 2 │   if n < 1 { true } else { is_odd(n - 1) }
+   ·                            ──────┬──────
+   ·                                  ╰── `is_odd` is declared later in this module, but stage0 resolves functions top-to-bottom unless a recursion cycle is fully annotated
+ 3 │ }
+   ╰────
+  help: move the callee above this function or add parameter and return type
+        annotations to every function in the recursion cycle
