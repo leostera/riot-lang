@@ -1266,6 +1266,9 @@ families, and eventually while-loop lowering once that feature is implemented.
   output into a tiny name/arity checking pass, preserving let-initializer order,
   function signatures, parse-error accounting, unknown callee diagnostics, and
   arity mismatch accounting in one executable compiler-shaped pipeline.
+  `compiler_like_checker_lowering_pipeline` adds a compact checker-to-lowering
+  model, carrying typed expression facts into scalar/value slot classification
+  while keeping unknown calls and missing locals explicit.
 
 ## Documentation Slice Acceptance
 
