@@ -2508,6 +2508,36 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_keeps_function_params_unknown_without_signature_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn unchecked(value) {\n\
+                   value\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ConservativeFunctionSignatureFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let function = &typed.functions[0];
+        let Some(tail) = &function.body.tail else {
+            panic!("expected function tail");
+        };
+
+        assert_eq!(function.params[0].type_, RsigType::Unknown);
+        assert_eq!(tail.type_, RsigType::Unknown);
+        assert_eq!(function.result, RsigType::Unknown);
+    }
+
+    #[test]
     fn typed_hir_keeps_raw_receive_binder_metadata_unknown_without_message_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
