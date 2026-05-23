@@ -1,5 +1,6 @@
 ---
 source: tests/fixtures.rs
+assertion_line: 4697
 expression: transcript
 ---
 fixture: tests/fixtures/programs/basic/compiler_like_actor_message_constraints.ml
@@ -14,7 +15,10 @@ stderr:
 run:
 status: success
 stdout:
-refined:ActorId<box<i64>>
+record:ActorId<box<i64>>
+variant:ActorId<option<i64>>
+list:ActorId<List<i64>>
 heterogeneous:ActorId<Unknown>
+wildcard:ActorId<Unknown>
 stderr:
 <empty>
