@@ -3138,7 +3138,9 @@ fn validate_actor_target(
                     )
                     .into());
             }
-            Some(BindingKind::Value(_)) => {
+            Some(BindingKind::Value(Some(type_)))
+                if !matches!(type_, RsigType::Unknown | RsigType::Var(_)) =>
+            {
                 return Err(ctx
                     .diagnostic(
                         span,
@@ -3148,6 +3150,7 @@ fn validate_actor_target(
                     )
                     .into());
             }
+            Some(BindingKind::Value(_)) => {}
         }
     }
     validate_expr(ctx, expr, bindings, false)?;
