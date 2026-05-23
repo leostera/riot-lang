@@ -158,12 +158,23 @@ fn summarize(parsed: decl_parse) -> summary {
   }
 }
 
+fn error_count(parsed: decl_parse) -> i64 {
+  match summarize(parsed) {
+    summary { errors } -> errors
+  }
+}
+
 fn main() {
   let tokens = [KwFn, Ident("main"), LParen, RParen, LBrace, KwLet, Ident("answer"), Equal, Number(42), Ident("print"), LParen, Ident("answer"), RParen, RBrace];
   let total = summarize(parse_function(tokens));
+  let missing_body_end = [KwFn, Ident("main"), LParen, RParen, LBrace, KwLet, Ident("answer"), Equal, Number(42)];
+  let missing_arg_close = [KwFn, Ident("main"), LParen, RParen, LBrace, Ident("print"), LParen, Ident("answer"), RBrace];
+  let unexpected_start = [KwLet, Ident("answer"), Equal, Number(42)];
+  let errors = error_count(parse_function(missing_body_end)) + error_count(parse_function(missing_arg_close)) + error_count(parse_function(unexpected_start));
   dbg(total.functions);
   dbg(total.lets);
   dbg(total.calls);
   dbg(total.literals);
-  dbg(total.errors)
+  dbg(total.errors);
+  dbg(errors)
 }

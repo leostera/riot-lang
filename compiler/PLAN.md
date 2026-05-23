@@ -1259,8 +1259,9 @@ families, and eventually while-loop lowering once that feature is implemented.
   walking a recursive source-character stream into word/number/symbol lexemes
   before summarizing the compiler-shaped token stream.
   `compiler_like_parser_ast_builder` adds the next compact parser-shaped model,
-  consuming token variants into a tiny function/statement/expression AST and
-  summarizing declarations, lets, calls, literals, and parse errors.
+  consuming token variants into a tiny function/statement/expression AST,
+  summarizing declarations, lets, calls, literals, and pinning representative
+  parser recovery/error paths for missing delimiters and unexpected starts.
 
 ## Documentation Slice Acceptance
 
