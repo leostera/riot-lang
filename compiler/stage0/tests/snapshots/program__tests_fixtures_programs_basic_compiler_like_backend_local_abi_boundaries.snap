@@ -1,0 +1,20 @@
+---
+source: tests/fixtures.rs
+assertion_line: 4697
+expression: transcript
+---
+fixture: tests/fixtures/programs/basic/compiler_like_backend_local_abi_boundaries.ml
+
+compile:
+status: success
+stdout:
+<empty>
+stderr:
+<empty>
+
+run:
+status: success
+stdout:
+raw unknown param:unsupported;unresolved call:conservative unknown;wildcard match scrutinee:conservative unknown;incompatible match result:unsupported unknown;unknown aggregate item:refine boxed value;concrete aggregate item:preserve concrete abi;apply unknown operand:refine boxed value;if predicate:refine bool;call signature fact:refine from signature
+stderr:
+<empty>
