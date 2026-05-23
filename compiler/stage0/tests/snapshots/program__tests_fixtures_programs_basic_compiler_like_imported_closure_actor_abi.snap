@@ -1,6 +1,6 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 3249
+assertion_line: 4618
 expression: transcript
 ---
 fixture: tests/fixtures/programs/basic/compiler_like_imported_closure_actor_abi.ml
@@ -20,5 +20,8 @@ actor factory closure: old=concrete, new=concrete
 nested actor factory closure: old=unknown, new=concrete
 raw type variable: old=unknown, new=unknown
 list of unknown: old=unknown, new=unknown
+tuple of unknown: old=unknown, new=unknown
+record wrapper: old=concrete, new=concrete
+variant wrapper: old=concrete, new=concrete
 stderr:
 <empty>
