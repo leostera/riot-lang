@@ -2163,6 +2163,40 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_keeps_raw_receive_binder_metadata_unknown_without_message_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n\
+                   receive { value -> () }\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ConservativeReceiveFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let Some(receive) = &typed.functions[0].body.tail else {
+            panic!("expected receive tail");
+        };
+        let TypedExprKind::Receive { arms } = &receive.kind else {
+            panic!("expected receive expression");
+        };
+        let TypedPattern::Bind { type_, .. } = &arms[0].pattern else {
+            panic!("expected receive binder");
+        };
+
+        assert_eq!(receive.type_, RsigType::Unit);
+        assert_eq!(type_, &RsigType::Unknown);
+    }
+
+    #[test]
     fn typed_hir_keeps_unknown_path_and_apply_callee_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
