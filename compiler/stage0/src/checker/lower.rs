@@ -2163,6 +2163,52 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_keeps_unknown_path_and_apply_callee_metadata_unknown_without_inference_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(
+                path,
+                "fn main() {\n\
+                   let missing_value = missing;\n\
+                   let missing_call = missing(1);\n\
+                   (missing_value, missing_call)\n\
+                 }",
+            )
+            .unwrap();
+        let imports = ImportedSignatures::new();
+        let function_types = FunctionTable::new();
+        let typed = TyIrBuilder::new(
+            ModuleName::new("ConservativePathFacts"),
+            &imports,
+            &function_types,
+            None,
+        )
+        .build(program);
+        let [
+            TypedStmt::Let {
+                value: missing_value,
+                ..
+            },
+            TypedStmt::Let {
+                value: missing_call,
+                ..
+            },
+        ] = typed.functions[0].body.statements.as_slice()
+        else {
+            panic!("expected unknown path and call let statements");
+        };
+        let TypedExprKind::Entity(_) = &missing_value.kind else {
+            panic!("expected unresolved path entity");
+        };
+        let TypedExprKind::Apply { .. } = &missing_call.kind else {
+            panic!("expected unresolved path apply");
+        };
+
+        assert_eq!(missing_value.type_, RsigType::Unknown);
+        assert_eq!(missing_call.type_, RsigType::Unknown);
+    }
+
+    #[test]
     fn typed_hir_keeps_incompatible_branch_result_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
