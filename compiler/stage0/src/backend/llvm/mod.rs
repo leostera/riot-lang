@@ -4222,6 +4222,105 @@ mod tests {
     }
 
     #[test]
+    fn local_function_abi_keeps_unresolved_call_results_unknown() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiUnresolvedCallTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Call {
+                        callee: vec!["opaque".to_owned()],
+                        args: Vec::new(),
+                        arg_types: Vec::new(),
+                        result: RsigType::Unknown,
+                    }),
+                },
+                symbol: "riot_mod_AbiUnresolvedCallTest_main".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("main").unwrap();
+
+        assert_eq!(abi.result, AbiType::Unknown);
+        assert!(!abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_keeps_receive_results_unsupported() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiReceiveBoundaryTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "wait".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Receive { arms: Vec::new() }),
+                },
+                symbol: "riot_mod_AbiReceiveBoundaryTest_wait".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("wait").unwrap();
+
+        assert_eq!(abi.result, AbiType::Unknown);
+        assert!(!abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_keeps_char_and_float_results_unsupported() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiUnsupportedScalarTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![
+                LambdaFunction {
+                    name: "char_value".to_owned(),
+                    params: Vec::new(),
+                    param_types: Vec::new(),
+                    result: RsigType::Unknown,
+                    body: LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Char('x')),
+                    },
+                    symbol: "riot_mod_AbiUnsupportedScalarTest_char_value".to_owned(),
+                },
+                LambdaFunction {
+                    name: "float_value".to_owned(),
+                    params: Vec::new(),
+                    param_types: Vec::new(),
+                    result: RsigType::Unknown,
+                    body: LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Float("1.0".to_owned())),
+                    },
+                    symbol: "riot_mod_AbiUnsupportedScalarTest_float_value".to_owned(),
+                },
+            ],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let char_abi = abis.get("char_value").unwrap();
+        let float_abi = abis.get("float_value").unwrap();
+
+        assert_eq!(char_abi.result, AbiType::Unknown);
+        assert_eq!(float_abi.result, AbiType::Unknown);
+        assert!(!char_abi.is_supported_local());
+        assert!(!float_abi.is_supported_local());
+    }
+
+    #[test]
     fn local_function_abi_inference_uses_concrete_match_arm_when_other_arm_unknown() {
         let program = LambdaProgram {
             module_name: ModuleName::new("AbiMatchPartialTest"),
