@@ -15,6 +15,6 @@ stderr:
 run:
 status: success
 stdout:
-raw unknown param:unsupported;unresolved path:conservative unknown;unresolved call:conservative unknown;wildcard match scrutinee:conservative unknown;incompatible match scrutinee:conservative unknown;incompatible match result:unsupported unknown;receive expression:unsupported local abi;unsupported scalar literal:unsupported local abi;unknown external abi:boxed value bridge;unknown aggregate item:refine boxed value;let-bound aggregate item:refine through let;concrete aggregate item:preserve concrete abi;apply unknown operand:refine boxed value;if predicate:refine bool;call signature fact:refine from signature
+raw unknown param:unsupported;unresolved path:conservative unknown;unresolved call:conservative unknown;wildcard match scrutinee:conservative unknown;incompatible match scrutinee:conservative unknown;incompatible match result:unsupported unknown;receive expression:unsupported local abi;unsupported scalar literal:unsupported local abi;unknown external abi:boxed value bridge;codegen unknown guard:diagnostic only;unknown aggregate item:refine boxed value;let-bound aggregate item:refine through let;concrete aggregate item:preserve concrete abi;apply unknown operand:refine boxed value;if predicate:refine bool;call signature fact:refine from signature
 stderr:
 <empty>
