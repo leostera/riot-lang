@@ -224,3 +224,101 @@ pub(crate) fn bind_pattern_names(pattern: &LambdaPattern, bound: &mut BTreeSet<B
         | LambdaPattern::String(_) => {}
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lambda::ir::{LambdaFunction, LambdaMatchArm, LambdaReceiveArm, Param};
+    use crate::signature::{ModuleName, RsigType};
+
+    fn bind(name: &str, id: usize) -> BindingKey {
+        BindingKey::resolved(name, id)
+    }
+
+    fn binding_pattern(name: &str, id: usize) -> LambdaPattern {
+        LambdaPattern::Bind {
+            binding: bind(name, id),
+            type_: RsigType::Unknown,
+        }
+    }
+
+    #[test]
+    fn free_variable_collection_treats_match_pattern_binders_as_bound() {
+        let outer = bind("outer", 0);
+        let inner = bind("inner", 1);
+        let expr = LambdaExpr::Match {
+            scrutinee: Box::new(LambdaExpr::Local(outer.clone())),
+            arms: vec![LambdaMatchArm {
+                pattern: binding_pattern("inner", 1),
+                body: LambdaExpr::Local(inner),
+            }],
+        };
+
+        let mut free = BTreeSet::new();
+        collect_free_expr(&expr, &BTreeSet::new(), &mut free);
+
+        assert_eq!(free, BTreeSet::from([outer]));
+    }
+
+    #[test]
+    fn free_variable_collection_treats_receive_pattern_binders_as_bound() {
+        let msg = bind("msg", 0);
+        let expr = LambdaExpr::Receive {
+            arms: vec![LambdaReceiveArm {
+                pattern: binding_pattern("msg", 0),
+                body: LambdaExpr::Local(msg),
+            }],
+        };
+
+        let mut free = BTreeSet::new();
+        collect_free_expr(&expr, &BTreeSet::new(), &mut free);
+
+        assert!(free.is_empty());
+    }
+
+    #[test]
+    fn closure_conversion_captures_outer_values_but_not_match_binders() {
+        let outer = bind("outer", 0);
+        let inner = bind("inner", 1);
+        let mut program = LambdaProgram {
+            module_name: ModuleName::new("ClosurePatternTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unit,
+                symbol: "riot_mod_ClosurePatternTest_main".to_owned(),
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Lambda {
+                        params: vec![Param::from_key(bind("ignored", 2))],
+                        param_types: vec![RsigType::Unit],
+                        captures: Vec::new(),
+                        body: Box::new(LambdaBlock {
+                            statements: Vec::new(),
+                            tail: Some(LambdaExpr::Match {
+                                scrutinee: Box::new(LambdaExpr::Local(outer.clone())),
+                                arms: vec![LambdaMatchArm {
+                                    pattern: binding_pattern("inner", 1),
+                                    body: LambdaExpr::Tuple(vec![
+                                        LambdaExpr::Local(inner),
+                                        LambdaExpr::Local(outer.clone()),
+                                    ]),
+                                }],
+                            }),
+                        }),
+                    }),
+                },
+            }],
+        };
+
+        program = closure_convert_program(program);
+        let Some(LambdaExpr::Lambda { captures, .. }) = &program.functions[0].body.tail else {
+            panic!("expected function tail lambda");
+        };
+
+        assert_eq!(captures.as_slice(), &[Capture::from_key(outer)]);
+    }
+}
