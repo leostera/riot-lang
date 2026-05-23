@@ -3389,10 +3389,10 @@ fn mark_expr_constraints(
             }
         }
         LambdaExpr::Apply { callee, args, .. } => {
-            mark_expr_as(params, locals, param_types, callee, AbiType::Value);
+            mark_expr_if_unknown_as(params, locals, param_types, callee, AbiType::Value);
             mark_expr_constraints(callee, params, locals, param_types, functions, externals);
             for arg in args {
-                mark_expr_as(params, locals, param_types, arg, AbiType::Value);
+                mark_expr_if_unknown_as(params, locals, param_types, arg, AbiType::Value);
                 mark_expr_constraints(arg, params, locals, param_types, functions, externals);
             }
         }
@@ -3421,18 +3421,18 @@ fn mark_expr_constraints(
         }
         LambdaExpr::Tuple(items) | LambdaExpr::List(items) => {
             for item in items {
-                mark_expr_as(params, locals, param_types, item, AbiType::Value);
+                mark_expr_if_unknown_as(params, locals, param_types, item, AbiType::Value);
                 mark_expr_constraints(item, params, locals, param_types, functions, externals);
             }
         }
         LambdaExpr::Record { fields, .. } => {
             for (_, value) in fields {
-                mark_expr_as(params, locals, param_types, value, AbiType::Value);
+                mark_expr_if_unknown_as(params, locals, param_types, value, AbiType::Value);
                 mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
         LambdaExpr::Field { base, .. } | LambdaExpr::TupleIndex { base, .. } => {
-            mark_expr_as(params, locals, param_types, base, AbiType::Value);
+            mark_expr_if_unknown_as(params, locals, param_types, base, AbiType::Value);
             mark_expr_constraints(base, params, locals, param_types, functions, externals);
         }
         LambdaExpr::Receive { arms } => {
@@ -3454,7 +3454,7 @@ fn mark_expr_constraints(
         }
         LambdaExpr::Variant { payload, .. } => {
             for value in payload {
-                mark_expr_as(params, locals, param_types, value, AbiType::Value);
+                mark_expr_if_unknown_as(params, locals, param_types, value, AbiType::Value);
                 mark_expr_constraints(value, params, locals, param_types, functions, externals);
             }
         }
@@ -3466,6 +3466,37 @@ fn mark_expr_constraints(
         | LambdaExpr::Path(_)
         | LambdaExpr::Local(_)
         | LambdaExpr::String(_) => {}
+    }
+}
+
+fn mark_expr_if_unknown_as(
+    params: &[Param],
+    locals: &mut HashMap<String, AbiType>,
+    param_types: &mut [AbiType],
+    expr: &LambdaExpr,
+    abi: AbiType,
+) {
+    if let LambdaExpr::Block(block) = expr {
+        if let Some(tail) = &block.tail {
+            mark_expr_if_unknown_as(params, locals, param_types, tail, abi);
+        }
+        return;
+    }
+
+    let Some(name) = expr_local_name(expr) else {
+        return;
+    };
+
+    let current = locals.get(name).copied().unwrap_or(AbiType::Unknown);
+    if current != AbiType::Unknown {
+        return;
+    }
+
+    locals.insert(name.to_owned(), abi);
+    if let Some(index) = params.iter().position(|param| param.as_str() == name) {
+        if param_types[index] == AbiType::Unknown {
+            param_types[index] = abi;
+        }
     }
 }
 
@@ -3483,20 +3514,26 @@ fn mark_expr_as(
         return;
     }
 
-    let name = match expr {
-        LambdaExpr::Path(path) => {
-            let [name] = path.as_slice() else {
-                return;
-            };
-            name.as_str()
-        }
-        LambdaExpr::Local(binding) => binding.as_str(),
-        _ => return,
+    let Some(name) = expr_local_name(expr) else {
+        return;
     };
 
     locals.insert(name.to_owned(), abi);
     if let Some(index) = params.iter().position(|param| param.as_str() == name) {
         param_types[index] = unify_abi(param_types[index], abi);
+    }
+}
+
+fn expr_local_name(expr: &LambdaExpr) -> Option<&str> {
+    match expr {
+        LambdaExpr::Path(path) => {
+            let [name] = path.as_slice() else {
+                return None;
+            };
+            Some(name.as_str())
+        }
+        LambdaExpr::Local(binding) => Some(binding.as_str()),
+        _ => None,
     }
 }
 
@@ -3779,6 +3816,40 @@ mod tests {
         let abi = abis.get("pack").unwrap();
 
         assert_eq!(abi.params, vec![AbiType::Value, AbiType::Value, AbiType::Value]);
+        assert_eq!(abi.result, AbiType::Value);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_keeps_concrete_aggregate_items_concrete() {
+        let value = Param::from_key(BindingKey::new("value"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiConcreteAggregateItemTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "make_box".to_owned(),
+                params: vec![value.clone()],
+                param_types: vec![RsigType::I64],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Record {
+                        path: vec!["box".to_owned()],
+                        fields: vec![(
+                            "value".to_owned(),
+                            LambdaExpr::Local(BindingKey::new("value")),
+                        )],
+                    }),
+                },
+                symbol: "riot_mod_AbiConcreteAggregateItemTest_make_box".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("make_box").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::I64]);
         assert_eq!(abi.result, AbiType::Value);
         assert!(abi.is_supported_local());
     }
