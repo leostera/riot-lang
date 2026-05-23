@@ -3106,6 +3106,7 @@ fn infer_block_abi(
     for stmt in &block.statements {
         match stmt {
             LambdaStmt::Let { name, value } => {
+                mark_expr_constraints(value, params, locals, param_types, functions, externals);
                 let abi = infer_expr_abi(value, locals, functions, externals);
                 locals.insert(name.as_str().to_owned(), abi);
             }
@@ -3816,6 +3817,37 @@ mod tests {
         let abi = abis.get("pack").unwrap();
 
         assert_eq!(abi.params, vec![AbiType::Value, AbiType::Value, AbiType::Value]);
+        assert_eq!(abi.result, AbiType::Value);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_let_bound_aggregate_items_as_values() {
+        let value = Param::from_key(BindingKey::new("value"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiLetBoundAggregateItemTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "pack".to_owned(),
+                params: vec![value.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Let {
+                        name: BindingKey::new("packed"),
+                        value: LambdaExpr::Tuple(vec![LambdaExpr::Local(BindingKey::new("value"))]),
+                    }],
+                    tail: Some(LambdaExpr::Local(BindingKey::new("packed"))),
+                },
+                symbol: "riot_mod_AbiLetBoundAggregateItemTest_pack".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("pack").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Value]);
         assert_eq!(abi.result, AbiType::Value);
         assert!(abi.is_supported_local());
     }
