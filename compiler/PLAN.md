@@ -1159,24 +1159,32 @@ as concrete.
   `compiler_like_imported_closure_actor_abi`, and
   `compiler_like_imported_arrow_container_matching`.
 
-### 46. Add Typed Multi-Module Linking Fixtures
+### 46. Multi-Module Linking and Interface Dependency Boundaries
 
-- **Commit:** `feat(stage0): add typed multi-module linking fixtures`
-- **Intent:** Interface-first compilation is central to self-hosting.
-- **Frontend:** No new syntax. Strengthen use/import validation across several
-  modules.
-- **Lowering/backend/runtime:** Expand `compile-lib` and executable linking
-  fixtures to compile multiple module objects and link them explicitly.
-- **Fixtures/tests:** Add a three-module fixture: shared types, helper
-  functions, executable main.
-- **Done when:** A binary can call through two imported modules with typed
-  `.rsig` interfaces and object files.
-- **Validation:** Integration test builds three modules with `compile-lib`, links
-  the executable with explicit object mappings, and verifies stdout.
+Resolved hardening gap: interface-first compilation now has typed multi-module
+coverage across `.rsig` signatures and object files. Transitive `.rsig`
+dependencies are walked recursively for object linking, same-command compiled
+signatures are visible in memory, and dependency fingerprint mismatches are
+reported even when a module was already seen as a direct import.
 
-### 47. Add Per-Export Rsig Fingerprints
+Remaining boundary: stage0 still uses module-level dependency fingerprints rather
+than fine-grained per-export invalidation. This is enough for the current
+reference compiler/linker boundary, but future build planning may still want
+per-export fingerprints.
 
-- **Commit:** `feat(stage0): add per-export rsig fingerprints`
+- **Validation:** `compile_lib_three_module_interfaces_link_through_object_dir`,
+  `compile_multiple_sources_links_dependency_objects`,
+  `imported_object_resolver_includes_transitive_dependency_objects`,
+  `imported_object_resolver_rejects_transitive_dependency_fingerprint_mismatch`,
+  `imported_object_resolver_checks_fingerprint_for_previously_seen_direct_imports`,
+  and `binary_rsig_roundtrips_dependency_fingerprints`.
+
+### 47. Per-Export Rsig Fingerprints
+
+Remaining boundary: `.rsig` files have stable module/interface fingerprints and
+record dependency fingerprints, but they do not yet expose a separate fingerprint
+for each exported function, external, type, constructor, or actor summary.
+
 - **Intent:** Fine-grained dependency invalidation needs stable export identity.
 - **Frontend:** No syntax change.
 - **Lowering/backend/runtime:** Store fingerprints per exported function,
@@ -1189,22 +1197,21 @@ as concrete.
 - **Validation:** Signature tests prove reorder-stable fingerprints and changed
   fingerprints after export type changes; binary roundtrip preserves them.
 
-### 48. Add Dependency Metadata to Rsig
+### 48. Rsig Dependency Metadata
 
-- **Commit:** `feat(stage0): add dependency metadata to rsig`
-- **Intent:** Build planning needs to know which interfaces a module was checked
-  against.
-- **Frontend:** Record `use`d modules during checking, including resolved
-  signature paths and module fingerprints.
-- **Lowering/backend/runtime:** Encode dependency metadata in `.rsig` and expose
-  it in canonical text.
-- **Fixtures/tests:** Add fixtures for one and multiple dependencies, plus a
-  binary roundtrip test.
-- **Done when:** A module `.rsig` says which imported module fingerprints it
-  depended on.
-- **Validation:** Fixtures with one and multiple `use` declarations show
-  dependency metadata in canonical interface text; binary roundtrip preserves
-  dependency fingerprints.
+Resolved hardening gap: `.rsig` files encode dependency metadata with module
+fingerprints, canonical text exposes those dependencies, and the driver uses the
+metadata for transitive object resolution and stale-dependency diagnostics.
+
+Remaining boundary: dependency metadata is still module-granular. When per-export
+fingerprints land, dependency edges should be revisited so callers can depend on
+specific exported shapes instead of whole-module fingerprints.
+
+- **Validation:** `emit_all_preserves_pipeline_phase_order`,
+  `emit_all_exposes_actor_message_types_in_rsig`,
+  `binary_rsig_roundtrips_dependency_fingerprints`,
+  `compile_lib_three_module_interfaces_link_through_object_dir`, and the
+  imported object resolver fingerprint tests.
 
 ### 49. Emit Deterministic Interface Text
 
