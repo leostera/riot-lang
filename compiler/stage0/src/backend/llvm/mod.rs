@@ -3244,6 +3244,21 @@ fn infer_match_arm_abi(
     infer_expr_abi(&arm.body, &locals, functions, externals)
 }
 
+fn infer_pattern_match_abi(pattern: &LambdaPattern) -> AbiType {
+    match pattern {
+        LambdaPattern::Bool(_) => AbiType::Bool,
+        LambdaPattern::Int(_) => AbiType::I64,
+        LambdaPattern::String(_)
+        | LambdaPattern::Constructor { .. }
+        | LambdaPattern::Tuple(_)
+        | LambdaPattern::List { .. }
+        | LambdaPattern::Record { .. } => AbiType::Value,
+        LambdaPattern::Bind { type_, .. } => AbiType::from_rsig(type_),
+        LambdaPattern::Unit => AbiType::Unit,
+        LambdaPattern::Wildcard => AbiType::Unknown,
+    }
+}
+
 fn bind_pattern_abis(pattern: &LambdaPattern, locals: &mut HashMap<String, AbiType>) {
     match pattern {
         LambdaPattern::Bind { binding, type_ } => {
@@ -3307,6 +3322,7 @@ fn mark_expr_constraints(
             then_branch,
             else_branch,
         } => {
+            mark_expr_as(params, locals, param_types, condition, AbiType::Bool);
             mark_expr_constraints(condition, params, locals, param_types, functions, externals);
             mark_expr_constraints(
                 then_branch,
@@ -3326,6 +3342,13 @@ fn mark_expr_constraints(
             );
         }
         LambdaExpr::Match { scrutinee, arms } => {
+            let scrutinee_abi = arms
+                .iter()
+                .map(|arm| infer_pattern_match_abi(&arm.pattern))
+                .fold(AbiType::Unknown, unify_abi);
+            if scrutinee_abi != AbiType::Unknown {
+                mark_expr_as(params, locals, param_types, scrutinee, scrutinee_abi);
+            }
             mark_expr_constraints(scrutinee, params, locals, param_types, functions, externals);
             for arm in arms {
                 mark_expr_constraints(&arm.body, params, locals, param_types, functions, externals);
@@ -3712,6 +3735,78 @@ mod tests {
         assert_eq!(main.result, AbiType::I64);
         assert!(answer.is_supported_local());
         assert!(main.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_marks_if_conditions_as_bool() {
+        let flag = Param::from_key(BindingKey::new("flag"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiIfConditionTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "choose".to_owned(),
+                params: vec![flag.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::If {
+                        condition: Box::new(LambdaExpr::Local(BindingKey::new("flag"))),
+                        then_branch: Box::new(LambdaExpr::Int(1)),
+                        else_branch: Box::new(LambdaExpr::Int(2)),
+                    }),
+                },
+                symbol: "riot_mod_AbiIfConditionTest_choose".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("choose").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::Bool]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
+    }
+
+    #[test]
+    fn local_function_abi_inference_uses_match_pattern_scrutinee_constraints() {
+        let value = Param::from_key(BindingKey::new("value"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiMatchScrutineeTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "classify".to_owned(),
+                params: vec![value.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::Match {
+                        scrutinee: Box::new(LambdaExpr::Local(BindingKey::new("value"))),
+                        arms: vec![
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Int(0),
+                                body: LambdaExpr::Int(1),
+                            },
+                            LambdaMatchArm {
+                                pattern: LambdaPattern::Wildcard,
+                                body: LambdaExpr::Int(2),
+                            },
+                        ],
+                    }),
+                },
+                symbol: "riot_mod_AbiMatchScrutineeTest_classify".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("classify").unwrap();
+
+        assert_eq!(abi.params, vec![AbiType::I64]);
+        assert_eq!(abi.result, AbiType::I64);
+        assert!(abi.is_supported_local());
     }
 
     #[test]
