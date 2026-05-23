@@ -1217,19 +1217,21 @@ specific exported shapes instead of whole-module fingerprints.
 
 ### 49. Emit Deterministic Interface Text
 
-- **Commit:** `feat(stage0): emit deterministic interface text`
-- **Intent:** Binary `.rsig` should stay primary, but humans and tests need a
-  stable textual view.
-- **Frontend:** No syntax change.
-- **Lowering/backend/runtime:** Make `emit all` include deterministic interface
-  text for module name, dependencies, exports, types, fingerprints, and actor
-  summaries.
-- **Fixtures/tests:** Add snapshot coverage for the text form and ensure it is
-  stable across repeated runs.
-- **Done when:** Reviewers can inspect interface changes without decoding binary
-  manually.
-- **Validation:** `emit all` snapshots include deterministic interface text;
-  running the same emit twice produces identical text.
+Resolved hardening gap: `emit all` includes canonical `.rsig` interface text for
+module name, module fingerprint, dependencies, type declarations, exported
+functions/externals, per-declaration fingerprints, symbols, and actor message
+summaries. The text is deterministic across repeated emits for the same source,
+so reviewers can inspect interface changes without decoding binary `.rsig` data
+manually.
+
+Remaining boundary: binary `.rsig` remains the primary interface artifact; future
+review tooling may still want a dedicated interface-only command or richer
+snapshots for large multi-module workspaces.
+
+- **Validation:** `emit_all_preserves_pipeline_phase_order`,
+  `emit_all_includes_stable_interface_text`,
+  `emit_all_exposes_actor_message_types_in_rsig`, and
+  `emit_all_distinguishes_concrete_and_unknown_actor_message_types`.
 
 ### 50. Add Compiler-Shaped Smoke Fixture
 

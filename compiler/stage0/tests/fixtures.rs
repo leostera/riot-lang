@@ -3651,6 +3651,79 @@ fn emit_all_preserves_pipeline_phase_order() -> FixtureResult {
 }
 
 #[test]
+fn emit_all_includes_stable_interface_text() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/actor_factory_signature.ml");
+    let emit_once = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&fixture)
+        .output()?;
+    if !emit_once.status.success() {
+        return fail(format!(
+            "expected first emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit_once.stderr)
+        ));
+    }
+    let emit_twice = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&fixture)
+        .output()?;
+    if !emit_twice.status.success() {
+        return fail(format!(
+            "expected second emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit_twice.stderr)
+        ));
+    }
+
+    let first_stdout = String::from_utf8_lossy(&emit_once.stdout);
+    let second_stdout = String::from_utf8_lossy(&emit_twice.stdout);
+    let first_rsig = emit_all_section(&first_stdout, "== rsig ==", "== ir ==")?;
+    let second_rsig = emit_all_section(&second_stdout, "== rsig ==", "== ir ==")?;
+
+    if first_rsig != second_rsig {
+        return fail(format!(
+            "emit all rsig text was not deterministic:\nfirst:\n{first_rsig}\nsecond:\n{second_rsig}"
+        ));
+    }
+    for expected in [
+        "module ActorFactorySignature",
+        "fingerprint ",
+        "fn make_worker() -> actor_id<String>",
+        "riot_mod_ActorFactorySignature_make_worker",
+    ] {
+        if !first_rsig.contains(expected) {
+            return fail(format!(
+                "emit all rsig text missed `{expected}`:\n{first_rsig}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn emit_all_section(
+    output: &str,
+    start: &str,
+    end: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let Some(start_index) = output.find(start) else {
+        return Err(format!("emit all output did not contain `{start}`:\n{output}").into());
+    };
+    let after_start = start_index + start.len();
+    let Some(relative_end_index) = output[after_start..].find(end) else {
+        return Err(
+            format!("emit all output did not contain `{end}` after `{start}`:\n{output}").into(),
+        );
+    };
+    Ok(output[after_start..after_start + relative_end_index]
+        .trim()
+        .to_owned())
+}
+
+#[test]
 fn emit_all_exposes_actor_message_types_in_rsig() -> FixtureResult {
     let fixture = manifest_dir().join("tests/fixtures/programs/basic/actor_factory_signature.ml");
     let emit = Command::new(cargo_bin("stage0"))
