@@ -3126,7 +3126,8 @@ fn validate_actor_target(
         && let [name] = path.segments.as_slice()
     {
         match bindings.get(name) {
-            Some(BindingKind::Actor) => return Ok(()),
+            Some(BindingKind::Actor)
+            | Some(BindingKind::Value(Some(RsigType::ActorId(_)))) => return Ok(()),
             None => {
                 return Err(ctx
                     .diagnostic(
@@ -3461,7 +3462,8 @@ fn export_has_unknown_abi(export: &RsigExport) -> bool {
 fn rsig_type_has_unknown_abi(type_: &RsigType) -> bool {
     match type_ {
         RsigType::Unknown | RsigType::Var(_) => true,
-        RsigType::ActorId(message) | RsigType::List(message) => rsig_type_has_unknown_abi(message),
+        RsigType::ActorId(_) => false,
+        RsigType::List(message) => rsig_type_has_unknown_abi(message),
         RsigType::Arrow { parameter, result } => {
             rsig_type_has_unknown_abi(parameter) || rsig_type_has_unknown_abi(result)
         }

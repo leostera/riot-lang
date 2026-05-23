@@ -2238,6 +2238,99 @@ fn main() { send(Actors.make_string_worker(), 1) }
 }
 
 #[test]
+fn compile_lib_imported_heterogeneous_actor_factory_keeps_unknown_message_signature() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let actors = temp_dir.path().join("actors.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &actors,
+        r#"fn make_any_worker() {
+  spawn {
+    receive { "go" -> dbg("import any string") };
+    receive { 1 -> dbg("import any int") }
+  }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Actors
+
+fn main() {
+  let worker = Actors.make_any_worker();
+  send(worker, "go");
+  send(worker, 1);
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&actors)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected heterogeneous actor factory compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&actors)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected heterogeneous actor factory emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    if !stdout.contains("fn make_any_worker() -> actor_id<'") {
+        return fail(format!(
+            "heterogeneous actor factory rsig should keep an unknown message type:\n{stdout}"
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported heterogeneous actor factory compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"import any string\nimport any int\n" {
+        return fail(format!(
+            "unexpected imported heterogeneous actor factory stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_actor_operation_rejects_non_actor_factories() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
