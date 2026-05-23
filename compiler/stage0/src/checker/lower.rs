@@ -2296,6 +2296,23 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_function_annotations_without_expression_facts() {
+        let path = camino::Utf8Path::new("test.ml");
+        let program = SourceParser::new()
+            .parse(path, "fn identity(value: i64) -> i64 { value }")
+            .unwrap();
+        let typed = typed_program("FunctionAnnotationFacts", program);
+        let function = &typed.functions[0];
+        let Some(tail) = &function.body.tail else {
+            panic!("expected function tail");
+        };
+
+        assert_eq!(function.params[0].type_, RsigType::I64);
+        assert_eq!(tail.type_, RsigType::I64);
+        assert_eq!(function.result, RsigType::I64);
+    }
+
+    #[test]
     fn typed_hir_keeps_lambda_and_spawn_metadata_unknown_without_inference_facts() {
         let path = camino::Utf8Path::new("test.ml");
         let program = SourceParser::new()
