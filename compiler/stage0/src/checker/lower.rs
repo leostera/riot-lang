@@ -2035,6 +2035,45 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_uses_inference_facts_for_partial_receive_message_wrappers() {
+        let typed = typed_program_with_inference_facts(
+            "PartialReceiveMessageWrappers",
+            "type option<'a> = Some('a) | None\n\
+             type box<'a> = { value: 'a }\n\
+             fn variant_worker() { spawn { receive { Some(value) -> value + 1, None -> 0 } } }\n\
+             fn record_worker() { spawn { receive { box { value } -> value + 1, box { value: _ } -> 0 } } }\n\
+             fn list_worker() { spawn { receive { [head, .._] -> head + 1, [.._] -> 0 } } }",
+        );
+
+        let spawn_tail = |index: usize| {
+            typed.functions[index]
+                .body
+                .tail
+                .as_ref()
+                .expect("expected spawn tail")
+        };
+
+        assert_eq!(
+            spawn_tail(0).type_,
+            RsigType::ActorId(Box::new(RsigType::VariantApp {
+                name: TypeName::new("option"),
+                args: vec![RsigType::I64],
+            }))
+        );
+        assert_eq!(
+            spawn_tail(1).type_,
+            RsigType::ActorId(Box::new(RsigType::RecordApp {
+                name: TypeName::new("box"),
+                args: vec![RsigType::I64],
+            }))
+        );
+        assert_eq!(
+            spawn_tail(2).type_,
+            RsigType::ActorId(Box::new(RsigType::List(Box::new(RsigType::I64))))
+        );
+    }
+
+    #[test]
     fn typed_hir_uses_inference_facts_for_generic_variant_constructor_results() {
         let typed = typed_program_with_inference_facts(
             "GenericVariantResult",
