@@ -1,0 +1,24 @@
+---
+source: tests/fixtures.rs
+assertion_line: 4782
+expression: transcript
+---
+fixture: tests/fixtures/diagnostics/syntax/while_loop_unsupported.ml
+
+compile:
+status: failure(1)
+stdout:
+<empty>
+stderr:
+Error: stage0::source
+
+  × could not parse Riot ML source
+   ╭─[tests/fixtures/diagnostics/syntax/while_loop_unsupported.ml:3:3]
+ 2 │   let n = 0;
+ 3 │   while n < 3 {
+   ·   ──┬──
+   ·     ╰── while loops are not supported yet
+ 4 │     dbg(n)
+   ╰────
+  help: use recursion for now, or wait for the planned while-loop lowering
+        slice

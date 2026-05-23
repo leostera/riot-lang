@@ -1067,11 +1067,15 @@ cross-core scheduler queues.
   `unit` type. Check condition is bool.
 - **Lowering/backend/runtime:** Lower to RIR loop blocks and LLVM branches. Add
   safepoints on backedges when the safepoint ABI exists.
+- **Current boundary:** `while` is reserved and reports a source-backed
+  unsupported-feature diagnostic instead of being parsed as an ordinary value
+  named `while`.
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
 - **Done when:** A native binary can run a while loop and print the accumulated
   result.
-- **Validation:** A loop accumulator fixture prints the expected result; typed
-  diagnostics reject non-bool conditions; LLVM snapshots show loop branch
+- **Validation:** Current unsupported boundary is pinned by
+  `while_loop_unsupported`. A loop accumulator fixture prints the expected result;
+  typed diagnostics reject non-bool conditions; LLVM snapshots show loop branch
   structure.
 
 ### 42. Recursive Function Boundaries

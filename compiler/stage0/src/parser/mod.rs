@@ -735,6 +735,10 @@ impl<'src> Parser<'src> {
             TokenKind::Spawn => self.parse_spawn(),
             TokenKind::Receive => self.parse_receive(),
             TokenKind::Match => self.parse_match(),
+            TokenKind::While => Err(self.error_at_current(
+                "while loops are not supported yet",
+                Some("use recursion for now, or wait for the planned while-loop lowering slice"),
+            )),
             TokenKind::Ident => {
                 let (head, span) = self.expect_ident()?;
                 let path = AstPath {
