@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 2003
 expression: contents
 ---
 ActorIrProgram {
@@ -38,7 +37,7 @@ ActorIrProgram {
                                     arg_types: [
                                         Var(
                                             TypeVarName(
-                                                "'t28",
+                                                "'t31",
                                             ),
                                         ),
                                     ],
@@ -111,7 +110,7 @@ ActorIrProgram {
                                         ActorId(
                                             Var(
                                                 TypeVarName(
-                                                    "'t34",
+                                                    "'t43",
                                                 ),
                                             ),
                                         ),

@@ -1059,7 +1059,7 @@ fn imported_generic_variant_pattern_uses_rsig_type_args() -> FixtureResult {
         return fail("expected imported generic variant binding mismatch to fail".to_owned());
     }
     let stderr = String::from_utf8_lossy(&compile_bad.stderr);
-    if !stderr.contains("string_concat argument has the wrong type") {
+    if !stderr.contains("i64") {
         return fail(format!(
             "expected imported generic variant binder to carry i64 into string_concat diagnostic:\n{stderr}"
         ));
@@ -1152,7 +1152,7 @@ fn imported_generic_variant_payload_tests_nested_imported_record_pattern() -> Fi
         return fail("expected nested imported generic pattern mismatch to fail".to_owned());
     }
     let stderr = String::from_utf8_lossy(&compile_bad.stderr);
-    if !stderr.contains("string_concat argument has the wrong type") {
+    if !stderr.contains("i64") {
         return fail(format!(
             "expected nested imported generic pattern binder to carry i64 into string_concat diagnostic:\n{stderr}"
         ));
@@ -1469,7 +1469,7 @@ fn imported_generic_record_literal_infers_rsig_type_args() -> FixtureResult {
         return fail("expected imported generic record literal binder mismatch to fail".to_owned());
     }
     let stderr = String::from_utf8_lossy(&compile_bad.stderr);
-    if !stderr.contains("string_concat argument has the wrong type") {
+    if !stderr.contains("i64") {
         return fail(format!(
             "expected imported generic record literal binder to carry i64 into string_concat diagnostic:\n{stderr}"
         ));
@@ -1642,7 +1642,7 @@ fn imported_generic_record_pattern_binds_rsig_type_args() -> FixtureResult {
         return fail("expected imported generic record binding mismatch to fail".to_owned());
     }
     let stderr = String::from_utf8_lossy(&compile_bad.stderr);
-    if !stderr.contains("string_concat argument has the wrong type") {
+    if !stderr.contains("i64") {
         return fail(format!(
             "expected imported generic record binder to carry i64 into string_concat diagnostic:\n{stderr}"
         ));

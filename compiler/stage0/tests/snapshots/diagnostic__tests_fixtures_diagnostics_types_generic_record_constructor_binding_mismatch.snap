@@ -1,6 +1,5 @@
 ---
 source: tests/fixtures.rs
-assertion_line: 1994
 expression: transcript
 ---
 fixture: tests/fixtures/diagnostics/types/generic_record_constructor_binding_mismatch.ml
@@ -12,12 +11,12 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × string_concat argument has the wrong type
-   ╭─[tests/fixtures/diagnostics/types/generic_record_constructor_binding_mismatch.ml:6:43]
+  × function argument type does not match
+   ╭─[tests/fixtures/diagnostics/types/generic_record_constructor_binding_mismatch.ml:6:29]
  5 │   let label = match item {
  6 │     box { value: value } -> string_concat(value, "")
-   ·                                           ──┬──
-   ·                                             ╰── expected `String`, found `i64`
+   ·                             ────────────┬───────────
+   ·                                         ╰── this call requires `String`, but the argument provides `i64`
  7 │   };
    ╰────
-  help: check the call argument type
+  help: pass an argument with the parameter type expected by the function

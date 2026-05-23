@@ -1191,7 +1191,6 @@ fn infer_expr_kind(
                 record_shapes,
                 expression_types,
             )?;
-            state.pop_scope();
             let message_type = infer_actor_block_message_type(
                 state,
                 body,
@@ -1200,6 +1199,7 @@ fn infer_expr_kind(
                 expression_types,
             )?
             .unwrap_or_else(|| state.fresh_var());
+            state.pop_scope();
             Ok(Type::ActorId(Box::new(message_type)))
         }
         AstExpr::Record { path, fields, .. } => infer_record_literal(
@@ -1361,8 +1361,8 @@ fn merge_inferred_receive_message_type(
     expression_types: &mut BTreeMap<TextSpan, Type>,
     message_type: &mut Option<RsigType>,
 ) -> Result<(), InferError> {
-    let message = state.fresh_var();
     for arm in arms {
+        let message = state.fresh_var();
         state.push_scope();
         infer_pattern(state, &arm.pattern, &message, record_shapes)?;
         infer_expr(
@@ -1373,12 +1373,12 @@ fn merge_inferred_receive_message_type(
             expression_types,
         )?;
         state.pop_scope();
+        let arm_type = infer_type_to_rsig_type(&state.resolve(&message));
+        *message_type = Some(match message_type.take() {
+            Some(current) => merge_message_type(current, arm_type).unwrap_or(RsigType::Unknown),
+            None => arm_type,
+        });
     }
-    let arm_type = infer_type_to_rsig_type(&state.resolve(&message));
-    *message_type = Some(match message_type.take() {
-        Some(current) => merge_message_type(current, arm_type).unwrap_or(RsigType::Unknown),
-        None => arm_type,
-    });
     Ok(())
 }
 
