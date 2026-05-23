@@ -32,7 +32,7 @@ fn classify(boundary: boundary) -> decision {
     IncompatibleMatchResult -> decision { name: boundary_name(boundary), policy: "unsupported unknown" },
     ReceiveExpression -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
     UnsupportedScalarLiteral -> decision { name: boundary_name(boundary), policy: "unsupported local abi" },
-    UnknownExternalAbi -> decision { name: boundary_name(boundary), policy: "diagnostic" },
+    UnknownExternalAbi -> decision { name: boundary_name(boundary), policy: "boxed value bridge" },
     UnknownAggregateItem -> decision { name: boundary_name(boundary), policy: "refine boxed value" },
     LetBoundAggregateItem -> decision { name: boundary_name(boundary), policy: "refine through let" },
     ConcreteAggregateItem -> decision { name: boundary_name(boundary), policy: "preserve concrete abi" },

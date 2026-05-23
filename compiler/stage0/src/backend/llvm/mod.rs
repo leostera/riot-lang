@@ -4455,6 +4455,80 @@ mod tests {
     }
 
     #[test]
+    fn external_unknown_parameter_abi_uses_boxed_value() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiExternalUnknownParamTest"),
+            uses: Vec::new(),
+            externals: vec![LambdaExternal {
+                name: "native_accept_unknown".to_owned(),
+                params: vec![RsigType::Unknown],
+                result: RsigType::Unit,
+                abi: AbiSymbol::new("native_accept_unknown"),
+            }],
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unit,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Expr(LambdaExpr::Call {
+                        callee: vec!["native_accept_unknown".to_owned()],
+                        args: vec![LambdaExpr::String("value".to_owned())],
+                        arg_types: vec![RsigType::String],
+                        result: RsigType::Unit,
+                    })],
+                    tail: Some(LambdaExpr::Unit),
+                },
+                symbol: "riot_mod_AbiExternalUnknownParamTest_main".to_owned(),
+            }],
+        };
+
+        let llvm = LlvmBackend::new()
+            .emit_llvm_text(&program, &ImportedSignatures::new(), CodegenMode::Executable)
+            .expect("unknown external parameter ABI should lower as boxed Value");
+
+        assert!(llvm.contains("declare void @native_accept_unknown(i64)"));
+        assert!(llvm.contains("call void @native_accept_unknown(i64"));
+    }
+
+    #[test]
+    fn external_unknown_result_abi_uses_boxed_value() {
+        let program = LambdaProgram {
+            module_name: ModuleName::new("AbiExternalUnknownResultTest"),
+            uses: Vec::new(),
+            externals: vec![LambdaExternal {
+                name: "native_unknown".to_owned(),
+                params: Vec::new(),
+                result: RsigType::Unknown,
+                abi: AbiSymbol::new("native_unknown"),
+            }],
+            functions: vec![LambdaFunction {
+                name: "main".to_owned(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                result: RsigType::Unit,
+                body: LambdaBlock {
+                    statements: vec![LambdaStmt::Expr(LambdaExpr::Call {
+                        callee: vec!["native_unknown".to_owned()],
+                        args: Vec::new(),
+                        arg_types: Vec::new(),
+                        result: RsigType::Unknown,
+                    })],
+                    tail: Some(LambdaExpr::Unit),
+                },
+                symbol: "riot_mod_AbiExternalUnknownResultTest_main".to_owned(),
+            }],
+        };
+
+        let llvm = LlvmBackend::new()
+            .emit_llvm_text(&program, &ImportedSignatures::new(), CodegenMode::Executable)
+            .expect("unknown external result ABI should lower as boxed Value");
+
+        assert!(llvm.contains("declare i64 @native_unknown()"));
+        assert!(llvm.contains("call i64 @native_unknown()"));
+    }
+
+    #[test]
     fn local_function_abi_inference_uses_concrete_match_arm_when_other_arm_unknown() {
         let program = LambdaProgram {
             module_name: ModuleName::new("AbiMatchPartialTest"),
