@@ -3389,6 +3389,11 @@ fn type_matches(expected: &RsigType, actual: &RsigType) -> bool {
         )
         || matches!(
             (expected, actual),
+            (RsigType::ActorId(expected), RsigType::ActorId(actual))
+                if type_matches(expected, actual)
+        )
+        || matches!(
+            (expected, actual),
             (RsigType::Tuple(expected), RsigType::Tuple(actual))
                 if expected.len() == actual.len()
                     && expected
