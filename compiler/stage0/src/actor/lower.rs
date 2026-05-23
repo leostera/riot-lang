@@ -433,4 +433,53 @@ mod tests {
         assert_eq!(actors.actors[0].frame.captures[0].name.as_str(), "msg$0");
         assert_eq!(actors.actors[0].frame.captures[0].type_, ActorSlotType::I64);
     }
+
+    #[test]
+    fn actor_ir_captures_nested_receive_binders_for_nested_spawns() {
+        let scalar = bind("scalar", 0);
+        let boxed = bind("boxed", 1);
+        let program = program_with_tail(LambdaExpr::Receive {
+            arms: vec![LambdaReceiveArm {
+                pattern: LambdaPattern::Tuple(vec![
+                    LambdaPattern::Constructor {
+                        type_name: TypeName::new("option"),
+                        constructor: ConstructorName::new("Some"),
+                        payload: vec![binding_pattern("scalar", 0, RsigType::I64)],
+                    },
+                    LambdaPattern::Record {
+                        type_name: TypeName::new("box"),
+                        fields: vec![(
+                            "value".to_owned(),
+                            binding_pattern(
+                                "boxed",
+                                1,
+                                RsigType::RecordApp {
+                                    name: TypeName::new("payload"),
+                                    args: vec![RsigType::String],
+                                },
+                            ),
+                        )],
+                    },
+                ]),
+                body: LambdaExpr::Spawn {
+                    actor_id: 13,
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Tuple(vec![
+                            LambdaExpr::Local(scalar),
+                            LambdaExpr::Local(boxed),
+                        ])),
+                    }),
+                },
+            }],
+        });
+
+        let actors = ActorIrLowerer::new(&ImportedSignatures::default()).lower(&program);
+
+        assert_eq!(actors.actors.len(), 1);
+        assert_eq!(actors.actors[0].id, 13);
+        assert_eq!(actors.actors[0].frame.captures.len(), 2);
+        assert_eq!(capture_type(&actors, "scalar$0"), Some(ActorSlotType::I64));
+        assert_eq!(capture_type(&actors, "boxed$1"), Some(ActorSlotType::Value));
+    }
 }
