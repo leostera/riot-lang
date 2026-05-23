@@ -321,6 +321,108 @@ mod tests {
     }
 
     #[test]
+    fn free_variable_collection_treats_let_binders_as_bound_after_initializers() {
+        let value = bind("value", 0);
+        let missing = bind("missing", 1);
+        let after_binding = LambdaBlock {
+            statements: vec![LambdaStmt::Let {
+                name: value.clone(),
+                value: LambdaExpr::Local(missing.clone()),
+            }],
+            tail: Some(LambdaExpr::Local(value.clone())),
+        };
+
+        let mut free = BTreeSet::new();
+        collect_free_block(&after_binding, &BTreeSet::new(), &mut free);
+        assert_eq!(free, BTreeSet::from([missing]));
+
+        let initializer_before_binding = LambdaBlock {
+            statements: vec![LambdaStmt::Let {
+                name: value.clone(),
+                value: LambdaExpr::Local(value.clone()),
+            }],
+            tail: Some(LambdaExpr::Unit),
+        };
+
+        let mut free = BTreeSet::new();
+        collect_free_block(&initializer_before_binding, &BTreeSet::new(), &mut free);
+        assert_eq!(free, BTreeSet::from([value]));
+    }
+
+    #[test]
+    fn closure_conversion_captures_match_binders_for_nested_lambdas() {
+        let outer = bind("outer", 0);
+        let inner = bind("inner", 1);
+        let mut expr = LambdaExpr::Match {
+            scrutinee: Box::new(LambdaExpr::Local(outer.clone())),
+            arms: vec![LambdaMatchArm {
+                pattern: binding_pattern("inner", 1),
+                body: LambdaExpr::Lambda {
+                    params: vec![Param::from_key(bind("ignored", 2))],
+                    param_types: vec![RsigType::Unit],
+                    captures: Vec::new(),
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Tuple(vec![
+                            LambdaExpr::Local(inner.clone()),
+                            LambdaExpr::Local(outer.clone()),
+                        ])),
+                    }),
+                },
+            }],
+        };
+
+        closure_convert_expr(&mut expr);
+        let LambdaExpr::Match { arms, .. } = expr else {
+            panic!("expected match");
+        };
+        let LambdaExpr::Lambda { captures, .. } = &arms[0].body else {
+            panic!("expected nested lambda arm body");
+        };
+        let capture_set = captures.iter().cloned().collect::<BTreeSet<_>>();
+        assert_eq!(
+            capture_set,
+            BTreeSet::from([Capture::from_key(outer), Capture::from_key(inner)])
+        );
+    }
+
+    #[test]
+    fn closure_conversion_captures_receive_binders_for_nested_lambdas() {
+        let msg = bind("msg", 0);
+        let outer = bind("outer", 1);
+        let mut expr = LambdaExpr::Receive {
+            arms: vec![LambdaReceiveArm {
+                pattern: binding_pattern("msg", 0),
+                body: LambdaExpr::Lambda {
+                    params: vec![Param::from_key(bind("ignored", 2))],
+                    param_types: vec![RsigType::Unit],
+                    captures: Vec::new(),
+                    body: Box::new(LambdaBlock {
+                        statements: Vec::new(),
+                        tail: Some(LambdaExpr::Tuple(vec![
+                            LambdaExpr::Local(msg.clone()),
+                            LambdaExpr::Local(outer.clone()),
+                        ])),
+                    }),
+                },
+            }],
+        };
+
+        closure_convert_expr(&mut expr);
+        let LambdaExpr::Receive { arms } = expr else {
+            panic!("expected receive");
+        };
+        let LambdaExpr::Lambda { captures, .. } = &arms[0].body else {
+            panic!("expected nested lambda arm body");
+        };
+        let capture_set = captures.iter().cloned().collect::<BTreeSet<_>>();
+        assert_eq!(
+            capture_set,
+            BTreeSet::from([Capture::from_key(msg), Capture::from_key(outer)])
+        );
+    }
+
+    #[test]
     fn closure_conversion_captures_outer_values_but_not_match_binders() {
         let outer = bind("outer", 0);
         let inner = bind("inner", 1);
