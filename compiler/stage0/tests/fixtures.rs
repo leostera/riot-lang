@@ -2173,6 +2173,71 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_actor_factory_message_mismatch() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let actors = temp_dir.path().join("actors.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &actors,
+        r#"fn make_string_worker() {
+  spawn { receive { "go" -> () } }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use Actors
+fn main() { send(Actors.make_string_worker(), 1) }
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&actors)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected actor factory compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if compile.status.success() {
+        return fail("expected imported actor message mismatch to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&compile.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `String`, but the argument provides `i64`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "imported actor message mismatch missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_actor_ir_snapshots_frame_contracts() -> FixtureResult {
     for (name, fixture) in [
         (
