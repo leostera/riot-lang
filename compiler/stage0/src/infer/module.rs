@@ -2678,4 +2678,28 @@ mod tests {
             ))
         );
     }
+
+    #[test]
+    fn actor_message_types_fall_back_to_unknown_for_heterogeneous_receives() {
+        let program = SourceParser::new()
+            .parse(
+                camino::Utf8Path::new("test.ml"),
+                "fn make_worker() { spawn { receive { \"ping\" -> () }; receive { 1 -> () } } }",
+            )
+            .unwrap();
+
+        let signatures = signatures(&program).unwrap();
+
+        let Some(signature) = signatures.get("make_worker") else {
+            panic!("make_worker signature missing")
+        };
+        assert!(signature.params.is_empty());
+        match &signature.result {
+            RsigType::ActorId(message) => assert!(matches!(
+                message.as_ref(),
+                RsigType::Unknown | RsigType::Var(_)
+            )),
+            other => panic!("expected actor id result, got {other:?}"),
+        }
+    }
 }
