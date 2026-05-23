@@ -2331,6 +2331,153 @@ fn main() {
 }
 
 #[test]
+fn compile_lib_imported_actor_record_fields_preserve_message_types() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let actors = temp_dir.path().join("actor_boxes.ml");
+    let main = temp_dir.path().join("main.ml");
+    let bad = temp_dir.path().join("bad.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &actors,
+        r#"type actor_box<'msg> = { worker: actor_id<'msg> }
+
+fn make_sender() {
+  spawn { receive { "go" -> dbg("imported record concrete") } }
+}
+
+fn make_any() {
+  spawn {
+    receive { "go" -> dbg("imported record unknown string") };
+    receive { 1 -> dbg("imported record unknown i64") }
+  }
+}
+"#,
+    )?;
+    std::fs::write(
+        &main,
+        r#"use ActorBoxes
+
+fn main() {
+  let concrete = ActorBoxes.actor_box { worker: ActorBoxes.make_sender() };
+  send(concrete.worker, "go");
+  let any = ActorBoxes.actor_box { worker: ActorBoxes.make_any() };
+  send(any.worker, "go");
+  send(any.worker, 1);
+  ()
+}
+"#,
+    )?;
+    std::fs::write(
+        &bad,
+        r#"use ActorBoxes
+
+fn main() {
+  let concrete = ActorBoxes.actor_box { worker: ActorBoxes.make_sender() };
+  send(concrete.worker, 1);
+  ()
+}
+"#,
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&actors)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected imported actor record compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&actors)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected imported actor record emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "type actor_box<'msg> = { worker: actor_id<'msg> }",
+        "fn make_sender() -> actor_id<String>",
+        "fn make_any() -> actor_id<'",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "imported actor record rsig missed `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported actor record compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout
+        != b"imported record concrete\nimported record unknown string\nimported record unknown i64\n"
+    {
+        return fail(format!(
+            "unexpected imported actor record stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    let compile_bad = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&bad)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(temp_dir.path().join("bad"))
+        .output()?;
+    if compile_bad.status.success() {
+        return fail("expected imported actor record mismatch to fail".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&compile_bad.stderr);
+    for expected in [
+        "function argument type does not match",
+        "this call requires `String`, but the argument provides `i64`",
+    ] {
+        if !stderr.contains(expected) {
+            return fail(format!(
+                "imported actor record mismatch missed `{expected}`:\n{stderr}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn compile_lib_imported_actor_id_unknown_params_have_concrete_abi() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
