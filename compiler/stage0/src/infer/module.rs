@@ -1384,7 +1384,8 @@ fn merge_inferred_receive_message_type(
 
 fn merge_message_type(lhs: RsigType, rhs: RsigType) -> Option<RsigType> {
     match (lhs, rhs) {
-        (RsigType::Unknown, type_) | (type_, RsigType::Unknown) => Some(type_),
+        (RsigType::Unknown | RsigType::Var(_), type_)
+        | (type_, RsigType::Unknown | RsigType::Var(_)) => Some(type_),
         (RsigType::Tuple(lhs), RsigType::Tuple(rhs)) if lhs.len() == rhs.len() => {
             let items = lhs
                 .into_iter()
@@ -1393,8 +1394,64 @@ fn merge_message_type(lhs: RsigType, rhs: RsigType) -> Option<RsigType> {
                 .collect::<Option<Vec<_>>>()?;
             Some(RsigType::Tuple(items))
         }
+        (RsigType::List(lhs), RsigType::List(rhs)) => {
+            Some(RsigType::List(Box::new(merge_message_type(*lhs, *rhs)?)))
+        }
         (RsigType::ActorId(lhs), RsigType::ActorId(rhs)) => {
             Some(RsigType::ActorId(Box::new(merge_message_type(*lhs, *rhs)?)))
+        }
+        (
+            RsigType::Arrow {
+                parameter: lhs_parameter,
+                result: lhs_result,
+            },
+            RsigType::Arrow {
+                parameter: rhs_parameter,
+                result: rhs_result,
+            },
+        ) => Some(RsigType::Arrow {
+            parameter: Box::new(merge_message_type(*lhs_parameter, *rhs_parameter)?),
+            result: Box::new(merge_message_type(*lhs_result, *rhs_result)?),
+        }),
+        (
+            RsigType::RecordApp {
+                name: lhs_name,
+                args: lhs_args,
+            },
+            RsigType::RecordApp {
+                name: rhs_name,
+                args: rhs_args,
+            },
+        ) if lhs_name == rhs_name && lhs_args.len() == rhs_args.len() => {
+            let args = lhs_args
+                .into_iter()
+                .zip(rhs_args)
+                .map(|(lhs, rhs)| merge_message_type(lhs, rhs))
+                .collect::<Option<Vec<_>>>()?;
+            Some(RsigType::RecordApp {
+                name: lhs_name,
+                args,
+            })
+        }
+        (
+            RsigType::VariantApp {
+                name: lhs_name,
+                args: lhs_args,
+            },
+            RsigType::VariantApp {
+                name: rhs_name,
+                args: rhs_args,
+            },
+        ) if lhs_name == rhs_name && lhs_args.len() == rhs_args.len() => {
+            let args = lhs_args
+                .into_iter()
+                .zip(rhs_args)
+                .map(|(lhs, rhs)| merge_message_type(lhs, rhs))
+                .collect::<Option<Vec<_>>>()?;
+            Some(RsigType::VariantApp {
+                name: lhs_name,
+                args,
+            })
         }
         (lhs, rhs) if lhs == rhs => Some(lhs),
         _ => None,
@@ -2662,6 +2719,29 @@ mod tests {
             .parse(
                 camino::Utf8Path::new("test.ml"),
                 "type box<'a> = { value: 'a }\nfn make_worker() { spawn { receive { box { value } -> value + 1 } } }",
+            )
+            .unwrap();
+
+        let signatures = signatures(&program).unwrap();
+
+        assert_eq!(
+            signatures.get("make_worker"),
+            Some(&FunctionSignature::new(
+                vec![],
+                RsigType::ActorId(Box::new(RsigType::RecordApp {
+                    name: TypeName::new("box"),
+                    args: vec![RsigType::I64],
+                }))
+            ))
+        );
+    }
+
+    #[test]
+    fn actor_message_types_merge_generic_record_unknown_arms() {
+        let program = SourceParser::new()
+            .parse(
+                camino::Utf8Path::new("test.ml"),
+                "type box<'a> = { value: 'a }\nfn make_worker() { spawn { receive { box { value } -> value + 1, box { value: _ } -> () } } }",
             )
             .unwrap();
 
