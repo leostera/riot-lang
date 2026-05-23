@@ -2032,6 +2032,38 @@ fn emit_all_exposes_actor_message_types_in_rsig() -> FixtureResult {
 }
 
 #[test]
+fn emit_all_distinguishes_concrete_and_unknown_actor_message_types() -> FixtureResult {
+    let fixture =
+        manifest_dir().join("tests/fixtures/programs/basic/actor_message_signature_shapes.ml");
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&fixture)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "fn string_worker() -> actor_id<String>",
+        "fn boxed_worker() -> actor_id<box<i64>>",
+        "fn mixed_worker() -> actor_id<'a>",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "rsig output missed actor message signature `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_actor_ir_snapshots_frame_contracts() -> FixtureResult {
     for (name, fixture) in [
         (
