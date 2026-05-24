@@ -293,6 +293,12 @@ impl Stage0Driver {
             if let (Some(before_rsig), Some(after_rsig)) = (before.get(module), after.get(module)) {
                 Self::append_fingerprint_section(
                     &mut text,
+                    &format!("{module} dependencies"),
+                    Self::dependency_fingerprints(before_rsig),
+                    Self::dependency_fingerprints(after_rsig),
+                );
+                Self::append_fingerprint_section(
+                    &mut text,
                     &format!("{module} types"),
                     Self::type_fingerprints(before_rsig),
                     Self::type_fingerprints(after_rsig),
@@ -350,6 +356,12 @@ impl Stage0Driver {
 
         Self::append_fingerprint_section(
             &mut text,
+            "dependencies",
+            Self::dependency_fingerprints(before),
+            Self::dependency_fingerprints(after),
+        );
+        Self::append_fingerprint_section(
+            &mut text,
             "types",
             Self::type_fingerprints(before),
             Self::type_fingerprints(after),
@@ -361,6 +373,18 @@ impl Stage0Driver {
             Self::export_fingerprints(after),
         );
         text
+    }
+
+    fn dependency_fingerprints(rsig: &Rsig) -> BTreeMap<String, u64> {
+        rsig.dependencies
+            .iter()
+            .map(|dependency| {
+                (
+                    format!("dependency {}", dependency.module),
+                    dependency.fingerprint,
+                )
+            })
+            .collect()
     }
 
     fn type_fingerprints(rsig: &Rsig) -> BTreeMap<String, u64> {
