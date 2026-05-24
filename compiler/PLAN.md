@@ -1142,9 +1142,11 @@ source-backed missing-facts diagnostic until a richer group solver exists.
   prove the initial fully unannotated even/odd group path. Diagnostics now cover
   partial annotation shapes, no-facts unannotated groups, groups with concrete
   returns but unconstrained parameters, and mismatched return constraints.
-  `compiler_like_mutual_recursion_group_plan` models the remaining
-  group-inference boundary: seeded placeholder groups may solve from complete
-  annotations or concrete constraints, while missing parameter facts and
+  `compiler_like_mutual_recursion_unannotated` exercises a compiler-shaped
+  parser helper pair with unannotated mutually recursive functions over token
+  variants and lists. `compiler_like_mutual_recursion_group_plan` models the
+  remaining group-inference boundary: seeded placeholder groups may solve from
+  complete annotations or concrete constraints, while missing parameter facts and
   mismatched return constraints remain diagnostics.
 
 ### 44. Lambda Expression and Closure Boundaries
