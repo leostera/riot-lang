@@ -1298,17 +1298,20 @@ impl<'src> Parser<'src> {
 
         loop {
             let (name, name_span) = self.expect_lower_ident()?;
-            if !self.at(TokenKind::Colon)
-                && (self.at(TokenKind::Comma) || self.at(TokenKind::RBrace))
-            {
-                return Err(ParseError {
+            let value = if self.at(TokenKind::Colon) {
+                self.expect(TokenKind::Colon, "expected `:` after record field name")?;
+                self.parse_expr()?
+            } else if self.at(TokenKind::Comma) || self.at(TokenKind::RBrace) {
+                AstExpr::Path {
+                    path: AstPath {
+                        segments: vec![name.clone()],
+                    },
                     span: name_span,
-                    message: "record field shorthand is not supported yet".to_owned(),
-                    help: Some("write the field as `name: value`"),
-                });
-            }
-            self.expect(TokenKind::Colon, "expected `:` after record field name")?;
-            let value = self.parse_expr()?;
+                }
+            } else {
+                self.expect(TokenKind::Colon, "expected `:` after record field name")?;
+                unreachable!("expect returns an error when the next token is not `:`")
+            };
             fields.push((name, value));
 
             if self.match_kind(TokenKind::Comma).is_none() {
@@ -1349,8 +1352,8 @@ impl<'src> Parser<'src> {
 
         match (self.peek_kind(1), self.peek_kind(2)) {
             (Some(TokenKind::RBrace), _) => path_allows_empty_record,
-            (Some(TokenKind::Ident), Some(TokenKind::Colon)) => true,
-            (Some(TokenKind::Ident), Some(TokenKind::Comma | TokenKind::RBrace)) => path_allows_empty_record,
+            (Some(TokenKind::Ident), Some(TokenKind::Colon | TokenKind::Comma)) => true,
+            (Some(TokenKind::Ident), Some(TokenKind::RBrace)) => path_allows_empty_record,
             _ => false,
         }
     }

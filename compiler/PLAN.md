@@ -781,7 +781,10 @@ cross-core scheduler queues.
 - **Done when:** Declared record construction type-checks and exports/imports
   through `.rsig`.
 - **Validation:** A two-module fixture exports a record type, constructs it in a
-  downstream module, and prints the runtime record successfully.
+  downstream module, and prints the runtime record successfully. Record literal
+  shorthand is supported for comma-separated fields such as
+  `point { x, y }`, with focused coverage in `record_field_shorthand` while the
+  parser still avoids stealing `if flag { body }` blocks.
 
 ### 23. Validate Record Field Shapes
 
