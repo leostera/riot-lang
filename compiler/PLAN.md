@@ -1067,18 +1067,20 @@ cross-core scheduler queues.
   `unit` type. Check condition is bool.
 - **Lowering/backend/runtime:** Lower to RIR loop blocks and LLVM branches. Add
   safepoints on backedges when the safepoint ABI exists.
-- **Current boundary:** `while` is now parsed as control-flow syntax rather
-  than as an ordinary value path. The expression has `unit` type, requires a
-  Bool condition, recursively validates/checks the body, lowers through typed
-  HIR and Lambda IR, and emits LLVM loop condition/body/continuation blocks with
-  a backedge. The first source-level runtime fixture pins a terminating
-  false-condition loop; loop-carried mutation and actor-loop fairness remain
-  future growth areas because the language does not yet have mutable local
-  assignments.
+Resolved hardening gap: `while` is now parsed as control-flow syntax rather
+than as an ordinary value path. The expression has `unit` type, requires a Bool
+condition, recursively validates/checks the body, lowers through typed HIR and
+Lambda IR, and emits LLVM loop condition/body/continuation blocks with a
+backedge. Source fixtures pin terminating false-condition loops, nested loop
+lowering, and unit-valued sequencing before later output.
+
+Remaining boundary: loop-carried mutation/accumulators and actor-loop fairness
+fixtures need local mutable assignment or an equivalent state-update feature.
+Until then, while coverage intentionally focuses on false-condition execution,
+condition/body diagnostics, lowering shape, and label stability.
+
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures once
   loop-carried state/mutation or an equivalent iteration pattern exists.
-- **Done when:** A native binary can run representative terminating while loops
-  and diagnostics cover invalid condition types.
 - **Validation:** `compiler_like_while_lowering_plan` models the checker/lowering
   boundary: bool conditions produce loop blocks, backedges, and safepoints,
   while non-bool or unknown conditions stay diagnostic-only. Lower-layer while
