@@ -4072,6 +4072,51 @@ fn emit_interface_records_type_and_actor_message_shapes() -> FixtureResult {
 }
 
 #[test]
+fn emit_interface_records_external_abi_shapes() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let source = temp_dir.path().join("external_iface.ml");
+    std::fs::write(
+        &source,
+        "external trace : i64 -> unit = \"riot_trace\"\nfn helper(value: i64) -> i64 { value }\n",
+    )?;
+
+    let emit_interface = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(&source)
+        .output()?;
+    if !emit_interface.status.success() {
+        return fail(format!(
+            "expected external emit interface to succeed:\n{}",
+            String::from_utf8_lossy(&emit_interface.stderr)
+        ));
+    }
+
+    let interface_text = String::from_utf8_lossy(&emit_interface.stdout);
+    for expected in [
+        "module ExternalIface",
+        "fn helper(i64) -> i64 : (i64 -> i64) = riot_mod_ExternalIface_helper",
+        "external trace(i64) -> unit : (i64 -> unit) = riot_trace",
+    ] {
+        if !interface_text.contains(expected) {
+            return fail(format!(
+                "external emit interface missed `{expected}`:\n{interface_text}"
+            ));
+        }
+    }
+    for forbidden in ["== cst ==", "== typed ==", "== ir ==", "== llvm =="] {
+        if interface_text.contains(forbidden) {
+            return fail(format!(
+                "external emit interface included pipeline marker `{forbidden}`:\n{interface_text}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_interface_records_imported_dependencies() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let sig_dir = temp_dir.path().join("build");
