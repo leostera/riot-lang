@@ -79,9 +79,10 @@ source-backed diagnostic so the unsupported inference case is explicit.
 
 Known hardening gaps discovered by compiler-shaped fixtures:
 
-- Unannotated mutually recursive helpers are not inferred yet. Compiler-shaped
-  code that wants mutually recursive `rename_expr`/`rename_args` helpers should
-  add annotations today or wait for a future recursive inference slice.
+- Unannotated mutually recursive helpers now have an initial inferred group path
+  when the cycle is fully unannotated and the bodies provide concrete
+  constraints. Partially annotated cycles and cycles without enough facts remain
+  diagnostic boundaries.
 Resolved hardening gap: LLVM lambda-apply helper symbols are now module-scoped.
 Imported providers and consumers can both lower lambda applications without
 emitting duplicate `_riot_lambda_apply_0` symbols at link time.
@@ -1105,14 +1106,15 @@ self-call coverage pinning the behavior. Annotated mutually recursive top-level
 functions are also supported when every function in the cycle has parameter and
 return annotations.
 
-Remaining boundary: unannotated and partially annotated mutual recursion stays
-unsupported. Stage0 resolves unannotated declarations top-to-bottom, and the
-source-backed diagnostic tells users to either move the callee earlier or add
-complete annotations to every function in the recursion cycle.
+Resolved hardening gap: fully unannotated mutual-recursion groups can be seeded
+with monomorphic placeholders and solved when their bodies provide concrete
+constraints. Partially annotated cycles and cycles without enough facts remain
+unsupported; the source-backed diagnostic tells users to either move the callee
+earlier or provide complete annotations until a richer group solver exists.
 
 - **Validation:** `recursive_factorial`, `mutual_recursion_annotated`,
+  `mutual_recursion_unannotated`,
   `compile_lib_exports_annotated_mutual_recursion`,
-  `mutual_recursion_unsupported`,
   `mutual_recursion_partial_annotation_unsupported`, and
   `mutual_recursion_param_annotation_unsupported`.
 
@@ -1121,10 +1123,11 @@ complete annotations to every function in the recursion cycle.
 - **Commit:** `feat(stage0): support unannotated mutual recursion groups`
 - **Intent:** Real compiler modules often use mutually recursive helpers where
   annotating every helper is noisy.
-- **Frontend:** Resolve all top-level function declarations before checking any
-  body. Detect cycles that lack enough constraints to type-check, without
-  weakening the current source-backed diagnostics for unannotated or partially
-  annotated cycles.
+- **Frontend:** Fully unannotated cycles are now detected before body inference
+  and seeded with shared monomorphic placeholders. Future work can broaden this
+  into a richer grouped solver for partially annotated cycles or cycles that
+  lack concrete parameter/result facts, without weakening source-backed
+  diagnostics.
 - **Lowering/backend/runtime:** Preserve the existing local LLVM declaration
   ordering and object export behavior already exercised by annotated recursion.
 - **Fixtures/tests:** Add compiler-like mutually recursive helpers plus arity and
@@ -1132,12 +1135,12 @@ complete annotations to every function in the recursion cycle.
 - **Done when:** Mutually recursive top-level functions with enough inferred
   constraints compile and run without requiring every function in the cycle to be
   annotated.
-- **Validation:** Even/odd and compiler-like mutual-recursion fixtures print
-  expected output; diagnostics cover missing constraints or mismatched types
-  across the group. `compiler_like_mutual_recursion_group_plan` models the
-  planned group-inference boundary before implementation: seeded placeholder
-  groups may solve from complete annotations or concrete constraints, while
-  missing parameter facts and mismatched return constraints remain diagnostics.
+- **Validation:** `mutual_recursion_unannotated` and lower-layer inference tests
+  prove the initial fully unannotated even/odd group path. Diagnostics still
+  cover partial annotation shapes. `compiler_like_mutual_recursion_group_plan`
+  models the remaining group-inference boundary: seeded placeholder groups may
+  solve from complete annotations or concrete constraints, while missing
+  parameter facts and mismatched return constraints remain diagnostics.
 
 ### 44. Lambda Expression and Closure Boundaries
 

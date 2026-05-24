@@ -251,6 +251,8 @@ impl<'a> ModuleInferencer<'a> {
         install_prelude(&mut state);
         install_imports(&mut state, self.program, self.imports);
         install_annotated_functions(&mut state, self.program, &declared_variants);
+        let predeclared_unannotated_functions =
+            install_unannotated_mutual_function_placeholders(&mut state, self.program);
         for decl in &self.program.decls {
             infer_decl(
                 &mut state,
@@ -258,6 +260,7 @@ impl<'a> ModuleInferencer<'a> {
                 &declared_variants,
                 &record_shapes,
                 &mut expression_types,
+                &predeclared_unannotated_functions,
             )?;
         }
         Ok(InferredModule {
@@ -510,6 +513,181 @@ fn annotated_function_type(
     Some(source_function_type(params, result))
 }
 
+fn install_unannotated_mutual_function_placeholders(
+    state: &mut State,
+    program: &AstProgram,
+) -> BTreeSet<String> {
+    let candidates = program
+        .decls
+        .iter()
+        .filter_map(|decl| match decl {
+            AstDecl::Function(function) if is_fully_unannotated_function(function) => {
+                Some((function.name.clone(), function))
+            }
+            _ => None,
+        })
+        .collect::<BTreeMap<_, _>>();
+    let candidate_names = candidates.keys().cloned().collect::<BTreeSet<_>>();
+    let graph = candidates
+        .iter()
+        .map(|(name, function)| {
+            let mut calls = BTreeSet::new();
+            collect_top_level_calls_in_block(&function.body, &candidate_names, &mut calls);
+            (name.clone(), calls)
+        })
+        .collect::<BTreeMap<_, _>>();
+    let recursive_group_names = graph
+        .keys()
+        .filter(|name| {
+            graph
+                .get(*name)
+                .into_iter()
+                .flatten()
+                .any(|callee| callee != *name && reaches(callee, name, &graph, &mut BTreeSet::new()))
+        })
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    for name in &recursive_group_names {
+        let function = candidates
+            .get(name)
+            .expect("recursive group names are selected from candidates");
+        let params = function
+            .params
+            .iter()
+            .map(|_| state.fresh_var())
+            .collect::<Vec<_>>();
+        let result = state.fresh_var();
+        let type_ = source_function_type(params, result);
+        state.add_value(name.clone(), state.monomorphic(type_));
+    }
+
+    recursive_group_names
+}
+
+fn is_fully_unannotated_function(function: &AstFnDecl) -> bool {
+    function.return_type.is_none() && function.param_types.iter().all(Option::is_none)
+}
+
+fn reaches(
+    current: &str,
+    target: &str,
+    graph: &BTreeMap<String, BTreeSet<String>>,
+    seen: &mut BTreeSet<String>,
+) -> bool {
+    if current == target {
+        return true;
+    }
+    if !seen.insert(current.to_owned()) {
+        return false;
+    }
+    graph
+        .get(current)
+        .into_iter()
+        .flatten()
+        .any(|next| reaches(next, target, graph, seen))
+}
+
+fn collect_top_level_calls_in_block(
+    block: &AstBlock,
+    candidates: &BTreeSet<String>,
+    calls: &mut BTreeSet<String>,
+) {
+    for statement in &block.statements {
+        match statement {
+            AstStmt::Let { value, .. } | AstStmt::Expr(value) => {
+                collect_top_level_calls(value, candidates, calls);
+            }
+        }
+    }
+    if let Some(tail) = &block.tail {
+        collect_top_level_calls(tail, candidates, calls);
+    }
+}
+
+fn collect_top_level_calls(
+    expr: &AstExpr,
+    candidates: &BTreeSet<String>,
+    calls: &mut BTreeSet<String>,
+) {
+    match expr {
+        AstExpr::Call { callee, args, .. } => {
+            if callee.segments.len() == 1 && candidates.contains(&callee.segments[0]) {
+                calls.insert(callee.segments[0].clone());
+            }
+            for arg in args {
+                collect_top_level_calls(arg, candidates, calls);
+            }
+        }
+        AstExpr::Apply { callee, args, .. } => {
+            collect_top_level_calls(callee, candidates, calls);
+            for arg in args {
+                collect_top_level_calls(arg, candidates, calls);
+            }
+        }
+        AstExpr::Add { lhs, rhs, .. }
+        | AstExpr::Sub { lhs, rhs, .. }
+        | AstExpr::Mul { lhs, rhs, .. }
+        | AstExpr::Div { lhs, rhs, .. }
+        | AstExpr::Mod { lhs, rhs, .. }
+        | AstExpr::Eq { lhs, rhs, .. }
+        | AstExpr::Lt { lhs, rhs, .. }
+        | AstExpr::And { lhs, rhs, .. }
+        | AstExpr::Or { lhs, rhs, .. } => {
+            collect_top_level_calls(lhs, candidates, calls);
+            collect_top_level_calls(rhs, candidates, calls);
+        }
+        AstExpr::Neg { expr, .. } | AstExpr::Not { expr, .. } | AstExpr::Field { base: expr, .. } | AstExpr::TupleIndex { base: expr, .. } => {
+            collect_top_level_calls(expr, candidates, calls);
+        }
+        AstExpr::If {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            collect_top_level_calls(condition, candidates, calls);
+            collect_top_level_calls(then_branch, candidates, calls);
+            collect_top_level_calls(else_branch, candidates, calls);
+        }
+        AstExpr::While { condition, body, .. } => {
+            collect_top_level_calls(condition, candidates, calls);
+            collect_top_level_calls(body, candidates, calls);
+        }
+        AstExpr::Match { scrutinee, arms, .. } => {
+            collect_top_level_calls(scrutinee, candidates, calls);
+            for arm in arms {
+                collect_top_level_calls(&arm.body, candidates, calls);
+            }
+        }
+        AstExpr::Block { block, .. } | AstExpr::Spawn { body: block, .. } | AstExpr::Lambda { body: block, .. } => {
+            collect_top_level_calls_in_block(block, candidates, calls);
+        }
+        AstExpr::Receive { arms, .. } => {
+            for arm in arms {
+                collect_top_level_calls(&arm.body, candidates, calls);
+            }
+        }
+        AstExpr::Tuple { items, .. } | AstExpr::List { items, .. } => {
+            for item in items {
+                collect_top_level_calls(item, candidates, calls);
+            }
+        }
+        AstExpr::Record { fields, .. } => {
+            for (_, field) in fields {
+                collect_top_level_calls(field, candidates, calls);
+            }
+        }
+        AstExpr::Bool { .. }
+        | AstExpr::Char { .. }
+        | AstExpr::Float { .. }
+        | AstExpr::Int { .. }
+        | AstExpr::Path { .. }
+        | AstExpr::String { .. }
+        | AstExpr::Unit { .. } => {}
+    }
+}
+
 fn install_import_signature(state: &mut State, module_name: &str, rsig: &Rsig) {
     for export in &rsig.exports {
         let (name, scheme) = match export {
@@ -640,6 +818,7 @@ fn infer_decl(
     declared_variants: &BTreeSet<TypeName>,
     record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
+    predeclared_unannotated_functions: &BTreeSet<String>,
 ) -> Result<(), InferError> {
     match decl {
         AstDecl::Use(_) | AstDecl::Module(_) | AstDecl::Include(_) => Ok(()),
@@ -676,6 +855,7 @@ fn infer_decl(
                 declared_variants,
                 record_shapes,
                 expression_types,
+                predeclared_unannotated_functions,
             )?;
             state.add_value(function.name.clone(), state.generalize(type_));
             Ok(())
@@ -703,6 +883,7 @@ fn infer_function(
     declared_variants: &BTreeSet<TypeName>,
     record_shapes: &HashMap<String, InferRecordShape>,
     expression_types: &mut BTreeMap<TextSpan, Type>,
+    predeclared_unannotated_functions: &BTreeSet<String>,
 ) -> Result<Type, InferError> {
     let params = function
         .params
@@ -730,6 +911,14 @@ fn infer_function(
         })
         .unwrap_or_else(|| state.fresh_var());
     let self_type = source_function_type(params.clone(), result_constraint.clone());
+
+    if predeclared_unannotated_functions.contains(&function.name) {
+        let Some(scheme) = state.get_value(&function.name).cloned() else {
+            return Err(InferError::UnknownValue(function.name.clone()).at(function.name_span));
+        };
+        let predeclared_type = state.instantiate(&scheme);
+        state.unify(&self_type, &predeclared_type)?;
+    }
 
     state.push_scope();
     state.add_value(function.name.clone(), state.monomorphic(self_type));
@@ -1928,6 +2117,23 @@ mod tests {
         }
     }
 
+    fn eq(lhs: AstExpr, rhs: AstExpr) -> AstExpr {
+        AstExpr::Eq {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            span: span(),
+        }
+    }
+
+    fn if_(condition: AstExpr, then_branch: AstExpr, else_branch: AstExpr) -> AstExpr {
+        AstExpr::If {
+            condition: Box::new(condition),
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
+            span: span(),
+        }
+    }
+
     fn while_(condition: AstExpr, body: AstExpr) -> AstExpr {
         AstExpr::While {
             condition: Box::new(condition),
@@ -2288,6 +2494,48 @@ mod tests {
         assert_eq!(
             exports[1].1,
             TypeScheme::monomorphic(Type::arrow(Type::I64, Type::I64))
+        );
+    }
+
+    #[test]
+    fn unannotated_mutual_recursion_group_uses_shared_placeholders() {
+        let program = AstProgram {
+            decls: vec![
+                function(
+                    "even",
+                    vec!["n"],
+                    Vec::new(),
+                    if_(
+                        eq(path("n"), int(0)),
+                        bool_(true),
+                        call("odd", vec![path("n")]),
+                    ),
+                ),
+                function(
+                    "odd",
+                    vec!["n"],
+                    Vec::new(),
+                    if_(
+                        eq(path("n"), int(0)),
+                        bool_(false),
+                        call("even", vec![path("n")]),
+                    ),
+                ),
+            ],
+        };
+
+        let exports = infer(&program).unwrap().env.exported_values();
+
+        assert_eq!(exports.len(), 2);
+        assert_eq!(exports[0].0, "even");
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::Bool))
+        );
+        assert_eq!(exports[1].0, "odd");
+        assert_eq!(
+            exports[1].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::Bool))
         );
     }
 
