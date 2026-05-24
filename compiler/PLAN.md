@@ -1267,10 +1267,11 @@ artifact has a direct review surface.
 Resolved hardening gap: `interface-diff` compares two binary `.rsig` artifacts
 and summarizes module fingerprint changes plus added, removed, and changed
 per-type/per-export fingerprints. It can also compare two directories of `.rsig`
-artifacts and summarize changed/added/removed modules plus dependent modules
-impacted by changed imports. This gives interface review concrete
-artifact-to-artifact and workspace-directory diff paths without requiring
-reviewers to manually compare canonical text blocks.
+artifacts and summarize changed/added/removed modules, changed modules'
+per-type/per-export fingerprint details, plus dependent modules impacted by
+changed imports. This gives interface review concrete artifact-to-artifact and
+workspace-directory diff paths without requiring reviewers to manually compare
+canonical text blocks.
 
 Remaining boundary: binary `.rsig` remains the primary interface artifact for
 compilation and linking, and future review tooling may still want richer

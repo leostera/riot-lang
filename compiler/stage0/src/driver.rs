@@ -263,7 +263,7 @@ impl Stage0Driver {
         } else {
             if !changed.is_empty() {
                 text.push_str("changed modules:\n");
-                for (module, before_fingerprint, after_fingerprint) in changed {
+                for (module, before_fingerprint, after_fingerprint) in &changed {
                     text.push_str(&format!(
                         "  {module} {before_fingerprint:016x} -> {after_fingerprint:016x}\n"
                     ));
@@ -286,6 +286,23 @@ impl Stage0Driver {
                         signature.module_fingerprint
                     ));
                 }
+            }
+        }
+
+        for (module, _, _) in changed {
+            if let (Some(before_rsig), Some(after_rsig)) = (before.get(module), after.get(module)) {
+                Self::append_fingerprint_section(
+                    &mut text,
+                    &format!("{module} types"),
+                    Self::type_fingerprints(before_rsig),
+                    Self::type_fingerprints(after_rsig),
+                );
+                Self::append_fingerprint_section(
+                    &mut text,
+                    &format!("{module} exports"),
+                    Self::export_fingerprints(before_rsig),
+                    Self::export_fingerprints(after_rsig),
+                );
             }
         }
 

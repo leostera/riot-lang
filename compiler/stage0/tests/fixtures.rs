@@ -4306,6 +4306,9 @@ fn interface_diff_summarizes_workspace_review_changes() -> FixtureResult {
         "changed modules:",
         "Worker",
         "App",
+        "changed Worker exports:",
+        "fn answer",
+        "changed App exports:",
         "impacted modules:",
         "App imports Worker",
     ] {
