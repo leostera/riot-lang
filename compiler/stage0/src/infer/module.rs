@@ -1069,6 +1069,7 @@ fn infer_expr_kind(
             state.unify(&then_type, &else_type)?;
             Ok(state.resolve(&then_type))
         }
+        AstExpr::While { .. } => Err(InferError::Unsupported("while loop")),
         AstExpr::Match {
             scrutinee, arms, ..
         } => {
@@ -1587,6 +1588,7 @@ fn expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Or { span, .. }
         | AstExpr::Not { span, .. }
         | AstExpr::If { span, .. }
+        | AstExpr::While { span, .. }
         | AstExpr::Match { span, .. }
         | AstExpr::Block { span, .. }
         | AstExpr::Bool { span, .. }

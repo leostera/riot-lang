@@ -1069,7 +1069,9 @@ cross-core scheduler queues.
   safepoints on backedges when the safepoint ABI exists.
 - **Current boundary:** `while` is reserved and reports a source-backed
   unsupported-feature diagnostic instead of being parsed as an ordinary value
-  named `while`.
+  named `while`. The AST/span/checker/inference boundary now has a gated
+  `while` expression shape so the eventual parser slice can preserve the
+  unsupported diagnostic until typed lowering/backend support is added.
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
 - **Done when:** A native binary can run a while loop and print the accumulated
   result.

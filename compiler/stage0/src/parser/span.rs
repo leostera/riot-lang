@@ -55,6 +55,11 @@ pub(super) fn expr_span(expr: &AstExpr) -> TextSpan {
             else_branch: _,
             span,
         }
+        | AstExpr::While {
+            condition: _,
+            body: _,
+            span,
+        }
         | AstExpr::Match {
             scrutinee: _,
             arms: _,

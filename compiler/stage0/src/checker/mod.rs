@@ -1083,6 +1083,10 @@ fn expr_contains_expr_kind(expr: &AstExpr, span: TextSpan, kind: SpanExprKind) -
                 || expr_contains_expr_kind(then_branch, span, kind)
                 || expr_contains_expr_kind(else_branch, span, kind)
         }
+        AstExpr::While { condition, body, .. } => {
+            expr_contains_expr_kind(condition, span, kind)
+                || expr_contains_expr_kind(body, span, kind)
+        }
         AstExpr::Match {
             scrutinee, arms, ..
         } => {
@@ -1684,6 +1688,14 @@ fn validate_expr(
             validate_expr(ctx, else_branch, bindings, in_actor)?;
             Ok(ExprCategory::Other)
         }
+        AstExpr::While { span, .. } => Err(ctx
+            .diagnostic(
+                *span,
+                "while loops are not supported yet",
+                "stage0 reserves `while` for the planned loop-lowering slice",
+                Some("use recursion for now, or wait for the planned while-loop lowering slice"),
+            )
+            .into()),
         AstExpr::Match {
             scrutinee,
             arms,
@@ -3223,6 +3235,7 @@ fn infer_annotation_expr_type(
             })
             .reduce(merge_annotation_types)
             .or(Some(RsigType::Unknown)),
+        AstExpr::While { .. } => Some(RsigType::Unit),
         AstExpr::Block { block, .. } => {
             infer_annotation_block_type(ctx, block, &mut bindings.clone())
         }
@@ -3615,6 +3628,7 @@ fn simple_expr_type(
             .iter()
             .map(|arm| simple_expr_type(ctx, &arm.body, bindings).unwrap_or(RsigType::Unknown))
             .reduce(merge_annotation_types),
+        AstExpr::While { .. } => Some(RsigType::Unit),
         AstExpr::Block { block, .. } => simple_block_type(ctx, block, bindings),
         AstExpr::Record { path, .. } => Some(record_literal_type(ctx, path)),
         AstExpr::Field { base, field, .. } => simple_field_type(ctx, base, field, bindings),

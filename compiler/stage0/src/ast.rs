@@ -293,6 +293,12 @@ pub(crate) enum AstExpr {
         else_branch: Box<AstExpr>,
         span: TextSpan,
     },
+    #[allow(dead_code)]
+    While {
+        condition: Box<AstExpr>,
+        body: Box<AstExpr>,
+        span: TextSpan,
+    },
     Match {
         scrutinee: Box<AstExpr>,
         arms: Vec<AstMatchArm>,

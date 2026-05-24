@@ -678,6 +678,18 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
                 },
             }
         }
+        AstExpr::While { condition, body, .. } => {
+            let _condition = type_expr(*condition, context);
+            let _body = type_expr(*body, context);
+            TypedExpr {
+                type_: RsigType::Unit,
+                kind: TypedExprKind::Block(Box::new(TypedBlock {
+                    statements: Vec::new(),
+                    tail: None,
+                    type_: RsigType::Unit,
+                })),
+            }
+        }
         AstExpr::Match {
             scrutinee, arms, ..
         } => {
@@ -1087,6 +1099,7 @@ fn ast_expr_span(expr: &AstExpr) -> TextSpan {
         | AstExpr::Or { span, .. }
         | AstExpr::Not { span, .. }
         | AstExpr::If { span, .. }
+        | AstExpr::While { span, .. }
         | AstExpr::Match { span, .. }
         | AstExpr::Block { span, .. }
         | AstExpr::Bool { span, .. }
