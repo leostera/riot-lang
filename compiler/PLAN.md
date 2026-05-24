@@ -79,10 +79,10 @@ source-backed diagnostic so the unsupported inference case is explicit.
 
 Known hardening gaps discovered by compiler-shaped fixtures:
 
-- Unannotated mutually recursive helpers now have an initial inferred group path
-  when the cycle is fully unannotated and the bodies provide concrete
-  constraints. Partially annotated cycles and no-facts cycles remain
-  source-backed diagnostic boundaries.
+- Mutually recursive helpers now have an inferred group path when the cycle is
+  fully unannotated or partially annotated and annotations/body facts provide
+  concrete constraints. Underconstrained no-facts cycles remain source-backed
+  diagnostic boundaries.
 Resolved hardening gap: LLVM lambda-apply helper symbols are now module-scoped.
 Imported providers and consumers can both lower lambda applications without
 emitting duplicate `_riot_lambda_apply_0` symbols at link time.
