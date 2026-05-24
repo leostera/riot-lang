@@ -1266,18 +1266,21 @@ artifact has a direct review surface.
 
 Resolved hardening gap: `interface-diff` compares two binary `.rsig` artifacts
 and summarizes module fingerprint changes plus added, removed, and changed
-per-type/per-export fingerprints. This gives interface review a concrete
-artifact-to-artifact diff path without requiring reviewers to manually compare
-canonical text blocks.
+per-type/per-export fingerprints. It can also compare two directories of `.rsig`
+artifacts and summarize changed/added/removed modules plus dependent modules
+impacted by changed imports. This gives interface review concrete
+artifact-to-artifact and workspace-directory diff paths without requiring
+reviewers to manually compare canonical text blocks.
 
 Remaining boundary: binary `.rsig` remains the primary interface artifact for
 compilation and linking, and future review tooling may still want richer
-workspace-wide diffs for large multi-module projects. The review policy is now
-partly implemented for pairwise artifacts and modeled in compiler-like form:
-stable per-export fingerprints should stay quiet, while changed, added, or
-removed exports need human review. A compact workspace-review model now also
-records the larger orchestration policy: direct interface changes need review,
-and dependent modules should be marked impacted when an imported module changes.
+workspace-wide reports for large multi-module projects. The review policy is now
+partly implemented for pairwise artifacts and workspace artifact directories and
+modeled in compiler-like form: stable per-export fingerprints should stay quiet,
+while changed, added, or removed exports need human review. A compact
+workspace-review model now also records the larger orchestration policy: direct
+interface changes need review, and dependent modules should be marked impacted
+when an imported module changes.
 
 - **Validation:** `emit_all_preserves_pipeline_phase_order`,
   `emit_all_includes_stable_interface_text`,
@@ -1288,6 +1291,7 @@ and dependent modules should be marked impacted when an imported module changes.
   `emit_interface_records_external_abi_shapes`,
   `emit_interface_records_imported_dependencies`,
   `interface_diff_summarizes_rsig_review_changes`,
+  `interface_diff_summarizes_workspace_review_changes`,
   `emit_all_exposes_actor_message_types_in_rsig`,
   `emit_all_distinguishes_concrete_and_unknown_actor_message_types`,
   `compiler_like_interface_review`, and

@@ -19,7 +19,7 @@ pub(crate) enum Command {
     CompileLib(CompileLibArgs),
     /// Emit one compiler pipeline artifact.
     Emit(EmitArgs),
-    /// Compare two binary .rsig interface artifacts for review.
+    /// Compare two binary .rsig interface artifacts or two directories of artifacts for review.
     InterfaceDiff(InterfaceDiffArgs),
 }
 
@@ -71,10 +71,10 @@ pub(crate) struct CompileLibArgs {
 
 #[derive(Debug, ClapParser)]
 pub(crate) struct InterfaceDiffArgs {
-    /// Previous binary .rsig interface artifact.
+    /// Previous binary .rsig interface artifact, or a directory of .rsig artifacts.
     pub(crate) before: Utf8PathBuf,
 
-    /// Current binary .rsig interface artifact.
+    /// Current binary .rsig interface artifact, or a directory of .rsig artifacts.
     pub(crate) after: Utf8PathBuf,
 
     /// Output path. Defaults to stdout.

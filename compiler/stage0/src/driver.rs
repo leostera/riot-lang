@@ -194,10 +194,123 @@ impl Stage0Driver {
     }
 
     fn interface_diff(&self, args: InterfaceDiffArgs) -> miette::Result<()> {
-        let before = self.rsig_store.read(&args.before)?;
-        let after = self.rsig_store.read(&args.after)?;
+        let text = if args.before.is_dir() || args.after.is_dir() {
+            if !args.before.is_dir() || !args.after.is_dir() {
+                bail!("interface-diff workspace mode requires two directories");
+            }
+            let before = self.read_rsig_dir(&args.before)?;
+            let after = self.read_rsig_dir(&args.after)?;
+            Self::workspace_interface_diff_text(&before, &after)
+        } else {
+            let before = self.rsig_store.read(&args.before)?;
+            let after = self.rsig_store.read(&args.after)?;
+            Self::interface_diff_text(&before, &after)
+        };
         self.output_writer
-            .write_text(args.output.as_deref(), &Self::interface_diff_text(&before, &after))
+            .write_text(args.output.as_deref(), &text)
+    }
+
+    fn read_rsig_dir(&self, dir: &Utf8Path) -> miette::Result<BTreeMap<ModuleName, Rsig>> {
+        let mut signatures = BTreeMap::new();
+        for entry in dir
+            .read_dir_utf8()
+            .into_diagnostic()
+            .wrap_err_with(|| format!("could not read interface directory {dir}"))?
+        {
+            let entry = entry.into_diagnostic()?;
+            let path = entry.path();
+            if path.extension() != Some("rsig") {
+                continue;
+            }
+            let signature = self.rsig_store.read(path)?;
+            signatures.insert(signature.module.clone(), signature);
+        }
+        Ok(signatures)
+    }
+
+    fn workspace_interface_diff_text(
+        before: &BTreeMap<ModuleName, Rsig>,
+        after: &BTreeMap<ModuleName, Rsig>,
+    ) -> String {
+        let mut text = String::from("workspace interface diff\n");
+        let changed = before
+            .iter()
+            .filter_map(|(module, before_rsig)| {
+                after.get(module).and_then(|after_rsig| {
+                    (before_rsig.module_fingerprint != after_rsig.module_fingerprint)
+                        .then_some((module, before_rsig.module_fingerprint, after_rsig.module_fingerprint))
+                })
+            })
+            .collect::<Vec<_>>();
+        let added = after
+            .iter()
+            .filter(|(module, _)| !before.contains_key(*module))
+            .collect::<Vec<_>>();
+        let removed = before
+            .iter()
+            .filter(|(module, _)| !after.contains_key(*module))
+            .collect::<Vec<_>>();
+
+        let changed_modules = changed
+            .iter()
+            .map(|(module, _, _)| (*module).clone())
+            .chain(added.iter().map(|(module, _)| (*module).clone()))
+            .chain(removed.iter().map(|(module, _)| (*module).clone()))
+            .collect::<BTreeSet<_>>();
+
+        if changed.is_empty() && added.is_empty() && removed.is_empty() {
+            text.push_str("modules unchanged\n");
+        } else {
+            if !changed.is_empty() {
+                text.push_str("changed modules:\n");
+                for (module, before_fingerprint, after_fingerprint) in changed {
+                    text.push_str(&format!(
+                        "  {module} {before_fingerprint:016x} -> {after_fingerprint:016x}\n"
+                    ));
+                }
+            }
+            if !added.is_empty() {
+                text.push_str("added modules:\n");
+                for (module, signature) in added {
+                    text.push_str(&format!(
+                        "  {module} {:016x}\n",
+                        signature.module_fingerprint
+                    ));
+                }
+            }
+            if !removed.is_empty() {
+                text.push_str("removed modules:\n");
+                for (module, signature) in removed {
+                    text.push_str(&format!(
+                        "  {module} {:016x}\n",
+                        signature.module_fingerprint
+                    ));
+                }
+            }
+        }
+
+        let impacted = after
+            .iter()
+            .filter_map(|(module, signature)| {
+                let dependencies = signature
+                    .dependencies
+                    .iter()
+                    .filter(|dependency| changed_modules.contains(&dependency.module))
+                    .map(|dependency| dependency.module.to_string())
+                    .collect::<Vec<_>>();
+                (!dependencies.is_empty()).then_some((module, dependencies))
+            })
+            .collect::<Vec<_>>();
+        if impacted.is_empty() {
+            text.push_str("impacted modules unchanged\n");
+        } else {
+            text.push_str("impacted modules:\n");
+            for (module, dependencies) in impacted {
+                text.push_str(&format!("  {module} imports {}\n", dependencies.join(", ")));
+            }
+        }
+
+        text
     }
 
     fn interface_diff_text(before: &Rsig, after: &Rsig) -> String {
