@@ -1327,6 +1327,10 @@ equivalent iteration pattern exists.
   model, summarizing Lambda, actor lowering, LLVM emission, and runtime modules
   across lowered nodes, AIR operations, LLVM blocks, runtime hooks, diagnostics,
   and review labels.
+  `compiler_like_diagnostic_module_snapshot` adds a diagnostic/reporting module
+  snapshot model, summarizing span coverage, primary messages, hints, regression
+  counts, snapshot coverage, and review labels across lexer, parser, checker,
+  and backend diagnostic surfaces.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
