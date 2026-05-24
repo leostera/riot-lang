@@ -1319,6 +1319,10 @@ equivalent iteration pattern exists.
   `compiler_like_parser_module_snapshot` adds a dedicated parser-module snapshot
   model, summarizing scanner, AST, parser, and recovery modules across token
   cases, productions, recovery rules, snapshots, and review diagnostics.
+  `compiler_like_checker_module_snapshot` adds a parallel checker/lowering module
+  snapshot model, summarizing resolver, inference, checker, and lowering modules
+  across declarations, constraints, substitutions, lowered nodes, diagnostics,
+  and review labels.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
