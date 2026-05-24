@@ -1307,6 +1307,9 @@ equivalent iteration pattern exists.
   `compiler_like_emit_plan` extends the smoke boundary into a compact emit/codegen
   model, classifying scalar values, boxed values, helper symbols, exported call
   symbols, and returns from lowered operation facts.
+  `compiler_like_dependency_invalidation` records the current module-granular
+  dependency invalidation boundary and contrasts it with future per-export edges
+  that could avoid rebuilds when an unused export changes.
   `compiler_like_while_lowering_plan` records the control-flow boundary that
   guided the implemented while-loop slice: while-condition checking, loop
   block/backedge/safepoint accounting, and diagnostic-only non-bool/unknown
