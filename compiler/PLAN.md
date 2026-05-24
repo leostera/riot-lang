@@ -1331,6 +1331,10 @@ equivalent iteration pattern exists.
   snapshot model, summarizing span coverage, primary messages, hints, regression
   counts, snapshot coverage, and review labels across lexer, parser, checker,
   and backend diagnostic surfaces.
+  `compiler_like_driver_module_snapshot` adds a driver/artifact module snapshot
+  model, summarizing command surfaces, emitted artifacts, signature/object flows,
+  diagnostics, smoke coverage, and review labels across driver, signature store,
+  object resolver, and emit-mode boundaries.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
