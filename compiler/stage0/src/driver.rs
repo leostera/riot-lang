@@ -333,6 +333,20 @@ impl Stage0Driver {
             }
         }
 
+        let transitive_impacted = Self::transitive_workspace_impacts(after, &changed_modules);
+        if !transitive_impacted.is_empty() {
+            text.push_str("transitive impacted modules:\n");
+            for (module, dependency, path) in transitive_impacted {
+                text.push_str(&format!(
+                    "  {module} imports {dependency} through {}\n",
+                    path.iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
+        }
+
         let missing_dependencies = Self::missing_workspace_dependencies(after);
         if !missing_dependencies.is_empty() {
             text.push_str("missing dependency artifacts:\n");
@@ -354,6 +368,66 @@ impl Stage0Driver {
         }
 
         text
+    }
+
+    fn transitive_workspace_impacts(
+        workspace: &BTreeMap<ModuleName, Rsig>,
+        changed_modules: &BTreeSet<ModuleName>,
+    ) -> Vec<(ModuleName, ModuleName, Vec<ModuleName>)> {
+        let mut impacts = Vec::new();
+        for (module, signature) in workspace {
+            if changed_modules.contains(module) {
+                continue;
+            }
+            let direct_dependencies = signature
+                .dependencies
+                .iter()
+                .map(|dependency| dependency.module.clone())
+                .collect::<BTreeSet<_>>();
+            let mut seen_targets = BTreeSet::new();
+            for dependency in &direct_dependencies {
+                if changed_modules.contains(dependency) {
+                    continue;
+                }
+                let mut visited = BTreeSet::new();
+                if let Some((target, mut path)) =
+                    Self::transitive_dependency_path(workspace, dependency, changed_modules, &mut visited)
+                {
+                    if seen_targets.insert(target.clone()) {
+                        path.pop();
+                        impacts.push((module.clone(), target, path));
+                    }
+                }
+            }
+        }
+        impacts
+    }
+
+    fn transitive_dependency_path(
+        workspace: &BTreeMap<ModuleName, Rsig>,
+        module: &ModuleName,
+        changed_modules: &BTreeSet<ModuleName>,
+        visited: &mut BTreeSet<ModuleName>,
+    ) -> Option<(ModuleName, Vec<ModuleName>)> {
+        if !visited.insert(module.clone()) {
+            return None;
+        }
+        if changed_modules.contains(module) {
+            return Some((module.clone(), vec![module.clone()]));
+        }
+        let signature = workspace.get(module)?;
+        for dependency in &signature.dependencies {
+            if let Some((target, mut path)) = Self::transitive_dependency_path(
+                workspace,
+                &dependency.module,
+                changed_modules,
+                visited,
+            ) {
+                path.insert(0, module.clone());
+                return Some((target, path));
+            }
+        }
+        None
     }
 
     fn missing_workspace_dependencies(

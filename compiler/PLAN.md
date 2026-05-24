@@ -1285,9 +1285,12 @@ are reported as module-fingerprint changes/impacted importers with dependency
 fingerprint details, without inventing per-export changes for the consumer. If a
 workspace diff compares a partially rebuilt artifact directory, stale dependency
 fingerprints are called out explicitly by module/import edge so reviewers can see
-which consumers still record an older provider fingerprint. If a workspace diff
-contains consumers whose imported provider `.rsig` artifact is missing entirely,
-the missing dependency artifact is also reported explicitly. This gives interface
+which consumers still record an older provider fingerprint. Workspace diffs also
+report transitive impacted modules, so a top-level module that imports a stale or
+changed provider through an intermediate dependency is visible even when its own
+recorded direct dependency fingerprint is unchanged. If a workspace diff contains
+consumers whose imported provider `.rsig` artifact is missing entirely, the
+missing dependency artifact is also reported explicitly. This gives interface
 review concrete artifact-to-artifact and workspace-directory diff paths without
 requiring reviewers to manually compare canonical text blocks.
 
@@ -1313,6 +1316,7 @@ when an imported module changes.
   `interface_diff_reports_dependency_only_workspace_changes` including
   dependency fingerprint details,
   `interface_diff_reports_stale_workspace_dependency_fingerprints`,
+  `interface_diff_reports_transitive_workspace_impacts`,
   `interface_diff_reports_missing_workspace_dependency_artifacts`,
   `interface_diff_summarizes_workspace_review_changes` including workspace
   `--output` review artifacts,
