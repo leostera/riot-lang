@@ -1304,6 +1304,9 @@ equivalent iteration pattern exists.
   `compiler_like_checker_lowering_pipeline` adds a compact checker-to-lowering
   model, carrying typed expression facts into scalar/value slot classification
   while keeping unknown calls and missing locals explicit.
+  `compiler_like_emit_plan` extends the smoke boundary into a compact emit/codegen
+  model, classifying scalar values, boxed values, helper symbols, exported call
+  symbols, and returns from lowered operation facts.
   `compiler_like_while_lowering_plan` records the control-flow boundary that
   guided the implemented while-loop slice: while-condition checking, loop
   block/backedge/safepoint accounting, and diagnostic-only non-bool/unknown
