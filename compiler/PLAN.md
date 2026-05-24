@@ -1282,10 +1282,15 @@ codegen and the actor runtime, and prints `ident`, `42`, and `plus` without any
 special-case compiler path.
 
 Remaining boundary: this is still a compact smoke fixture over hardcoded token
-values rather than a real tokenizer/parser pipeline. Future self-hosting slices
-can grow it with parser-shaped modules, dedicated snapshots for larger module
-families, and loop-heavy examples once loop-carried state/mutation or an
-equivalent iteration pattern exists.
+values rather than a real tokenizer/parser pipeline. The current module-snapshot
+set is intentionally paused after the driver/artifact boundary because parser,
+checker/lowering, backend/runtime, diagnostic/reporting, and driver/artifact
+phase families now each have compact executable coverage; adding another
+near-duplicate snapshot would provide less signal than returning to a concrete
+implementation or integration boundary. Future self-hosting slices can grow this
+area with real tokenizer/parser pipeline work, larger dedicated snapshots that
+exercise new implementation, and loop-heavy examples once loop-carried
+state/mutation or an equivalent iteration pattern exists.
 
 - **Validation:** `compile_lib_compiler_shaped_actor_smoke` builds the smoke
   modules through `compile-lib`, links the consumer as a native executable, and
