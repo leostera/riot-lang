@@ -108,6 +108,7 @@ pub(crate) enum TokenKind {
     #[regex(r#""([^"\\]|\\.)*""#)]
     String,
     #[regex(r#"'([^'\\]|\\.)'"#)]
+    #[regex(r#"'([^'\\(){}\[\]<>,;:\s]|\\.){2,}'"#, priority = 5)]
     Char,
     #[regex(r"'[A-Za-z_][A-Za-z0-9_']*")]
     #[regex(r"[A-Za-z_][A-Za-z0-9_']*")]
@@ -340,5 +341,15 @@ mod tests {
             .unwrap();
 
         assert!(tokens.iter().any(|token| token.kind == TokenKind::Int));
+    }
+
+    #[test]
+    fn tokenizes_multi_character_literals_without_stealing_type_variables() {
+        let char_tokens = Lexer::new().lex("dbg('ab')").unwrap();
+        assert!(char_tokens.iter().any(|token| token.kind == TokenKind::Char));
+
+        let type_tokens = Lexer::new().lex("type List<'value> = Nil").unwrap();
+        assert!(type_tokens.iter().any(|token| token.kind == TokenKind::Ident));
+        assert!(!type_tokens.iter().any(|token| token.kind == TokenKind::Char));
     }
 }
