@@ -252,7 +252,7 @@ impl<'a> ModuleInferencer<'a> {
         install_imports(&mut state, self.program, self.imports);
         install_annotated_functions(&mut state, self.program, &declared_variants);
         let predeclared_unannotated_functions =
-            install_unannotated_mutual_function_placeholders(&mut state, self.program);
+            install_mutual_function_placeholders(&mut state, self.program, &declared_variants);
         for decl in &self.program.decls {
             infer_decl(
                 &mut state,
@@ -518,17 +518,16 @@ fn annotated_function_type(
     Some(source_function_type(params, result))
 }
 
-fn install_unannotated_mutual_function_placeholders(
+fn install_mutual_function_placeholders(
     state: &mut State,
     program: &AstProgram,
+    declared_variants: &BTreeSet<TypeName>,
 ) -> BTreeSet<String> {
     let candidates = program
         .decls
         .iter()
         .filter_map(|decl| match decl {
-            AstDecl::Function(function) if is_fully_unannotated_function(function) => {
-                Some((function.name.clone(), function))
-            }
+            AstDecl::Function(function) => Some((function.name.clone(), function)),
             _ => None,
         })
         .collect::<BTreeMap<_, _>>();
@@ -557,21 +556,58 @@ fn install_unannotated_mutual_function_placeholders(
         let function = candidates
             .get(name)
             .expect("recursive group names are selected from candidates");
-        let params = function
-            .params
-            .iter()
-            .map(|_| state.fresh_var())
-            .collect::<Vec<_>>();
-        let result = state.fresh_var();
-        let type_ = source_function_type(params, result);
+        if is_fully_annotated_function(function) {
+            continue;
+        }
+        let type_ = partially_annotated_function_type(state, function, declared_variants);
         state.add_value(name.clone(), state.monomorphic(type_));
     }
 
     recursive_group_names
+        .into_iter()
+        .filter(|name| {
+            candidates
+                .get(name)
+                .is_some_and(|function| !is_fully_annotated_function(function))
+        })
+        .collect()
 }
 
-fn is_fully_unannotated_function(function: &AstFnDecl) -> bool {
-    function.return_type.is_none() && function.param_types.iter().all(Option::is_none)
+fn is_fully_annotated_function(function: &AstFnDecl) -> bool {
+    function.return_type.is_some() && function.param_types.iter().all(Option::is_some)
+}
+
+fn partially_annotated_function_type(
+    state: &mut State,
+    function: &AstFnDecl,
+    declared_variants: &BTreeSet<TypeName>,
+) -> Type {
+    let params = function
+        .params
+        .iter()
+        .enumerate()
+        .map(|(index, _)| {
+            function
+                .param_types
+                .get(index)
+                .and_then(|annotation| annotation.as_ref())
+                .map(|annotation| {
+                    rsig_type_to_infer_type(
+                        &lower_type_annotation(annotation, declared_variants),
+                        state,
+                    )
+                })
+                .unwrap_or_else(|| state.fresh_var())
+        })
+        .collect::<Vec<_>>();
+    let result = function
+        .return_type
+        .as_ref()
+        .map(|annotation| {
+            rsig_type_to_infer_type(&lower_type_annotation(annotation, declared_variants), state)
+        })
+        .unwrap_or_else(|| state.fresh_var());
+    source_function_type(params, result)
 }
 
 fn validate_unannotated_mutual_function_facts(
@@ -2550,6 +2586,55 @@ mod tests {
                         call("even", vec![path("n")]),
                     ),
                 ),
+            ],
+        };
+
+        let exports = infer(&program).unwrap().env.exported_values();
+
+        assert_eq!(exports.len(), 2);
+        assert_eq!(exports[0].0, "even");
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::Bool))
+        );
+        assert_eq!(exports[1].0, "odd");
+        assert_eq!(
+            exports[1].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::Bool))
+        );
+    }
+
+    #[test]
+    fn partially_annotated_mutual_recursion_group_uses_annotation_facts() {
+        let program = AstProgram {
+            decls: vec![
+                annotated_function(
+                    "even",
+                    vec![("n", type_path("i64"))],
+                    type_path("bool"),
+                    if_(
+                        eq(path("n"), int(0)),
+                        bool_(true),
+                        call("odd", vec![path("n")]),
+                    ),
+                ),
+                AstDecl::Function(AstFnDecl {
+                    name: "odd".to_owned(),
+                    name_span: span(),
+                    params: vec!["n".to_owned()],
+                    param_types: vec![Some(type_path("i64"))],
+                    return_type: None,
+                    body: AstBlock {
+                        statements: Vec::new(),
+                        tail: Some(if_(
+                            eq(path("n"), int(0)),
+                            bool_(false),
+                            call("even", vec![path("n")]),
+                        )),
+                        span: span(),
+                    },
+                    span: span(),
+                }),
             ],
         };
 

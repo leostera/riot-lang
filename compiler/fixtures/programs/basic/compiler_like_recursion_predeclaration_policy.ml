@@ -28,9 +28,9 @@ fn dependency_requires_predeclaration(dependency: dependency) -> bool {
 fn dependency_visible(decl: declaration) -> bool {
   match decl.dependency {
     SelfCall -> annotation_complete(decl.annotation),
-    LaterAnnotated -> annotation_complete(decl.annotation),
-    LaterUnannotated -> false,
-    LaterPartial -> false,
+    LaterAnnotated -> true,
+    LaterUnannotated -> true,
+    LaterPartial -> true,
     LaterValue -> false
   }
 }
@@ -50,9 +50,9 @@ fn predeclaration_policy(decl: declaration) -> String {
 fn visibility_reason(decl: declaration) -> String {
   match decl.dependency {
     SelfCall -> if annotation_complete(decl.annotation) { "self recursion ok" } else { "direct recursion needs facts" },
-    LaterAnnotated -> if annotation_complete(decl.annotation) { "later annotated visible" } else { "caller not fully annotated" },
-    LaterUnannotated -> "later unannotated hidden",
-    LaterPartial -> "missing complete annotations",
+    LaterAnnotated -> if annotation_complete(decl.annotation) { "later annotated visible" } else { "partial group seeded" },
+    LaterUnannotated -> "unannotated group seeded",
+    LaterPartial -> "partial group seeded",
     LaterValue -> "future values hidden"
   }
 }
