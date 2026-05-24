@@ -339,27 +339,25 @@ shape.
 
 <!-- autoresearch:step-1:done -->
 
-### 2. Add Structural RtValue Equality
+### 2. Structural RtValue Equality
 
-- **Commit:** `feat(rt): add structural RtValue equality`
-- **Intent:** Pattern matching, maps, sets, compiler data structures, and test
-  assertions all need equality that is not based on rendered strings.
-- **Frontend:** Keep `==` syntax unchanged. In typed HIR, allow equality between
-  matching scalar types and matching boxed value types. Reject obviously mixed
-  types such as `string == i64` unless both sides are unknown.
-- **Lowering/backend/runtime:** Add `riot_rt_value_eq(lhs, rhs) -> bool`.
-  Implement structural equality for `unit`, bools, i64s, actor ids, strings, tuples,
-  lists, records with same path/field order, and future-proof unsupported heap
-  tags as false. Lower boxed equality through this ABI; keep scalar LLVM equality
-  for unboxed scalars.
-- **Fixtures/tests:** Add fixtures for string equality, tuple equality, list
-  equality, record equality, and mixed-type diagnostics. Add direct runtime unit
-  tests for nested structures.
-- **Done when:** No equality path uses `to_print_string` or rendered output as
-  semantic equality.
-- **Validation:** Runtime unit tests cover nested equal/not-equal values; stage0
-  fixtures prove boxed equality emits calls to `riot_rt_value_eq` in LLVM and
-  produces expected stdout.
+Resolved hardening gap: `==` lowers boxed values through `riot_rt_value_eq`, with
+runtime structural equality for unit, bools, i64s, actor ids, strings, tuples,
+lists, records with the same path/field order, and variants including payloads.
+Scalar LLVM equality remains available for unboxed scalar cases, while boxed
+containers compare by runtime structure rather than rendered output.
+
+Remaining boundary: equality is still intentionally conservative at the type
+checker boundary. Obvious mixed concrete types should stay source-backed
+diagnostics, and any future map/set/compiler-data work should add source
+fixtures for the exact structural shapes it relies on rather than relaxing raw
+unknown equality.
+
+- **Validation:** `value_equality_handles_nested_runtime_values` covers nested
+  runtime equal/not-equal values directly, `runtime_scalar_comparisons` covers
+  scalar source equality for `char`/`f64`, and `runtime_structural_equality` pins
+  source-level string, tuple, list, record, and variant equality through stage0
+  codegen/runtime output.
 
 <!-- autoresearch:step-2:done -->
 
