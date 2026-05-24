@@ -1315,7 +1315,10 @@ state/mutation or an equivalent iteration pattern exists.
   before summarizing the compiler-shaped token stream.
   `compiler_like_tokenizer_parser_pipeline` connects that boundary to parsing by
   scanning source-character streams into parser tokens, building a tiny function
-  AST, and preserving recovery/error accounting for malformed input.
+  AST, and preserving recovery/error accounting for malformed input. The real
+  `SourceParser` boundary now also has lower-layer coverage for lexer trivia
+  spans flowing into parser AST nodes plus source-backed unexpected-character
+  diagnostics.
   `compiler_like_parser_ast_builder` adds the next compact parser-shaped model,
   consuming token variants into a tiny function/statement/expression AST,
   summarizing declarations, lets, calls, literals, and pinning representative

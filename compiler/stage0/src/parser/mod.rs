@@ -1597,6 +1597,29 @@ mod tests {
     }
 
     #[test]
+    fn source_parser_preserves_lexer_spans_after_comments() {
+        let source = "// leading scanner trivia\nfn main() { /* parser trivia */ let value = add_one(41); dbg(value) }\n";
+        let program = SourceParser::new()
+            .parse(Utf8Path::new("pipeline.ml"), source)
+            .unwrap();
+
+        let AstDecl::Function(function) = &program.decls[0] else {
+            panic!("expected function declaration");
+        };
+        let AstStmt::Let { name, value, .. } = &function.body.statements[0] else {
+            panic!("expected let binding");
+        };
+        let AstExpr::Call { span, args, .. } = value else {
+            panic!("expected let initializer call");
+        };
+
+        assert_eq!(name, "value");
+        assert_eq!(&source[span.start..span.end], "add_one(41)");
+        assert_eq!(args.len(), 1);
+        assert!(matches!(function.body.tail, Some(AstExpr::Call { .. })));
+    }
+
+    #[test]
     fn gated_while_parser_builds_loop_ast() {
         let source = "while true { dbg(1) }";
         let tokens = Lexer::new().lex(source).unwrap();
