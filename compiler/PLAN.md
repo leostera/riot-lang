@@ -1323,6 +1323,10 @@ equivalent iteration pattern exists.
   snapshot model, summarizing resolver, inference, checker, and lowering modules
   across declarations, constraints, substitutions, lowered nodes, diagnostics,
   and review labels.
+  `compiler_like_backend_module_snapshot` adds a backend/runtime module snapshot
+  model, summarizing Lambda, actor lowering, LLVM emission, and runtime modules
+  across lowered nodes, AIR operations, LLVM blocks, runtime hooks, diagnostics,
+  and review labels.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
