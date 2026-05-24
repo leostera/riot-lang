@@ -1284,9 +1284,12 @@ changed imports. Workspace diffs support `--output` review artifacts just like
 pairwise `.rsig` diffs. Dependency-only consumer changes are also visible: when
 an imported module's fingerprint changes because of an unused export, consumers
 are reported as module-fingerprint changes/impacted importers with dependency
-fingerprint details, without inventing per-export changes for the consumer. This
-gives interface review concrete artifact-to-artifact and workspace-directory
-diff paths without requiring reviewers to manually compare canonical text blocks.
+fingerprint details, without inventing per-export changes for the consumer. If a
+workspace diff compares a partially rebuilt artifact directory, stale dependency
+fingerprints are called out explicitly by module/import edge so reviewers can see
+which consumers still record an older provider fingerprint. This gives interface
+review concrete artifact-to-artifact and workspace-directory diff paths without
+requiring reviewers to manually compare canonical text blocks.
 
 Remaining boundary: binary `.rsig` remains the primary interface artifact for
 compilation and linking, and future review tooling may still want richer
@@ -1309,6 +1312,7 @@ when an imported module changes.
   `interface_diff_summarizes_rsig_review_changes`,
   `interface_diff_reports_dependency_only_workspace_changes` including
   dependency fingerprint details,
+  `interface_diff_reports_stale_workspace_dependency_fingerprints`,
   `interface_diff_summarizes_workspace_review_changes` including workspace
   `--output` review artifacts,
   `emit_all_exposes_actor_message_types_in_rsig`,

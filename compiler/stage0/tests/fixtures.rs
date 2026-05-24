@@ -4417,6 +4417,97 @@ fn interface_diff_reports_dependency_only_workspace_changes() -> FixtureResult {
 }
 
 #[test]
+fn interface_diff_reports_stale_workspace_dependency_fingerprints() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let before_dir = temp_dir.path().join("before");
+    let after_dir = temp_dir.path().join("after");
+    std::fs::create_dir_all(&before_dir)?;
+    std::fs::create_dir_all(&after_dir)?;
+
+    let before_worker = before_dir.join("worker.ml");
+    let before_app = before_dir.join("app.ml");
+    let after_worker = after_dir.join("worker.ml");
+
+    std::fs::write(&before_worker, "fn answer() -> i64 { 41 }\n")?;
+    std::fs::write(
+        &before_app,
+        "use Worker\nfn answer() -> i64 { Worker.answer() }\n",
+    )?;
+    std::fs::write(
+        &after_worker,
+        "fn answer() -> i64 { 41 }\nfn unused() -> String { \"unused\" }\n",
+    )?;
+
+    let compile_before = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&before_app)
+        .arg(&before_worker)
+        .arg("--out-dir")
+        .arg(&before_dir)
+        .output()?;
+    if !compile_before.status.success() {
+        return fail(format!(
+            "expected stale-dependency before workspace compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_before.stderr)
+        ));
+    }
+
+    let compile_after_worker = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&after_worker)
+        .arg("--out-dir")
+        .arg(&after_dir)
+        .output()?;
+    if !compile_after_worker.status.success() {
+        return fail(format!(
+            "expected stale-dependency after worker compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_after_worker.stderr)
+        ));
+    }
+    std::fs::copy(before_dir.join("App.rsig"), after_dir.join("App.rsig"))?;
+
+    let workspace_diff = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("interface-diff")
+        .arg(&before_dir)
+        .arg(&after_dir)
+        .output()?;
+    if !workspace_diff.status.success() {
+        return fail(format!(
+            "expected stale-dependency workspace interface-diff to succeed:\n{}",
+            String::from_utf8_lossy(&workspace_diff.stderr)
+        ));
+    }
+
+    let diff_text = String::from_utf8_lossy(&workspace_diff.stdout);
+    for expected in [
+        "workspace interface diff",
+        "changed modules:",
+        "Worker",
+        "impacted modules:",
+        "App imports Worker",
+        "stale dependency fingerprints:",
+        "App imports Worker recorded",
+        "but workspace has",
+    ] {
+        if !diff_text.contains(expected) {
+            return fail(format!(
+                "stale-dependency workspace interface diff missed `{expected}`:\n{diff_text}"
+            ));
+        }
+    }
+    if diff_text.contains("changed modules:\n  App") {
+        return fail(format!(
+            "stale-dependency workspace diff should not report stale App as changed:\n{diff_text}"
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn interface_diff_summarizes_workspace_review_changes() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let before_dir = temp_dir.path().join("before");

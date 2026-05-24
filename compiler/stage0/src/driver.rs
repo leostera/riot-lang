@@ -333,7 +333,37 @@ impl Stage0Driver {
             }
         }
 
+        let stale_dependencies = Self::stale_workspace_dependencies(after);
+        if !stale_dependencies.is_empty() {
+            text.push_str("stale dependency fingerprints:\n");
+            for (module, dependency, recorded, current) in stale_dependencies {
+                text.push_str(&format!(
+                    "  {module} imports {dependency} recorded {recorded:016x} but workspace has {current:016x}\n"
+                ));
+            }
+        }
+
         text
+    }
+
+    fn stale_workspace_dependencies(
+        workspace: &BTreeMap<ModuleName, Rsig>,
+    ) -> Vec<(ModuleName, ModuleName, u64, u64)> {
+        workspace
+            .iter()
+            .flat_map(|(module, signature)| {
+                signature.dependencies.iter().filter_map(|dependency| {
+                    workspace.get(&dependency.module).and_then(|current_dependency| {
+                        (dependency.fingerprint != current_dependency.module_fingerprint).then_some((
+                            module.clone(),
+                            dependency.module.clone(),
+                            dependency.fingerprint,
+                            current_dependency.module_fingerprint,
+                        ))
+                    })
+                })
+            })
+            .collect()
     }
 
     fn interface_diff_text(before: &Rsig, after: &Rsig) -> String {
