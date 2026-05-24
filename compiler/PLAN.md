@@ -1313,6 +1313,9 @@ equivalent iteration pattern exists.
   `compiler_like_module_family_snapshot` adds a compact multi-module snapshot
   model, summarizing imports, exports, typed nodes, actor nodes, and review-worthy
   diagnostics across a small compiler-shaped module family.
+  `compiler_like_frontend_pipeline_snapshot` adds an adjacent frontend snapshot
+  model, carrying token streams through parse-error accounting and typed/lowered
+  slot summaries for a valid module plus a recovery-path module.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
