@@ -132,20 +132,16 @@ impl Lexer {
     }
 
     pub(crate) fn lex(&self, source: &str) -> Result<Vec<Token>, LexError> {
-        if let Some(span) = find_unterminated_block_comment(source) {
-            return Err(LexError {
-                span,
-                message: "unterminated block comment".to_owned(),
-            });
-        }
-        if let Some(span) = find_unterminated_string_literal(source) {
+        let masked_source = mask_block_comments(source)?;
+        let lex_source = masked_source.as_deref().unwrap_or(source);
+        if let Some(span) = find_unterminated_string_literal(lex_source) {
             return Err(LexError {
                 span,
                 message: "unterminated string literal".to_owned(),
             });
         }
 
-        let mut lexer = TokenKind::lexer(source);
+        let mut lexer = TokenKind::lexer(lex_source);
         let mut tokens = Vec::new();
 
         while let Some(result) = lexer.next() {
@@ -167,9 +163,10 @@ impl Lexer {
     }
 }
 
-fn find_unterminated_block_comment(source: &str) -> Option<TextSpan> {
+fn mask_block_comments(source: &str) -> Result<Option<String>, LexError> {
     let bytes = source.as_bytes();
     let mut index = 0;
+    let mut ranges = Vec::new();
 
     while index < bytes.len() {
         match bytes[index] {
@@ -208,24 +205,47 @@ fn find_unterminated_block_comment(source: &str) -> Option<TextSpan> {
             b'/' if bytes.get(index + 1) == Some(&b'*') => {
                 let start = index;
                 index += 2;
-                let mut closed = false;
+                let mut depth = 1;
                 while index + 1 < bytes.len() {
-                    if bytes[index] == b'*' && bytes[index + 1] == b'/' {
+                    if bytes[index] == b'/' && bytes[index + 1] == b'*' {
+                        depth += 1;
                         index += 2;
-                        closed = true;
-                        break;
+                    } else if bytes[index] == b'*' && bytes[index + 1] == b'/' {
+                        depth -= 1;
+                        index += 2;
+                        if depth == 0 {
+                            break;
+                        }
+                    } else {
+                        index += 1;
                     }
-                    index += 1;
                 }
-                if !closed {
-                    return Some(TextSpan::new(start, (start + 2).min(source.len())));
+                if depth != 0 {
+                    return Err(LexError {
+                        span: TextSpan::new(start, (start + 2).min(source.len())),
+                        message: "unterminated block comment".to_owned(),
+                    });
                 }
+                ranges.push(start..index);
             }
             _ => index += 1,
         }
     }
 
-    None
+    if ranges.is_empty() {
+        return Ok(None);
+    }
+
+    let mut masked = source.as_bytes().to_vec();
+    for range in ranges {
+        for byte in &mut masked[range] {
+            if !matches!(*byte, b'\n' | b'\r') {
+                *byte = b' ';
+            }
+        }
+    }
+
+    Ok(Some(String::from_utf8(masked).expect("masked source remains valid utf-8")))
 }
 
 fn find_unterminated_string_literal(source: &str) -> Option<TextSpan> {
@@ -321,6 +341,30 @@ mod tests {
             .unwrap();
 
         assert!(tokens.iter().any(|token| token.kind == TokenKind::String));
+    }
+
+    #[test]
+    fn skips_nested_block_comments() {
+        let tokens = Lexer::new()
+            .lex("fn main() { /* outer /* inner */ still comment */ dbg(1) }")
+            .unwrap();
+
+        assert!(tokens.iter().any(|token| token.kind == TokenKind::Fn));
+        assert!(tokens.iter().any(|token| token.kind == TokenKind::Int));
+        assert!(!tokens.iter().any(|token| {
+            token.kind == TokenKind::Ident && token.span.start >= 24 && token.span.end <= 37
+        }));
+    }
+
+    #[test]
+    fn reports_unterminated_nested_block_comments_at_outer_opener() {
+        let error = Lexer::new()
+            .lex("fn main() { /* outer /* inner */ dbg(1) }")
+            .unwrap_err();
+
+        assert_eq!(error.message, "unterminated block comment");
+        assert_eq!(error.span.start, 12);
+        assert_eq!(error.span.end, 14);
     }
 
     #[test]
