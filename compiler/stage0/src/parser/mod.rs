@@ -735,10 +735,7 @@ impl<'src> Parser<'src> {
             TokenKind::Spawn => self.parse_spawn(),
             TokenKind::Receive => self.parse_receive(),
             TokenKind::Match => self.parse_match(),
-            TokenKind::While => Err(self.error_at_current(
-                "while loops are not supported yet",
-                Some("use recursion for now, or wait for the planned while-loop lowering slice"),
-            )),
+            TokenKind::While => self.parse_while_expr(),
             TokenKind::Ident => {
                 let (head, span) = self.expect_ident()?;
                 let path = AstPath {
@@ -1118,7 +1115,6 @@ impl<'src> Parser<'src> {
         })
     }
 
-    #[allow(dead_code)]
     fn parse_while_expr(&mut self) -> Result<AstExpr, ParseError> {
         let start = self.expect(TokenKind::While, "expected `while`")?;
         let condition = self.parse_expr()?;
@@ -1582,17 +1578,22 @@ mod tests {
     use super::{Parser, SourceParser};
 
     #[test]
-    fn rejects_reserved_while_before_loop_lowering_exists() {
-        let source = "fn main() { while true { dbg(1) } }\n";
-        let tokens = Lexer::new().lex(source).unwrap();
-        let error = Parser::new(source, tokens).parse_program().unwrap_err();
+    fn parses_while_loops() {
+        let source = "fn main() { while true { dbg(1) }; dbg(2) }\n";
+        let program = SourceParser::new()
+            .parse(Utf8Path::new("while.ml"), source)
+            .unwrap();
 
-        assert_eq!(error.message, "while loops are not supported yet");
-        assert_eq!(
-            error.help,
-            Some("use recursion for now, or wait for the planned while-loop lowering slice")
-        );
-        assert_eq!(&source[error.span.start..error.span.end], "while");
+        let AstDecl::Function(function) = &program.decls[0] else {
+            panic!("expected function declaration");
+        };
+        let AstStmt::Expr(AstExpr::While { condition, body, .. }) = &function.body.statements[0]
+        else {
+            panic!("expected while expression statement");
+        };
+
+        assert!(matches!(**condition, AstExpr::Bool { value: true, .. }));
+        assert!(matches!(**body, AstExpr::Block { .. }));
     }
 
     #[test]

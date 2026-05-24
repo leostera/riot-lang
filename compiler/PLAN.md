@@ -1067,32 +1067,25 @@ cross-core scheduler queues.
   `unit` type. Check condition is bool.
 - **Lowering/backend/runtime:** Lower to RIR loop blocks and LLVM branches. Add
   safepoints on backedges when the safepoint ABI exists.
-- **Current boundary:** `while` is reserved and reports a source-backed
-  unsupported-feature diagnostic instead of being parsed as an ordinary value
-  named `while`. The AST/span/checker/inference boundary now has a gated
-  `while` expression shape so the eventual parser slice can preserve the
-  unsupported diagnostic until surface syntax is enabled. A gated parser helper
-  can construct while AST nodes for lower-layer tests, but ordinary source
-  parsing still stops at the unsupported diagnostic. Inference now treats gated
-  while expressions as `unit`, requires Bool conditions, and keeps body
-  expression facts available for downstream lowering. Checker validation accepts
-  gated while nodes once they already exist in the AST. Typed HIR and Lambda IR
-  also carry gated while nodes, and backend lower-layer coverage now proves
-  Lambda while nodes infer unit ABI, constrain conditions to Bool, and emit loop
-  blocks/backedges.
-- **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
-- **Done when:** A native binary can run a while loop and print the accumulated
-  result.
-- **Validation:** Current unsupported boundary is pinned by
-  `while_loop_unsupported` plus lexer/parser unit tests that reserve `while` as
-  control-flow syntax before lowering exists.
-  `compiler_like_while_lowering_plan` models the planned checker/lowering
-  boundary: bool conditions produce loop blocks,
-  backedges, and safepoints, while non-bool or unknown conditions stay
-  diagnostic-only until the syntax is implemented. Lower-layer while tests pin
-  lexer/parser reservation, gated parser construction, gated inference
+- **Current boundary:** `while` is now parsed as control-flow syntax rather
+  than as an ordinary value path. The expression has `unit` type, requires a
+  Bool condition, recursively validates/checks the body, lowers through typed
+  HIR and Lambda IR, and emits LLVM loop condition/body/continuation blocks with
+  a backedge. The first source-level runtime fixture pins a terminating
+  false-condition loop; loop-carried mutation and actor-loop fairness remain
+  future growth areas because the language does not yet have mutable local
+  assignments.
+- **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures once
+  loop-carried state/mutation or an equivalent iteration pattern exists.
+- **Done when:** A native binary can run representative terminating while loops
+  and diagnostics cover invalid condition types.
+- **Validation:** `compiler_like_while_lowering_plan` models the checker/lowering
+  boundary: bool conditions produce loop blocks, backedges, and safepoints,
+  while non-bool or unknown conditions stay diagnostic-only. Lower-layer while
+  tests pin lexer reservation, parser construction, inference
   Bool-condition/unit-result behavior, typed-HIR unit lowering, and LLVM loop
-  branch structure.
+  branch structure. Source fixtures now cover `while false { ... }` runtime
+  behavior and non-Bool while-condition diagnostics.
 
 ### 42. Recursive Function Boundaries
 
