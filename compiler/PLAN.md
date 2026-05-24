@@ -1310,6 +1310,9 @@ equivalent iteration pattern exists.
   `compiler_like_emit_plan` extends the smoke boundary into a compact emit/codegen
   model, classifying scalar values, boxed values, helper symbols, exported call
   symbols, and returns from lowered operation facts.
+  `compiler_like_module_family_snapshot` adds a compact multi-module snapshot
+  model, summarizing imports, exports, typed nodes, actor nodes, and review-worthy
+  diagnostics across a small compiler-shaped module family.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
