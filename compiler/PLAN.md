@@ -1116,8 +1116,10 @@ source-backed missing-facts diagnostic until a richer group solver exists.
   `mutual_recursion_unannotated`,
   `compile_lib_exports_annotated_mutual_recursion`,
   `mutual_recursion_partial_annotation_unsupported`,
-  `mutual_recursion_param_annotation_unsupported`, and
-  `mutual_recursion_unannotated_missing_facts`.
+  `mutual_recursion_param_annotation_unsupported`,
+  `mutual_recursion_unannotated_missing_facts`,
+  `mutual_recursion_unannotated_missing_param_facts`, and
+  `mutual_recursion_unannotated_mismatched_returns`.
 
 ### 43. Support Unannotated Mutual Recursion Groups
 
@@ -1138,7 +1140,8 @@ source-backed missing-facts diagnostic until a richer group solver exists.
   annotated.
 - **Validation:** `mutual_recursion_unannotated` and lower-layer inference tests
   prove the initial fully unannotated even/odd group path. Diagnostics now cover
-  partial annotation shapes and no-facts unannotated groups.
+  partial annotation shapes, no-facts unannotated groups, groups with concrete
+  returns but unconstrained parameters, and mismatched return constraints.
   `compiler_like_mutual_recursion_group_plan` models the remaining
   group-inference boundary: seeded placeholder groups may solve from complete
   annotations or concrete constraints, while missing parameter facts and
