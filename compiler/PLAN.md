@@ -1083,9 +1083,11 @@ cross-core scheduler queues.
   boundary: bool conditions produce loop blocks, backedges, and safepoints,
   while non-bool or unknown conditions stay diagnostic-only. Lower-layer while
   tests pin lexer reservation, parser construction, inference
-  Bool-condition/unit-result behavior, typed-HIR unit lowering, and LLVM loop
-  branch structure. Source fixtures now cover `while false { ... }` runtime
-  behavior and non-Bool while-condition diagnostics.
+  Bool-condition/unit-result behavior, and typed-HIR unit lowering. LLVM coverage
+  now includes both lower-layer loop construction and source-level `emit llvm`
+  assertions for the generated `while.cond`/`while.body`/`while.cont` branch
+  structure. Source fixtures cover `while false { ... }` runtime behavior and
+  non-Bool while-condition diagnostics.
 
 ### 42. Recursive Function Boundaries
 
