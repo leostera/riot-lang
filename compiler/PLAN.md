@@ -1269,7 +1269,8 @@ special-case compiler path.
 Remaining boundary: this is still a compact smoke fixture over hardcoded token
 values rather than a real tokenizer/parser pipeline. Future self-hosting slices
 can grow it with parser-shaped modules, dedicated snapshots for larger module
-families, and eventually while-loop lowering once that feature is implemented.
+families, and loop-heavy examples once loop-carried state/mutation or an
+equivalent iteration pattern exists.
 
 - **Validation:** `compile_lib_compiler_shaped_actor_smoke` builds the smoke
   modules through `compile-lib`, links the consumer as a native executable, and
@@ -1291,8 +1292,8 @@ families, and eventually while-loop lowering once that feature is implemented.
   `compiler_like_checker_lowering_pipeline` adds a compact checker-to-lowering
   model, carrying typed expression facts into scalar/value slot classification
   while keeping unknown calls and missing locals explicit.
-  `compiler_like_while_lowering_plan` records the next larger control-flow
-  boundary before implementation by modeling while-condition checking, loop
+  `compiler_like_while_lowering_plan` records the control-flow boundary that
+  guided the implemented while-loop slice: while-condition checking, loop
   block/backedge/safepoint accounting, and diagnostic-only non-bool/unknown
   conditions. `compiler_like_mutual_recursion_group_plan` records the adjacent
   recursive-group implementation boundary by modeling seeded placeholders,
