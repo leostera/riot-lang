@@ -3953,6 +3953,67 @@ fn emit_all_includes_stable_interface_text() -> FixtureResult {
     Ok(())
 }
 
+#[test]
+fn emit_interface_outputs_canonical_interface_text() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/actor_factory_signature.ml");
+    let emit_interface = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(&fixture)
+        .output()?;
+    if !emit_interface.status.success() {
+        return fail(format!(
+            "expected emit interface to succeed:\n{}",
+            String::from_utf8_lossy(&emit_interface.stderr)
+        ));
+    }
+    let emit_all = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&fixture)
+        .output()?;
+    if !emit_all.status.success() {
+        return fail(format!(
+            "expected emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit_all.stderr)
+        ));
+    }
+
+    let interface_stdout = String::from_utf8_lossy(&emit_interface.stdout);
+    let all_stdout = String::from_utf8_lossy(&emit_all.stdout);
+    let all_rsig = emit_all_section(&all_stdout, "== rsig ==", "== ir ==")?;
+    let interface_text = interface_stdout.trim();
+
+    if interface_text != all_rsig {
+        return fail(format!(
+            "emit interface text differed from emit all rsig section:\ninterface:\n{interface_text}\nall:\n{all_rsig}"
+        ));
+    }
+    for forbidden in ["== cst ==", "== typed ==", "== ir ==", "== llvm =="] {
+        if interface_text.contains(forbidden) {
+            return fail(format!(
+                "emit interface included pipeline marker `{forbidden}`:\n{interface_text}"
+            ));
+        }
+    }
+    for expected in [
+        "module ActorFactorySignature",
+        "fingerprint ",
+        "fn make_worker() -> actor_id<String>",
+        "riot_mod_ActorFactorySignature_make_worker",
+    ] {
+        if !interface_text.contains(expected) {
+            return fail(format!(
+                "emit interface text missed `{expected}`:\n{interface_text}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn emit_all_section(
     output: &str,
     start: &str,

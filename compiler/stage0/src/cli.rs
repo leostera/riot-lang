@@ -76,8 +76,8 @@ pub(crate) struct EmitArgs {
     /// Riot ML .ml source file to inspect.
     pub(crate) input: Utf8PathBuf,
 
-    /// Output path. Defaults to stdout for text passes, <input>.rsig for rsig,
-    /// and <input>.o for object.
+    /// Output path. Defaults to stdout for text passes and interface text,
+    /// <input>.rsig for rsig, and <input>.o for object.
     #[arg(short, long)]
     pub(crate) output: Option<Utf8PathBuf>,
 
@@ -91,6 +91,7 @@ pub(crate) enum EmitPass {
     Cst,
     Typed,
     Rsig,
+    Interface,
     Ir,
     ActorIr,
     Llvm,

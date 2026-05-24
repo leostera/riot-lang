@@ -219,6 +219,9 @@ impl Stage0Driver {
                     .unwrap_or_else(|| args.input.with_extension("rsig"));
                 self.rsig_store.write(&output, &checked.signature)
             }
+            EmitPass::Interface => self
+                .output_writer
+                .write_text(args.output.as_deref(), &checked.signature.canonical_text()),
             EmitPass::Ir => {
                 let lambda_ir = LambdaSimplifier::new().simplify(checked.typed_tree);
                 self.output_writer

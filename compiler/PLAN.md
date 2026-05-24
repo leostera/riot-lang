@@ -1258,14 +1258,19 @@ summaries. The text is deterministic across repeated emits for the same source,
 so reviewers can inspect interface changes without decoding binary `.rsig` data
 manually.
 
-Remaining boundary: binary `.rsig` remains the primary interface artifact; future
-review tooling may still want a dedicated interface-only command or richer
-snapshots for large multi-module workspaces. The review policy is now modeled in
-compiler-like form: stable per-export fingerprints should stay quiet, while
-changed, added, or removed exports need human review.
+Resolved hardening gap: `emit interface` now prints the canonical `.rsig`
+interface text directly, giving reviewers a focused text-only interface surface
+without decoding binary `.rsig` data or slicing the `emit all` output.
+
+Remaining boundary: binary `.rsig` remains the primary interface artifact for
+compilation and linking, and future review tooling may still want richer
+workspace-wide diffs for large multi-module projects. The review policy is now
+modeled in compiler-like form: stable per-export fingerprints should stay quiet,
+while changed, added, or removed exports need human review.
 
 - **Validation:** `emit_all_preserves_pipeline_phase_order`,
   `emit_all_includes_stable_interface_text`,
+  `emit_interface_outputs_canonical_interface_text`,
   `emit_all_exposes_actor_message_types_in_rsig`,
   `emit_all_distinguishes_concrete_and_unknown_actor_message_types`, and
   `compiler_like_interface_review`.
@@ -1343,9 +1348,12 @@ state/mutation or an equivalent iteration pattern exists.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
-  `compiler_like_interface_review` models the adjacent interface-review policy:
-  stable per-export fingerprints stay quiet, while changed, added, and removed
-  exports are counted as review-worthy changes.
+  `emit_interface_outputs_canonical_interface_text` adds a focused interface-only
+  emit command that prints the same canonical interface text as the `emit all`
+  `.rsig` section without the other pipeline phases. `compiler_like_interface_review`
+  models the adjacent interface-review policy: stable per-export fingerprints stay
+  quiet, while changed, added, and removed exports are counted as review-worthy
+  changes.
   `compiler_like_while_lowering_plan` records the control-flow boundary that
   guided the implemented while-loop slice: while-condition checking, loop
   block/backedge/safepoint accounting, and diagnostic-only non-bool/unknown
