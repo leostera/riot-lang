@@ -1313,6 +1313,9 @@ state/mutation or an equivalent iteration pattern exists.
   `compiler_like_source_scanner` adds the first richer source-scanning model,
   walking a recursive source-character stream into word/number/symbol lexemes
   before summarizing the compiler-shaped token stream.
+  `compiler_like_tokenizer_parser_pipeline` connects that boundary to parsing by
+  scanning source-character streams into parser tokens, building a tiny function
+  AST, and preserving recovery/error accounting for malformed input.
   `compiler_like_parser_ast_builder` adds the next compact parser-shaped model,
   consuming token variants into a tiny function/statement/expression AST,
   summarizing declarations, lets, calls, literals, and pinning representative
