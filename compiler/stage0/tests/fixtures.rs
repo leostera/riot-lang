@@ -983,6 +983,87 @@ fn compile_lib_exports_annotated_mutual_recursion() -> FixtureResult {
 }
 
 #[test]
+fn compile_lib_exports_partial_mutual_recursion() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let logic = temp_dir.path().join("logic.ml");
+    let main = temp_dir.path().join("main.ml");
+    let output = temp_dir.path().join("main");
+
+    std::fs::write(
+        &logic,
+        "fn is_even(n: i64) -> bool { if n < 1 { true } else { is_odd(n - 1) } }\nfn is_odd(n) -> bool { if n < 1 { false } else { is_even(n - 1) } }\n",
+    )?;
+    std::fs::write(
+        &main,
+        "use Logic\nfn main() { dbg(Logic.is_even(8)); dbg(Logic.is_odd(9)) }\n",
+    )?;
+
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&logic)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected partially annotated mutually recursive compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let rsig_text = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(out_dir.join("Logic.rsig"))
+        .output()?;
+    if !rsig_text.status.success() {
+        return fail(format!(
+            "expected partial mutual recursion rsig decode to succeed:\n{}",
+            String::from_utf8_lossy(&rsig_text.stderr)
+        ));
+    }
+    let rsig_text = String::from_utf8_lossy(&rsig_text.stdout);
+    for expected in ["fn is_even(i64) -> bool", "fn is_odd(i64) -> bool"] {
+        if !rsig_text.contains(expected) {
+            return fail(format!(
+                "partial mutual recursion rsig missed `{expected}`:\n{rsig_text}"
+            ));
+        }
+    }
+
+    let compile = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile")
+        .arg(&main)
+        .arg("--sig-dir")
+        .arg(&out_dir)
+        .arg("--object-dir")
+        .arg(&out_dir)
+        .arg("-o")
+        .arg(&output)
+        .output()?;
+    if !compile.status.success() {
+        return fail(format!(
+            "expected imported partial mutual recursion compile to succeed:\n{}",
+            String::from_utf8_lossy(&compile.stderr)
+        ));
+    }
+
+    let run = Command::new(&output).output()?;
+    if run.stdout != b"true\ntrue\n" {
+        return fail(format!(
+            "unexpected imported partial mutual recursion stdout:\n{}",
+            String::from_utf8_lossy(&run.stdout)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn imported_higher_order_function_uses_arrow_rsig() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let out_dir = temp_dir.path().join("build");
