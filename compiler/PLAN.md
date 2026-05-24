@@ -1317,9 +1317,9 @@ state/mutation or an equivalent iteration pattern exists.
   scanning source-character streams into parser tokens, building a tiny function
   AST, and preserving recovery/error accounting for malformed input. The real
   `SourceParser` boundary now also has lower-layer coverage for lexer trivia
-  spans flowing into parser AST nodes, source-backed unexpected-character and
-  unterminated-block-comment diagnostics, and parser-error spans after skipped
-  line/block comments.
+  spans flowing into parser AST nodes, source-backed unexpected-character,
+  unterminated-block-comment, and unterminated-string diagnostics, and parser-error
+  spans after skipped line/block comments.
   `compiler_like_parser_ast_builder` adds the next compact parser-shaped model,
   consuming token variants into a tiny function/statement/expression AST,
   summarizing declarations, lets, calls, literals, and pinning representative

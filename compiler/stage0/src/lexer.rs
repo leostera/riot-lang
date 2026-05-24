@@ -137,6 +137,12 @@ impl Lexer {
                 message: "unterminated block comment".to_owned(),
             });
         }
+        if let Some(span) = find_unterminated_string_literal(source) {
+            return Err(LexError {
+                span,
+                message: "unterminated string literal".to_owned(),
+            });
+        }
 
         let mut lexer = TokenKind::lexer(source);
         let mut tokens = Vec::new();
@@ -221,6 +227,68 @@ fn find_unterminated_block_comment(source: &str) -> Option<TextSpan> {
     None
 }
 
+fn find_unterminated_string_literal(source: &str) -> Option<TextSpan> {
+    let bytes = source.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => {
+                let start = index;
+                index += 1;
+                let mut closed = false;
+                while index < bytes.len() {
+                    match bytes[index] {
+                        b'\\' => index += 2,
+                        b'"' => {
+                            index += 1;
+                            closed = true;
+                            break;
+                        }
+                        b'\n' | b'\r' => break,
+                        _ => index += 1,
+                    }
+                }
+                if !closed {
+                    return Some(TextSpan::new(start, (start + 1).min(source.len())));
+                }
+            }
+            b'\'' => {
+                index += 1;
+                while index < bytes.len() {
+                    match bytes[index] {
+                        b'\\' => index += 2,
+                        b'\'' => {
+                            index += 1;
+                            break;
+                        }
+                        _ => index += 1,
+                    }
+                }
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'/') => {
+                index += 2;
+                while index < bytes.len() && !matches!(bytes[index], b'\n' | b'\r') {
+                    index += 1;
+                }
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'*') => {
+                index += 2;
+                while index + 1 < bytes.len() {
+                    if bytes[index] == b'*' && bytes[index + 1] == b'/' {
+                        index += 2;
+                        break;
+                    }
+                    index += 1;
+                }
+            }
+            _ => index += 1,
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Lexer, TokenKind};
@@ -252,5 +320,25 @@ mod tests {
             .unwrap();
 
         assert!(tokens.iter().any(|token| token.kind == TokenKind::String));
+    }
+
+    #[test]
+    fn reports_unterminated_strings_before_generic_lex_errors() {
+        let error = Lexer::new()
+            .lex("fn main() { dbg(\"missing close) }")
+            .unwrap_err();
+
+        assert_eq!(error.message, "unterminated string literal");
+        assert_eq!(error.span.start, 16);
+        assert_eq!(error.span.end, 17);
+    }
+
+    #[test]
+    fn ignores_string_markers_inside_comments() {
+        let tokens = Lexer::new()
+            .lex("fn main() { /* \" not a string */ dbg(1) }")
+            .unwrap();
+
+        assert!(tokens.iter().any(|token| token.kind == TokenKind::Int));
     }
 }
