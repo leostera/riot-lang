@@ -4243,6 +4243,95 @@ fn emit_interface_records_imported_dependencies() -> FixtureResult {
 }
 
 #[test]
+fn interface_diff_reports_dependency_only_workspace_changes() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let before_dir = temp_dir.path().join("before");
+    let after_dir = temp_dir.path().join("after");
+    std::fs::create_dir_all(&before_dir)?;
+    std::fs::create_dir_all(&after_dir)?;
+
+    let before_worker = before_dir.join("worker.ml");
+    let before_app = before_dir.join("app.ml");
+    let after_worker = after_dir.join("worker.ml");
+    let after_app = after_dir.join("app.ml");
+
+    std::fs::write(&before_worker, "fn answer() -> i64 { 41 }\n")?;
+    std::fs::write(
+        &before_app,
+        "use Worker\nfn answer() -> i64 { Worker.answer() }\n",
+    )?;
+    std::fs::write(
+        &after_worker,
+        "fn answer() -> i64 { 41 }\nfn unused() -> String { \"unused\" }\n",
+    )?;
+    std::fs::write(
+        &after_app,
+        "use Worker\nfn answer() -> i64 { Worker.answer() }\n",
+    )?;
+
+    for (dir, app, worker) in [
+        (&before_dir, &before_app, &before_worker),
+        (&after_dir, &after_app, &after_worker),
+    ] {
+        let compile_lib = Command::new(cargo_bin("stage0"))
+            .current_dir(manifest_dir())
+            .arg("compile-lib")
+            .arg(app)
+            .arg(worker)
+            .arg("--out-dir")
+            .arg(dir)
+            .output()?;
+        if !compile_lib.status.success() {
+            return fail(format!(
+                "expected dependency-only workspace compile-lib to succeed for {}:\n{}",
+                dir.display(),
+                String::from_utf8_lossy(&compile_lib.stderr)
+            ));
+        }
+    }
+
+    let workspace_diff = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("interface-diff")
+        .arg(&before_dir)
+        .arg(&after_dir)
+        .output()?;
+    if !workspace_diff.status.success() {
+        return fail(format!(
+            "expected dependency-only workspace interface-diff to succeed:\n{}",
+            String::from_utf8_lossy(&workspace_diff.stderr)
+        ));
+    }
+
+    let diff_text = String::from_utf8_lossy(&workspace_diff.stdout);
+    for expected in [
+        "workspace interface diff",
+        "changed modules:",
+        "Worker",
+        "App",
+        "added Worker exports:",
+        "fn unused",
+        "impacted modules:",
+        "App imports Worker",
+    ] {
+        if !diff_text.contains(expected) {
+            return fail(format!(
+                "dependency-only workspace interface diff missed `{expected}`:\n{diff_text}"
+            ));
+        }
+    }
+    for unexpected in ["changed App exports:", "added App exports:", "removed App exports:"] {
+        if diff_text.contains(unexpected) {
+            return fail(format!(
+                "dependency-only workspace interface diff unexpectedly reported `{unexpected}`:\n{diff_text}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn interface_diff_summarizes_workspace_review_changes() -> FixtureResult {
     let temp_dir = TempDir::new()?;
     let before_dir = temp_dir.path().join("before");
