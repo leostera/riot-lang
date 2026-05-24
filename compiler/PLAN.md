@@ -80,9 +80,9 @@ source-backed diagnostic so the unsupported inference case is explicit.
 Known hardening gaps discovered by compiler-shaped fixtures:
 
 - Mutually recursive helpers now have an inferred group path when the cycle is
-  fully unannotated or partially annotated and annotations/body facts provide
-  concrete constraints. Underconstrained no-facts cycles remain source-backed
-  diagnostic boundaries.
+  fully unannotated or partially annotated and annotations, body facts, or later
+  same-module call-site facts provide concrete constraints. Underconstrained
+  no-facts cycles remain source-backed diagnostic boundaries.
 Resolved hardening gap: LLVM lambda-apply helper symbols are now module-scoped.
 Imported providers and consumers can both lower lambda applications without
 emitting duplicate `_riot_lambda_apply_0` symbols at link time.
@@ -1145,11 +1145,12 @@ diagnostic until a richer group solver exists.
   annotated.
 - **Validation:** `mutual_recursion_unannotated`,
   `mutual_recursion_partial_annotation`, `mutual_recursion_param_annotation`,
-  `compile_lib_exports_partial_mutual_recursion`, and lower-layer inference
-  tests prove fully unannotated and partially annotated group paths, including
-  exported `.rsig` signatures. Diagnostics now cover no-facts groups, unannotated and partial groups
-  with concrete returns but unconstrained parameters, and mismatched return
-  constraints. `compiler_like_mutual_recursion_unannotated` exercises a
+  `mutual_recursion_call_site_facts`, `compile_lib_exports_partial_mutual_recursion`,
+  and lower-layer inference tests prove fully unannotated and partially annotated
+  group paths, including exported `.rsig` signatures and later same-module
+  call-site constraints. Diagnostics now cover no-facts groups, unannotated and
+  partial groups with concrete returns but unconstrained parameters, and
+  mismatched return constraints. `compiler_like_mutual_recursion_unannotated` exercises a
   compiler-shaped parser helper pair with unannotated mutually recursive
   functions over token variants and lists. `compiler_like_mutual_recursion_group_plan`
   models the remaining group-inference boundary: seeded placeholder groups may

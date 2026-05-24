@@ -268,6 +268,14 @@ impl<'a> ModuleInferencer<'a> {
             self.program,
             &predeclared_unannotated_functions,
         )?;
+        resolve_predeclared_mutual_function_schemes(
+            &mut state,
+            self.program,
+            &predeclared_unannotated_functions,
+        );
+        for type_ in expression_types.values_mut() {
+            *type_ = state.resolve(type_);
+        }
         Ok(InferredModule {
             env: state.into_env(),
             expression_types,
@@ -634,6 +642,25 @@ fn validate_unannotated_mutual_function_facts(
     Ok(())
 }
 
+fn resolve_predeclared_mutual_function_schemes(
+    state: &mut State,
+    program: &AstProgram,
+    predeclared_unannotated_functions: &BTreeSet<String>,
+) {
+    for decl in &program.decls {
+        let AstDecl::Function(function) = decl else {
+            continue;
+        };
+        if !predeclared_unannotated_functions.contains(&function.name) {
+            continue;
+        }
+        let Some(scheme) = state.get_value(&function.name).cloned() else {
+            continue;
+        };
+        state.replace_value(&function.name, state.monomorphic(scheme.body));
+    }
+}
+
 fn reaches(
     current: &str,
     target: &str,
@@ -922,7 +949,12 @@ fn infer_decl(
                 expression_types,
                 predeclared_unannotated_functions,
             )?;
-            state.add_value(function.name.clone(), state.generalize(type_));
+            let scheme = if predeclared_unannotated_functions.contains(&function.name) {
+                state.monomorphic(type_)
+            } else {
+                state.generalize(type_)
+            };
+            state.add_value(function.name.clone(), scheme);
             Ok(())
         }
     }
@@ -2650,6 +2682,36 @@ mod tests {
         assert_eq!(
             exports[1].1,
             TypeScheme::monomorphic(Type::arrow(Type::I64, Type::Bool))
+        );
+    }
+
+    #[test]
+    fn unannotated_mutual_recursion_group_uses_later_call_site_facts() {
+        let program = AstProgram {
+            decls: vec![
+                function("left", vec!["value"], Vec::new(), call("right", vec![path("value")])),
+                function("right", vec!["value"], Vec::new(), call("left", vec![path("value")])),
+                function(
+                    "main",
+                    vec![],
+                    Vec::new(),
+                    add(call("left", vec![int(1)]), int(1)),
+                ),
+            ],
+        };
+
+        let exports = infer(&program).unwrap().env.exported_values();
+
+        assert_eq!(exports.len(), 3);
+        assert_eq!(exports[0].0, "left");
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::I64))
+        );
+        assert_eq!(exports[1].0, "right");
+        assert_eq!(
+            exports[1].1,
+            TypeScheme::monomorphic(Type::arrow(Type::I64, Type::I64))
         );
     }
 

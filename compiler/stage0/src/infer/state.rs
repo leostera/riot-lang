@@ -35,6 +35,10 @@ impl State {
         self.env.add_value(name, scheme);
     }
 
+    pub(crate) fn replace_value(&mut self, name: &str, scheme: TypeScheme) {
+        self.env.replace_value(name, scheme);
+    }
+
     pub(crate) fn add_prelude_value(&mut self, name: impl Into<String>, scheme: TypeScheme) {
         self.env.add_prelude_value(name, scheme);
     }

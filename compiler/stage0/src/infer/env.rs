@@ -70,6 +70,17 @@ impl Env {
             .or_else(|| self.prelude.values.get(name).map(|binding| &binding.scheme))
     }
 
+    pub(crate) fn replace_value(&mut self, name: &str, scheme: TypeScheme) {
+        if let Some(binding) = self
+            .scopes
+            .iter_mut()
+            .rev()
+            .find_map(|scope| scope.values.get_mut(name))
+        {
+            binding.scheme = scheme;
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn exported_values(&self) -> Vec<(String, TypeScheme)> {
         let root = self
