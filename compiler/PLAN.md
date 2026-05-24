@@ -1119,6 +1119,7 @@ diagnostic until a richer group solver exists.
   `mutual_recursion_unannotated`, `mutual_recursion_partial_annotation`,
   `mutual_recursion_param_annotation`,
   `compile_lib_exports_annotated_mutual_recursion`,
+  `compile_lib_exports_partial_mutual_recursion`,
   `mutual_recursion_unannotated_missing_facts`,
   `mutual_recursion_unannotated_missing_param_facts`, and
   `mutual_recursion_unannotated_mismatched_returns`.
@@ -1143,9 +1144,10 @@ diagnostic until a richer group solver exists.
   annotated.
 - **Validation:** `mutual_recursion_unannotated`,
   `mutual_recursion_partial_annotation`, `mutual_recursion_param_annotation`,
-  and lower-layer inference tests prove fully unannotated and partially
-  annotated group paths. Diagnostics now cover no-facts groups, groups with
-  concrete returns but unconstrained parameters, and mismatched return
+  `compile_lib_exports_partial_mutual_recursion`, and lower-layer inference
+  tests prove fully unannotated and partially annotated group paths, including
+  exported `.rsig` signatures. Diagnostics now cover no-facts groups, groups
+  with concrete returns but unconstrained parameters, and mismatched return
   constraints. `compiler_like_mutual_recursion_unannotated` exercises a
   compiler-shaped parser helper pair with unannotated mutually recursive
   functions over token variants and lists. `compiler_like_mutual_recursion_group_plan`
