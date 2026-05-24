@@ -3782,6 +3782,42 @@ fn emit_llvm_contains_while_loop_blocks() -> FixtureResult {
 }
 
 #[test]
+fn emit_llvm_uniques_nested_while_loop_blocks() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/while_nested_false.ml");
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("llvm")
+        .arg(&fixture)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected llvm emission to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "while.cond:",
+        "while.body:",
+        "while.cont:",
+        "while.cond1:",
+        "while.body2:",
+        "while.cont3:",
+        "br label %while.cond1",
+        "br label %while.cond",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "llvm output did not contain nested while boundary `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_all_contains_while_across_lowering_phases() -> FixtureResult {
     let fixture = manifest_dir().join("tests/fixtures/programs/basic/while_false_skips_body.ml");
     let emit = Command::new(cargo_bin("stage0"))

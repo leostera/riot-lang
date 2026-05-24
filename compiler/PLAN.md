@@ -1086,10 +1086,12 @@ cross-core scheduler queues.
   Bool-condition/unit-result behavior, and typed-HIR unit lowering. LLVM coverage
   now includes both lower-layer loop construction and source-level `emit llvm`
   assertions for the generated `while.cond`/`while.body`/`while.cont` branch
-  structure. `emit all` coverage pins that parsed while loops remain visible
+  structure, including uniqued nested-loop labels. `emit all` coverage pins
+  that parsed while loops remain visible
   across CST, typed HIR, Lambda IR, and LLVM output. Source fixtures cover
-  `while false { ... }` runtime behavior, `while` as a sequenced unit-valued
-  let initializer, non-Bool while-condition diagnostics, and recursive
+  `while false { ... }` runtime behavior, nested false-condition loops, `while`
+  as a sequenced unit-valued let initializer, non-Bool while-condition
+  diagnostics, and recursive
   validation of while bodies even when the first source runtime fixture uses a
   false condition.
 
