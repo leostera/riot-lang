@@ -4311,6 +4311,34 @@ fn interface_diff_summarizes_rsig_review_changes() -> FixtureResult {
         }
     }
 
+    let diff_path = temp_dir.path().join("Worker.interface.diff");
+    let interface_diff_output = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("interface-diff")
+        .arg(&before_rsig)
+        .arg(&after_rsig)
+        .arg("--output")
+        .arg(&diff_path)
+        .output()?;
+    if !interface_diff_output.status.success() {
+        return fail(format!(
+            "expected interface-diff --output to succeed:\n{}",
+            String::from_utf8_lossy(&interface_diff_output.stderr)
+        ));
+    }
+    if !interface_diff_output.stdout.is_empty() {
+        return fail(format!(
+            "expected interface-diff --output to keep stdout empty, got:\n{}",
+            String::from_utf8_lossy(&interface_diff_output.stdout)
+        ));
+    }
+    let diff_artifact = std::fs::read_to_string(&diff_path)?;
+    if diff_artifact != diff_text {
+        return fail(format!(
+            "interface-diff --output did not match stdout diff:\nstdout:\n{diff_text}\nartifact:\n{diff_artifact}"
+        ));
+    }
+
     Ok(())
 }
 
