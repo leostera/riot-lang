@@ -308,6 +308,17 @@ impl<'a> Checker<'a> {
                 Some("match the constructor with the same number of payload patterns"),
             );
         }
+        if matches!(
+            error.unsupported_reason(),
+            Some("unannotated mutual recursion needs type facts")
+        ) {
+            return diagnostics.at(
+                span,
+                "unannotated recursive group needs type facts",
+                "this recursive group does not constrain its parameter and return types enough for stage0 to lower it safely",
+                Some("add parameter and return type annotations, or add concrete operations that determine the recursive functions' types"),
+            );
+        }
         if let Some(name) = error.unknown_value_name()
             && let Some(function) = program.decls.iter().find_map(|decl| match decl {
                 AstDecl::Function(function) if function.name == name => Some(function),

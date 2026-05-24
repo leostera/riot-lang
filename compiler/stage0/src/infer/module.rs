@@ -263,6 +263,11 @@ impl<'a> ModuleInferencer<'a> {
                 &predeclared_unannotated_functions,
             )?;
         }
+        validate_unannotated_mutual_function_facts(
+            &state,
+            self.program,
+            &predeclared_unannotated_functions,
+        )?;
         Ok(InferredModule {
             env: state.into_env(),
             expression_types,
@@ -567,6 +572,30 @@ fn install_unannotated_mutual_function_placeholders(
 
 fn is_fully_unannotated_function(function: &AstFnDecl) -> bool {
     function.return_type.is_none() && function.param_types.iter().all(Option::is_none)
+}
+
+fn validate_unannotated_mutual_function_facts(
+    state: &State,
+    program: &AstProgram,
+    predeclared_unannotated_functions: &BTreeSet<String>,
+) -> Result<(), InferError> {
+    for decl in &program.decls {
+        let AstDecl::Function(function) = decl else {
+            continue;
+        };
+        if !predeclared_unannotated_functions.contains(&function.name) {
+            continue;
+        }
+        let Some(scheme) = state.get_value(&function.name) else {
+            continue;
+        };
+        let resolved = state.resolve(&scheme.body);
+        if !resolved.free_vars().is_empty() {
+            return Err(InferError::Unsupported("unannotated mutual recursion needs type facts")
+                .at(function.name_span));
+        }
+    }
+    Ok(())
 }
 
 fn reaches(
@@ -2536,6 +2565,24 @@ mod tests {
         assert_eq!(
             exports[1].1,
             TypeScheme::monomorphic(Type::arrow(Type::I64, Type::Bool))
+        );
+    }
+
+    #[test]
+    fn unannotated_mutual_recursion_group_requires_concrete_facts() {
+        let program = AstProgram {
+            decls: vec![
+                function("left", vec!["value"], Vec::new(), call("right", vec![path("value")])),
+                function("right", vec!["value"], Vec::new(), call("left", vec![path("value")])),
+            ],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(
+            Some("unannotated mutual recursion needs type facts"),
+            err.unsupported_reason()
         );
     }
 
