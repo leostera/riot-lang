@@ -1688,14 +1688,11 @@ fn validate_expr(
             validate_expr(ctx, else_branch, bindings, in_actor)?;
             Ok(ExprCategory::Other)
         }
-        AstExpr::While { span, .. } => Err(ctx
-            .diagnostic(
-                *span,
-                "while loops are not supported yet",
-                "stage0 reserves `while` for the planned loop-lowering slice",
-                Some("use recursion for now, or wait for the planned while-loop lowering slice"),
-            )
-            .into()),
+        AstExpr::While { condition, body, .. } => {
+            validate_expr(ctx, condition, bindings, in_actor)?;
+            validate_expr(ctx, body, bindings, in_actor)?;
+            Ok(ExprCategory::Other)
+        },
         AstExpr::Match {
             scrutinee,
             arms,

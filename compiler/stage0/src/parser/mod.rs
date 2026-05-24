@@ -1118,6 +1118,23 @@ impl<'src> Parser<'src> {
         })
     }
 
+    #[allow(dead_code)]
+    fn parse_while_expr(&mut self) -> Result<AstExpr, ParseError> {
+        let start = self.expect(TokenKind::While, "expected `while`")?;
+        let condition = self.parse_expr()?;
+        let block = self.parse_block()?;
+        let block_span = block.span;
+        let span = start.span.join(block_span);
+        Ok(AstExpr::While {
+            condition: Box::new(condition),
+            body: Box::new(AstExpr::Block {
+                block: Box::new(block),
+                span: block_span,
+            }),
+            span,
+        })
+    }
+
     fn parse_block_expr(&mut self) -> Result<AstExpr, ParseError> {
         let block = self.parse_block()?;
         if block.statements.is_empty()
@@ -1576,6 +1593,26 @@ mod tests {
             Some("use recursion for now, or wait for the planned while-loop lowering slice")
         );
         assert_eq!(&source[error.span.start..error.span.end], "while");
+    }
+
+    #[test]
+    fn gated_while_parser_builds_loop_ast() {
+        let source = "while true { dbg(1) }";
+        let tokens = Lexer::new().lex(source).unwrap();
+        let mut parser = Parser::new(source, tokens);
+        let expr = parser.parse_while_expr().unwrap();
+        let AstExpr::While {
+            condition,
+            body,
+            span,
+        } = expr
+        else {
+            panic!("expected while expression");
+        };
+
+        assert_eq!(&source[span.start..span.end], source);
+        assert!(matches!(*condition, AstExpr::Bool { value: true, .. }));
+        assert!(matches!(*body, AstExpr::Block { .. }));
     }
 
     #[test]
