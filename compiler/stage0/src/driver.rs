@@ -333,6 +333,16 @@ impl Stage0Driver {
             }
         }
 
+        let missing_dependencies = Self::missing_workspace_dependencies(after);
+        if !missing_dependencies.is_empty() {
+            text.push_str("missing dependency artifacts:\n");
+            for (module, dependency) in missing_dependencies {
+                text.push_str(&format!(
+                    "  {module} imports {dependency} but no {dependency}.rsig is present\n"
+                ));
+            }
+        }
+
         let stale_dependencies = Self::stale_workspace_dependencies(after);
         if !stale_dependencies.is_empty() {
             text.push_str("stale dependency fingerprints:\n");
@@ -344,6 +354,20 @@ impl Stage0Driver {
         }
 
         text
+    }
+
+    fn missing_workspace_dependencies(
+        workspace: &BTreeMap<ModuleName, Rsig>,
+    ) -> Vec<(ModuleName, ModuleName)> {
+        workspace
+            .iter()
+            .flat_map(|(module, signature)| {
+                signature.dependencies.iter().filter_map(|dependency| {
+                    (!workspace.contains_key(&dependency.module))
+                        .then_some((module.clone(), dependency.module.clone()))
+                })
+            })
+            .collect()
     }
 
     fn stale_workspace_dependencies(
