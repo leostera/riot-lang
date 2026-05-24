@@ -1,1 +1,1 @@
-recursion:supported:lowered as calls;while:reserved:needs loop lowering;match:supported:lowers to branches;receive:supported:actor scheduler boundary
+recursion:supported:lowered as calls;while:supported:parses to loop blocks;match:supported:lowers to branches;receive:supported:actor scheduler boundary

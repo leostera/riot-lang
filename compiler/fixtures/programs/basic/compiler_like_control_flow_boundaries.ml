@@ -5,7 +5,7 @@ type decision = { feature: String, status: String, reason: String }
 fn decide(feature: control_flow) -> decision {
   match feature {
     Recursion -> decision { feature: "recursion", status: "supported", reason: "lowered as calls" },
-    WhileLoop -> decision { feature: "while", status: "reserved", reason: "needs loop lowering" },
+    WhileLoop -> decision { feature: "while", status: "supported", reason: "parses to loop blocks" },
     MatchBranch -> decision { feature: "match", status: "supported", reason: "lowers to branches" },
     ActorReceive -> decision { feature: "receive", status: "supported", reason: "actor scheduler boundary" }
   }

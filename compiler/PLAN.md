@@ -1082,7 +1082,9 @@ condition/body diagnostics, lowering shape, and label stability.
 
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures once
   loop-carried state/mutation or an equivalent iteration pattern exists.
-- **Validation:** `compiler_like_while_lowering_plan` models the checker/lowering
+- **Validation:** `compiler_like_control_flow_boundaries` now records `while` as
+  supported control-flow syntax alongside recursion, match, and receive.
+  `compiler_like_while_lowering_plan` models the checker/lowering
   boundary: bool conditions produce loop blocks, backedges, and safepoints,
   while non-bool or unknown conditions stay diagnostic-only. Lower-layer while
   tests pin lexer reservation, parser construction, inference
