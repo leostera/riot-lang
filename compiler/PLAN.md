@@ -1088,9 +1088,10 @@ cross-core scheduler queues.
   assertions for the generated `while.cond`/`while.body`/`while.cont` branch
   structure. `emit all` coverage pins that parsed while loops remain visible
   across CST, typed HIR, Lambda IR, and LLVM output. Source fixtures cover
-  `while false { ... }` runtime behavior, non-Bool while-condition diagnostics,
-  and recursive validation of while bodies even when the first source runtime
-  fixture uses a false condition.
+  `while false { ... }` runtime behavior, `while` as a sequenced unit-valued
+  let initializer, non-Bool while-condition diagnostics, and recursive
+  validation of while bodies even when the first source runtime fixture uses a
+  false condition.
 
 ### 42. Recursive Function Boundaries
 
