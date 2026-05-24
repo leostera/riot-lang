@@ -144,6 +144,10 @@ fn lower_expr(expr: TypedExpr, context: &mut LowerContext) -> LambdaExpr {
             then_branch: Box::new(lower_expr(*then_branch, context)),
             else_branch: Box::new(lower_expr(*else_branch, context)),
         },
+        TypedExprKind::While { condition, body } => LambdaExpr::While {
+            condition: Box::new(lower_expr(*condition, context)),
+            body: Box::new(lower_expr(*body, context)),
+        },
         TypedExprKind::Match { scrutinee, arms } => {
             let scrutinee = lower_expr(*scrutinee, context);
             let arms = arms

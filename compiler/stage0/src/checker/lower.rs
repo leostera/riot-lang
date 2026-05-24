@@ -679,15 +679,14 @@ fn type_expr_inner(expr: AstExpr, context: &mut TypeContext<'_>) -> TypedExpr {
             }
         }
         AstExpr::While { condition, body, .. } => {
-            let _condition = type_expr(*condition, context);
-            let _body = type_expr(*body, context);
+            let condition = type_expr(*condition, context);
+            let body = type_expr(*body, context);
             TypedExpr {
                 type_: RsigType::Unit,
-                kind: TypedExprKind::Block(Box::new(TypedBlock {
-                    statements: Vec::new(),
-                    tail: None,
-                    type_: RsigType::Unit,
-                })),
+                kind: TypedExprKind::While {
+                    condition: Box::new(condition),
+                    body: Box::new(body),
+                },
             }
         }
         AstExpr::Match {

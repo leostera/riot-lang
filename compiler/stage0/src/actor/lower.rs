@@ -98,6 +98,10 @@ fn collect_actors_from_expr(
             collect_actors_from_expr(then_branch, locals, context, actors);
             collect_actors_from_expr(else_branch, locals, context, actors);
         }
+        LambdaExpr::While { condition, body } => {
+            collect_actors_from_expr(condition, locals, context, actors);
+            collect_actors_from_expr(body, locals, context, actors);
+        }
         LambdaExpr::Match { scrutinee, arms } => {
             collect_actors_from_expr(scrutinee, locals, context, actors);
             let scrutinee_type = infer_actor_slot_type(scrutinee, locals, context);

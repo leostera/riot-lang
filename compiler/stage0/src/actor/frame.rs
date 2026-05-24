@@ -74,6 +74,7 @@ pub(crate) fn infer_actor_slot_type(
             infer_actor_slot_type(then_branch, locals, context),
             infer_actor_slot_type(else_branch, locals, context),
         ),
+        LambdaExpr::While { .. } => None,
         LambdaExpr::Match { arms, .. } => arms
             .iter()
             .map(|arm| infer_actor_slot_type(&arm.body, locals, context))

@@ -504,6 +504,7 @@ impl<'ctx> Codegen<'ctx, '_> {
                 then_branch,
                 else_branch,
             } => self.emit_if(condition, then_branch, else_branch, env),
+            LambdaExpr::While { condition, body } => self.emit_while(condition, body, env),
             LambdaExpr::Match { scrutinee, arms } => self.emit_match(scrutinee, arms, env),
             LambdaExpr::Block(block) => {
                 let mut scoped = env.clone();
@@ -585,6 +586,39 @@ impl<'ctx> Codegen<'ctx, '_> {
             LambdaExpr::Spawn { actor_id, .. } => self.emit_spawn(*actor_id, env),
             LambdaExpr::Receive { .. } => bail!("receive cannot be lowered outside an actor frame"),
         }
+    }
+
+    fn emit_while(
+        &mut self,
+        condition: &LambdaExpr,
+        body: &LambdaExpr,
+        env: &mut Env<'ctx>,
+    ) -> miette::Result<CgValue<'ctx>> {
+        let Some(parent) = self.current_function() else {
+            bail!("while expression emitted without an active function");
+        };
+        let condition_block = self.context.append_basic_block(parent, "while.cond");
+        let body_block = self.context.append_basic_block(parent, "while.body");
+        let cont_block = self.context.append_basic_block(parent, "while.cont");
+        self.builder
+            .build_unconditional_branch(condition_block)
+            .map_err(|error| miette::miette!("failed to emit while entry branch: {error}"))?;
+
+        self.builder.position_at_end(condition_block);
+        let condition = self.emit_bool(condition, env)?;
+        self.builder
+            .build_conditional_branch(condition, body_block, cont_block)
+            .map_err(|error| miette::miette!("failed to emit while condition branch: {error}"))?;
+
+        self.builder.position_at_end(body_block);
+        let mut body_env = env.clone();
+        self.emit_expr(body, &mut body_env)?;
+        self.builder
+            .build_unconditional_branch(condition_block)
+            .map_err(|error| miette::miette!("failed to emit while backedge: {error}"))?;
+
+        self.builder.position_at_end(cont_block);
+        Ok(CgValue::Unit)
     }
 
     fn emit_variant_value(
@@ -3140,6 +3174,7 @@ fn infer_expr_abi(
             infer_expr_abi(then_branch, locals, functions, externals),
             infer_expr_abi(else_branch, locals, functions, externals),
         ),
+        LambdaExpr::While { .. } => AbiType::Unit,
         LambdaExpr::Match { arms, .. } => arms
             .iter()
             .map(|arm| infer_match_arm_abi(arm, locals, functions, externals))
@@ -3341,6 +3376,11 @@ fn mark_expr_constraints(
                 functions,
                 externals,
             );
+        }
+        LambdaExpr::While { condition, body } => {
+            mark_expr_as(params, locals, param_types, condition, AbiType::Bool);
+            mark_expr_constraints(condition, params, locals, param_types, functions, externals);
+            mark_expr_constraints(body, params, locals, param_types, functions, externals);
         }
         LambdaExpr::Match { scrutinee, arms } => {
             let scrutinee_abi = arms
@@ -3696,6 +3736,47 @@ mod tests {
         assert!(llvm.contains("riot_rt_value_apply"));
         assert!(llvm.contains("riot_rt_value_as_i64"));
         assert!(llvm.contains("riot_lambda_apply_ClosureApplyTest_"));
+    }
+
+    #[test]
+    fn while_expr_lowers_to_loop_blocks_and_unit_abi() {
+        let keep_going = Param::from_key(BindingKey::new("keep_going"));
+        let program = LambdaProgram {
+            module_name: ModuleName::new("WhileAbiTest"),
+            uses: Vec::new(),
+            externals: Vec::new(),
+            functions: vec![LambdaFunction {
+                name: "loop_once".to_owned(),
+                params: vec![keep_going.clone()],
+                param_types: vec![RsigType::Unknown],
+                result: RsigType::Unknown,
+                body: LambdaBlock {
+                    statements: Vec::new(),
+                    tail: Some(LambdaExpr::While {
+                        condition: Box::new(LambdaExpr::Local(BindingKey::new("keep_going"))),
+                        body: Box::new(LambdaExpr::Unit),
+                    }),
+                },
+                symbol: "riot_mod_WhileAbiTest_loop_once".to_owned(),
+            }],
+        };
+
+        let abis = infer_function_abis(&program, &LambdaExternalTable::new());
+        let abi = abis.get("loop_once").unwrap();
+        assert_eq!(abi.params, vec![AbiType::Bool]);
+        assert_eq!(abi.result, AbiType::Unit);
+        assert!(abi.is_supported_local());
+
+        let llvm = LlvmBackend::new()
+            .emit_llvm_text(
+                &program,
+                &ImportedSignatures::new(),
+                CodegenMode::Module,
+            )
+            .unwrap();
+        assert!(llvm.contains("while.cond"));
+        assert!(llvm.contains("while.body"));
+        assert!(llvm.contains("while.cont"));
     }
 
     #[test]

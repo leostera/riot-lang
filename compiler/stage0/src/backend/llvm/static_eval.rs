@@ -188,6 +188,7 @@ fn eval_expr(
                 eval_expr(else_branch, bindings, functions, externals, depth)
             }
         }
+        LambdaExpr::While { .. } => None,
         LambdaExpr::Match { scrutinee, arms } => {
             let scrutinee = eval_expr(scrutinee, bindings, functions, externals, depth)?;
             for arm in arms {

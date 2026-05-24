@@ -208,6 +208,10 @@ pub(crate) enum LambdaExpr {
         then_branch: Box<LambdaExpr>,
         else_branch: Box<LambdaExpr>,
     },
+    While {
+        condition: Box<LambdaExpr>,
+        body: Box<LambdaExpr>,
+    },
     Match {
         scrutinee: Box<LambdaExpr>,
         arms: Vec<LambdaMatchArm>,

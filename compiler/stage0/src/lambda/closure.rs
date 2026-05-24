@@ -33,6 +33,10 @@ fn closure_convert_expr(expr: &mut LambdaExpr) {
             closure_convert_expr(then_branch);
             closure_convert_expr(else_branch);
         }
+        LambdaExpr::While { condition, body } => {
+            closure_convert_expr(condition);
+            closure_convert_expr(body);
+        }
         LambdaExpr::Match { scrutinee, arms } => {
             closure_convert_expr(scrutinee);
             for arm in arms {
@@ -115,6 +119,10 @@ pub(crate) fn collect_free_expr(
             collect_free_expr(condition, bound, free);
             collect_free_expr(then_branch, bound, free);
             collect_free_expr(else_branch, bound, free);
+        }
+        LambdaExpr::While { condition, body } => {
+            collect_free_expr(condition, bound, free);
+            collect_free_expr(body, bound, free);
         }
         LambdaExpr::Match { scrutinee, arms } => {
             collect_free_expr(scrutinee, bound, free);

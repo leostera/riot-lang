@@ -264,6 +264,10 @@ pub(crate) enum TypedExprKind {
         then_branch: Box<TypedExpr>,
         else_branch: Box<TypedExpr>,
     },
+    While {
+        condition: Box<TypedExpr>,
+        body: Box<TypedExpr>,
+    },
     Match {
         scrutinee: Box<TypedExpr>,
         arms: Vec<TypedMatchArm>,

@@ -1071,7 +1071,10 @@ cross-core scheduler queues.
   unsupported-feature diagnostic instead of being parsed as an ordinary value
   named `while`. The AST/span/checker/inference boundary now has a gated
   `while` expression shape so the eventual parser slice can preserve the
-  unsupported diagnostic until typed lowering/backend support is added.
+  unsupported diagnostic until surface syntax is enabled. Typed HIR and Lambda
+  IR also carry gated while nodes, and backend lower-layer coverage now proves
+  Lambda while nodes infer unit ABI, constrain conditions to Bool, and emit loop
+  blocks/backedges.
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
 - **Done when:** A native binary can run a while loop and print the accumulated
   result.
