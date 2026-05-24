@@ -737,6 +737,14 @@ impl<'src> Parser<'src> {
             TokenKind::Match => self.parse_match(),
             TokenKind::While => self.parse_while_expr(),
             TokenKind::Ident => {
+                if self.text(self.current().span).starts_with('\'') {
+                    return Err(ParseError {
+                        span: self.current().span,
+                        message: "unterminated character literal".to_owned(),
+                        help: Some("close character literals with a trailing apostrophe, like `'a'`"),
+                    });
+                }
+
                 let (head, span) = self.expect_ident()?;
                 let path = AstPath {
                     segments: vec![head],

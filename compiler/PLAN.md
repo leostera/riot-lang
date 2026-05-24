@@ -1346,8 +1346,9 @@ state/mutation or an equivalent iteration pattern exists.
   `SourceParser` boundary now also has lower-layer coverage for lexer trivia
   spans flowing into parser AST nodes, source-backed unexpected-character,
   unterminated-block-comment, unterminated-string, invalid-string-escape,
-  invalid-character-escape, and multi-character char-literal diagnostics, valid
-  escaped string/character literal runtime regressions, and parser-error spans
+  invalid-character-escape, multi-character char-literal, and unterminated
+  character-literal diagnostics, valid escaped string/character literal runtime
+  regressions, and parser-error spans
   after skipped line/block comments.
   `compiler_like_parser_ast_builder` adds the next compact parser-shaped model,
   consuming token variants into a tiny function/statement/expression AST,
