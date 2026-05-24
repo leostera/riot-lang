@@ -1,6 +1,6 @@
 type annotation = Complete | ParamOnly | ReturnOnly | Unannotated
 
-type constraint_shape = BoolBranch | NumericCall | MissingParamFact | MismatchedReturn
+type constraint_shape = BoolBranch | NumericCall | LaterCallSite | MissingParamFact | MismatchedReturn
 
 type group_case = { name: String, annotation: annotation, constraint: constraint_shape }
 
@@ -28,6 +28,7 @@ fn constraint_supplies_params(constraint: constraint_shape) -> bool {
   match constraint {
     BoolBranch -> true,
     NumericCall -> true,
+    LaterCallSite -> true,
     MissingParamFact -> false,
     MismatchedReturn -> true
   }
@@ -37,6 +38,7 @@ fn constraint_consistent(constraint: constraint_shape) -> bool {
   match constraint {
     BoolBranch -> true,
     NumericCall -> true,
+    LaterCallSite -> true,
     MissingParamFact -> true,
     MismatchedReturn -> false
   }
@@ -57,6 +59,7 @@ fn can_finish_group(case: group_case) -> bool {
     match case.constraint {
       BoolBranch -> true,
       NumericCall -> true,
+      LaterCallSite -> true,
       MissingParamFact -> false,
       MismatchedReturn -> false
     }
@@ -92,6 +95,7 @@ fn main() {
     group_case { name: "annotated even odd", annotation: Complete, constraint: BoolBranch },
     group_case { name: "param annotated numeric helpers", annotation: ParamOnly, constraint: NumericCall },
     group_case { name: "unannotated but constrained", annotation: Unannotated, constraint: NumericCall },
+    group_case { name: "later call-site constrained", annotation: Unannotated, constraint: LaterCallSite },
     group_case { name: "missing param facts", annotation: ReturnOnly, constraint: MissingParamFact },
     group_case { name: "mismatched returns", annotation: ParamOnly, constraint: MismatchedReturn }
   ];

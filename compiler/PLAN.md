@@ -1154,8 +1154,9 @@ diagnostic until a richer group solver exists.
   compiler-shaped parser helper pair with unannotated mutually recursive
   functions over token variants and lists. `compiler_like_mutual_recursion_group_plan`
   models the remaining group-inference boundary: seeded placeholder groups may
-  solve from complete annotations or concrete constraints, while missing
-  parameter facts and mismatched return constraints remain diagnostics.
+  solve from complete annotations, body constraints, or later same-module
+  call-site constraints, while missing parameter facts and mismatched return
+  constraints remain diagnostics.
 
 ### 44. Lambda Expression and Closure Boundaries
 
