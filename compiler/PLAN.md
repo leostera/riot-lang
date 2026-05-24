@@ -1233,12 +1233,16 @@ Remaining boundary: dependency invalidation still consumes module-level
 fingerprints. Constructors and future actor summaries are represented through
 their enclosing type/signature shapes today; future build-planner work can add
 more granular dependency edges if it needs constructor- or actor-summary-level
-invalidation.
+invalidation. `compiler_like_per_export_invalidation_plan` now models the next
+planner shape: consumers should depend on specific provider exports, so changed
+unused exports can be visible for interface review without forcing every
+module-level importer to rebuild.
 
 - **Validation:** `rsig_export_fingerprints_are_stable_under_reorder`,
   `rsig_fingerprints_change_when_export_or_type_shape_changes`,
-  `binary_rsig_roundtrips_dependency_fingerprints`, and `.rsig` binary
-  roundtrip tests for functions, externals, and type declarations.
+  `binary_rsig_roundtrips_dependency_fingerprints`,
+  `.rsig` binary roundtrip tests for functions, externals, and type declarations,
+  and `compiler_like_per_export_invalidation_plan`.
 
 ### 48. Rsig Dependency Metadata
 
@@ -1395,6 +1399,9 @@ state/mutation or an equivalent iteration pattern exists.
   `compiler_like_dependency_invalidation` records the current module-granular
   dependency invalidation boundary and contrasts it with future per-export edges
   that could avoid rebuilds when an unused export changes.
+  `compiler_like_per_export_invalidation_plan` makes that future edge shape more
+  concrete by tracking consumer/provider/export dependencies and counting which
+  module-level invalidations a per-export build planner could avoid.
   `emit_interface_outputs_canonical_interface_text` adds a focused interface-only
   emit command that prints the same canonical interface text as the `emit all`
   `.rsig` section without the other pipeline phases,
