@@ -1271,6 +1271,7 @@ while changed, added, or removed exports need human review.
 - **Validation:** `emit_all_preserves_pipeline_phase_order`,
   `emit_all_includes_stable_interface_text`,
   `emit_interface_outputs_canonical_interface_text`,
+  `emit_interface_writes_review_artifact`,
   `emit_all_exposes_actor_message_types_in_rsig`,
   `emit_all_distinguishes_concrete_and_unknown_actor_message_types`, and
   `compiler_like_interface_review`.
@@ -1350,7 +1351,9 @@ state/mutation or an equivalent iteration pattern exists.
   that could avoid rebuilds when an unused export changes.
   `emit_interface_outputs_canonical_interface_text` adds a focused interface-only
   emit command that prints the same canonical interface text as the `emit all`
-  `.rsig` section without the other pipeline phases. `compiler_like_interface_review`
+  `.rsig` section without the other pipeline phases, and
+  `emit_interface_writes_review_artifact` proves the same text can be written to
+  an explicit review artifact path without stdout noise. `compiler_like_interface_review`
   models the adjacent interface-review policy: stable per-export fingerprints stay
   quiet, while changed, added, and removed exports are counted as review-worthy
   changes.

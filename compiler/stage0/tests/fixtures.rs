@@ -3991,6 +3991,44 @@ fn emit_interface_outputs_canonical_interface_text() -> FixtureResult {
             "emit interface text differed from emit all rsig section:\ninterface:\n{interface_text}\nall:\n{all_rsig}"
         ));
     }
+    assert_interface_text_shape(interface_text)?;
+
+    Ok(())
+}
+
+#[test]
+fn emit_interface_writes_review_artifact() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/actor_factory_signature.ml");
+    let temp_dir = TempDir::new()?;
+    let interface_path = temp_dir.path().join("ActorFactorySignature.interface.txt");
+    let emit_interface = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(&fixture)
+        .arg("--output")
+        .arg(&interface_path)
+        .output()?;
+    if !emit_interface.status.success() {
+        return fail(format!(
+            "expected emit interface --output to succeed:\n{}",
+            String::from_utf8_lossy(&emit_interface.stderr)
+        ));
+    }
+    if !emit_interface.stdout.is_empty() {
+        return fail(format!(
+            "expected emit interface --output to keep stdout empty, got:\n{}",
+            String::from_utf8_lossy(&emit_interface.stdout)
+        ));
+    }
+
+    let interface_text = std::fs::read_to_string(&interface_path)?;
+    assert_interface_text_shape(interface_text.trim())?;
+
+    Ok(())
+}
+
+fn assert_interface_text_shape(interface_text: &str) -> FixtureResult {
     for forbidden in ["== cst ==", "== typed ==", "== ir ==", "== llvm =="] {
         if interface_text.contains(forbidden) {
             return fail(format!(
