@@ -1351,7 +1351,8 @@ state/mutation or an equivalent iteration pattern exists.
   scanning source-character streams into parser tokens, building a tiny function
   AST, and preserving recovery/error accounting for malformed input. The real
   `SourceParser` boundary now also has lower-layer coverage for lexer trivia
-  spans flowing into parser AST nodes, nested block-comment skipping,
+  spans flowing into parser AST nodes, nested block-comment skipping with
+  preserved parser AST spans,
   source-backed unexpected-character, unterminated-block-comment,
   unterminated-string, invalid-string-escape, invalid-character-escape,
   multi-character char-literal, and unterminated character-literal diagnostics,
