@@ -4029,6 +4029,63 @@ fn emit_interface_writes_review_artifact() -> FixtureResult {
 }
 
 #[test]
+fn emit_interface_decodes_binary_rsig_artifact() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/actor_factory_signature.ml");
+    let temp_dir = TempDir::new()?;
+    let out_dir = temp_dir.path().join("build");
+    let compile_lib = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&fixture)
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .output()?;
+    if !compile_lib.status.success() {
+        return fail(format!(
+            "expected compile-lib to write binary rsig artifact:\n{}",
+            String::from_utf8_lossy(&compile_lib.stderr)
+        ));
+    }
+
+    let rsig_path = out_dir.join("ActorFactorySignature.rsig");
+    let emit_artifact = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(&rsig_path)
+        .output()?;
+    if !emit_artifact.status.success() {
+        return fail(format!(
+            "expected emit interface on binary rsig to succeed:\n{}",
+            String::from_utf8_lossy(&emit_artifact.stderr)
+        ));
+    }
+    let emit_source = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(&fixture)
+        .output()?;
+    if !emit_source.status.success() {
+        return fail(format!(
+            "expected source emit interface to succeed:\n{}",
+            String::from_utf8_lossy(&emit_source.stderr)
+        ));
+    }
+
+    let artifact_text = String::from_utf8_lossy(&emit_artifact.stdout);
+    let source_text = String::from_utf8_lossy(&emit_source.stdout);
+    if artifact_text != source_text {
+        return fail(format!(
+            "binary rsig interface text differed from source interface text:\nartifact:\n{artifact_text}\nsource:\n{source_text}"
+        ));
+    }
+    assert_interface_text_shape(artifact_text.trim())?;
+
+    Ok(())
+}
+
+#[test]
 fn emit_interface_records_type_and_actor_message_shapes() -> FixtureResult {
     let fixture =
         manifest_dir().join("tests/fixtures/programs/basic/actor_message_signature_shapes.ml");

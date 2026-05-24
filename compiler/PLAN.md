@@ -1260,7 +1260,9 @@ manually.
 
 Resolved hardening gap: `emit interface` now prints the canonical `.rsig`
 interface text directly, giving reviewers a focused text-only interface surface
-without decoding binary `.rsig` data or slicing the `emit all` output.
+without slicing the `emit all` output. The same pass can also decode binary
+`.rsig` artifacts into canonical text, so the primary compilation/linking
+artifact has a direct review surface.
 
 Remaining boundary: binary `.rsig` remains the primary interface artifact for
 compilation and linking, and future review tooling may still want richer
@@ -1272,6 +1274,7 @@ while changed, added, or removed exports need human review.
   `emit_all_includes_stable_interface_text`,
   `emit_interface_outputs_canonical_interface_text`,
   `emit_interface_writes_review_artifact`,
+  `emit_interface_decodes_binary_rsig_artifact`,
   `emit_interface_records_type_and_actor_message_shapes`,
   `emit_interface_records_external_abi_shapes`,
   `emit_interface_records_imported_dependencies`,

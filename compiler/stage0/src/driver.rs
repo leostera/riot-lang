@@ -190,6 +190,13 @@ impl Stage0Driver {
     }
 
     fn emit(&self, args: EmitArgs) -> miette::Result<()> {
+        if args.pass == EmitPass::Interface && args.input.extension() == Some("rsig") {
+            let signature = self.rsig_store.read(&args.input)?;
+            return self
+                .output_writer
+                .write_text(args.output.as_deref(), &signature.canonical_text());
+        }
+
         let source = self.source_loader.load(&args.input)?;
         let ast = SourceParser::new().parse(&args.input, &source)?;
         let empty_imports = ImportedSignatures::new();

@@ -73,7 +73,7 @@ pub(crate) struct EmitArgs {
     #[arg(value_enum)]
     pub(crate) pass: EmitPass,
 
-    /// Riot ML .ml source file to inspect.
+    /// Riot ML .ml source file to inspect, or a binary .rsig file for `emit interface`.
     pub(crate) input: Utf8PathBuf,
 
     /// Output path. Defaults to stdout for text passes and interface text,
