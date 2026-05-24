@@ -3782,6 +3782,42 @@ fn emit_llvm_contains_while_loop_blocks() -> FixtureResult {
 }
 
 #[test]
+fn emit_all_contains_while_across_lowering_phases() -> FixtureResult {
+    let fixture = manifest_dir().join("tests/fixtures/programs/basic/while_false_skips_body.ml");
+    let emit = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("all")
+        .arg(&fixture)
+        .output()?;
+    if !emit.status.success() {
+        return fail(format!(
+            "expected emit all to succeed:\n{}",
+            String::from_utf8_lossy(&emit.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&emit.stdout);
+    for expected in [
+        "== cst ==",
+        "Expr(\n                            While",
+        "== typed ==",
+        "kind: While",
+        "== ir ==",
+        "While {",
+        "== llvm ==",
+        "while.cond:",
+    ] {
+        if !stdout.contains(expected) {
+            return fail(format!(
+                "emit all output did not contain while lowering marker `{expected}`:\n{stdout}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn emit_all_preserves_pipeline_phase_order() -> FixtureResult {
     let fixture = manifest_dir().join("tests/fixtures/programs/actors/fibonacci_worker.ml");
     let emit = Command::new(cargo_bin("stage0"))
