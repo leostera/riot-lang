@@ -1272,6 +1272,7 @@ while changed, added, or removed exports need human review.
   `emit_all_includes_stable_interface_text`,
   `emit_interface_outputs_canonical_interface_text`,
   `emit_interface_writes_review_artifact`,
+  `emit_interface_records_type_and_actor_message_shapes`,
   `emit_interface_records_imported_dependencies`,
   `emit_all_exposes_actor_message_types_in_rsig`,
   `emit_all_distinguishes_concrete_and_unknown_actor_message_types`, and
