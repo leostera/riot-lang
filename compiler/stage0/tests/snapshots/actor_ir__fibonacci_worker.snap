@@ -108,11 +108,7 @@ ActorIrProgram {
                                     ],
                                     arg_types: [
                                         ActorId(
-                                            Var(
-                                                TypeVarName(
-                                                    "'t43",
-                                                ),
-                                            ),
+                                            I64,
                                         ),
                                         I64,
                                     ],

@@ -104,7 +104,7 @@ ActorIrProgram {
                                                         ActorId(
                                                             Var(
                                                                 TypeVarName(
-                                                                    "'t38",
+                                                                    "'t36",
                                                                 ),
                                                             ),
                                                         ),
@@ -157,7 +157,7 @@ ActorIrProgram {
                                         ActorId(
                                             Var(
                                                 TypeVarName(
-                                                    "'t49",
+                                                    "'t47",
                                                 ),
                                             ),
                                         ),
@@ -271,7 +271,7 @@ ActorIrProgram {
                                         ActorId(
                                             Var(
                                                 TypeVarName(
-                                                    "'t38",
+                                                    "'t36",
                                                 ),
                                             ),
                                         ),
