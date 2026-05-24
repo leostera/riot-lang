@@ -4242,6 +4242,78 @@ fn emit_interface_records_imported_dependencies() -> FixtureResult {
     Ok(())
 }
 
+#[test]
+fn interface_diff_summarizes_rsig_review_changes() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let before_dir = temp_dir.path().join("before");
+    let after_dir = temp_dir.path().join("after");
+    std::fs::create_dir_all(&before_dir)?;
+    std::fs::create_dir_all(&after_dir)?;
+    let before_source = before_dir.join("worker.ml");
+    let after_source = after_dir.join("worker.ml");
+    let before_rsig = before_dir.join("Worker.rsig");
+    let after_rsig = after_dir.join("Worker.rsig");
+
+    std::fs::write(
+        &before_source,
+        "fn answer() -> i64 { 41 }\nfn old_name() -> String { \"old\" }\n",
+    )?;
+    std::fs::write(
+        &after_source,
+        "fn answer() -> String { \"forty-one\" }\nfn label() -> String { \"new\" }\n",
+    )?;
+
+    for (source, output) in [(&before_source, &before_rsig), (&after_source, &after_rsig)] {
+        let emit_rsig = Command::new(cargo_bin("stage0"))
+            .current_dir(manifest_dir())
+            .arg("emit")
+            .arg("rsig")
+            .arg(source)
+            .arg("--output")
+            .arg(output)
+            .output()?;
+        if !emit_rsig.status.success() {
+            return fail(format!(
+                "expected emit rsig to succeed for {}:\n{}",
+                source.display(),
+                String::from_utf8_lossy(&emit_rsig.stderr)
+            ));
+        }
+    }
+
+    let interface_diff = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("interface-diff")
+        .arg(&before_rsig)
+        .arg(&after_rsig)
+        .output()?;
+    if !interface_diff.status.success() {
+        return fail(format!(
+            "expected interface-diff to succeed:\n{}",
+            String::from_utf8_lossy(&interface_diff.stderr)
+        ));
+    }
+
+    let diff_text = String::from_utf8_lossy(&interface_diff.stdout);
+    for expected in [
+        "interface diff Worker -> Worker",
+        "module fingerprint changed",
+        "types unchanged",
+        "changed exports:",
+        "fn answer",
+        "added exports:",
+        "fn label",
+        "removed exports:",
+        "fn old_name",
+    ] {
+        if !diff_text.contains(expected) {
+            return fail(format!("interface diff missed `{expected}`:\n{diff_text}"));
+        }
+    }
+
+    Ok(())
+}
+
 fn assert_interface_text_shape(interface_text: &str) -> FixtureResult {
     for forbidden in ["== cst ==", "== typed ==", "== ir ==", "== llvm =="] {
         if interface_text.contains(forbidden) {

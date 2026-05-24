@@ -8,12 +8,15 @@ use crate::actor::StacklessActorLowerer;
 use crate::ast::{AstDecl, AstProgram};
 use crate::backend::llvm::{CodegenMode, LlvmBackend};
 use crate::checker::{CheckMode, Checker};
-use crate::cli::{Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, ObjectMapping};
+use crate::cli::{
+    Cli, Command, CompileArgs, CompileLibArgs, EmitArgs, EmitPass, InterfaceDiffArgs,
+    ObjectMapping,
+};
 use crate::lambda::LambdaSimplifier;
 use crate::linker::Linker;
 use crate::parser::SourceParser;
 use crate::runtime::RuntimeBuilder;
-use crate::signature::{ImportedSignatures, ModuleName, Rsig, RsigStore};
+use crate::signature::{ImportedSignatures, ModuleName, Rsig, RsigExport, RsigStore};
 
 #[derive(Debug, Default)]
 pub(crate) struct Stage0Driver {
@@ -42,6 +45,7 @@ impl Stage0Driver {
             Command::Compile(args) => self.compile(args),
             Command::CompileLib(args) => self.compile_lib(args),
             Command::Emit(args) => self.emit(args),
+            Command::InterfaceDiff(args) => self.interface_diff(args),
         }
     }
 
@@ -187,6 +191,118 @@ impl Stage0Driver {
             signature: checked.signature,
             object: object_path,
         })
+    }
+
+    fn interface_diff(&self, args: InterfaceDiffArgs) -> miette::Result<()> {
+        let before = self.rsig_store.read(&args.before)?;
+        let after = self.rsig_store.read(&args.after)?;
+        self.output_writer
+            .write_text(args.output.as_deref(), &Self::interface_diff_text(&before, &after))
+    }
+
+    fn interface_diff_text(before: &Rsig, after: &Rsig) -> String {
+        let mut text = String::new();
+        text.push_str(&format!("interface diff {} -> {}\n", before.module, after.module));
+        if before.module != after.module {
+            text.push_str(&format!("module changed {} -> {}\n", before.module, after.module));
+        }
+        if before.module_fingerprint != after.module_fingerprint {
+            text.push_str(&format!(
+                "module fingerprint changed {:016x} -> {:016x}\n",
+                before.module_fingerprint, after.module_fingerprint
+            ));
+        } else {
+            text.push_str(&format!(
+                "module fingerprint unchanged {:016x}\n",
+                after.module_fingerprint
+            ));
+        }
+
+        Self::append_fingerprint_section(
+            &mut text,
+            "types",
+            Self::type_fingerprints(before),
+            Self::type_fingerprints(after),
+        );
+        Self::append_fingerprint_section(
+            &mut text,
+            "exports",
+            Self::export_fingerprints(before),
+            Self::export_fingerprints(after),
+        );
+        text
+    }
+
+    fn type_fingerprints(rsig: &Rsig) -> BTreeMap<String, u64> {
+        rsig.types
+            .iter()
+            .map(|type_| (format!("type {}", type_.name), type_.fingerprint))
+            .collect()
+    }
+
+    fn export_fingerprints(rsig: &Rsig) -> BTreeMap<String, u64> {
+        rsig.exports
+            .iter()
+            .map(|export| match export {
+                RsigExport::Function(function) => {
+                    (format!("fn {}", function.name), function.fingerprint)
+                }
+                RsigExport::External(external) => {
+                    (format!("external {}", external.name), external.fingerprint)
+                }
+            })
+            .collect()
+    }
+
+    fn append_fingerprint_section(
+        text: &mut String,
+        label: &str,
+        before: BTreeMap<String, u64>,
+        after: BTreeMap<String, u64>,
+    ) {
+        let changed = before
+            .iter()
+            .filter_map(|(name, before_fingerprint)| {
+                after.get(name).and_then(|after_fingerprint| {
+                    (before_fingerprint != after_fingerprint)
+                        .then_some((name, *before_fingerprint, *after_fingerprint))
+                })
+            })
+            .collect::<Vec<_>>();
+        let added = after
+            .iter()
+            .filter(|(name, _)| !before.contains_key(*name))
+            .collect::<Vec<_>>();
+        let removed = before
+            .iter()
+            .filter(|(name, _)| !after.contains_key(*name))
+            .collect::<Vec<_>>();
+
+        if changed.is_empty() && added.is_empty() && removed.is_empty() {
+            text.push_str(&format!("{label} unchanged\n"));
+            return;
+        }
+
+        if !changed.is_empty() {
+            text.push_str(&format!("changed {label}:\n"));
+            for (name, before_fingerprint, after_fingerprint) in changed {
+                text.push_str(&format!(
+                    "  {name} {before_fingerprint:016x} -> {after_fingerprint:016x}\n"
+                ));
+            }
+        }
+        if !added.is_empty() {
+            text.push_str(&format!("added {label}:\n"));
+            for (name, fingerprint) in added {
+                text.push_str(&format!("  {name} {fingerprint:016x}\n"));
+            }
+        }
+        if !removed.is_empty() {
+            text.push_str(&format!("removed {label}:\n"));
+            for (name, fingerprint) in removed {
+                text.push_str(&format!("  {name} {fingerprint:016x}\n"));
+            }
+        }
     }
 
     fn emit(&self, args: EmitArgs) -> miette::Result<()> {

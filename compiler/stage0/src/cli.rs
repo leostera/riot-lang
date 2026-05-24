@@ -19,6 +19,8 @@ pub(crate) enum Command {
     CompileLib(CompileLibArgs),
     /// Emit one compiler pipeline artifact.
     Emit(EmitArgs),
+    /// Compare two binary .rsig interface artifacts for review.
+    InterfaceDiff(InterfaceDiffArgs),
 }
 
 #[derive(Debug, ClapParser)]
@@ -65,6 +67,19 @@ pub(crate) struct CompileLibArgs {
     /// Also write the generated LLVM IR to this path.
     #[arg(long)]
     pub(crate) emit_llvm: Option<Utf8PathBuf>,
+}
+
+#[derive(Debug, ClapParser)]
+pub(crate) struct InterfaceDiffArgs {
+    /// Previous binary .rsig interface artifact.
+    pub(crate) before: Utf8PathBuf,
+
+    /// Current binary .rsig interface artifact.
+    pub(crate) after: Utf8PathBuf,
+
+    /// Output path. Defaults to stdout.
+    #[arg(short, long)]
+    pub(crate) output: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, ClapParser)]
