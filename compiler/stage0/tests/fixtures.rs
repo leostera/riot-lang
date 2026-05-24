@@ -4028,6 +4028,75 @@ fn emit_interface_writes_review_artifact() -> FixtureResult {
     Ok(())
 }
 
+#[test]
+fn emit_interface_records_imported_dependencies() -> FixtureResult {
+    let temp_dir = TempDir::new()?;
+    let sig_dir = temp_dir.path().join("build");
+    let syntax = temp_dir.path().join("syntax.ml");
+    let analyze = temp_dir.path().join("analyze.ml");
+
+    std::fs::write(
+        &syntax,
+        "type token = Ident(String) | Number(i64)\nfn ident(name: String) -> token { Ident(name) }\n",
+    )?;
+    std::fs::write(
+        &analyze,
+        "use Syntax\nfn weight(token: Syntax.token) -> i64 { match token { Syntax.Ident(_) -> 1, Syntax.Number(value) -> value } }\n",
+    )?;
+
+    let compile_syntax = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("compile-lib")
+        .arg(&syntax)
+        .arg("--out-dir")
+        .arg(&sig_dir)
+        .output()?;
+    if !compile_syntax.status.success() {
+        return fail(format!(
+            "expected Syntax compile-lib to succeed:\n{}",
+            String::from_utf8_lossy(&compile_syntax.stderr)
+        ));
+    }
+
+    let emit_interface = Command::new(cargo_bin("stage0"))
+        .current_dir(manifest_dir())
+        .arg("emit")
+        .arg("interface")
+        .arg(&analyze)
+        .arg("--sig-dir")
+        .arg(&sig_dir)
+        .output()?;
+    if !emit_interface.status.success() {
+        return fail(format!(
+            "expected imported emit interface to succeed:\n{}",
+            String::from_utf8_lossy(&emit_interface.stderr)
+        ));
+    }
+
+    let interface_text = String::from_utf8_lossy(&emit_interface.stdout);
+    for expected in [
+        "module Analyze",
+        "depends Syntax ",
+        "fn weight(Syntax.token) -> i64",
+        "riot_mod_Analyze_weight",
+    ] {
+        if !interface_text.contains(expected) {
+            return fail(format!(
+                "imported emit interface missed `{expected}`:\n{interface_text}"
+            ));
+        }
+    }
+    for forbidden in ["Analyze.Syntax.token", "== cst ==", "== typed =="] {
+        if interface_text.contains(forbidden) {
+            return fail(format!(
+                "imported emit interface included forbidden `{forbidden}`:\n{interface_text}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn assert_interface_text_shape(interface_text: &str) -> FixtureResult {
     for forbidden in ["== cst ==", "== typed ==", "== ir ==", "== llvm =="] {
         if interface_text.contains(forbidden) {
