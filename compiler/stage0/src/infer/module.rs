@@ -627,7 +627,7 @@ fn validate_unannotated_mutual_function_facts(
         };
         let resolved = state.resolve(&scheme.body);
         if !resolved.free_vars().is_empty() {
-            return Err(InferError::Unsupported("unannotated mutual recursion needs type facts")
+            return Err(InferError::Unsupported("recursive group needs type facts")
                 .at(function.name_span));
         }
     }
@@ -2666,7 +2666,7 @@ mod tests {
 
         assert_eq!(Some(span()), err.span());
         assert_eq!(
-            Some("unannotated mutual recursion needs type facts"),
+            Some("recursive group needs type facts"),
             err.unsupported_reason()
         );
     }

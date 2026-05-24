@@ -310,11 +310,11 @@ impl<'a> Checker<'a> {
         }
         if matches!(
             error.unsupported_reason(),
-            Some("unannotated mutual recursion needs type facts")
+            Some("recursive group needs type facts")
         ) {
             return diagnostics.at(
                 span,
-                "unannotated recursive group needs type facts",
+                "recursive group needs type facts",
                 "this recursive group does not constrain its parameter and return types enough for stage0 to lower it safely",
                 Some("add parameter and return type annotations, or add concrete operations that determine the recursive functions' types"),
             );

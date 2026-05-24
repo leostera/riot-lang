@@ -11,7 +11,7 @@ stdout:
 stderr:
 Error: stage0::source
 
-  × unannotated recursive group needs type facts
+  × recursive group needs type facts
    ╭─[tests/fixtures/diagnostics/types/mutual_recursion_unannotated_missing_facts.ml:1:4]
  1 │ fn left(value) {
    ·    ──┬─

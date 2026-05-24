@@ -1112,7 +1112,7 @@ Resolved hardening gap: mutual-recursion groups with incomplete annotations can
 be seeded with monomorphic placeholders and solved when annotations or body facts
 provide concrete parameter/result constraints. Fully unannotated groups and
 partially annotated groups now both use the grouped path when enough facts are
-available. No-facts cycles still receive a dedicated source-backed missing-facts
+available. Underconstrained cycles still receive a dedicated source-backed missing-facts
 diagnostic until a richer group solver exists.
 
 - **Validation:** `recursive_factorial`, `mutual_recursion_annotated`,
@@ -1121,7 +1121,8 @@ diagnostic until a richer group solver exists.
   `compile_lib_exports_annotated_mutual_recursion`,
   `compile_lib_exports_partial_mutual_recursion`,
   `mutual_recursion_unannotated_missing_facts`,
-  `mutual_recursion_unannotated_missing_param_facts`, and
+  `mutual_recursion_unannotated_missing_param_facts`,
+  `mutual_recursion_partial_missing_param_facts`, and
   `mutual_recursion_unannotated_mismatched_returns`.
 
 ### 43. Support Unannotated Mutual Recursion Groups
@@ -1146,7 +1147,7 @@ diagnostic until a richer group solver exists.
   `mutual_recursion_partial_annotation`, `mutual_recursion_param_annotation`,
   `compile_lib_exports_partial_mutual_recursion`, and lower-layer inference
   tests prove fully unannotated and partially annotated group paths, including
-  exported `.rsig` signatures. Diagnostics now cover no-facts groups, groups
+  exported `.rsig` signatures. Diagnostics now cover no-facts groups, unannotated and partial groups
   with concrete returns but unconstrained parameters, and mismatched return
   constraints. `compiler_like_mutual_recursion_unannotated` exercises a
   compiler-shaped parser helper pair with unannotated mutually recursive
