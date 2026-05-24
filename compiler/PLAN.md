@@ -1071,8 +1071,10 @@ cross-core scheduler queues.
   unsupported-feature diagnostic instead of being parsed as an ordinary value
   named `while`. The AST/span/checker/inference boundary now has a gated
   `while` expression shape so the eventual parser slice can preserve the
-  unsupported diagnostic until surface syntax is enabled. Typed HIR and Lambda
-  IR also carry gated while nodes, and backend lower-layer coverage now proves
+  unsupported diagnostic until surface syntax is enabled. Inference now treats
+  gated while expressions as `unit`, requires Bool conditions, and keeps body
+  expression facts available for downstream lowering. Typed HIR and Lambda IR
+  also carry gated while nodes, and backend lower-layer coverage now proves
   Lambda while nodes infer unit ABI, constrain conditions to Bool, and emit loop
   blocks/backedges.
 - **Fixtures/tests:** Add loop accumulator and actor loop fairness fixtures.
@@ -1084,9 +1086,9 @@ cross-core scheduler queues.
   `compiler_like_while_lowering_plan` models the planned checker/lowering
   boundary: bool conditions produce loop blocks,
   backedges, and safepoints, while non-bool or unknown conditions stay
-  diagnostic-only until the syntax is implemented. A loop accumulator fixture
-  prints the expected result; typed diagnostics reject non-bool conditions; LLVM
-  snapshots show loop branch structure.
+  diagnostic-only until the syntax is implemented. Lower-layer while tests pin
+  lexer/parser reservation, gated inference Bool-condition/unit-result behavior,
+  typed-HIR unit lowering, and LLVM loop branch structure.
 
 ### 42. Recursive Function Boundaries
 

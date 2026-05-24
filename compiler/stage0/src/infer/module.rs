@@ -1069,7 +1069,31 @@ fn infer_expr_kind(
             state.unify(&then_type, &else_type)?;
             Ok(state.resolve(&then_type))
         }
-        AstExpr::While { .. } => Err(InferError::Unsupported("while loop")),
+        AstExpr::While {
+            condition, body, ..
+        } => {
+            let condition_type = infer_expr(
+                state,
+                condition,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            if state.unify(&Type::Bool, &condition_type).is_err() {
+                return Err(InferError::ExpectedBool {
+                    context: "while condition",
+                    actual: infer_type_to_rsig_type(&state.resolve(&condition_type)),
+                });
+            }
+            infer_expr(
+                state,
+                body,
+                declared_variants,
+                record_shapes,
+                expression_types,
+            )?;
+            Ok(Type::Unit)
+        },
         AstExpr::Match {
             scrutinee, arms, ..
         } => {
@@ -1904,6 +1928,14 @@ mod tests {
         }
     }
 
+    fn while_(condition: AstExpr, body: AstExpr) -> AstExpr {
+        AstExpr::While {
+            condition: Box::new(condition),
+            body: Box::new(body),
+            span: span(),
+        }
+    }
+
     fn call(name: &str, args: Vec<AstExpr>) -> AstExpr {
         call_path(&[name], args)
     }
@@ -2177,6 +2209,50 @@ mod tests {
         assert_eq!(
             &crate::infer::module::InferError::UnknownValue("one".to_owned()),
             root_error(&err)
+        );
+    }
+
+    #[test]
+    fn while_expressions_infer_unit_and_bool_conditions() {
+        let program = AstProgram {
+            decls: vec![function(
+                "loop_until_false",
+                vec!["keep_going"],
+                Vec::new(),
+                while_(path("keep_going"), bool_(true)),
+            )],
+        };
+
+        let exports = infer(&program).unwrap().env.exported_values();
+
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports[0].0, "loop_until_false");
+        assert_eq!(
+            exports[0].1,
+            TypeScheme::monomorphic(Type::arrow(Type::Bool, Type::Unit))
+        );
+    }
+
+    #[test]
+    fn while_conditions_report_bool_context() {
+        let program = AstProgram {
+            decls: vec![function(
+                "bad_loop",
+                vec![],
+                Vec::new(),
+                while_(int(1), bool_(true)),
+            )],
+        };
+
+        let err = infer(&program).unwrap_err();
+
+        assert_eq!(Some(span()), err.span());
+        assert_eq!(
+            root_error(&err),
+            &InferError::ExpectedBool {
+                context: "while condition",
+                actual: RsigType::I64,
+            }
         );
     }
 

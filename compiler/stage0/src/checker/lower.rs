@@ -1958,6 +1958,47 @@ mod tests {
     }
 
     #[test]
+    fn typed_hir_lowers_gated_while_as_unit_expression() {
+        let program = AstProgram {
+            decls: vec![AstDecl::Function(AstFnDecl {
+                name: "main".to_owned(),
+                name_span: span(),
+                params: Vec::new(),
+                param_types: Vec::new(),
+                return_type: None,
+                body: AstBlock {
+                    statements: Vec::new(),
+                    tail: Some(AstExpr::While {
+                        condition: Box::new(AstExpr::Bool {
+                            value: true,
+                            span: span(),
+                        }),
+                        body: Box::new(AstExpr::Int {
+                            value: 1,
+                            span: span(),
+                        }),
+                        span: span(),
+                    }),
+                    span: span(),
+                },
+                span: span(),
+            })],
+        };
+
+        let typed = typed_program("WhileTyped", program);
+        let Some(tail) = &typed.functions[0].body.tail else {
+            panic!("expected while tail expression");
+        };
+        let TypedExprKind::While { condition, body } = &tail.kind else {
+            panic!("expected while expression");
+        };
+
+        assert_eq!(tail.type_, RsigType::Unit);
+        assert_eq!(condition.type_, RsigType::Bool);
+        assert_eq!(body.type_, RsigType::I64);
+    }
+
+    #[test]
     fn typed_hir_uses_inference_facts_for_lambda_parameter_types() {
         let typed = typed_program_with_inference_facts(
             "LambdaParamFacts",
