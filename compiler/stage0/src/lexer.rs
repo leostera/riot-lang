@@ -131,6 +131,13 @@ impl Lexer {
     }
 
     pub(crate) fn lex(&self, source: &str) -> Result<Vec<Token>, LexError> {
+        if let Some(span) = find_unterminated_block_comment(source) {
+            return Err(LexError {
+                span,
+                message: "unterminated block comment".to_owned(),
+            });
+        }
+
         let mut lexer = TokenKind::lexer(source);
         let mut tokens = Vec::new();
 
@@ -153,6 +160,67 @@ impl Lexer {
     }
 }
 
+fn find_unterminated_block_comment(source: &str) -> Option<TextSpan> {
+    let bytes = source.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => {
+                index += 1;
+                while index < bytes.len() {
+                    match bytes[index] {
+                        b'\\' => index += 2,
+                        b'"' => {
+                            index += 1;
+                            break;
+                        }
+                        _ => index += 1,
+                    }
+                }
+            }
+            b'\'' => {
+                index += 1;
+                while index < bytes.len() {
+                    match bytes[index] {
+                        b'\\' => index += 2,
+                        b'\'' => {
+                            index += 1;
+                            break;
+                        }
+                        _ => index += 1,
+                    }
+                }
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'/') => {
+                index += 2;
+                while index < bytes.len() && !matches!(bytes[index], b'\n' | b'\r') {
+                    index += 1;
+                }
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'*') => {
+                let start = index;
+                index += 2;
+                let mut closed = false;
+                while index + 1 < bytes.len() {
+                    if bytes[index] == b'*' && bytes[index + 1] == b'/' {
+                        index += 2;
+                        closed = true;
+                        break;
+                    }
+                    index += 1;
+                }
+                if !closed {
+                    return Some(TextSpan::new(start, (start + 2).min(source.len())));
+                }
+            }
+            _ => index += 1,
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Lexer, TokenKind};
@@ -164,5 +232,25 @@ mod tests {
         assert_eq!(tokens[0].kind, TokenKind::While);
         assert_eq!(tokens[1].kind, TokenKind::Ident);
         assert_eq!(tokens[2].kind, TokenKind::Eof);
+    }
+
+    #[test]
+    fn reports_unterminated_block_comments_before_parser_tokens() {
+        let error = Lexer::new()
+            .lex("fn main() { /* missing close\n  dbg(1) }")
+            .unwrap_err();
+
+        assert_eq!(error.message, "unterminated block comment");
+        assert_eq!(error.span.start, 12);
+        assert_eq!(error.span.end, 14);
+    }
+
+    #[test]
+    fn ignores_block_comment_markers_inside_strings() {
+        let tokens = Lexer::new()
+            .lex("fn main() { dbg(\"/* not a comment\") }")
+            .unwrap();
+
+        assert!(tokens.iter().any(|token| token.kind == TokenKind::String));
     }
 }
