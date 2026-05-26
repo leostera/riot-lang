@@ -1,7 +1,0 @@
-let with_comment = fun x ->
-  (* keep *)
-  x
-
-let with_doc = fun x ->
-  (** keep *)
-  x

@@ -1,1 +1,0 @@
-let currentUser = 42

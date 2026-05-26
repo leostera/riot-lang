@@ -1,3 +1,0 @@
-GET /api/v1/search?q=test&filter=active&sort=date&page=1&limit=50&include=metadata&exclude=archived&lang=en&region=us&format=json HTTP/1.1
-Host: api.example.com
-

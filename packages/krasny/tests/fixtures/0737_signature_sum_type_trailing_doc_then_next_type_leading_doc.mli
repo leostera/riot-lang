@@ -1,8 +1,0 @@
-type id =
-  | String of string
-  | Number of int
-  | Null
-      (** Request identifier. *)
-
-(** Request payload. *)
-type request = { id : id option }

@@ -1,7 +1,0 @@
-type node = {
-  value : int;
-}
-
-(** Element doc *)
-and element =
-  | Node of node

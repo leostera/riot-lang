@@ -1,5 +1,0 @@
-let mul = Stdlib.( * )
-let pow = Stdlib.( ** )
-let modulo = Stdlib.( mod )
-let bit_and = Stdlib.( land )
-let shift_left = Stdlib.( lsl )

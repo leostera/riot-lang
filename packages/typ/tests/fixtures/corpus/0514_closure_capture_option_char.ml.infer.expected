@@ -1,3 +1,0 @@
-type 'a option = Some of 'a | None
-val make : 'a -> 'b -> 'a * 'b
-val answer : char option * 'a option

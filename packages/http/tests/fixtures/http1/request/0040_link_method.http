@@ -1,4 +1,0 @@
-LINK /resource HTTP/1.1
-Host: example.com
-Link: <http://example.com/related>; rel="related"
-

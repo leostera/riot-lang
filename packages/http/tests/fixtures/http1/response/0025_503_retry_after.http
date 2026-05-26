@@ -1,6 +1,0 @@
-HTTP/1.1 503 Service Unavailable
-Retry-After: 120
-Content-Type: text/plain
-Content-Length: 31
-
-Service temporarily unavailable

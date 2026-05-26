@@ -1,5 +1,0 @@
-let classify = fun __tmp1 ->
-  match __tmp1 with
-  | -1 -> `Neg
-  | +2 -> `Pos
-  | _ -> `Other

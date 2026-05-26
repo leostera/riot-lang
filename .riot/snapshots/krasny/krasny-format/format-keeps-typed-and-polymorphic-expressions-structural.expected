@@ -1,3 +1,0 @@
-let typed value = (value: source)
-
-let poly: 'a. 'a -> 'a = fun x -> x

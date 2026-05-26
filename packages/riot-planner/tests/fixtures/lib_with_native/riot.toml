@@ -1,5 +1,0 @@
-[package]
-name = "lib_with_native"
-version = "0.0.33"
-
-[lib]

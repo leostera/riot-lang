@@ -1,1 +1,0 @@
-let _ = Foo.value

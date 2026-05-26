@@ -1,4 +1,0 @@
-interface:
-  display_name: "Riot"
-  short_description: "Build, run, and test Riot projects"
-  default_prompt: "Use $riot to create, build, run, test, or troubleshoot a Riot workspace."

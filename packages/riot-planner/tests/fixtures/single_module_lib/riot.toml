@@ -1,5 +1,0 @@
-[package]
-name = "single_module_lib"
-version = "0.0.33"
-
-[lib]

@@ -1,1 +1,0 @@
-let render value = (value)

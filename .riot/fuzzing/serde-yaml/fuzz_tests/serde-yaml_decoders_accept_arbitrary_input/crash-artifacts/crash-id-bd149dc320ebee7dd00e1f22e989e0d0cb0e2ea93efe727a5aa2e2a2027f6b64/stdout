@@ -1,1 +1,0 @@
-{"type":"FuzzCaseCompleted","name":"serde-yaml decoders accept arbitrary input","status":"failed","message":"Invalid_argument(\"index out of bounds\")"}

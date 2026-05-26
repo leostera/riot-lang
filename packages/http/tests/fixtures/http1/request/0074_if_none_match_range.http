@@ -1,5 +1,0 @@
-GET /resource HTTP/1.1
-Host: example.com
-If-None-Match: "686897696a7c876b7e"
-If-Range: "686897696a7c876b7e"
-

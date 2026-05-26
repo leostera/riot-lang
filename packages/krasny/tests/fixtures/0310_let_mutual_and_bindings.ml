@@ -1,5 +1,0 @@
-(* TODO(@leostera): dedicated regression for grouped top-level let rec ... and ... *)
-
-let rec a = function | _ -> 0
-and b (x : int) = x
-

@@ -1,8 +1,0 @@
-[myapp]
-port = 8080
-
-[log.handler]
-level = "info"
-
-[log.handler.stdout]
-format = "full"

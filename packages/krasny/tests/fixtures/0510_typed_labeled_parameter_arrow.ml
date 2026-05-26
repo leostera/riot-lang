@@ -1,6 +1,0 @@
-type 'a t = unit
-
-let map (type a b) (iter : a t) ~(fn : a -> b) : b t =
-  let _ = iter in
-  let _ = fn in
-  ()

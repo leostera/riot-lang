@@ -1,3 +1,0 @@
-GET /api HTTP/1.1
-Host: api.example.com:8080
-

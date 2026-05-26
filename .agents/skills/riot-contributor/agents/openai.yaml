@@ -1,4 +1,0 @@
-interface:
-  display_name: "Riot Contributor"
-  short_description: "Work inside the Riot monorepo"
-  default_prompt: "Use $riot-contributor when changing Riot repository code, tests, docs, or release tooling."

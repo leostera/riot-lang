@@ -1,3 +1,0 @@
-type 'a option = Some of 'a | None
-val duplicate : 'a -> 'a * 'a
-val answer : char option * char option

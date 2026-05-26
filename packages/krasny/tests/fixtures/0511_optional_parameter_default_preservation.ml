@@ -1,5 +1,0 @@
-let create_encoder ?(max_dynamic_table_size = 4_096) () =
-  max_dynamic_table_size
-
-let encode encoder ~headers ?(sensitive_headers = []) =
-  (encoder, headers, sensitive_headers)

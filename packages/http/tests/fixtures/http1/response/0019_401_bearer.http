@@ -1,6 +1,0 @@
-HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer realm="api", charset="UTF-8"
-Content-Type: application/json
-Content-Length: 37
-
-{"error":"Unauthorized","code":"401"}

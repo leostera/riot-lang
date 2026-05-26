@@ -1,5 +1,0 @@
-GET /resource HTTP/1.1
-Host: example.com
-If-Match: "686897696a7c876b7e"
-If-Unmodified-Since: Wed, 21 Oct 2015 07:28:00 GMT
-

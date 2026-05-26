@@ -1,6 +1,0 @@
-[package]
-name = "app"
-version = "0.0.33"
-description = "riot-lsp typ workspace fixture"
-license = "Apache-2.0"
-public = false

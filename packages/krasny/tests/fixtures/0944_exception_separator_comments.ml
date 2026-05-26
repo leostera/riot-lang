@@ -1,2 +1,0 @@
-exception E (* payload *) of string
-exception F (* alias *) = E

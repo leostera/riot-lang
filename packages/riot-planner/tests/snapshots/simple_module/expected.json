@@ -1,1 +1,0 @@
-{"nodes":[{"id":273,"actions":[{"type":"CreateLibrary","output":"Simple_module.cmxa","objects":[],"includes":[]}],"outputs":["Simple_module.cmxa","Simple_module.a"],"sources":[],"package":"simple_module","hash":"189eb54695e692ecdec4ae38a542c6237062e28d79ccc74d271997ac2f6ef119","dependencies":[]}]}

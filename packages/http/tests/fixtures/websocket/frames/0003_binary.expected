@@ -1,9 +1,0 @@
-{
-  "fin": true,
-  "rsv1": false,
-  "rsv2": false,
-  "rsv3": false,
-  "opcode": "Binary",
-  "masked": false,
-  "payload": "0102030405"
-}

@@ -1,6 +1,0 @@
-GET http://localhost:8080/we/want/that/page/5 HTTP/1.1
-Host: localhost:8080
-User-Agent: curl/8.0.0
-Accept: */*
-Proxy-Connection: Keep-Alive
-

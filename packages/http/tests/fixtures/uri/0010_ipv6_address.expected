@@ -1,9 +1,0 @@
-{
-  "scheme": "http",
-  "authority": "[2001:db8::1]:8080",
-  "host": "[2001:db8::1]",
-  "port": 8080,
-  "path": "/",
-  "query": null,
-  "fragment": null
-}

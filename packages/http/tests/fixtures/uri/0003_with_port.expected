@@ -1,9 +1,0 @@
-{
-  "scheme": "http",
-  "authority": "example.com:8080",
-  "host": "example.com",
-  "port": 8080,
-  "path": "/api",
-  "query": null,
-  "fragment": null
-}

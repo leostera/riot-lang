@@ -1,6 +1,0 @@
-let op = ( + )
-
-let is_plus = fun __tmp1 ->
-  match __tmp1 with
-  | ( + ) -> true
-  | _ -> false

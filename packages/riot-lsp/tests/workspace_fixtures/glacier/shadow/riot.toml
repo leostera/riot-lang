@@ -1,6 +1,0 @@
-[package]
-name = "shadow"
-version = "0.0.33"
-description = "riot-lsp bootstrap summary shadow fixture"
-license = "Apache-2.0"
-public = false

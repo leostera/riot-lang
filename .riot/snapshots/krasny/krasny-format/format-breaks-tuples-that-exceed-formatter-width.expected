@@ -1,9 +1,0 @@
-let tuple_value =
-  (
-    left_side_identifier,
-    right_side_identifier,
-    final_identifier,
-    fourth_identifier,
-    fifth_identifier,
-    sixth_identifier
-  )

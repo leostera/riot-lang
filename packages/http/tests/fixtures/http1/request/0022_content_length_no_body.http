@@ -1,5 +1,0 @@
-POST /upload HTTP/1.1
-Host: example.com
-Content-Type: text/plain
-Content-Length: 1000
-

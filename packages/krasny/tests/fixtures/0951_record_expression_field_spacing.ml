@@ -1,7 +1,0 @@
-let parse_quoted_string = fun pos current_char ->
-  raise
-    (Parse_exception (Unexpected_char {
-      position=!pos;
-      found=current_char ();
-      expected="double-quote";
-    }))

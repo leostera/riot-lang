@@ -1,9 +1,0 @@
-{
-  "scheme": "http",
-  "authority": "example.com",
-  "host": "example.com",
-  "port": null,
-  "path": "/",
-  "query": null,
-  "fragment": null
-}

@@ -1,6 +1,0 @@
-GET /api/data HTTP/1.1
-Host: api.example.com
-X-Request-ID: req-abc123
-X-Correlation-ID: corr-xyz789
-X-Session-ID: sess-456def
-

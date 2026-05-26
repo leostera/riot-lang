@@ -1,2 +1,0 @@
-type t =
-  | Conn of { fd : int; active : bool }

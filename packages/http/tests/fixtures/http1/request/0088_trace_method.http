@@ -1,4 +1,0 @@
-TRACE /api/debug HTTP/1.1
-Host: debug.example.com
-Max-Forwards: 5
-

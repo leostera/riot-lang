@@ -1,4 +1,0 @@
-type 'a option = Some of 'a | None
-type packed = Pack : 'a * ('a -> 'a) -> packed
-val run : packed -> packed
-val answer : packed

@@ -1,6 +1,0 @@
-HTTP/1.1 201 Created
-Location: /users/12345
-Content-Type: application/json
-Content-Length: 59
-
-{"id":12345,"username":"newuser","created_at":"2025-01-15"}

@@ -1,9 +1,0 @@
-type error =
-  | ParseError of { raw_input : string; parse_error : string }
-      (** Client failed to parse JSON or JSON-RPC structure *)
-  | UnknownServerError of { code : int; message : string; data : Json.t option }
-      (** Server returned a JSON-RPC error object that couldn't be parsed into a
-          typed response variant *)
-(** Client-side errors with rich context information. Includes
-    UnknownServerError for when the server sends a JSON-RPC error that we don't
-    have a typed response variant for. *)

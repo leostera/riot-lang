@@ -1,5 +1,0 @@
-GET /data HTTP/1.1
-Host: example.com
-If-Match: "686897696a7c876b7e"
-If-Unmodified-Since: Sat, 29 Oct 2016 19:43:31 GMT
-

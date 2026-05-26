@@ -1,4 +1,0 @@
-type message = ..
-
-type message +=
-  | SetCursorVisibility of [ `hidden | `visible ]

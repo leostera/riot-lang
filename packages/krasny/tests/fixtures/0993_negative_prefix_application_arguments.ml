@@ -1,2 +1,0 @@
-let finite_float_gen=Generator.float_range(-.finite_float_limit)finite_float_limit
-let error_message=Kernel.SystemError.to_string(Kernel.SystemError.from_code(-written))

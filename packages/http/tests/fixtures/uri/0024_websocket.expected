@@ -1,9 +1,0 @@
-{
-  "scheme": "wss",
-  "authority": "example.com",
-  "host": "example.com",
-  "port": null,
-  "path": "/socket",
-  "query": "token=abc123",
-  "fragment": null
-}

@@ -1,3 +1,0 @@
-[submodule "vendor/ocaml"]
-	path = vendor/ocaml
-	url = git@github.com:leostera/riot-ocaml.git

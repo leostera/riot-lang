@@ -1,3 +1,0 @@
-type 'a t = 'a list
-
-let map (type a b) (iter: a t) ~(fn:a -> b) : b t = failwith "todo"

@@ -1,3 +1,0 @@
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"processId":123}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///workspace/app.ml","languageId":"ocaml","version":1,"text":"let render = function | x -> x + 1\n"}}}
-{"jsonrpc":"2.0","id":2,"method":"textDocument/codeAction","params":{"textDocument":{"uri":"file:///workspace/app.ml"},"range":{"start":{"line":0,"character":13},"end":{"line":0,"character":21}},"context":{"diagnostics":[{"range":{"start":{"line":0,"character":12},"end":{"line":0,"character":34}},"message":"Named functions should avoid `function` shorthand and use explicit parameters instead","code":"no-function-shorthand","source":"riot-fix"}],"only":["quickfix"]}}}

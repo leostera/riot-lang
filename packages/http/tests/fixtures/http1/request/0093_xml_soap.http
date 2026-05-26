@@ -1,6 +1,0 @@
-POST /soap HTTP/1.1
-Host: soap.example.com
-Content-Type: application/soap+xml
-Content-Length: 54
-
-<soap:Envelope><soap:Body></soap:Body></soap:Envelope>

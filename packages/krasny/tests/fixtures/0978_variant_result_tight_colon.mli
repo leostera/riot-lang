@@ -1,3 +1,0 @@
-type _ expr =
-  | Int : int expr
-  | Pair : some_really_long_left_expr_type * another_long_expr_type_name -> (some_really_long_left_expr_type * another_long_expr_type_name) expr

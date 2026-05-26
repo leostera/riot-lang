@@ -1,7 +1,0 @@
-module Make : sig
-  val create :
-    workspace:ExtremelyLongWorkspaceModulePath.t ->
-    profile:VeryLongProfileIdentifierName.t ->
-    target:HighlySpecificTargetName.t ->
-    even_longer_result_type_name
-end

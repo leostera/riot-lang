@@ -1,9 +1,0 @@
-{
-  "scheme": "https",
-  "authority": "example.com",
-  "host": "example.com",
-  "port": null,
-  "path": "/hello/file-name.txt",
-  "query": null,
-  "fragment": null
-}

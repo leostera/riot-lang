@@ -1,5 +1,0 @@
-let width s =
-  (* Calculate display width by summing rune widths *)
-  into_iter s
-  |> Iterator.to_list
-  |> List.fold_left (fun acc rune -> acc + Unicode.Rune.width rune) 0

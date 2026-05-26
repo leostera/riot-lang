@@ -1,9 +1,0 @@
-{
-  "method": "GET",
-  "path": "/search?q=hello+world&category=books&sort=price:asc&limit=50&offset=100",
-  "version": "HTTP/1.1",
-  "headers": {
-    "Host": "example.com"
-  },
-  "body": ""
-}

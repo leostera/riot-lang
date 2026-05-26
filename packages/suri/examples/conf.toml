@@ -1,6 +1,0 @@
-[[log.handler]]
-type = "stdout"
-format = "full"
-
-[suri]
-liveview_secret = "example-secret-key-change-in-production-min-32-chars"

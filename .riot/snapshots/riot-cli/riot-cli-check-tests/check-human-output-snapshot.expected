@@ -1,9 +1,0 @@
-packages/demo/src/broken.ml:1:8:
-
-[1;38;2;224;108;117merror:[0m [typing] TYP2001: unbound name: y
-  |
-1 | let x = y
-  | [1;38;2;224;108;117m       ^^[0m
-  |
-
-    For more information about this error, try `riot check --explain TYP2001`

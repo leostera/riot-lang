@@ -1,1 +1,0 @@
-let sentinel = 21

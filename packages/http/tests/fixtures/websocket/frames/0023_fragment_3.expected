@@ -1,9 +1,0 @@
-{
-  "fin": false,
-  "rsv1": false,
-  "rsv2": false,
-  "rsv3": false,
-  "opcode": "Continuation",
-  "masked": false,
-  "payload": "Fragment 3"
-}

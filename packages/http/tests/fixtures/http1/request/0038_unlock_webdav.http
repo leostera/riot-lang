@@ -1,4 +1,0 @@
-UNLOCK /resource HTTP/1.1
-Host: example.com
-Lock-Token: <opaquelocktoken:12345>
-

@@ -1,7 +1,0 @@
-GET /api HTTP/1.1
-Host: backend.example.com
-X-Forwarded-For: 203.0.113.195, 70.41.3.18, 150.172.238.178
-X-Forwarded-Proto: https
-X-Forwarded-Host: example.com
-X-Real-IP: 203.0.113.195
-

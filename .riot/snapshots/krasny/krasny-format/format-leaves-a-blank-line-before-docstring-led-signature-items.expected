@@ -1,4 +1,0 @@
-val first: int
-
-(** doc for second *)
-val second: int

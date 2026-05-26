@@ -1,5 +1,0 @@
-GET /document HTTP/1.1
-Host: example.com
-Accept: application/json;version=2, application/json;version=1;q=0.8
-TE: trailers, deflate;q=0.5
-

@@ -1,5 +1,0 @@
-GET /api/user HTTP/1.1
-Host: api.example.com
-Authorization: Bearer 2YotnFZFEjr1zCsicMWpAA
-Accept: application/vnd.github.v3+json
-

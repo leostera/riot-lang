@@ -1,7 +1,0 @@
-[package]
-name = "binary_only"
-version = "0.0.33"
-
-[[bin]]
-name = "main"
-path = "src/main.ml"

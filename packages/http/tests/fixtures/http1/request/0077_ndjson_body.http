@@ -1,7 +1,0 @@
-POST /api/v1/events HTTP/1.1
-Host: analytics.example.com
-Content-Type: application/x-ndjson
-Content-Length: 84
-
-{"event":"pageview","path":"/home"}
-{"event":"click","element":"button"}

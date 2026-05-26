@@ -1,6 +1,0 @@
-[package]
-name = "kernel"
-version = "0.0.33"
-description = "riot-lsp transitive dependency kernel fixture"
-license = "Apache-2.0"
-public = false

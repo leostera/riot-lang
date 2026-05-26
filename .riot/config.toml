@@ -1,3 +1,0 @@
-[riot.cache]
-keep_generations = 5
-max_size = "700 MiB"

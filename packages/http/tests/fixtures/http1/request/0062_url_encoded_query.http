@@ -1,3 +1,0 @@
-GET /search?q=hello+world&lang=en HTTP/1.1
-Host: search.example.com
-

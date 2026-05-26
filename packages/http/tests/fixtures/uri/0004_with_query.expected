@@ -1,9 +1,0 @@
-{
-  "scheme": "https",
-  "authority": "example.com",
-  "host": "example.com",
-  "port": null,
-  "path": "/search",
-  "query": "q=test&limit=10",
-  "fragment": null
-}

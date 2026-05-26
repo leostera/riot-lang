@@ -1,9 +1,0 @@
-{
-  "fin": true,
-  "rsv1": false,
-  "rsv2": false,
-  "rsv3": false,
-  "opcode": "Ping",
-  "masked": false,
-  "payload": "keep-alive"
-}

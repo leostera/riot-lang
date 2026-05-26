@@ -1,3 +1,0 @@
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"processId":123}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///workspace/types.ml","languageId":"ocaml","version":1,"text":"type straw_hat = { name: string }\ntype pirate = { captain: string }\nlet luffy : straw_hat = { name = \"Monkey D. Luffy\" }\nlet gum_gum x = x\n"}}}
-{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///workspace/types.ml"},"position":{"line":2,"character":12}}}

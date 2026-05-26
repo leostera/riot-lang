@@ -1,9 +1,0 @@
-[package]
-name = "lib_and_binary"
-version = "0.0.33"
-
-[lib]
-
-[[bin]]
-name = "cli"
-path = "bin/cli.ml"

@@ -1,5 +1,0 @@
-GET /data HTTP/1.1
-Host: api.example.com
-Connection: keep-alive
-Keep-Alive: timeout=5, max=100
-

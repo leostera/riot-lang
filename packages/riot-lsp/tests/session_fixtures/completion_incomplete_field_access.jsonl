@@ -1,4 +1,0 @@
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"processId":123}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///workspace/field.ml","languageId":"ocaml","version":1,"text":"type point = { x: int; y: int }\nlet zero = { x = 0; y = 0 }\nlet answer = zero\n"}}}
-{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///workspace/field.ml","version":2},"contentChanges":[{"text":"type point = { x: int; y: int }\nlet zero = { x = 0; y = 0 }\nlet answer = zero.\n"}]}}
-{"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///workspace/field.ml"},"position":{"line":2,"character":18}}}

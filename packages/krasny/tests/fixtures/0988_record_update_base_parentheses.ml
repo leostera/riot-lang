@@ -1,1 +1,0 @@
-let flag=fun name->{(make name)with action=SetTrue}

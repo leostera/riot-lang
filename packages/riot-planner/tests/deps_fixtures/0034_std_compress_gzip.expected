@@ -1,9 +1,0 @@
-{
-  "modules": [
-    "Fs",
-    "Global",
-    "IO",
-    "Kernel",
-    "Path"
-  ]
-}

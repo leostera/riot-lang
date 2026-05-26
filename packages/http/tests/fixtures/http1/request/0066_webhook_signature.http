@@ -1,8 +1,0 @@
-POST /webhook HTTP/1.1
-Host: webhook.example.com
-Content-Type: application/json
-X-Webhook-Signature: sha256=abcdef1234567890
-X-Webhook-ID: evt_1234567890
-Content-Length: 45
-
-{"event":"user.created","user_id":"usr_123"}

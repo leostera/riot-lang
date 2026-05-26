@@ -1,3 +1,0 @@
-type wrapper = {
-  value: int;
-}

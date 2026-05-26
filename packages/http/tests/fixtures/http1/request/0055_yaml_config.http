@@ -1,8 +1,0 @@
-PUT /config HTTP/1.1
-Host: example.com
-Content-Type: application/x-yaml
-Content-Length: 38
-
-server:
-  host: localhost
-  port: 8080

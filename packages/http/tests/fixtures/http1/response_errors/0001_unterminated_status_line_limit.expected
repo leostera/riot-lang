@@ -1,6 +1,0 @@
-{
-  "error": {
-    "type": "StatusLineTooLong",
-    "max_length": 8
-  }
-}

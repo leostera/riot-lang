@@ -1,1 +1,0 @@
-let deep = "nested value"

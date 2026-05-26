@@ -1,7 +1,0 @@
-module Span: sig
-  (** Span type representing a range in source text. *)
-  type t
-
-  (** `make` creates a span. *)
-  val make: unit -> t
-end

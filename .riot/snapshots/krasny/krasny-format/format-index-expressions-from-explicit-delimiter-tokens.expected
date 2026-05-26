@@ -1,5 +1,0 @@
-let x = s.[0]
-
-let y = a.(0)
-
-let z = x.%(0)

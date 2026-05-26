@@ -1,4 +1,0 @@
-GET /video.mp4 HTTP/1.1
-Host: media.example.com
-Range: bytes=1024-
-

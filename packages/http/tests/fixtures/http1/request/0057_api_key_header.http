@@ -1,5 +1,0 @@
-GET /data HTTP/1.1
-Host: api.example.com
-X-API-Key: sk_live_1234567890abcdefghijklmnopqrstuvwxyz
-X-API-Version: 2023-01-01
-

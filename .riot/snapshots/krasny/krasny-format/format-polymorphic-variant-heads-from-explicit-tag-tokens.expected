@@ -1,6 +1,0 @@
-let classify = fun __tmp1 ->
-  match __tmp1 with
-  | `Ok value -> value
-  | `Error -> fallback
-
-let value = `Ok 1

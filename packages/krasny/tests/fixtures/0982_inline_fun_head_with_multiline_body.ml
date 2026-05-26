@@ -1,1 +1,0 @@
-let generate_websocket_key = fun () -> let random_bytes = Bytes.create 16 in for i = 0 to 15 do Bytes.set random_bytes i (Char.from_int_unchecked (Random.int 256)) done; Data.Base64.encode_bytes random_bytes

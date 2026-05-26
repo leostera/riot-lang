@@ -1,9 +1,0 @@
-type t =
-  | A
-
-let show =
-  function
-  | A -> "a"
-
-(** Escape a string for JSON *)
-let escape s = s

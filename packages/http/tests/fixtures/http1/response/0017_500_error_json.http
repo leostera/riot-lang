@@ -1,6 +1,0 @@
-HTTP/1.1 500 Internal Server Error
-Content-Type: application/json
-Content-Length: 90
-X-Request-ID: err-789
-
-{"error":"Internal Server Error","message":"Database connection failed","code":"DB_ERROR"}

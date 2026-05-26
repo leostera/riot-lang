@@ -1,7 +1,0 @@
-let generated = [%foo]
-
-let computed = [%test 42]
-
-let typed = [%foo: int]
-
-let nested = [%foo let x = 1]

@@ -1,9 +1,0 @@
-{
-  "scheme": "https",
-  "authority": "example.com",
-  "host": "example.com",
-  "port": null,
-  "path": "/api",
-  "query": "filter[status]=active&sort=-created_at&page[number]=1&page[size]=25",
-  "fragment": null
-}

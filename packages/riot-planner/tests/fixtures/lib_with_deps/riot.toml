@@ -1,5 +1,0 @@
-[package]
-name = "lib_with_deps"
-version = "0.0.33"
-
-[lib]

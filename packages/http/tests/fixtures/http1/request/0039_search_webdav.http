@@ -1,7 +1,0 @@
-SEARCH /webdav HTTP/1.1
-Host: example.com
-Content-Type: application/xml
-Content-Length: 45
-
-<?xml version="1.0"?>
-<searchrequest/>

@@ -1,6 +1,0 @@
-POST /form HTTP/1.1
-Host: example.com
-Content-Type: application/x-www-form-urlencoded
-Content-Length: 89
-
-username=test&password=secret123&email=test%40example.com&subscribe=true&terms=accepted

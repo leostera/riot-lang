@@ -1,4 +1,0 @@
-GET / HTTP/1.1
-Host: example.com
-Cookie: sessionid=abc123; userid=user456; preferences=theme%3Ddark%26lang%3Den
-

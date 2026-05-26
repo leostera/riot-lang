@@ -1,9 +1,0 @@
-let classify remaining available =
-  if remaining <= 0 then (
-    (* Body complete but buffer empty *)
-    0
-  ) else if available > 0 then (
-    (* Partial data available, consume it and continue *)
-    1
-  ) else
-    2

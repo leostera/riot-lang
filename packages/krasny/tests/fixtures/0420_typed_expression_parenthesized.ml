@@ -1,5 +1,0 @@
-open Std
-
-let function_case_body_from_node = fun node ->
-  let cases = [] in
-  ({ Cst.syntax_node = node; cases } : Cst.function_case_body)

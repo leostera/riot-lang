@@ -1,4 +1,0 @@
-interface:
-  display_name: "RiotML"
-  short_description: "Use riot CLI for build, test, and run flows"
-  default_prompt: "Use $riot-ml for all Riot project operations, starting with build, test, bench, or run."

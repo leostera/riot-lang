@@ -1,5 +1,0 @@
-let constructor = Some 0 [@inline always]
-
-let apply = I64.logor b (I64.shift_left b 32) [@inline always]
-
-let infix = mask land (mask - 1) [@inline always]

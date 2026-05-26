@@ -1,6 +1,0 @@
-[package]
-name = "support"
-version = "0.0.33"
-description = "riot-lsp typ dependency fixture"
-license = "Apache-2.0"
-public = false

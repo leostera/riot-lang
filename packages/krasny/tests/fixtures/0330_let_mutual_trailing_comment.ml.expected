@@ -1,7 +1,0 @@
-let rec a x = x
-
-and b y = y
-
-(* Phase 4: Generate render commands *)
-
-let rec c z = z

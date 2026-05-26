@@ -1,9 +1,0 @@
-[package]
-name = "propane"
-version = "0.0.43"
-description = "Property-based testing support"
-license = "Apache-2.0"
-public = true
-
-[dependencies]
-std = { path = "../std", version = "*" }

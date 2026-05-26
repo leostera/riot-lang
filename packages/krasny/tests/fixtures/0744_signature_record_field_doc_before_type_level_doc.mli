@@ -1,7 +1,0 @@
-type event = {
-  data : string;  (** Event payload *)
-  event_type : string option;  (** Optional event type field *)
-  id : string option;  (** Optional event ID field *)
-}
-(** Response payload *)
-type response = int

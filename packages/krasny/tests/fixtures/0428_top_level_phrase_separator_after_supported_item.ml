@@ -1,7 +1,0 @@
-let x = 1
-;;
-x
-
-module M = struct end
-;;
-x

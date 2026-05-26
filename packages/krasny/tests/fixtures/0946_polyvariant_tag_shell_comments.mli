@@ -1,4 +1,0 @@
-type t = [
-  (** tag doc *)
-  | `A (* payload *) of string
-]

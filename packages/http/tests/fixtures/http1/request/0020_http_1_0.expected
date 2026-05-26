@@ -1,9 +1,0 @@
-{
-  "method": "GET",
-  "path": "/test",
-  "version": "HTTP/1.0",
-  "headers": {
-    "Host": "example.com"
-  },
-  "body": ""
-}

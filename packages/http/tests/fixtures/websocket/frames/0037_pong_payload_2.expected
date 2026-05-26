@@ -1,9 +1,0 @@
-{
-  "fin": true,
-  "rsv1": false,
-  "rsv2": false,
-  "rsv3": false,
-  "opcode": "Pong",
-  "masked": false,
-  "payload": "p"
-}

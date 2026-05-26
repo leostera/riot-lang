@@ -1,9 +1,0 @@
-class type 'a service = object
-  inherit base
-  val mutable state: int
-  method private run: 'a
-  (** keep body doc *)
-  [%%foo]
-end
-
-class worker:int -> service

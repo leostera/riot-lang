@@ -1,9 +1,0 @@
-[package]
-name = "leaf"
-version = "0.0.33"
-description = "riot-check no-deps leaf package perf fixture"
-license = "Apache-2.0"
-public = false
-
-[dependencies]
-base = { path = "../base", version = "*" }

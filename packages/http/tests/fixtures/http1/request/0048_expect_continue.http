@@ -1,6 +1,0 @@
-POST /upload HTTP/1.1
-Host: example.com
-Expect: 100-continue
-Content-Length: 1048576
-Content-Type: application/octet-stream
-

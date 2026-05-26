@@ -1,2 +1,0 @@
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"processId":123}}
-{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///workspace/app.ml","languageId":"ocaml","version":1,"text":"let nonexhaustive x =\n  match x with\n  | Some value -> value\n\nlet redundant x =\n  match x with\n  | _ -> 0\n  | Some value -> value\n"}}}

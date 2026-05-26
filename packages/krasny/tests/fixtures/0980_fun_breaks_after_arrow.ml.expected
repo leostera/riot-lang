@@ -1,6 +1,0 @@
-let f = fun x ->
-  very_long_function_call_name
-    another_long_argument_name
-    third_long_argument_name
-    fourth_long_argument_name
-    fifth_long_argument_name

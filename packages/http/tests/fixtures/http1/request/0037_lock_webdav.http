@@ -1,4 +1,0 @@
-LOCK /resource HTTP/1.1
-Host: example.com
-Timeout: Infinite, Second-4100000000
-

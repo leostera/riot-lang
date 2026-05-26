@@ -1,9 +1,0 @@
-{
-  "method": "GET",
-  "path": "/api",
-  "version": "HTTP/1.1",
-  "headers": {
-    "Host": "api.example.com:8080"
-  },
-  "body": ""
-}

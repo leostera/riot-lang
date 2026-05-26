@@ -1,9 +1,0 @@
-type params =
-  | Positional of Json.t list  (** Positional parameters as JSON array *)
-  | Named of (string * Json.t) list  (** Named parameters as JSON object *)
-  | NoParams  (** No parameters *)
-
-(** Next declaration doc *)
-type prerequest = {
-  method_ : string;
-}

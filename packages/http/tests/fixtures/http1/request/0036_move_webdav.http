@@ -1,5 +1,0 @@
-MOVE /old.txt HTTP/1.1
-Host: example.com
-Destination: /new.txt
-Overwrite: T
-

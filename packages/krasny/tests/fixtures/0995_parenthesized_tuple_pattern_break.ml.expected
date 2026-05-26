@@ -1,7 +1,0 @@
-let classify = fun pair ->
-  match pair with
-  | (
-      Some Leading_docstring_for_formatter_regression,
-      (Leading_ordinary_comment | Leading_section_docstring)
-    ) -> ()
-  | _ -> ()

@@ -1,9 +1,0 @@
-{
-  "scheme": "ftp",
-  "authority": "ftp.example.com",
-  "host": "ftp.example.com",
-  "port": null,
-  "path": "/files/document.pdf",
-  "query": null,
-  "fragment": null
-}

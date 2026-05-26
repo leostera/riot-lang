@@ -1,1 +1,0 @@
-{"type":"FuzzCaseCompleted","name":"riot-deps dependency spec parsers accept arbitrary text","status":"failed","message":"Failure(\"Invalid string path st\ndt#mai“\n–\")"}

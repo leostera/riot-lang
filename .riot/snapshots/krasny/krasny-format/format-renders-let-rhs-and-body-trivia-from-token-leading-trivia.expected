@@ -1,7 +1,0 @@
-let run =
-  let value =
-    (* keep before rhs *)
-    compute
-  in
-  (* keep before body *)
-  use value

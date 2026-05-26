@@ -1,2 +1,0 @@
-let update next count =
-  { current=next; count }

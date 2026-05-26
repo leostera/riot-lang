@@ -1,6 +1,0 @@
-[package]
-name = "base"
-version = "0.0.33"
-description = "riot-check no-deps base package perf fixture"
-license = "Apache-2.0"
-public = false

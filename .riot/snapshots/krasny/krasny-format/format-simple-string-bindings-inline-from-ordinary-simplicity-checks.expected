@@ -1,5 +1,0 @@
-let message = "ok"
-
-let bind =
-  let* value = "ok" in
-  finish value

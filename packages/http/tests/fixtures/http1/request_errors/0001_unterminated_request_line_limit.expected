@@ -1,6 +1,0 @@
-{
-  "error": {
-    "type": "RequestLineTooLong",
-    "max_length": 8
-  }
-}

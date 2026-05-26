@@ -1,1 +1,0 @@
-ftp://ftp.example.com/files/document.pdf

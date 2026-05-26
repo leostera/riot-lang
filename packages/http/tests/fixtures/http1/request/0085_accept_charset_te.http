@@ -1,5 +1,0 @@
-GET /resource HTTP/1.1
-Host: example.com
-Accept-Charset: utf-8, iso-8859-1;q=0.5
-TE: trailers, deflate
-

@@ -1,8 +1,0 @@
-val map_or_else : default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
-(** Maps a `Result<'a, 'e>` to `'b` by applying fallback function to [`Error`],
-    or function to [`Ok`] value. *)
-
-(** # Chaining *)
-
-val and_then : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
-(** Maps a `Result<'a, 'e>` to another `Result<'b, 'e>` by chaining functions. *)
