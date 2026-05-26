@@ -1,0 +1,3 @@
+type 'a option = Some of 'a | None
+val id : [< `Payload of 'a ] -> [> `Payload of 'a ]
+val answer : [> `Payload of char option ]

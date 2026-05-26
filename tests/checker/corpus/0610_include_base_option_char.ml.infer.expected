@@ -1,0 +1,5 @@
+type 'a option = Some of 'a | None
+module Base : sig type t = char option val value : t end
+module Derived :
+  sig type t = char option val value : t val pair : 'a -> 'a * 'a end
+val answer : Derived.t * Derived.t

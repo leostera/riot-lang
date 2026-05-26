@@ -1,0 +1,4 @@
+type 'a option = Some of 'a | None
+val const : 'a -> 'b -> 'a
+val keep : unit -> int option -> int option
+val answer : int option

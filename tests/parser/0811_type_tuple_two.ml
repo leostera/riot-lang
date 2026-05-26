@@ -1,0 +1,1 @@
+type pair = int * string

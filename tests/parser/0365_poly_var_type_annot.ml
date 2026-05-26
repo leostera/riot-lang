@@ -1,0 +1,3 @@
+let x : [>
+  `Red
+] = `Red

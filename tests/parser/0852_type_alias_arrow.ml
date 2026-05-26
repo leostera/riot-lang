@@ -1,0 +1,1 @@
+type predicate = int -> bool

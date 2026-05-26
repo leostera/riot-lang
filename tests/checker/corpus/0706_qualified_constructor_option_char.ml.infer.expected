@@ -1,0 +1,3 @@
+type 'a option = Some of 'a | None
+module M : sig type t = Wrap of char option val value : t end
+val answer : M.t
