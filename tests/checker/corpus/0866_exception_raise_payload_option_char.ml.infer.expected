@@ -1,5 +1,0 @@
-type 'a option = Some of 'a | None
-module Prim : sig external raise_ : exn -> 'a = "%raise" end
-exception E of char option
-val run : bool -> char option
-val answer : char option
