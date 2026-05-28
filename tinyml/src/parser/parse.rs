@@ -659,6 +659,16 @@ impl Parser<'_> {
         let start = self.expect(&TokenKind::LParen)?.span;
         let first = self.parse_pattern()?;
         match self.lexer.peek() {
+            TokenKind::Colon => {
+                self.lexer.bump();
+                let hint = self.parse_type_expr()?;
+                let end = self.expect(&TokenKind::RParen)?.span;
+                Ok(Pattern::TypeHint {
+                    pattern: Box::new(first),
+                    hint,
+                    span: start.join(end),
+                })
+            }
             TokenKind::Comma => {
                 self.lexer.bump();
                 let mut items = vec![first];

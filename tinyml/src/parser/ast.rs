@@ -233,6 +233,11 @@ pub enum Pattern {
         items: Vec<Pattern>,
         span: Span,
     },
+    TypeHint {
+        pattern: Box<Pattern>,
+        hint: TypeExpr,
+        span: Span,
+    },
     Record {
         name: Ident,
         fields: Vec<(Ident, Pattern)>,
@@ -248,6 +253,7 @@ impl Pattern {
             | Pattern::Literal { span, .. }
             | Pattern::Constructor { span, .. }
             | Pattern::Tuple { span, .. }
+            | Pattern::TypeHint { span, .. }
             | Pattern::Record { span, .. } => *span,
         }
     }
