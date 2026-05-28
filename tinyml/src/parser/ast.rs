@@ -145,6 +145,7 @@ pub enum Expr {
     },
     Let {
         bind: Pattern,
+        hint: Option<TypeExpr>,
         body: Box<Expr>,
         span: Span,
     },
@@ -157,6 +158,11 @@ pub enum Expr {
         ident: Ident,
         left: Box<Expr>,
         right: Box<Expr>,
+        span: Span,
+    },
+    TypeHint {
+        expr: Box<Expr>,
+        hint: TypeExpr,
         span: Span,
     },
     Tuple {
@@ -189,6 +195,7 @@ impl Expr {
             | Expr::Let { span, .. }
             | Expr::Apply { span, .. }
             | Expr::BinaryOp { span, .. }
+            | Expr::TypeHint { span, .. }
             | Expr::Tuple { span, .. }
             | Expr::Record { span, .. }
             | Expr::Block { span, .. }

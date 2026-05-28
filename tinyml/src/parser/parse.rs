@@ -123,11 +123,19 @@ impl Parser<'_> {
     fn parse_let_expr(&mut self) -> Result<Expr, ParseError> {
         let start = self.expect(&TokenKind::Let)?.span;
         let bind = self.parse_pattern()?;
+        let hint = match self.lexer.peek() {
+            TokenKind::Colon => {
+                self.lexer.bump();
+                Some(self.parse_type_expr()?)
+            }
+            _ => None,
+        };
         self.expect(&TokenKind::Equal)?;
         let value = self.parse_expr()?;
         let span = start.join(value.span());
         Ok(Expr::Let {
             bind,
+            hint,
             body: Box::new(value),
             span,
         })
@@ -452,6 +460,16 @@ impl Parser<'_> {
         let start = self.expect(&TokenKind::LParen)?.span;
         let first = self.parse_expr()?;
         match self.lexer.peek() {
+            TokenKind::Colon => {
+                self.lexer.bump();
+                let hint = self.parse_type_expr()?;
+                let end = self.expect(&TokenKind::RParen)?.span;
+                Ok(Expr::TypeHint {
+                    expr: Box::new(first),
+                    hint,
+                    span: start.join(end),
+                })
+            }
             TokenKind::Comma => {
                 self.lexer.bump();
                 let mut items = vec![first];
