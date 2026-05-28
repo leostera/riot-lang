@@ -144,8 +144,6 @@ impl Parser<'_> {
     /// Parse a module-level type declaration.
     ///
     /// The right-hand side can be a record body, a variant body, or an alias.
-    /// Type parameters are threaded into the type parser so occurrences like
-    /// `a` in `type option<a> = Some(a)` become `TypeExpr::Var`.
     fn parse_type_decl(&mut self) -> Result<TypeDecl, ParseError> {
         let start = self.lexer.prev_span().start;
         let name = self.parse_ident()?;
