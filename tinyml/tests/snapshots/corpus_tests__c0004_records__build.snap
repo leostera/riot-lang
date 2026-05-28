@@ -1,0 +1,163 @@
+---
+source: tinyml/tests/corpus_tests.rs
+expression: "build_snapshot(\"tests/fixtures/0004_records.ml\")"
+---
+build pending
+Module {
+    items: [
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "user",
+                    span: Span {
+                        start: 4,
+                        end: 8,
+                    },
+                },
+                body: Record {
+                    name: Name {
+                        name: "User",
+                        span: Span {
+                            start: 11,
+                            end: 15,
+                        },
+                    },
+                    fields: [
+                        (
+                            Name {
+                                name: "name",
+                                span: Span {
+                                    start: 18,
+                                    end: 22,
+                                },
+                            },
+                            Literal {
+                                value: String(
+                                    "\"Leo\"",
+                                ),
+                                span: Span {
+                                    start: 24,
+                                    end: 29,
+                                },
+                            },
+                        ),
+                        (
+                            Name {
+                                name: "age",
+                                span: Span {
+                                    start: 31,
+                                    end: 34,
+                                },
+                            },
+                            Literal {
+                                value: Int(
+                                    "30",
+                                ),
+                                span: Span {
+                                    start: 36,
+                                    end: 38,
+                                },
+                            },
+                        ),
+                    ],
+                    span: Span {
+                        start: 11,
+                        end: 40,
+                    },
+                },
+                span: Span {
+                    start: 0,
+                    end: 40,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "get_name",
+                    span: Span {
+                        start: 46,
+                        end: 54,
+                    },
+                },
+                body: Fn {
+                    params: [
+                        Record {
+                            name: Name {
+                                name: "User",
+                                span: Span {
+                                    start: 60,
+                                    end: 64,
+                                },
+                            },
+                            fields: [
+                                (
+                                    Name {
+                                        name: "name",
+                                        span: Span {
+                                            start: 67,
+                                            end: 71,
+                                        },
+                                    },
+                                    Var {
+                                        name: Name {
+                                            name: "name",
+                                            span: Span {
+                                                start: 67,
+                                                end: 71,
+                                            },
+                                        },
+                                        span: Span {
+                                            start: 67,
+                                            end: 71,
+                                        },
+                                    },
+                                ),
+                                (
+                                    Name {
+                                        name: "age",
+                                        span: Span {
+                                            start: 73,
+                                            end: 76,
+                                        },
+                                    },
+                                    Wildcard {
+                                        span: Span {
+                                            start: 78,
+                                            end: 79,
+                                        },
+                                    },
+                                ),
+                            ],
+                            span: Span {
+                                start: 60,
+                                end: 81,
+                            },
+                        },
+                    ],
+                    body: Var {
+                        name: Name {
+                            name: "name",
+                            span: Span {
+                                start: 85,
+                                end: 89,
+                            },
+                        },
+                        span: Span {
+                            start: 85,
+                            end: 89,
+                        },
+                    },
+                    span: Span {
+                        start: 57,
+                        end: 89,
+                    },
+                },
+                span: Span {
+                    start: 42,
+                    end: 89,
+                },
+            },
+        ),
+    ],
+}

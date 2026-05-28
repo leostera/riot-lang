@@ -1,0 +1,169 @@
+---
+source: tinyml/tests/corpus_tests.rs
+expression: "lex_snapshot(\"tests/fixtures/0003_use_qualified.ml\")"
+---
+[
+    Token {
+        kind: Use,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "A",
+        ),
+        span: Span {
+            start: 4,
+            end: 5,
+        },
+    },
+    Token {
+        kind: Dot,
+        span: Span {
+            start: 5,
+            end: 6,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "B",
+        ),
+        span: Span {
+            start: 6,
+            end: 7,
+        },
+    },
+    Token {
+        kind: Dot,
+        span: Span {
+            start: 7,
+            end: 8,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 8,
+            end: 9,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "C",
+        ),
+        span: Span {
+            start: 9,
+            end: 10,
+        },
+    },
+    Token {
+        kind: Comma,
+        span: Span {
+            start: 10,
+            end: 11,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "D",
+        ),
+        span: Span {
+            start: 12,
+            end: 13,
+        },
+    },
+    Token {
+        kind: Dot,
+        span: Span {
+            start: 13,
+            end: 14,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "E",
+        ),
+        span: Span {
+            start: 14,
+            end: 15,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 15,
+            end: 16,
+        },
+    },
+    Token {
+        kind: Use,
+        span: Span {
+            start: 17,
+            end: 20,
+        },
+    },
+    Token {
+        kind: Ident(
+            "list",
+        ),
+        span: Span {
+            start: 21,
+            end: 25,
+        },
+    },
+    Token {
+        kind: Dot,
+        span: Span {
+            start: 25,
+            end: 26,
+        },
+    },
+    Token {
+        kind: Star,
+        span: Span {
+            start: 26,
+            end: 27,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 29,
+            end: 32,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 33,
+            end: 34,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 35,
+            end: 36,
+        },
+    },
+    Token {
+        kind: Int(
+            "1",
+        ),
+        span: Span {
+            start: 37,
+            end: 38,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 39,
+            end: 39,
+        },
+    },
+]

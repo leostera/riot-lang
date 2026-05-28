@@ -1,7 +1,8 @@
 ---
-source: tinyml/tests/cli_snapshots.rs
-expression: stdout
+source: tinyml/tests/corpus_tests.rs
+expression: "check_snapshot(\"tests/fixtures/0001_basic.ml\")"
 ---
+check pending
 Module {
     items: [
         UseDecl(
@@ -208,7 +209,7 @@ Module {
                     body: Block {
                         exprs: [
                             Let {
-                                pattern: Var {
+                                bind: Var {
                                     name: Name {
                                         name: "y",
                                         span: Span {
@@ -221,7 +222,7 @@ Module {
                                         end: 119,
                                     },
                                 },
-                                value: BinaryOp {
+                                body: BinaryOp {
                                     ident: Name {
                                         name: "+",
                                         span: Span {

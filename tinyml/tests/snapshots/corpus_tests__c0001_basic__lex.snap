@@ -1,0 +1,380 @@
+---
+source: tinyml/tests/corpus_tests.rs
+expression: "lex_snapshot(\"tests/fixtures/0001_basic.ml\")"
+---
+[
+    Token {
+        kind: Use,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Ident(
+            "list",
+        ),
+        span: Span {
+            start: 4,
+            end: 8,
+        },
+    },
+    Token {
+        kind: Dot,
+        span: Span {
+            start: 8,
+            end: 9,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 9,
+            end: 10,
+        },
+    },
+    Token {
+        kind: Ident(
+            "map",
+        ),
+        span: Span {
+            start: 10,
+            end: 13,
+        },
+    },
+    Token {
+        kind: Comma,
+        span: Span {
+            start: 13,
+            end: 14,
+        },
+    },
+    Token {
+        kind: Ident(
+            "fold",
+        ),
+        span: Span {
+            start: 15,
+            end: 19,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 19,
+            end: 20,
+        },
+    },
+    Token {
+        kind: Type,
+        span: Span {
+            start: 22,
+            end: 26,
+        },
+    },
+    Token {
+        kind: Ident(
+            "option",
+        ),
+        span: Span {
+            start: 27,
+            end: 33,
+        },
+    },
+    Token {
+        kind: LAngle,
+        span: Span {
+            start: 33,
+            end: 34,
+        },
+    },
+    Token {
+        kind: TypeVar(
+            "a",
+        ),
+        span: Span {
+            start: 34,
+            end: 36,
+        },
+    },
+    Token {
+        kind: RAngle,
+        span: Span {
+            start: 36,
+            end: 37,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 38,
+            end: 39,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 42,
+            end: 43,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "None",
+        ),
+        span: Span {
+            start: 44,
+            end: 48,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 51,
+            end: 52,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "Some",
+        ),
+        span: Span {
+            start: 53,
+            end: 57,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 57,
+            end: 58,
+        },
+    },
+    Token {
+        kind: TypeVar(
+            "a",
+        ),
+        span: Span {
+            start: 58,
+            end: 60,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 60,
+            end: 61,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 63,
+            end: 66,
+        },
+    },
+    Token {
+        kind: Ident(
+            "double",
+        ),
+        span: Span {
+            start: 67,
+            end: 73,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 74,
+            end: 75,
+        },
+    },
+    Token {
+        kind: Fn,
+        span: Span {
+            start: 76,
+            end: 78,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 79,
+            end: 80,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 81,
+            end: 83,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 84,
+            end: 85,
+        },
+    },
+    Token {
+        kind: Star,
+        span: Span {
+            start: 86,
+            end: 87,
+        },
+    },
+    Token {
+        kind: Int(
+            "2",
+        ),
+        span: Span {
+            start: 88,
+            end: 89,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 91,
+            end: 94,
+        },
+    },
+    Token {
+        kind: Ident(
+            "main",
+        ),
+        span: Span {
+            start: 95,
+            end: 99,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 100,
+            end: 101,
+        },
+    },
+    Token {
+        kind: Fn,
+        span: Span {
+            start: 102,
+            end: 104,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 105,
+            end: 106,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 107,
+            end: 109,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 110,
+            end: 111,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 114,
+            end: 117,
+        },
+    },
+    Token {
+        kind: Ident(
+            "y",
+        ),
+        span: Span {
+            start: 118,
+            end: 119,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 120,
+            end: 121,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 122,
+            end: 123,
+        },
+    },
+    Token {
+        kind: Plus,
+        span: Span {
+            start: 124,
+            end: 125,
+        },
+    },
+    Token {
+        kind: Int(
+            "1",
+        ),
+        span: Span {
+            start: 126,
+            end: 127,
+        },
+    },
+    Token {
+        kind: Semi,
+        span: Span {
+            start: 127,
+            end: 128,
+        },
+    },
+    Token {
+        kind: Ident(
+            "double",
+        ),
+        span: Span {
+            start: 131,
+            end: 137,
+        },
+    },
+    Token {
+        kind: Ident(
+            "y",
+        ),
+        span: Span {
+            start: 138,
+            end: 139,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 140,
+            end: 141,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 142,
+            end: 142,
+        },
+    },
+]

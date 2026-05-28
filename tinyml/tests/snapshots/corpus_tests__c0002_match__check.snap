@@ -1,7 +1,8 @@
 ---
-source: tinyml/tests/cli_snapshots.rs
-expression: stdout
+source: tinyml/tests/corpus_tests.rs
+expression: "check_snapshot(\"tests/fixtures/0002_match.ml\")"
 ---
+check pending
 Module {
     items: [
         TypeDecl(

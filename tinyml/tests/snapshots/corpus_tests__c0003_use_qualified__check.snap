@@ -1,7 +1,8 @@
 ---
-source: tinyml/tests/cli_snapshots.rs
-expression: stdout
+source: tinyml/tests/corpus_tests.rs
+expression: "check_snapshot(\"tests/fixtures/0003_use_qualified.ml\")"
 ---
+check pending
 Module {
     items: [
         UseDecl(

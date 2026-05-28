@@ -31,7 +31,7 @@ pub struct Token {
     pub span: Span,
 }
 
-#[derive(Logos, Debug, Clone, PartialEq)]
+#[derive(Logos, Debug, Clone, PartialEq, Eq, Hash)]
 #[logos(skip r"[ \t\r\n\f]+")]
 #[logos(skip(r"//[^\n]*", allow_greedy = true))]
 pub enum TokenKind {
@@ -121,26 +121,86 @@ pub struct LexError {
     pub span: SourceSpan,
 }
 
-pub fn lex(src: &str) -> Result<Vec<Token>, LexError> {
-    let mut lexer = TokenKind::lexer(src);
-    let mut tokens = Vec::new();
+#[derive(Debug)]
+pub struct Lexer {
+    tokens: Vec<Token>,
+    pos: usize,
+}
 
-    while let Some(next) = lexer.next() {
-        let range = lexer.span();
-        let kind = next.map_err(|()| LexError {
-            src: src.to_string(),
-            span: (range.start, range.end - range.start).into(),
-        })?;
-        tokens.push(Token {
-            kind,
-            span: Span::new(range.start, range.end),
-        });
+impl Lexer {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self { tokens, pos: 0 }
     }
 
-    tokens.push(Token {
-        kind: TokenKind::Eof,
-        span: Span::new(src.len(), src.len()),
-    });
+    pub fn from_str(src: &str) -> Result<Self, LexError> {
+        let mut lexer = TokenKind::lexer(src);
+        let mut tokens = Vec::new();
 
-    Ok(tokens)
+        while let Some(next) = lexer.next() {
+            let range = lexer.span();
+            let kind = next.map_err(|()| LexError {
+                src: src.to_string(),
+                span: (range.start, range.end - range.start).into(),
+            })?;
+            tokens.push(Token {
+                kind,
+                span: Span::new(range.start, range.end),
+            });
+        }
+
+        tokens.push(Token {
+            kind: TokenKind::Eof,
+            span: Span::new(src.len(), src.len()),
+        });
+
+        Ok(Self::new(tokens))
+    }
+
+    pub fn tokens(&self) -> &[Token] {
+        &self.tokens
+    }
+
+    pub fn at(&self, kind: &TokenKind) -> bool {
+        std::mem::discriminant(self.peek()) == std::mem::discriminant(kind)
+    }
+
+    pub fn peek(&self) -> &TokenKind {
+        &self.tokens[self.pos].kind
+    }
+
+    pub fn peek_n(&self, n: usize) -> &TokenKind {
+        &self.tokens[(self.pos + n).min(self.tokens.len() - 1)].kind
+    }
+
+    pub fn current_span(&self) -> Span {
+        self.tokens[self.pos].span
+    }
+
+    pub fn prev_span(&self) -> Span {
+        self.tokens[self.pos.saturating_sub(1)].span
+    }
+
+    pub fn eat(&mut self, kind: &TokenKind) -> Option<Token> {
+        match self.at(kind) {
+            true => Some(self.bump()),
+            false => None,
+        }
+    }
+
+    pub fn next(&mut self) -> TokenKind {
+        self.bump().kind
+    }
+
+    pub fn bump(&mut self) -> Token {
+        let span = self.tokens[self.pos].span;
+        let tok = std::mem::replace(
+            &mut self.tokens[self.pos],
+            Token {
+                kind: TokenKind::Eof,
+                span,
+            },
+        );
+        self.pos += 1;
+        tok
+    }
 }

@@ -1,0 +1,277 @@
+---
+source: tinyml/tests/corpus_tests.rs
+expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
+---
+[
+    Token {
+        kind: Type,
+        span: Span {
+            start: 0,
+            end: 4,
+        },
+    },
+    Token {
+        kind: Ident(
+            "option",
+        ),
+        span: Span {
+            start: 5,
+            end: 11,
+        },
+    },
+    Token {
+        kind: LAngle,
+        span: Span {
+            start: 11,
+            end: 12,
+        },
+    },
+    Token {
+        kind: TypeVar(
+            "a",
+        ),
+        span: Span {
+            start: 12,
+            end: 14,
+        },
+    },
+    Token {
+        kind: RAngle,
+        span: Span {
+            start: 14,
+            end: 15,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 16,
+            end: 17,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 20,
+            end: 21,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "None",
+        ),
+        span: Span {
+            start: 22,
+            end: 26,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 29,
+            end: 30,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "Some",
+        ),
+        span: Span {
+            start: 31,
+            end: 35,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 35,
+            end: 36,
+        },
+    },
+    Token {
+        kind: TypeVar(
+            "a",
+        ),
+        span: Span {
+            start: 36,
+            end: 38,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 38,
+            end: 39,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 41,
+            end: 44,
+        },
+    },
+    Token {
+        kind: Ident(
+            "get_or_zero",
+        ),
+        span: Span {
+            start: 45,
+            end: 56,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 57,
+            end: 58,
+        },
+    },
+    Token {
+        kind: Fn,
+        span: Span {
+            start: 59,
+            end: 61,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 62,
+            end: 63,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 64,
+            end: 66,
+        },
+    },
+    Token {
+        kind: Match,
+        span: Span {
+            start: 67,
+            end: 72,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 73,
+            end: 74,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 75,
+            end: 76,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 79,
+            end: 80,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "None",
+        ),
+        span: Span {
+            start: 81,
+            end: 85,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 86,
+            end: 88,
+        },
+    },
+    Token {
+        kind: Int(
+            "0",
+        ),
+        span: Span {
+            start: 89,
+            end: 90,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 93,
+            end: 94,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "Some",
+        ),
+        span: Span {
+            start: 95,
+            end: 99,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 99,
+            end: 100,
+        },
+    },
+    Token {
+        kind: Ident(
+            "value",
+        ),
+        span: Span {
+            start: 100,
+            end: 105,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 105,
+            end: 106,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 107,
+            end: 109,
+        },
+    },
+    Token {
+        kind: Ident(
+            "value",
+        ),
+        span: Span {
+            start: 110,
+            end: 115,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 116,
+            end: 117,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 118,
+            end: 118,
+        },
+    },
+]

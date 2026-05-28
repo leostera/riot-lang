@@ -1,6 +1,6 @@
 ---
-source: tinyml/tests/cli_snapshots.rs
-expression: stdout
+source: tinyml/tests/corpus_tests.rs
+expression: "parse_snapshot(\"tests/fixtures/0006_variant_record.ml\")"
 ---
 Module {
     items: [

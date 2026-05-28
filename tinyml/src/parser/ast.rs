@@ -144,8 +144,8 @@ pub enum Expr {
         span: Span,
     },
     Let {
-        pattern: Pattern,
-        value: Box<Expr>,
+        bind: Pattern,
+        body: Box<Expr>,
         span: Span,
     },
     Apply {

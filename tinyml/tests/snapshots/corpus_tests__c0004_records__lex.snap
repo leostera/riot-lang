@@ -1,0 +1,226 @@
+---
+source: tinyml/tests/corpus_tests.rs
+expression: "lex_snapshot(\"tests/fixtures/0004_records.ml\")"
+---
+[
+    Token {
+        kind: Let,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Ident(
+            "user",
+        ),
+        span: Span {
+            start: 4,
+            end: 8,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 9,
+            end: 10,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "User",
+        ),
+        span: Span {
+            start: 11,
+            end: 15,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 16,
+            end: 17,
+        },
+    },
+    Token {
+        kind: Ident(
+            "name",
+        ),
+        span: Span {
+            start: 18,
+            end: 22,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 22,
+            end: 23,
+        },
+    },
+    Token {
+        kind: String(
+            "\"Leo\"",
+        ),
+        span: Span {
+            start: 24,
+            end: 29,
+        },
+    },
+    Token {
+        kind: Comma,
+        span: Span {
+            start: 29,
+            end: 30,
+        },
+    },
+    Token {
+        kind: Ident(
+            "age",
+        ),
+        span: Span {
+            start: 31,
+            end: 34,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 34,
+            end: 35,
+        },
+    },
+    Token {
+        kind: Int(
+            "30",
+        ),
+        span: Span {
+            start: 36,
+            end: 38,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 39,
+            end: 40,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 42,
+            end: 45,
+        },
+    },
+    Token {
+        kind: Ident(
+            "get_name",
+        ),
+        span: Span {
+            start: 46,
+            end: 54,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 55,
+            end: 56,
+        },
+    },
+    Token {
+        kind: Fn,
+        span: Span {
+            start: 57,
+            end: 59,
+        },
+    },
+    Token {
+        kind: Constructor(
+            "User",
+        ),
+        span: Span {
+            start: 60,
+            end: 64,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 65,
+            end: 66,
+        },
+    },
+    Token {
+        kind: Ident(
+            "name",
+        ),
+        span: Span {
+            start: 67,
+            end: 71,
+        },
+    },
+    Token {
+        kind: Comma,
+        span: Span {
+            start: 71,
+            end: 72,
+        },
+    },
+    Token {
+        kind: Ident(
+            "age",
+        ),
+        span: Span {
+            start: 73,
+            end: 76,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 76,
+            end: 77,
+        },
+    },
+    Token {
+        kind: Ident(
+            "_",
+        ),
+        span: Span {
+            start: 78,
+            end: 79,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 80,
+            end: 81,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 82,
+            end: 84,
+        },
+    },
+    Token {
+        kind: Ident(
+            "name",
+        ),
+        span: Span {
+            start: 85,
+            end: 89,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 90,
+            end: 90,
+        },
+    },
+]

@@ -1,0 +1,173 @@
+---
+source: tinyml/tests/corpus_tests.rs
+expression: "lex_snapshot(\"tests/fixtures/0005_unit.ml\")"
+---
+[
+    Token {
+        kind: Let,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Ident(
+            "unit",
+        ),
+        span: Span {
+            start: 4,
+            end: 8,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 9,
+            end: 10,
+        },
+    },
+    Token {
+        kind: Unit,
+        span: Span {
+            start: 11,
+            end: 13,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 15,
+            end: 18,
+        },
+    },
+    Token {
+        kind: Ident(
+            "id_unit",
+        ),
+        span: Span {
+            start: 19,
+            end: 26,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 27,
+            end: 28,
+        },
+    },
+    Token {
+        kind: Fn,
+        span: Span {
+            start: 29,
+            end: 31,
+        },
+    },
+    Token {
+        kind: Unit,
+        span: Span {
+            start: 32,
+            end: 34,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 35,
+            end: 37,
+        },
+    },
+    Token {
+        kind: Unit,
+        span: Span {
+            start: 38,
+            end: 40,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 42,
+            end: 45,
+        },
+    },
+    Token {
+        kind: Ident(
+            "value",
+        ),
+        span: Span {
+            start: 46,
+            end: 51,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 52,
+            end: 53,
+        },
+    },
+    Token {
+        kind: Match,
+        span: Span {
+            start: 54,
+            end: 59,
+        },
+    },
+    Token {
+        kind: Unit,
+        span: Span {
+            start: 60,
+            end: 62,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 63,
+            end: 64,
+        },
+    },
+    Token {
+        kind: Pipe,
+        span: Span {
+            start: 67,
+            end: 68,
+        },
+    },
+    Token {
+        kind: Unit,
+        span: Span {
+            start: 69,
+            end: 71,
+        },
+    },
+    Token {
+        kind: Arrow,
+        span: Span {
+            start: 72,
+            end: 74,
+        },
+    },
+    Token {
+        kind: Unit,
+        span: Span {
+            start: 75,
+            end: 77,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 78,
+            end: 79,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 80,
+            end: 80,
+        },
+    },
+]

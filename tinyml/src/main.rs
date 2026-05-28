@@ -1,11 +1,9 @@
-mod parser;
-
 use std::{fs, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use miette::{IntoDiagnostic, Result};
 
-use parser::{lexer, parse};
+use tinyml::parser::{lexer::Lexer, parse};
 
 #[derive(Debug, Parser)]
 #[command(name = "tinyml")]
@@ -33,8 +31,8 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Lex { file } => {
             let src = fs::read_to_string(&file).into_diagnostic()?;
-            let tokens = lexer::lex(&src)?;
-            for token in tokens {
+            let lexer = Lexer::from_str(&src)?;
+            for token in lexer.tokens() {
                 println!(
                     "{:?} @ {}..{}",
                     token.kind, token.span.start, token.span.end
@@ -43,8 +41,8 @@ fn main() -> Result<()> {
         }
         Command::Parse { file } => {
             let src = fs::read_to_string(&file).into_diagnostic()?;
-            let tokens = lexer::lex(&src)?;
-            let module = parse::parse_module(&src, tokens)?;
+            let lexer = Lexer::from_str(&src)?;
+            let module = parse::parse_module(&src, lexer)?;
             println!("{module:#?}");
         }
         Command::Check { file } => {
