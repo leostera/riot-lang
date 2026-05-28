@@ -1,6 +1,6 @@
-use list.{map, fold}
+use List.{map, fold}
 
-type option<'a> =
+type Option<'a> =
   | None
   | Some('a)
 

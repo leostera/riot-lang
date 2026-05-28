@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::lexer::Span;
+use super::{ident::Ident, lexer::Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
@@ -12,41 +12,6 @@ pub enum ModuleItem {
     UseDecl(UseDecl),
     LetDecl(LetDecl),
     TypeDecl(TypeDecl),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Ident {
-    Name {
-        name: String,
-        span: Span,
-    },
-    Qualified {
-        name: String,
-        rest: Box<Ident>,
-        span: Span,
-    },
-}
-
-impl Ident {
-    pub fn from_string(name: impl Into<String>) -> Self {
-        Self::Name {
-            name: name.into(),
-            span: Span::new(0, 0),
-        }
-    }
-
-    pub fn span(&self) -> Span {
-        match self {
-            Self::Name { span, .. } | Self::Qualified { span, .. } => *span,
-        }
-    }
-
-    pub fn as_name(&self) -> Option<&str> {
-        match self {
-            Self::Name { name, .. } => Some(name),
-            Self::Qualified { .. } => None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

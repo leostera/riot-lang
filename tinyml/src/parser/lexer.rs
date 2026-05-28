@@ -60,12 +60,10 @@ pub enum TokenKind {
     Int(String),
     #[regex(r#""([^"\\]|\\.)*""#, |lex| lex.slice().to_string())]
     String(String),
-    #[regex(r"'[a-z_][a-zA-Z0-9_']*", |lex| lex.slice()[1..].to_string())]
+    #[regex(r"'[a-zA-Z_][a-zA-Z0-9_']*", |lex| lex.slice()[1..].to_string())]
     TypeVar(String),
-    #[regex(r"[a-z_][a-zA-Z0-9_']*", |lex| lex.slice().to_string())]
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_']*", |lex| lex.slice().to_string())]
     Ident(String),
-    #[regex(r"[A-Z][a-zA-Z0-9_']*", |lex| lex.slice().to_string())]
-    Constructor(String),
 
     // Symbols
     #[token("->")]

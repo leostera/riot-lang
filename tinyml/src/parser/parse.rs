@@ -20,6 +20,7 @@ use once_cell::sync::Lazy;
 use thiserror::Error;
 
 use super::ast::*;
+use super::ident::{Ident, IdentNameError};
 use super::lexer::{Lexer, Span, Token, TokenKind};
 
 static INFIX_BINDING_POWER: Lazy<HashMap<TokenKind, (&'static str, u8, u8)>> = Lazy::new(|| {
@@ -96,6 +97,7 @@ impl Parser<'_> {
             return self.err("module-level let declarations are already corecursive; remove `rec`");
         }
         let name = self.parse_ident()?;
+        self.validate_ident(name.as_value_name())?;
 
         let mut args = Vec::new();
         while !self.lexer.at(&TokenKind::Equal) {
@@ -147,10 +149,19 @@ impl Parser<'_> {
     fn parse_type_decl(&mut self) -> Result<TypeDecl, ParseError> {
         let start = self.lexer.prev_span().start;
         let name = self.parse_ident()?;
+        self.validate_ident(name.as_type_name())?;
         let params = self.parse_type_params()?;
         self.expect(&TokenKind::Equal)?;
         let body = match self.lexer.peek() {
-            TokenKind::Pipe | TokenKind::Constructor(_) => {
+            TokenKind::Pipe => {
+                let variants = self.parse_variants()?;
+                let span = variants
+                    .first()
+                    .map(|first| first.span().join(variants.last().expect("variant").span()))
+                    .unwrap_or_else(|| self.lexer.prev_span());
+                TypeExpr::Variant { variants, span }
+            }
+            TokenKind::Ident(name) if starts_uppercase(name) => {
                 let variants = self.parse_variants()?;
                 let span = variants
                     .first()
@@ -231,6 +242,7 @@ impl Parser<'_> {
                 }
                 match expr_into_ident(lhs) {
                     Ok(name) => {
+                        self.validate_ident(name.as_constructor_name())?;
                         self.lexer.bump();
                         let fields = self.parse_record_expr_fields()?;
                         let end = self.expect(&TokenKind::RBrace)?.span;
@@ -346,11 +358,7 @@ impl Parser<'_> {
                     span,
                 })
             }
-            TokenKind::Ident(_) => {
-                let name = self.parse_ident()?;
-                let span = name.span();
-                Ok(Expr::Var { name, span })
-            }
+            TokenKind::Ident(_) => self.parse_named_expr(),
             TokenKind::Unit => {
                 let span = self.lexer.bump().span;
                 Ok(Expr::Constructor {
@@ -362,43 +370,46 @@ impl Parser<'_> {
                     span,
                 })
             }
-            TokenKind::Constructor(name) => {
-                let name = name.to_string();
-                let name_span = self.lexer.bump().span;
-                let args = match self.lexer.peek() {
-                    TokenKind::LParen => {
-                        self.lexer.bump();
-                        let mut args = Vec::new();
-                        while !self.lexer.at(&TokenKind::RParen) {
-                            args.push(self.parse_expr()?);
-                            if self.lexer.eat(&TokenKind::Comma).is_none() {
-                                break;
-                            }
-                        }
-                        self.expect(&TokenKind::RParen)?;
-                        args
-                    }
-                    _ => Vec::new(),
-                };
-                let span = args
-                    .last()
-                    .map(|arg| name_span.join(arg.span()))
-                    .unwrap_or(name_span);
-                Ok(Expr::Constructor {
-                    name: Ident::Name {
-                        name,
-                        span: name_span,
-                    },
-                    args,
-                    span,
-                })
-            }
             TokenKind::Fn => self.parse_fn(),
             TokenKind::Match => self.parse_match(),
             TokenKind::LParen => self.parse_paren_expr(),
             TokenKind::LBrace => self.parse_brace_expr(),
             _ => self.err("expected expression"),
         }
+    }
+
+    fn parse_named_expr(&mut self) -> Result<Expr, ParseError> {
+        let name = self.parse_ident()?;
+        if name.as_constructor_name().is_ok() {
+            self.parse_constructor_expr_after_name(name)
+        } else {
+            self.validate_ident(name.as_value_name())?;
+            let span = name.span();
+            Ok(Expr::Var { name, span })
+        }
+    }
+
+    fn parse_constructor_expr_after_name(&mut self, name: Ident) -> Result<Expr, ParseError> {
+        let args = match self.lexer.peek() {
+            TokenKind::LParen => {
+                self.lexer.bump();
+                let mut args = Vec::new();
+                while !self.lexer.at(&TokenKind::RParen) {
+                    args.push(self.parse_expr()?);
+                    if self.lexer.eat(&TokenKind::Comma).is_none() {
+                        break;
+                    }
+                }
+                self.expect(&TokenKind::RParen)?;
+                args
+            }
+            _ => Vec::new(),
+        };
+        let span = args
+            .last()
+            .map(|arg| name.span().join(arg.span()))
+            .unwrap_or_else(|| name.span());
+        Ok(Expr::Constructor { name, args, span })
     }
 
     /// Parse lambda syntax: `fn <patterns...> -> <expr>`.
@@ -537,6 +548,7 @@ impl Parser<'_> {
         let mut fields = Vec::new();
         while !self.lexer.at(&TokenKind::RBrace) {
             let name = self.parse_ident()?;
+            self.validate_ident(name.as_field_name())?;
             self.expect(&TokenKind::Colon)?;
             let value = self.parse_expr()?;
             fields.push((name, value));
@@ -557,11 +569,7 @@ impl Parser<'_> {
                 let span = self.lexer.bump().span;
                 Ok(Pattern::Wildcard { span })
             }
-            TokenKind::Ident(_) => {
-                let name = self.parse_ident()?;
-                let span = name.span();
-                Ok(Pattern::Var { name, span })
-            }
+            TokenKind::Ident(_) => self.parse_named_pattern(),
             TokenKind::Int(n) => {
                 let n = n.to_string();
                 let span = self.lexer.bump().span;
@@ -612,40 +620,51 @@ impl Parser<'_> {
                 })
             }
             TokenKind::LParen => self.parse_paren_pattern(),
-            TokenKind::Constructor(_) => {
-                let name = self.parse_ident()?;
-                match self.lexer.peek() {
-                    TokenKind::LBrace => {
-                        self.lexer.bump();
-                        let fields = self.parse_record_pattern_fields()?;
-                        let end = self.expect(&TokenKind::RBrace)?.span;
-                        let span = name.span().join(end);
-                        Ok(Pattern::Record { name, fields, span })
-                    }
-                    TokenKind::LParen => {
-                        self.lexer.bump();
-                        let mut args = Vec::new();
-                        while !self.lexer.at(&TokenKind::RParen) {
-                            args.push(self.parse_pattern()?);
-                            if self.lexer.eat(&TokenKind::Comma).is_none() {
-                                break;
-                            }
-                        }
-                        let end = self.expect(&TokenKind::RParen)?.span;
-                        let span = name.span().join(end);
-                        Ok(Pattern::Constructor { name, args, span })
-                    }
-                    _ => {
-                        let span = name.span();
-                        Ok(Pattern::Constructor {
-                            name,
-                            args: Vec::new(),
-                            span,
-                        })
+            _ => self.err("expected pattern"),
+        }
+    }
+
+    fn parse_named_pattern(&mut self) -> Result<Pattern, ParseError> {
+        let name = self.parse_ident()?;
+        if name.as_constructor_name().is_ok() {
+            self.parse_constructor_pattern_after_name(name)
+        } else {
+            self.validate_ident(name.as_value_name())?;
+            let span = name.span();
+            Ok(Pattern::Var { name, span })
+        }
+    }
+
+    fn parse_constructor_pattern_after_name(&mut self, name: Ident) -> Result<Pattern, ParseError> {
+        match self.lexer.peek() {
+            TokenKind::LBrace => {
+                self.lexer.bump();
+                let fields = self.parse_record_pattern_fields()?;
+                let end = self.expect(&TokenKind::RBrace)?.span;
+                let span = name.span().join(end);
+                Ok(Pattern::Record { name, fields, span })
+            }
+            TokenKind::LParen => {
+                self.lexer.bump();
+                let mut args = Vec::new();
+                while !self.lexer.at(&TokenKind::RParen) {
+                    args.push(self.parse_pattern()?);
+                    if self.lexer.eat(&TokenKind::Comma).is_none() {
+                        break;
                     }
                 }
+                let end = self.expect(&TokenKind::RParen)?.span;
+                let span = name.span().join(end);
+                Ok(Pattern::Constructor { name, args, span })
             }
-            _ => self.err("expected pattern"),
+            _ => {
+                let span = name.span();
+                Ok(Pattern::Constructor {
+                    name,
+                    args: Vec::new(),
+                    span,
+                })
+            }
         }
     }
 
@@ -697,6 +716,7 @@ impl Parser<'_> {
         let mut fields = Vec::new();
         while !self.lexer.at(&TokenKind::RBrace) {
             let name = self.parse_ident()?;
+            self.validate_ident(name.as_field_name())?;
             let pattern = match self.lexer.peek() {
                 TokenKind::Colon => {
                     self.lexer.bump();
@@ -746,8 +766,9 @@ impl Parser<'_> {
     /// `args` is empty. Type variables use apostrophe syntax, such as `'a`.
     fn parse_type_expr(&mut self) -> Result<TypeExpr, ParseError> {
         match self.lexer.peek() {
-            TokenKind::Ident(_) | TokenKind::Constructor(_) => {
+            TokenKind::Ident(_) => {
                 let name = self.parse_ident()?;
+                self.validate_ident(name.as_type_name())?;
                 match self.lexer.peek() {
                     TokenKind::LBrace => {
                         self.lexer.bump();
@@ -797,6 +818,7 @@ impl Parser<'_> {
         let mut fields = Vec::new();
         while !self.lexer.at(&TokenKind::RBrace) {
             let name = self.parse_ident()?;
+            self.validate_ident(name.as_field_name())?;
             self.expect(&TokenKind::Colon)?;
             let ty = self.parse_type_expr()?;
             fields.push((name, ty));
@@ -825,7 +847,6 @@ impl Parser<'_> {
         matches!(
             self.lexer.peek(),
             TokenKind::Ident(_)
-                | TokenKind::Constructor(_)
                 | TokenKind::Unit
                 | TokenKind::Int(_)
                 | TokenKind::Float(_)
@@ -850,7 +871,6 @@ impl Parser<'_> {
                 | TokenKind::True
                 | TokenKind::False
                 | TokenKind::Ident(_)
-                | TokenKind::Constructor(_)
                 | TokenKind::Unit
                 | TokenKind::Fn
                 | TokenKind::Match
@@ -869,6 +889,7 @@ impl Parser<'_> {
     fn parse_use_decl(&mut self) -> Result<UseDecl, ParseError> {
         let start = self.lexer.prev_span().start;
         let module = self.parse_ident()?;
+        self.validate_ident(module.as_module_name())?;
 
         match self.lexer.peek() {
             TokenKind::Dot => {
@@ -885,7 +906,9 @@ impl Parser<'_> {
                         self.lexer.bump();
                         let mut members = Vec::new();
                         while !self.lexer.at(&TokenKind::RBrace) {
-                            members.push(self.parse_ident()?);
+                            let member = self.parse_ident()?;
+                            self.validate_use_member(&member)?;
+                            members.push(member);
                             if self.lexer.eat(&TokenKind::Comma).is_none() {
                                 break;
                             }
@@ -899,6 +922,7 @@ impl Parser<'_> {
                     }
                     _ => {
                         let member = self.parse_ident()?;
+                        self.validate_use_member(&member)?;
                         Ok(UseDecl::Concrete {
                             module,
                             members: vec![member],
@@ -944,6 +968,9 @@ impl Parser<'_> {
     fn parse_type_var(&mut self) -> Result<TypeVar, ParseError> {
         match self.lexer.peek() {
             TokenKind::TypeVar(name) => {
+                if !starts_lowercase(name) {
+                    return self.err("expected type variable starting with lowercase after '");
+                }
                 let name = name.to_string();
                 let span = self.lexer.bump().span;
                 Ok(TypeVar { name, span })
@@ -956,7 +983,7 @@ impl Parser<'_> {
     /// uppercase constructors.
     fn parse_ident_part(&mut self) -> Result<(String, Span), ParseError> {
         match self.lexer.peek() {
-            TokenKind::Ident(name) | TokenKind::Constructor(name) => {
+            TokenKind::Ident(name) => {
                 let name = name.to_string();
                 let span = self.lexer.bump().span;
                 Ok((name, span))
@@ -965,16 +992,11 @@ impl Parser<'_> {
         }
     }
 
-    /// Parse an uppercase constructor name or report a parser error.
+    /// Parse a constructor name or report a parser error.
     fn expect_constructor(&mut self) -> Result<Ident, ParseError> {
-        match self.lexer.peek() {
-            TokenKind::Constructor(name) => {
-                let name = name.to_string();
-                let span = self.lexer.bump().span;
-                Ok(Ident::Name { name, span })
-            }
-            _ => self.err("expected constructor"),
-        }
+        let ident = self.parse_ident()?;
+        self.validate_ident(ident.as_constructor_name())?;
+        Ok(ident)
     }
     /// Consume `kind` or produce a diagnostic.
     fn expect(&mut self, kind: &TokenKind) -> Result<Token, ParseError> {
@@ -987,6 +1009,22 @@ impl Parser<'_> {
     fn err<T>(&self, message: &str) -> Result<T, ParseError> {
         Err(self.make_err(message))
     }
+    fn validate_ident(&self, result: Result<&Ident, IdentNameError>) -> Result<(), ParseError> {
+        result.map(|_| ()).map_err(|err| ParseError {
+            src: self.src.to_string(),
+            span: err.span.as_source_span(),
+            message: err.message.to_string(),
+        })
+    }
+
+    fn validate_use_member(&self, ident: &Ident) -> Result<(), ParseError> {
+        if ident.as_value_name().is_ok() || ident.as_constructor_name().is_ok() {
+            Ok(())
+        } else {
+            self.validate_ident(ident.as_value_name())
+        }
+    }
+
     /// Build a parser error at the current token.
     fn make_err(&self, message: &str) -> ParseError {
         ParseError {
@@ -1002,10 +1040,94 @@ impl Parser<'_> {
 /// Record construction is parsed as a Pratt postfix form: after parsing `User`,
 /// seeing `{ ... }` rewrites the left expression into `Expr::Record`. Other
 /// expressions are returned to the Pratt parser unchanged.
+fn starts_uppercase(name: &str) -> bool {
+    name.chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_uppercase())
+}
+
+fn starts_lowercase(name: &str) -> bool {
+    name.chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_lowercase())
+}
+
 fn expr_into_ident(expr: Expr) -> Result<Ident, Expr> {
     match expr {
         Expr::Var { name, .. } => Ok(name),
         Expr::Constructor { name, args, .. } if args.is_empty() => Ok(name),
         expr => Err(expr),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_valid_naming_invariants() {
+        let src = "use App.Core.{make_user, User}\n\
+             type Maybe<'a> = | None | Some('a)\n\
+             let _value = 1\n\
+             let read (User { name }) = name\n";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let module = parse_module(src, lexer).expect("parse ok");
+        insta::assert_snapshot!(format!("{module:#?}"));
+    }
+
+    #[test]
+    fn rejects_uppercase_value_binding() {
+        let src = "let Foo = 1";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("uppercase value name is rejected");
+        insta::assert_snapshot!(err.message);
+    }
+
+    #[test]
+    fn rejects_lowercase_module_name() {
+        let src = "use app.Core.*";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("lowercase module name is rejected");
+        insta::assert_snapshot!(err.message);
+    }
+
+    #[test]
+    fn rejects_lowercase_type_name() {
+        let src = "type foo = u8";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("lowercase type name is rejected");
+        insta::assert_snapshot!(err.message);
+    }
+
+    #[test]
+    fn rejects_lowercase_constructor_name() {
+        let src = "type Foo = | some";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("lowercase constructor name is rejected");
+        insta::assert_snapshot!(err.message);
+    }
+
+    #[test]
+    fn rejects_uppercase_field_name() {
+        let src = "let user = User { Name: \"Ada\" }";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("uppercase field name is rejected");
+        insta::assert_snapshot!(err.message);
+    }
+
+    #[test]
+    fn rejects_uppercase_type_variable() {
+        let src = "type Box<'A> = | Box('A)";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("uppercase type var is rejected");
+        insta::assert_snapshot!(err.message);
+    }
+
+    #[test]
+    fn rejects_wildcard_as_top_level_value_name() {
+        let src = "let _ = 1";
+        let lexer = Lexer::from_str(src).expect("lex ok");
+        let err = parse_module(src, lexer).expect_err("wildcard is not a value declaration name");
+        insta::assert_snapshot!(err.message);
     }
 }

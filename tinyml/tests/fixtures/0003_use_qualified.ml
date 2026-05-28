@@ -1,4 +1,4 @@
 use A.B.{C, D.E}
-use list.*
+use List.*
 
 let x = 1

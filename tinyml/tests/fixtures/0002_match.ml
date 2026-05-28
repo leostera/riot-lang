@@ -1,4 +1,4 @@
-type option<'a> =
+type Option<'a> =
   | None
   | Some('a)
 

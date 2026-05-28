@@ -1,0 +1,211 @@
+---
+source: tinyml/src/parser/parse.rs
+expression: "format!(\"{module:#?}\")"
+---
+Module {
+    items: [
+        UseDecl(
+            Concrete {
+                module: Qualified {
+                    name: "App",
+                    rest: Name {
+                        name: "Core",
+                        span: Span {
+                            start: 8,
+                            end: 12,
+                        },
+                    },
+                    span: Span {
+                        start: 4,
+                        end: 12,
+                    },
+                },
+                members: [
+                    Name {
+                        name: "make_user",
+                        span: Span {
+                            start: 14,
+                            end: 23,
+                        },
+                    },
+                    Name {
+                        name: "User",
+                        span: Span {
+                            start: 25,
+                            end: 29,
+                        },
+                    },
+                ],
+                span: Span {
+                    start: 0,
+                    end: 30,
+                },
+            },
+        ),
+        TypeDecl(
+            TypeDecl {
+                name: Name {
+                    name: "Maybe",
+                    span: Span {
+                        start: 36,
+                        end: 41,
+                    },
+                },
+                params: [
+                    TypeVar {
+                        name: "a",
+                        span: Span {
+                            start: 42,
+                            end: 44,
+                        },
+                    },
+                ],
+                body: Variant {
+                    variants: [
+                        TupleConstructor {
+                            ident: Name {
+                                name: "None",
+                                span: Span {
+                                    start: 50,
+                                    end: 54,
+                                },
+                            },
+                            args: [],
+                            span: Span {
+                                start: 50,
+                                end: 54,
+                            },
+                        },
+                        TupleConstructor {
+                            ident: Name {
+                                name: "Some",
+                                span: Span {
+                                    start: 57,
+                                    end: 61,
+                                },
+                            },
+                            args: [
+                                Var {
+                                    var: TypeVar {
+                                        name: "a",
+                                        span: Span {
+                                            start: 62,
+                                            end: 64,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 62,
+                                        end: 64,
+                                    },
+                                },
+                            ],
+                            span: Span {
+                                start: 57,
+                                end: 65,
+                            },
+                        },
+                    ],
+                    span: Span {
+                        start: 50,
+                        end: 65,
+                    },
+                },
+                span: Span {
+                    start: 31,
+                    end: 65,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "_value",
+                    span: Span {
+                        start: 70,
+                        end: 76,
+                    },
+                },
+                body: Literal {
+                    value: Int(
+                        "1",
+                    ),
+                    span: Span {
+                        start: 79,
+                        end: 80,
+                    },
+                },
+                span: Span {
+                    start: 66,
+                    end: 80,
+                },
+            },
+        ),
+        LetDecl(
+            Fn {
+                name: Name {
+                    name: "read",
+                    span: Span {
+                        start: 85,
+                        end: 89,
+                    },
+                },
+                args: [
+                    Record {
+                        name: Name {
+                            name: "User",
+                            span: Span {
+                                start: 91,
+                                end: 95,
+                            },
+                        },
+                        fields: [
+                            (
+                                Name {
+                                    name: "name",
+                                    span: Span {
+                                        start: 98,
+                                        end: 102,
+                                    },
+                                },
+                                Var {
+                                    name: Name {
+                                        name: "name",
+                                        span: Span {
+                                            start: 98,
+                                            end: 102,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 98,
+                                        end: 102,
+                                    },
+                                },
+                            ),
+                        ],
+                        span: Span {
+                            start: 91,
+                            end: 104,
+                        },
+                    },
+                ],
+                body: Var {
+                    name: Name {
+                        name: "name",
+                        span: Span {
+                            start: 108,
+                            end: 112,
+                        },
+                    },
+                    span: Span {
+                        start: 108,
+                        end: 112,
+                    },
+                },
+                span: Span {
+                    start: 81,
+                    end: 112,
+                },
+            },
+        ),
+    ],
+}
