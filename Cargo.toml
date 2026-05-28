@@ -1,5 +1,4 @@
 [workspace]
-members = [
-  "stage0",
-  "rt", "tinyml",
-]
+members = ["tinyml"]
+resolver = "3"
+exclude = [ "ref"]

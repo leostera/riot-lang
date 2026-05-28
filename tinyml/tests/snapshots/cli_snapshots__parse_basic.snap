@@ -1,0 +1,316 @@
+---
+source: tinyml/tests/cli_snapshots.rs
+expression: stdout
+---
+Module {
+    items: [
+        UseDecl(
+            Concrete {
+                module: Name {
+                    name: "list",
+                    span: Span {
+                        start: 4,
+                        end: 8,
+                    },
+                },
+                members: [
+                    Name {
+                        name: "map",
+                        span: Span {
+                            start: 10,
+                            end: 13,
+                        },
+                    },
+                    Name {
+                        name: "fold",
+                        span: Span {
+                            start: 15,
+                            end: 19,
+                        },
+                    },
+                ],
+                span: Span {
+                    start: 0,
+                    end: 20,
+                },
+            },
+        ),
+        TypeDecl(
+            TypeDecl {
+                name: Name {
+                    name: "option",
+                    span: Span {
+                        start: 27,
+                        end: 33,
+                    },
+                },
+                params: [
+                    TypeVar {
+                        name: "a",
+                        span: Span {
+                            start: 34,
+                            end: 36,
+                        },
+                    },
+                ],
+                body: Variant {
+                    variants: [
+                        TupleConstructor {
+                            ident: Name {
+                                name: "None",
+                                span: Span {
+                                    start: 44,
+                                    end: 48,
+                                },
+                            },
+                            args: [],
+                            span: Span {
+                                start: 44,
+                                end: 48,
+                            },
+                        },
+                        TupleConstructor {
+                            ident: Name {
+                                name: "Some",
+                                span: Span {
+                                    start: 53,
+                                    end: 57,
+                                },
+                            },
+                            args: [
+                                Var {
+                                    var: TypeVar {
+                                        name: "a",
+                                        span: Span {
+                                            start: 58,
+                                            end: 60,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 58,
+                                        end: 60,
+                                    },
+                                },
+                            ],
+                            span: Span {
+                                start: 53,
+                                end: 61,
+                            },
+                        },
+                    ],
+                    span: Span {
+                        start: 44,
+                        end: 61,
+                    },
+                },
+                span: Span {
+                    start: 22,
+                    end: 61,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "double",
+                    span: Span {
+                        start: 67,
+                        end: 73,
+                    },
+                },
+                body: Fn {
+                    params: [
+                        Var {
+                            name: Name {
+                                name: "x",
+                                span: Span {
+                                    start: 79,
+                                    end: 80,
+                                },
+                            },
+                            span: Span {
+                                start: 79,
+                                end: 80,
+                            },
+                        },
+                    ],
+                    body: BinaryOp {
+                        ident: Name {
+                            name: "*",
+                            span: Span {
+                                start: 86,
+                                end: 87,
+                            },
+                        },
+                        left: Var {
+                            name: Name {
+                                name: "x",
+                                span: Span {
+                                    start: 84,
+                                    end: 85,
+                                },
+                            },
+                            span: Span {
+                                start: 84,
+                                end: 85,
+                            },
+                        },
+                        right: Literal {
+                            value: Int(
+                                "2",
+                            ),
+                            span: Span {
+                                start: 88,
+                                end: 89,
+                            },
+                        },
+                        span: Span {
+                            start: 84,
+                            end: 89,
+                        },
+                    },
+                    span: Span {
+                        start: 76,
+                        end: 89,
+                    },
+                },
+                span: Span {
+                    start: 63,
+                    end: 89,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "main",
+                    span: Span {
+                        start: 95,
+                        end: 99,
+                    },
+                },
+                body: Fn {
+                    params: [
+                        Var {
+                            name: Name {
+                                name: "x",
+                                span: Span {
+                                    start: 105,
+                                    end: 106,
+                                },
+                            },
+                            span: Span {
+                                start: 105,
+                                end: 106,
+                            },
+                        },
+                    ],
+                    body: Block {
+                        exprs: [
+                            Let {
+                                pattern: Var {
+                                    name: Name {
+                                        name: "y",
+                                        span: Span {
+                                            start: 118,
+                                            end: 119,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 118,
+                                        end: 119,
+                                    },
+                                },
+                                value: BinaryOp {
+                                    ident: Name {
+                                        name: "+",
+                                        span: Span {
+                                            start: 124,
+                                            end: 125,
+                                        },
+                                    },
+                                    left: Var {
+                                        name: Name {
+                                            name: "x",
+                                            span: Span {
+                                                start: 122,
+                                                end: 123,
+                                            },
+                                        },
+                                        span: Span {
+                                            start: 122,
+                                            end: 123,
+                                        },
+                                    },
+                                    right: Literal {
+                                        value: Int(
+                                            "1",
+                                        ),
+                                        span: Span {
+                                            start: 126,
+                                            end: 127,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 122,
+                                        end: 127,
+                                    },
+                                },
+                                span: Span {
+                                    start: 114,
+                                    end: 127,
+                                },
+                            },
+                            Apply {
+                                callee: Var {
+                                    name: Name {
+                                        name: "double",
+                                        span: Span {
+                                            start: 131,
+                                            end: 137,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 131,
+                                        end: 137,
+                                    },
+                                },
+                                args: [
+                                    Var {
+                                        name: Name {
+                                            name: "y",
+                                            span: Span {
+                                                start: 138,
+                                                end: 139,
+                                            },
+                                        },
+                                        span: Span {
+                                            start: 138,
+                                            end: 139,
+                                        },
+                                    },
+                                ],
+                                span: Span {
+                                    start: 131,
+                                    end: 139,
+                                },
+                            },
+                        ],
+                        span: Span {
+                            start: 110,
+                            end: 141,
+                        },
+                    },
+                    span: Span {
+                        start: 102,
+                        end: 141,
+                    },
+                },
+                span: Span {
+                    start: 91,
+                    end: 141,
+                },
+            },
+        ),
+    ],
+}

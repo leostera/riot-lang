@@ -1,0 +1,39 @@
+---
+source: tinyml/tests/cli_snapshots.rs
+expression: stdout
+---
+Type @ 0..4
+Ident("option") @ 5..11
+LAngle @ 11..12
+TypeVar("a") @ 12..14
+RAngle @ 14..15
+Equal @ 16..17
+Pipe @ 20..21
+Constructor("None") @ 22..26
+Pipe @ 29..30
+Constructor("Some") @ 31..35
+LParen @ 35..36
+TypeVar("a") @ 36..38
+RParen @ 38..39
+Let @ 41..44
+Ident("get_or_zero") @ 45..56
+Equal @ 57..58
+Fn @ 59..61
+Ident("x") @ 62..63
+Arrow @ 64..66
+Match @ 67..72
+Ident("x") @ 73..74
+LBrace @ 75..76
+Pipe @ 79..80
+Constructor("None") @ 81..85
+Arrow @ 86..88
+Int("0") @ 89..90
+Pipe @ 93..94
+Constructor("Some") @ 95..99
+LParen @ 99..100
+Ident("value") @ 100..105
+RParen @ 105..106
+Arrow @ 107..109
+Ident("value") @ 110..115
+RBrace @ 116..117
+Eof @ 118..118

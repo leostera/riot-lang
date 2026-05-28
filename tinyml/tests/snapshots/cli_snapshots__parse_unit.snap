@@ -1,0 +1,159 @@
+---
+source: tinyml/tests/cli_snapshots.rs
+expression: stdout
+---
+Module {
+    items: [
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "unit",
+                    span: Span {
+                        start: 4,
+                        end: 8,
+                    },
+                },
+                body: Constructor {
+                    name: Name {
+                        name: "()",
+                        span: Span {
+                            start: 11,
+                            end: 13,
+                        },
+                    },
+                    args: [],
+                    span: Span {
+                        start: 11,
+                        end: 13,
+                    },
+                },
+                span: Span {
+                    start: 0,
+                    end: 13,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "id_unit",
+                    span: Span {
+                        start: 19,
+                        end: 26,
+                    },
+                },
+                body: Fn {
+                    params: [
+                        Constructor {
+                            name: Name {
+                                name: "()",
+                                span: Span {
+                                    start: 32,
+                                    end: 34,
+                                },
+                            },
+                            args: [],
+                            span: Span {
+                                start: 32,
+                                end: 34,
+                            },
+                        },
+                    ],
+                    body: Constructor {
+                        name: Name {
+                            name: "()",
+                            span: Span {
+                                start: 38,
+                                end: 40,
+                            },
+                        },
+                        args: [],
+                        span: Span {
+                            start: 38,
+                            end: 40,
+                        },
+                    },
+                    span: Span {
+                        start: 29,
+                        end: 40,
+                    },
+                },
+                span: Span {
+                    start: 15,
+                    end: 40,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "value",
+                    span: Span {
+                        start: 46,
+                        end: 51,
+                    },
+                },
+                body: Match {
+                    scrutinee: Constructor {
+                        name: Name {
+                            name: "()",
+                            span: Span {
+                                start: 60,
+                                end: 62,
+                            },
+                        },
+                        args: [],
+                        span: Span {
+                            start: 60,
+                            end: 62,
+                        },
+                    },
+                    arms: [
+                        MatchArm {
+                            pattern: Constructor {
+                                name: Name {
+                                    name: "()",
+                                    span: Span {
+                                        start: 69,
+                                        end: 71,
+                                    },
+                                },
+                                args: [],
+                                span: Span {
+                                    start: 69,
+                                    end: 71,
+                                },
+                            },
+                            body: Constructor {
+                                name: Name {
+                                    name: "()",
+                                    span: Span {
+                                        start: 75,
+                                        end: 77,
+                                    },
+                                },
+                                args: [],
+                                span: Span {
+                                    start: 75,
+                                    end: 77,
+                                },
+                            },
+                            span: Span {
+                                start: 69,
+                                end: 77,
+                            },
+                        },
+                    ],
+                    span: Span {
+                        start: 54,
+                        end: 79,
+                    },
+                },
+                span: Span {
+                    start: 42,
+                    end: 79,
+                },
+            },
+        ),
+    ],
+}
