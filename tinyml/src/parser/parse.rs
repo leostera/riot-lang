@@ -43,29 +43,23 @@ pub struct ParseError {
     pub message: String,
 }
 
-/// Parse a full TinyML source file into a module AST.
-///
-/// The lexer provides a `TokenKind::Eof` sentinel; this function parses module
-/// items until it reaches that sentinel.
-pub fn parse_module(src: &str, lexer: Lexer) -> Result<Module, ParseError> {
-    Parser { src, lexer }.parse_module()
-}
-
 /// Stateful recursive-descent parser.
 ///
-/// `src` provides diagnostic source text. `lexer` owns the token stream and
-/// cursor.
-struct Parser<'a> {
-    src: &'a str,
-    lexer: Lexer,
+/// The lexer owns the source text, token stream, and cursor.
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
+    pub fn new(lexer: Lexer<'a>) -> Self {
+        Self { lexer }
+    }
+
     /// Parse all top-level module items.
     ///
     /// TinyML module items appear as adjacent declarations. Each declaration
     /// parser consumes exactly the tokens belonging to that declaration.
-    fn parse_module(&mut self) -> Result<Module, ParseError> {
+    pub fn parse_module(&mut self) -> Result<Module, ParseError> {
         let mut items = Vec::new();
         while !self.lexer.at(&TokenKind::Eof) {
             items.push(self.parse_item()?);
@@ -1011,7 +1005,7 @@ impl Parser<'_> {
     }
     fn validate_ident(&self, result: Result<&Ident, IdentNameError>) -> Result<(), ParseError> {
         result.map(|_| ()).map_err(|err| ParseError {
-            src: self.src.to_string(),
+            src: self.lexer.source().to_string(),
             span: err.span.as_source_span(),
             message: err.message.to_string(),
         })
@@ -1028,7 +1022,7 @@ impl Parser<'_> {
     /// Build a parser error at the current token.
     fn make_err(&self, message: &str) -> ParseError {
         ParseError {
-            src: self.src.to_string(),
+            src: self.lexer.source().to_string(),
             span: self.lexer.current_span().as_source_span(),
             message: message.to_string(),
         }
@@ -1070,64 +1064,78 @@ mod tests {
              type Maybe<'a> = | None | Some('a)\n\
              let _value = 1\n\
              let read (User { name }) = name\n";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let module = parse_module(src, lexer).expect("parse ok");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
         insta::assert_snapshot!(format!("{module:#?}"));
     }
 
     #[test]
     fn rejects_uppercase_value_binding() {
         let src = "let Foo = 1";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("uppercase value name is rejected");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("uppercase value name is rejected");
         insta::assert_snapshot!(err.message);
     }
 
     #[test]
     fn rejects_lowercase_module_name() {
         let src = "use app.Core.*";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("lowercase module name is rejected");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("lowercase module name is rejected");
         insta::assert_snapshot!(err.message);
     }
 
     #[test]
     fn rejects_lowercase_type_name() {
         let src = "type foo = u8";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("lowercase type name is rejected");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("lowercase type name is rejected");
         insta::assert_snapshot!(err.message);
     }
 
     #[test]
     fn rejects_lowercase_constructor_name() {
         let src = "type Foo = | some";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("lowercase constructor name is rejected");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("lowercase constructor name is rejected");
         insta::assert_snapshot!(err.message);
     }
 
     #[test]
     fn rejects_uppercase_field_name() {
         let src = "let user = User { Name: \"Ada\" }";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("uppercase field name is rejected");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("uppercase field name is rejected");
         insta::assert_snapshot!(err.message);
     }
 
     #[test]
     fn rejects_uppercase_type_variable() {
         let src = "type Box<'A> = | Box('A)";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("uppercase type var is rejected");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("uppercase type var is rejected");
         insta::assert_snapshot!(err.message);
     }
 
     #[test]
     fn rejects_wildcard_as_top_level_value_name() {
         let src = "let _ = 1";
-        let lexer = Lexer::from_str(src).expect("lex ok");
-        let err = parse_module(src, lexer).expect_err("wildcard is not a value declaration name");
+        let lexer = Lexer::new(src).expect("lex ok");
+        let err = Parser::new(lexer)
+            .parse_module()
+            .expect_err("wildcard is not a value declaration name");
         insta::assert_snapshot!(err.message);
     }
 }

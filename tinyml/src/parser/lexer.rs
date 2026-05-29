@@ -120,17 +120,14 @@ pub struct LexError {
 }
 
 #[derive(Debug)]
-pub struct Lexer {
+pub struct Lexer<'a> {
+    src: &'a str,
     tokens: Vec<Token>,
     pos: usize,
 }
 
-impl Lexer {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
-    }
-
-    pub fn from_str(src: &str) -> Result<Self, LexError> {
+impl<'a> Lexer<'a> {
+    pub fn new(src: &'a str) -> Result<Self, LexError> {
         let mut lexer = TokenKind::lexer(src);
         let mut tokens = Vec::new();
 
@@ -151,7 +148,19 @@ impl Lexer {
             span: Span::new(src.len(), src.len()),
         });
 
-        Ok(Self::new(tokens))
+        Ok(Self {
+            src,
+            tokens,
+            pos: 0,
+        })
+    }
+
+    pub fn from_str(src: &'a str) -> Result<Self, LexError> {
+        Self::new(src)
+    }
+
+    pub fn source(&self) -> &str {
+        &self.src
     }
 
     pub fn tokens(&self) -> &[Token] {

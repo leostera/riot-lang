@@ -1,4 +1,4 @@
-use tinyml::parser::{lexer::Lexer, parse};
+use tinyml::parser::{lexer::Lexer, parse::Parser};
 
 fn source(path: &str) -> &'static str {
     Box::leak(std::fs::read_to_string(path).expect(path).into_boxed_str())
@@ -6,35 +6,33 @@ fn source(path: &str) -> &'static str {
 
 fn lex_snapshot(path: &str) -> String {
     let src = source(path);
-    let lexer = Lexer::from_str(src).expect("lex ok");
+    let lexer = Lexer::new(src).expect("lex ok");
     format!("{:#?}", lexer.tokens())
 }
 
-fn parse_snapshot(path: &str) -> String {
+fn parse_module(path: &str) -> tinyml::parser::ast::Module {
     let src = source(path);
-    let lexer = Lexer::from_str(src).expect("lex ok");
-    let module = parse::parse_module(src, lexer).expect("parse ok");
+    let lexer = Lexer::new(src).expect("lex ok");
+    Parser::new(lexer).parse_module().expect("parse ok")
+}
+
+fn parse_snapshot(path: &str) -> String {
+    let module = parse_module(path);
     format!("{module:#?}")
 }
 
 fn check_snapshot(path: &str) -> String {
-    let src = source(path);
-    let lexer = Lexer::from_str(src).expect("lex ok");
-    let module = parse::parse_module(src, lexer).expect("parse ok");
+    let module = parse_module(path);
     format!("check pending\n{module:#?}")
 }
 
 fn emit_snapshot(path: &str) -> String {
-    let src = source(path);
-    let lexer = Lexer::from_str(src).expect("lex ok");
-    let module = parse::parse_module(src, lexer).expect("parse ok");
+    let module = parse_module(path);
     format!("emit pending\n{module:#?}")
 }
 
 fn build_snapshot(path: &str) -> String {
-    let src = source(path);
-    let lexer = Lexer::from_str(src).expect("lex ok");
-    let module = parse::parse_module(src, lexer).expect("parse ok");
+    let module = parse_module(path);
     format!("build pending\n{module:#?}")
 }
 

@@ -1,11 +1,11 @@
 use std::{fs, path::PathBuf};
 
-use clap::{Parser, Subcommand};
+use clap::{Parser as ClapParser, Subcommand};
 use miette::{IntoDiagnostic, Result};
 
-use tinyml::parser::{lexer::Lexer, parse};
+use tinyml::parser::{lexer::Lexer, parse::Parser};
 
-#[derive(Debug, Parser)]
+#[derive(Debug, ClapParser)]
 #[command(name = "tinyml")]
 #[command(about = "TinyML compiler frontend")]
 struct Cli {
@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Lex { file } => {
             let src = fs::read_to_string(&file).into_diagnostic()?;
-            let lexer = Lexer::from_str(&src)?;
+            let lexer = Lexer::new(&src)?;
             for token in lexer.tokens() {
                 println!(
                     "{:?} @ {}..{}",
@@ -41,8 +41,8 @@ fn main() -> Result<()> {
         }
         Command::Parse { file } => {
             let src = fs::read_to_string(&file).into_diagnostic()?;
-            let lexer = Lexer::from_str(&src)?;
-            let module = parse::parse_module(&src, lexer)?;
+            let lexer = Lexer::new(&src)?;
+            let module = Parser::new(lexer).parse_module()?;
             println!("{module:#?}");
         }
         Command::Check { file } => {
