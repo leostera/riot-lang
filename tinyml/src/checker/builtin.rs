@@ -2,6 +2,8 @@ use crate::parser::ident::Ident;
 
 use super::tst::Type;
 
+pub const UNIT_CONSTRUCTOR: &str = "()";
+
 fn primitive(name: &str) -> Type {
     Type::Apply {
         ident: Ident::from_string(name),

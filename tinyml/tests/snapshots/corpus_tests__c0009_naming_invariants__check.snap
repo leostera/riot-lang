@@ -1,0 +1,104 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "check_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
+---
+ModuleSummary {
+    tst: Module {
+        items: [
+            LetDecl(
+                Const {
+                    binding: BindingId(
+                        0,
+                    ),
+                    entity: EntityId(
+                        0,
+                    ),
+                    name: Name {
+                        name: "_value",
+                        span: Span {
+                            start: 150,
+                            end: 156,
+                        },
+                    },
+                    hint: None,
+                    body: Expr {
+                        ty: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        kind: Literal {
+                            value: Int(
+                                "1",
+                            ),
+                        },
+                        span: Span {
+                            start: 159,
+                            end: 160,
+                        },
+                    },
+                    scheme: Scheme {
+                        quantifier: [],
+                        body: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                    },
+                    span: Span {
+                        start: 146,
+                        end: 160,
+                    },
+                },
+            ),
+        ],
+    },
+    interface: ModuleInterface {
+        values: [
+            ValueDescription {
+                name: Name {
+                    name: "_value",
+                    span: Span {
+                        start: 150,
+                        end: 156,
+                    },
+                },
+                scheme: Scheme {
+                    quantifier: [],
+                    body: Apply {
+                        ident: Name {
+                            name: "i32",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
+                },
+            },
+        ],
+        constructors: [],
+        record_fields: [],
+        types: [],
+        modules: [],
+    },
+    diagnostics: [
+        UnsupportedUseDeclaration,
+        UnsupportedUseDeclaration,
+        UnsupportedTypeDeclaration,
+        UnsupportedTypeDeclaration,
+        UnsupportedTopLevelFunction,
+        UnsupportedTopLevelFunction,
+    ],
+}

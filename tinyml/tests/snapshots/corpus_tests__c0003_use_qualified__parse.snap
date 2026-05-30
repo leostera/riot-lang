@@ -1,5 +1,5 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "parse_snapshot(\"tests/fixtures/0003_use_qualified.ml\")"
 ---
 Module {
@@ -52,7 +52,7 @@ Module {
         UseDecl(
             Wildcard {
                 module: Name {
-                    name: "list",
+                    name: "List",
                     span: Span {
                         start: 21,
                         end: 25,

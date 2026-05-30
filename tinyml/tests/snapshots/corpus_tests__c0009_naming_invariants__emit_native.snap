@@ -1,0 +1,61 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "emit_native_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
+---
+emit pending
+Module {
+    values: [
+        ValueDecl {
+            binding: BindingId(
+                0,
+            ),
+            entity: EntityId(
+                0,
+            ),
+            name: Name {
+                name: "_value",
+                span: Span {
+                    start: 150,
+                    end: 156,
+                },
+            },
+            body: Expr {
+                ty: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+                kind: Constant(
+                    Literal(
+                        Int(
+                            "1",
+                        ),
+                    ),
+                ),
+                span: Span {
+                    start: 159,
+                    end: 160,
+                },
+            },
+            ty: Apply {
+                ident: Name {
+                    name: "i32",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                arguments: [],
+            },
+            span: Span {
+                start: 146,
+                end: 160,
+            },
+        },
+    ],
+}

@@ -1,0 +1,61 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "emit_wasm_snapshot(\"tests/fixtures/0003_use_qualified.ml\")"
+---
+emit pending
+Module {
+    values: [
+        ValueDecl {
+            binding: BindingId(
+                0,
+            ),
+            entity: EntityId(
+                0,
+            ),
+            name: Name {
+                name: "x",
+                span: Span {
+                    start: 33,
+                    end: 34,
+                },
+            },
+            body: Expr {
+                ty: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+                kind: Constant(
+                    Literal(
+                        Int(
+                            "1",
+                        ),
+                    ),
+                ),
+                span: Span {
+                    start: 37,
+                    end: 38,
+                },
+            },
+            ty: Apply {
+                ident: Name {
+                    name: "i32",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                arguments: [],
+            },
+            span: Span {
+                start: 29,
+                end: 38,
+            },
+        },
+    ],
+}

@@ -1,5 +1,5 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "parse_snapshot(\"tests/fixtures/0001_basic.ml\")"
 ---
 Module {
@@ -7,7 +7,7 @@ Module {
         UseDecl(
             Concrete {
                 module: Name {
-                    name: "list",
+                    name: "List",
                     span: Span {
                         start: 4,
                         end: 8,
@@ -38,7 +38,7 @@ Module {
         TypeDecl(
             TypeDecl {
                 name: Name {
-                    name: "option",
+                    name: "Option",
                     span: Span {
                         start: 27,
                         end: 33,
@@ -221,6 +221,7 @@ Module {
                                         end: 119,
                                     },
                                 },
+                                hint: None,
                                 body: BinaryOp {
                                     ident: Name {
                                         name: "+",

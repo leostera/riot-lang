@@ -1,115 +1,19 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "check_snapshot(\"tests/fixtures/0006_variant_record.ml\")"
 ---
-check pending
-Module {
-    items: [
-        TypeDecl(
-            TypeDecl {
-                name: Name {
-                    name: "msg",
-                    span: Span {
-                        start: 5,
-                        end: 8,
-                    },
-                },
-                params: [
-                    TypeVar {
-                        name: "a",
-                        span: Span {
-                            start: 9,
-                            end: 11,
-                        },
-                    },
-                ],
-                body: Variant {
-                    variants: [
-                        TupleConstructor {
-                            ident: Name {
-                                name: "Ping",
-                                span: Span {
-                                    start: 19,
-                                    end: 23,
-                                },
-                            },
-                            args: [],
-                            span: Span {
-                                start: 19,
-                                end: 23,
-                            },
-                        },
-                        RecordConstructor {
-                            ident: Name {
-                                name: "User",
-                                span: Span {
-                                    start: 28,
-                                    end: 32,
-                                },
-                            },
-                            fields: [
-                                (
-                                    Name {
-                                        name: "name",
-                                        span: Span {
-                                            start: 35,
-                                            end: 39,
-                                        },
-                                    },
-                                    App {
-                                        name: Name {
-                                            name: "string",
-                                            span: Span {
-                                                start: 41,
-                                                end: 47,
-                                            },
-                                        },
-                                        args: [],
-                                        span: Span {
-                                            start: 41,
-                                            end: 47,
-                                        },
-                                    },
-                                ),
-                                (
-                                    Name {
-                                        name: "value",
-                                        span: Span {
-                                            start: 49,
-                                            end: 54,
-                                        },
-                                    },
-                                    Var {
-                                        var: TypeVar {
-                                            name: "a",
-                                            span: Span {
-                                                start: 56,
-                                                end: 58,
-                                            },
-                                        },
-                                        span: Span {
-                                            start: 56,
-                                            end: 58,
-                                        },
-                                    },
-                                ),
-                            ],
-                            span: Span {
-                                start: 28,
-                                end: 60,
-                            },
-                        },
-                    ],
-                    span: Span {
-                        start: 19,
-                        end: 60,
-                    },
-                },
-                span: Span {
-                    start: 0,
-                    end: 60,
-                },
-            },
-        ),
+ModuleSummary {
+    tst: Module {
+        items: [],
+    },
+    interface: ModuleInterface {
+        values: [],
+        constructors: [],
+        record_fields: [],
+        types: [],
+        modules: [],
+    },
+    diagnostics: [
+        UnsupportedTypeDeclaration,
     ],
 }

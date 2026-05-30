@@ -1,0 +1,382 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "emit_js_snapshot(\"tests/fixtures/0001_basic.ml\")"
+---
+emit pending
+Module {
+    values: [
+        ValueDecl {
+            binding: BindingId(
+                0,
+            ),
+            entity: EntityId(
+                0,
+            ),
+            name: Name {
+                name: "double",
+                span: Span {
+                    start: 67,
+                    end: 73,
+                },
+            },
+            body: Expr {
+                ty: Var(
+                    TypeVarId(
+                        5,
+                    ),
+                ),
+                kind: Function {
+                    params: [
+                        Pattern {
+                            ty: Var(
+                                TypeVarId(
+                                    2,
+                                ),
+                            ),
+                            kind: Var {
+                                name: Name {
+                                    name: "x",
+                                    span: Span {
+                                        start: 79,
+                                        end: 80,
+                                    },
+                                },
+                                binding: BindingId(
+                                    0,
+                                ),
+                            },
+                            span: Span {
+                                start: 79,
+                                end: 80,
+                            },
+                        },
+                    ],
+                    body: Expr {
+                        ty: Var(
+                            TypeVarId(
+                                4,
+                            ),
+                        ),
+                        kind: Prim {
+                            op: Mul {
+                                operand: Var(
+                                    TypeVarId(
+                                        3,
+                                    ),
+                                ),
+                            },
+                            args: [
+                                Expr {
+                                    ty: Var(
+                                        TypeVarId(
+                                            3,
+                                        ),
+                                    ),
+                                    kind: Var {
+                                        name: Name {
+                                            name: "x",
+                                            span: Span {
+                                                start: 84,
+                                                end: 85,
+                                            },
+                                        },
+                                        entity: EntityId(
+                                            0,
+                                        ),
+                                    },
+                                    span: Span {
+                                        start: 84,
+                                        end: 85,
+                                    },
+                                },
+                                Expr {
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "i32",
+                                            span: Span {
+                                                start: 0,
+                                                end: 0,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                    kind: Constant(
+                                        Literal(
+                                            Int(
+                                                "2",
+                                            ),
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 88,
+                                        end: 89,
+                                    },
+                                },
+                            ],
+                        },
+                        span: Span {
+                            start: 84,
+                            end: 89,
+                        },
+                    },
+                },
+                span: Span {
+                    start: 76,
+                    end: 89,
+                },
+            },
+            ty: Var(
+                TypeVarId(
+                    5,
+                ),
+            ),
+            span: Span {
+                start: 63,
+                end: 89,
+            },
+        },
+        ValueDecl {
+            binding: BindingId(
+                1,
+            ),
+            entity: EntityId(
+                1,
+            ),
+            name: Name {
+                name: "main",
+                span: Span {
+                    start: 95,
+                    end: 99,
+                },
+            },
+            body: Expr {
+                ty: Var(
+                    TypeVarId(
+                        15,
+                    ),
+                ),
+                kind: Function {
+                    params: [
+                        Pattern {
+                            ty: Var(
+                                TypeVarId(
+                                    6,
+                                ),
+                            ),
+                            kind: Var {
+                                name: Name {
+                                    name: "x",
+                                    span: Span {
+                                        start: 105,
+                                        end: 106,
+                                    },
+                                },
+                                binding: BindingId(
+                                    0,
+                                ),
+                            },
+                            span: Span {
+                                start: 105,
+                                end: 106,
+                            },
+                        },
+                    ],
+                    body: Expr {
+                        ty: Var(
+                            TypeVarId(
+                                14,
+                            ),
+                        ),
+                        kind: Block(
+                            [
+                                Expr {
+                                    ty: Var(
+                                        TypeVarId(
+                                            10,
+                                        ),
+                                    ),
+                                    kind: Let {
+                                        bind: Pattern {
+                                            ty: Var(
+                                                TypeVarId(
+                                                    7,
+                                                ),
+                                            ),
+                                            kind: Var {
+                                                name: Name {
+                                                    name: "y",
+                                                    span: Span {
+                                                        start: 118,
+                                                        end: 119,
+                                                    },
+                                                },
+                                                binding: BindingId(
+                                                    0,
+                                                ),
+                                            },
+                                            span: Span {
+                                                start: 118,
+                                                end: 119,
+                                            },
+                                        },
+                                        hint: None,
+                                        body: Expr {
+                                            ty: Var(
+                                                TypeVarId(
+                                                    9,
+                                                ),
+                                            ),
+                                            kind: Prim {
+                                                op: Add {
+                                                    operand: Var(
+                                                        TypeVarId(
+                                                            8,
+                                                        ),
+                                                    ),
+                                                },
+                                                args: [
+                                                    Expr {
+                                                        ty: Var(
+                                                            TypeVarId(
+                                                                8,
+                                                            ),
+                                                        ),
+                                                        kind: Var {
+                                                            name: Name {
+                                                                name: "x",
+                                                                span: Span {
+                                                                    start: 122,
+                                                                    end: 123,
+                                                                },
+                                                            },
+                                                            entity: EntityId(
+                                                                0,
+                                                            ),
+                                                        },
+                                                        span: Span {
+                                                            start: 122,
+                                                            end: 123,
+                                                        },
+                                                    },
+                                                    Expr {
+                                                        ty: Apply {
+                                                            ident: Name {
+                                                                name: "i32",
+                                                                span: Span {
+                                                                    start: 0,
+                                                                    end: 0,
+                                                                },
+                                                            },
+                                                            arguments: [],
+                                                        },
+                                                        kind: Constant(
+                                                            Literal(
+                                                                Int(
+                                                                    "1",
+                                                                ),
+                                                            ),
+                                                        ),
+                                                        span: Span {
+                                                            start: 126,
+                                                            end: 127,
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                            span: Span {
+                                                start: 122,
+                                                end: 127,
+                                            },
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 114,
+                                        end: 127,
+                                    },
+                                },
+                                Expr {
+                                    ty: Var(
+                                        TypeVarId(
+                                            13,
+                                        ),
+                                    ),
+                                    kind: Apply {
+                                        callee: Expr {
+                                            ty: Var(
+                                                TypeVarId(
+                                                    11,
+                                                ),
+                                            ),
+                                            kind: Var {
+                                                name: Name {
+                                                    name: "double",
+                                                    span: Span {
+                                                        start: 131,
+                                                        end: 137,
+                                                    },
+                                                },
+                                                entity: EntityId(
+                                                    0,
+                                                ),
+                                            },
+                                            span: Span {
+                                                start: 131,
+                                                end: 137,
+                                            },
+                                        },
+                                        args: [
+                                            Expr {
+                                                ty: Var(
+                                                    TypeVarId(
+                                                        12,
+                                                    ),
+                                                ),
+                                                kind: Var {
+                                                    name: Name {
+                                                        name: "y",
+                                                        span: Span {
+                                                            start: 138,
+                                                            end: 139,
+                                                        },
+                                                    },
+                                                    entity: EntityId(
+                                                        0,
+                                                    ),
+                                                },
+                                                span: Span {
+                                                    start: 138,
+                                                    end: 139,
+                                                },
+                                            },
+                                        ],
+                                    },
+                                    span: Span {
+                                        start: 131,
+                                        end: 139,
+                                    },
+                                },
+                            ],
+                        ),
+                        span: Span {
+                            start: 110,
+                            end: 141,
+                        },
+                    },
+                },
+                span: Span {
+                    start: 102,
+                    end: 141,
+                },
+            },
+            ty: Var(
+                TypeVarId(
+                    15,
+                ),
+            ),
+            span: Span {
+                start: 91,
+                end: 141,
+            },
+        },
+    ],
+}

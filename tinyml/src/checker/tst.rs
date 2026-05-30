@@ -1,6 +1,6 @@
 use crate::parser::{ast, ident::Ident, lexer::Span};
 
-use super::scheme::Scheme;
+use super::{builtin, scheme::Scheme};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BindingId(usize);
@@ -110,6 +110,16 @@ pub struct Expr {
     pub span: Span,
 }
 
+impl Expr {
+    pub fn is_unit_constructor(&self) -> bool {
+        matches!(
+            &self.kind,
+            ExprKind::Constructor { name, args, .. }
+                if args.is_empty() && matches!(name.as_name(), Some(builtin::UNIT_CONSTRUCTOR))
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExprKind {
     Literal {
@@ -176,6 +186,16 @@ pub struct Pattern {
     pub span: Span,
 }
 
+impl Pattern {
+    pub fn is_unit_constructor(&self) -> bool {
+        matches!(
+            &self.kind,
+            PatternKind::Constructor { name, args, .. }
+                if args.is_empty() && matches!(name.as_name(), Some(builtin::UNIT_CONSTRUCTOR))
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum PatternKind {
     Wildcard,
@@ -202,59 +222,4 @@ pub enum PatternKind {
         name: Ident,
         fields: Vec<(Ident, Pattern)>,
     },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ModuleInterface {
-    pub values: Vec<ValueDescription>,
-    pub constructors: Vec<ConstructorDescription>,
-    pub record_fields: Vec<RecordFieldDescription>,
-    pub types: Vec<TypeDescription>,
-    pub modules: Vec<ModuleDescription>,
-}
-
-impl ModuleInterface {
-    pub fn empty() -> Self {
-        Self {
-            values: Vec::new(),
-            constructors: Vec::new(),
-            record_fields: Vec::new(),
-            types: Vec::new(),
-            modules: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ValueDescription {
-    pub name: Ident,
-    pub scheme: Scheme,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ConstructorDescription {
-    pub name: Ident,
-    pub scheme: Scheme,
-    pub result: Type,
-    pub arguments: Vec<Type>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct RecordFieldDescription {
-    pub name: Ident,
-    pub owner: Type,
-    pub field: Type,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct TypeDescription {
-    pub name: Ident,
-    pub params: Vec<ast::TypeVar>,
-    pub body: Type,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ModuleDescription {
-    pub name: Ident,
-    pub interface: Box<ModuleInterface>,
 }

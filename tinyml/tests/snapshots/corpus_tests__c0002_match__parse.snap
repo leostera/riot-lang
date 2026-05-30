@@ -1,5 +1,5 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "parse_snapshot(\"tests/fixtures/0002_match.ml\")"
 ---
 Module {
@@ -7,7 +7,7 @@ Module {
         TypeDecl(
             TypeDecl {
                 name: Name {
-                    name: "option",
+                    name: "Option",
                     span: Span {
                         start: 5,
                         end: 11,

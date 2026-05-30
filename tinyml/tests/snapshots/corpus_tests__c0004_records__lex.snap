@@ -1,5 +1,5 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "lex_snapshot(\"tests/fixtures/0004_records.ml\")"
 ---
 [
@@ -27,7 +27,7 @@ expression: "lex_snapshot(\"tests/fixtures/0004_records.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "User",
         ),
         span: Span {
@@ -137,7 +137,7 @@ expression: "lex_snapshot(\"tests/fixtures/0004_records.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "User",
         ),
         span: Span {

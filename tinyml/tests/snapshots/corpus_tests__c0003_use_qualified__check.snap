@@ -1,72 +1,71 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "check_snapshot(\"tests/fixtures/0003_use_qualified.ml\")"
 ---
-check pending
-Module {
-    items: [
-        UseDecl(
-            Concrete {
-                module: Qualified {
-                    name: "A",
-                    rest: Name {
-                        name: "B",
+ModuleSummary {
+    tst: Module {
+        items: [
+            LetDecl(
+                Const {
+                    binding: BindingId(
+                        0,
+                    ),
+                    entity: EntityId(
+                        0,
+                    ),
+                    name: Name {
+                        name: "x",
                         span: Span {
-                            start: 6,
-                            end: 7,
+                            start: 33,
+                            end: 34,
                         },
                     },
-                    span: Span {
-                        start: 4,
-                        end: 7,
-                    },
-                },
-                members: [
-                    Name {
-                        name: "C",
-                        span: Span {
-                            start: 9,
-                            end: 10,
-                        },
-                    },
-                    Qualified {
-                        name: "D",
-                        rest: Name {
-                            name: "E",
-                            span: Span {
-                                start: 14,
-                                end: 15,
+                    hint: None,
+                    body: Expr {
+                        ty: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
                             },
+                            arguments: [],
+                        },
+                        kind: Literal {
+                            value: Int(
+                                "1",
+                            ),
                         },
                         span: Span {
-                            start: 12,
-                            end: 15,
+                            start: 37,
+                            end: 38,
                         },
                     },
-                ],
-                span: Span {
-                    start: 0,
-                    end: 16,
-                },
-            },
-        ),
-        UseDecl(
-            Wildcard {
-                module: Name {
-                    name: "list",
+                    scheme: Scheme {
+                        quantifier: [],
+                        body: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                    },
                     span: Span {
-                        start: 21,
-                        end: 25,
+                        start: 29,
+                        end: 38,
                     },
                 },
-                span: Span {
-                    start: 17,
-                    end: 27,
-                },
-            },
-        ),
-        LetDecl(
-            Const {
+            ),
+        ],
+    },
+    interface: ModuleInterface {
+        values: [
+            ValueDescription {
                 name: Name {
                     name: "x",
                     span: Span {
@@ -74,20 +73,28 @@ Module {
                         end: 34,
                     },
                 },
-                body: Literal {
-                    value: Int(
-                        "1",
-                    ),
-                    span: Span {
-                        start: 37,
-                        end: 38,
+                scheme: Scheme {
+                    quantifier: [],
+                    body: Apply {
+                        ident: Name {
+                            name: "i32",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
                     },
                 },
-                span: Span {
-                    start: 29,
-                    end: 38,
-                },
             },
-        ),
+        ],
+        constructors: [],
+        record_fields: [],
+        types: [],
+        modules: [],
+    },
+    diagnostics: [
+        UnsupportedUseDeclaration,
+        UnsupportedUseDeclaration,
     ],
 }

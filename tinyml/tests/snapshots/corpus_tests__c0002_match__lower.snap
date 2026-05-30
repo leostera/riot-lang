@@ -1,0 +1,238 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "lower_snapshot(\"tests/fixtures/0002_match.ml\")"
+---
+Module {
+    values: [
+        ValueDecl {
+            binding: BindingId(
+                0,
+            ),
+            entity: EntityId(
+                0,
+            ),
+            name: Name {
+                name: "get_or_zero",
+                span: Span {
+                    start: 45,
+                    end: 56,
+                },
+            },
+            body: Expr {
+                ty: Var(
+                    TypeVarId(
+                        8,
+                    ),
+                ),
+                kind: Function {
+                    params: [
+                        Pattern {
+                            ty: Var(
+                                TypeVarId(
+                                    1,
+                                ),
+                            ),
+                            kind: Var {
+                                name: Name {
+                                    name: "x",
+                                    span: Span {
+                                        start: 62,
+                                        end: 63,
+                                    },
+                                },
+                                binding: BindingId(
+                                    0,
+                                ),
+                            },
+                            span: Span {
+                                start: 62,
+                                end: 63,
+                            },
+                        },
+                    ],
+                    body: Expr {
+                        ty: Var(
+                            TypeVarId(
+                                7,
+                            ),
+                        ),
+                        kind: Match {
+                            scrutinee: Expr {
+                                ty: Var(
+                                    TypeVarId(
+                                        2,
+                                    ),
+                                ),
+                                kind: Var {
+                                    name: Name {
+                                        name: "x",
+                                        span: Span {
+                                            start: 73,
+                                            end: 74,
+                                        },
+                                    },
+                                    entity: EntityId(
+                                        0,
+                                    ),
+                                },
+                                span: Span {
+                                    start: 73,
+                                    end: 74,
+                                },
+                            },
+                            arms: [
+                                MatchArm {
+                                    pattern: Pattern {
+                                        ty: Var(
+                                            TypeVarId(
+                                                3,
+                                            ),
+                                        ),
+                                        kind: Construct {
+                                            name: Name {
+                                                name: "None",
+                                                span: Span {
+                                                    start: 81,
+                                                    end: 85,
+                                                },
+                                            },
+                                            entity: EntityId(
+                                                0,
+                                            ),
+                                            args: [],
+                                        },
+                                        span: Span {
+                                            start: 81,
+                                            end: 85,
+                                        },
+                                    },
+                                    body: Expr {
+                                        ty: Apply {
+                                            ident: Name {
+                                                name: "i32",
+                                                span: Span {
+                                                    start: 0,
+                                                    end: 0,
+                                                },
+                                            },
+                                            arguments: [],
+                                        },
+                                        kind: Constant(
+                                            Literal(
+                                                Int(
+                                                    "0",
+                                                ),
+                                            ),
+                                        ),
+                                        span: Span {
+                                            start: 89,
+                                            end: 90,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 81,
+                                        end: 90,
+                                    },
+                                },
+                                MatchArm {
+                                    pattern: Pattern {
+                                        ty: Var(
+                                            TypeVarId(
+                                                4,
+                                            ),
+                                        ),
+                                        kind: Construct {
+                                            name: Name {
+                                                name: "Some",
+                                                span: Span {
+                                                    start: 95,
+                                                    end: 99,
+                                                },
+                                            },
+                                            entity: EntityId(
+                                                0,
+                                            ),
+                                            args: [
+                                                Pattern {
+                                                    ty: Var(
+                                                        TypeVarId(
+                                                            5,
+                                                        ),
+                                                    ),
+                                                    kind: Var {
+                                                        name: Name {
+                                                            name: "value",
+                                                            span: Span {
+                                                                start: 100,
+                                                                end: 105,
+                                                            },
+                                                        },
+                                                        binding: BindingId(
+                                                            0,
+                                                        ),
+                                                    },
+                                                    span: Span {
+                                                        start: 100,
+                                                        end: 105,
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        span: Span {
+                                            start: 95,
+                                            end: 106,
+                                        },
+                                    },
+                                    body: Expr {
+                                        ty: Var(
+                                            TypeVarId(
+                                                6,
+                                            ),
+                                        ),
+                                        kind: Var {
+                                            name: Name {
+                                                name: "value",
+                                                span: Span {
+                                                    start: 110,
+                                                    end: 115,
+                                                },
+                                            },
+                                            entity: EntityId(
+                                                0,
+                                            ),
+                                        },
+                                        span: Span {
+                                            start: 110,
+                                            end: 115,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 95,
+                                        end: 115,
+                                    },
+                                },
+                            ],
+                        },
+                        span: Span {
+                            start: 67,
+                            end: 117,
+                        },
+                    },
+                },
+                span: Span {
+                    start: 59,
+                    end: 117,
+                },
+            },
+            ty: Var(
+                TypeVarId(
+                    8,
+                ),
+            ),
+            span: Span {
+                start: 41,
+                end: 117,
+            },
+        },
+    ],
+}

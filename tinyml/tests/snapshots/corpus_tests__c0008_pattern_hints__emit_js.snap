@@ -1,0 +1,136 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "emit_js_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
+---
+emit pending
+Module {
+    values: [
+        ValueDecl {
+            binding: BindingId(
+                0,
+            ),
+            entity: EntityId(
+                0,
+            ),
+            name: Name {
+                name: "block",
+                span: Span {
+                    start: 41,
+                    end: 46,
+                },
+            },
+            body: Expr {
+                ty: Var(
+                    TypeVarId(
+                        4,
+                    ),
+                ),
+                kind: Block(
+                    [
+                        Expr {
+                            ty: Var(
+                                TypeVarId(
+                                    2,
+                                ),
+                            ),
+                            kind: Let {
+                                bind: Pattern {
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "u8",
+                                            span: Span {
+                                                start: 61,
+                                                end: 63,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                    kind: Var {
+                                        name: Name {
+                                            name: "x",
+                                            span: Span {
+                                                start: 58,
+                                                end: 59,
+                                            },
+                                        },
+                                        binding: BindingId(
+                                            0,
+                                        ),
+                                    },
+                                    span: Span {
+                                        start: 57,
+                                        end: 64,
+                                    },
+                                },
+                                hint: None,
+                                body: Expr {
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "i32",
+                                            span: Span {
+                                                start: 0,
+                                                end: 0,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                    kind: Constant(
+                                        Literal(
+                                            Int(
+                                                "1",
+                                            ),
+                                        ),
+                                    ),
+                                    span: Span {
+                                        start: 67,
+                                        end: 68,
+                                    },
+                                },
+                            },
+                            span: Span {
+                                start: 53,
+                                end: 68,
+                            },
+                        },
+                        Expr {
+                            ty: Var(
+                                TypeVarId(
+                                    3,
+                                ),
+                            ),
+                            kind: Var {
+                                name: Name {
+                                    name: "x",
+                                    span: Span {
+                                        start: 72,
+                                        end: 73,
+                                    },
+                                },
+                                entity: EntityId(
+                                    0,
+                                ),
+                            },
+                            span: Span {
+                                start: 72,
+                                end: 73,
+                            },
+                        },
+                    ],
+                ),
+                span: Span {
+                    start: 49,
+                    end: 75,
+                },
+            },
+            ty: Var(
+                TypeVarId(
+                    4,
+                ),
+            ),
+            span: Span {
+                start: 37,
+                end: 75,
+            },
+        },
+    ],
+}

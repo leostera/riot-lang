@@ -1,12 +1,310 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "check_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
-check pending
-Module {
-    items: [
-        LetDecl(
-            Const {
+ModuleSummary {
+    tst: Module {
+        items: [
+            LetDecl(
+                Const {
+                    binding: BindingId(
+                        0,
+                    ),
+                    entity: EntityId(
+                        0,
+                    ),
+                    name: Name {
+                        name: "unit",
+                        span: Span {
+                            start: 4,
+                            end: 8,
+                        },
+                    },
+                    hint: None,
+                    body: Expr {
+                        ty: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        kind: Constructor {
+                            name: Name {
+                                name: "()",
+                                span: Span {
+                                    start: 11,
+                                    end: 13,
+                                },
+                            },
+                            entity: EntityId(
+                                0,
+                            ),
+                            args: [],
+                        },
+                        span: Span {
+                            start: 11,
+                            end: 13,
+                        },
+                    },
+                    scheme: Scheme {
+                        quantifier: [],
+                        body: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                    },
+                    span: Span {
+                        start: 0,
+                        end: 13,
+                    },
+                },
+            ),
+            LetDecl(
+                Const {
+                    binding: BindingId(
+                        1,
+                    ),
+                    entity: EntityId(
+                        1,
+                    ),
+                    name: Name {
+                        name: "id_unit",
+                        span: Span {
+                            start: 19,
+                            end: 26,
+                        },
+                    },
+                    hint: None,
+                    body: Expr {
+                        ty: Var(
+                            TypeVarId(
+                                4,
+                            ),
+                        ),
+                        kind: Fn {
+                            params: [
+                                Pattern {
+                                    ty: Var(
+                                        TypeVarId(
+                                            3,
+                                        ),
+                                    ),
+                                    kind: Constructor {
+                                        name: Name {
+                                            name: "()",
+                                            span: Span {
+                                                start: 32,
+                                                end: 34,
+                                            },
+                                        },
+                                        entity: EntityId(
+                                            0,
+                                        ),
+                                        args: [],
+                                    },
+                                    span: Span {
+                                        start: 32,
+                                        end: 34,
+                                    },
+                                },
+                            ],
+                            body: Expr {
+                                ty: Apply {
+                                    ident: Name {
+                                        name: "unit",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                                kind: Constructor {
+                                    name: Name {
+                                        name: "()",
+                                        span: Span {
+                                            start: 38,
+                                            end: 40,
+                                        },
+                                    },
+                                    entity: EntityId(
+                                        0,
+                                    ),
+                                    args: [],
+                                },
+                                span: Span {
+                                    start: 38,
+                                    end: 40,
+                                },
+                            },
+                        },
+                        span: Span {
+                            start: 29,
+                            end: 40,
+                        },
+                    },
+                    scheme: Scheme {
+                        quantifier: [],
+                        body: Var(
+                            TypeVarId(
+                                4,
+                            ),
+                        ),
+                    },
+                    span: Span {
+                        start: 15,
+                        end: 40,
+                    },
+                },
+            ),
+            LetDecl(
+                Const {
+                    binding: BindingId(
+                        2,
+                    ),
+                    entity: EntityId(
+                        2,
+                    ),
+                    name: Name {
+                        name: "value",
+                        span: Span {
+                            start: 46,
+                            end: 51,
+                        },
+                    },
+                    hint: None,
+                    body: Expr {
+                        ty: Var(
+                            TypeVarId(
+                                6,
+                            ),
+                        ),
+                        kind: Match {
+                            scrutinee: Expr {
+                                ty: Apply {
+                                    ident: Name {
+                                        name: "unit",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                                kind: Constructor {
+                                    name: Name {
+                                        name: "()",
+                                        span: Span {
+                                            start: 60,
+                                            end: 62,
+                                        },
+                                    },
+                                    entity: EntityId(
+                                        0,
+                                    ),
+                                    args: [],
+                                },
+                                span: Span {
+                                    start: 60,
+                                    end: 62,
+                                },
+                            },
+                            arms: [
+                                MatchArm {
+                                    pattern: Pattern {
+                                        ty: Var(
+                                            TypeVarId(
+                                                5,
+                                            ),
+                                        ),
+                                        kind: Constructor {
+                                            name: Name {
+                                                name: "()",
+                                                span: Span {
+                                                    start: 69,
+                                                    end: 71,
+                                                },
+                                            },
+                                            entity: EntityId(
+                                                0,
+                                            ),
+                                            args: [],
+                                        },
+                                        span: Span {
+                                            start: 69,
+                                            end: 71,
+                                        },
+                                    },
+                                    body: Expr {
+                                        ty: Apply {
+                                            ident: Name {
+                                                name: "unit",
+                                                span: Span {
+                                                    start: 0,
+                                                    end: 0,
+                                                },
+                                            },
+                                            arguments: [],
+                                        },
+                                        kind: Constructor {
+                                            name: Name {
+                                                name: "()",
+                                                span: Span {
+                                                    start: 75,
+                                                    end: 77,
+                                                },
+                                            },
+                                            entity: EntityId(
+                                                0,
+                                            ),
+                                            args: [],
+                                        },
+                                        span: Span {
+                                            start: 75,
+                                            end: 77,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 69,
+                                        end: 77,
+                                    },
+                                },
+                            ],
+                        },
+                        span: Span {
+                            start: 54,
+                            end: 79,
+                        },
+                    },
+                    scheme: Scheme {
+                        quantifier: [],
+                        body: Var(
+                            TypeVarId(
+                                6,
+                            ),
+                        ),
+                    },
+                    span: Span {
+                        start: 42,
+                        end: 79,
+                    },
+                },
+            ),
+        ],
+    },
+    interface: ModuleInterface {
+        values: [
+            ValueDescription {
                 name: Name {
                     name: "unit",
                     span: Span {
@@ -14,28 +312,21 @@ Module {
                         end: 8,
                     },
                 },
-                body: Constructor {
-                    name: Name {
-                        name: "()",
-                        span: Span {
-                            start: 11,
-                            end: 13,
+                scheme: Scheme {
+                    quantifier: [],
+                    body: Apply {
+                        ident: Name {
+                            name: "unit",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
                         },
+                        arguments: [],
                     },
-                    args: [],
-                    span: Span {
-                        start: 11,
-                        end: 13,
-                    },
-                },
-                span: Span {
-                    start: 0,
-                    end: 13,
                 },
             },
-        ),
-        LetDecl(
-            Const {
+            ValueDescription {
                 name: Name {
                     name: "id_unit",
                     span: Span {
@@ -43,50 +334,16 @@ Module {
                         end: 26,
                     },
                 },
-                body: Fn {
-                    params: [
-                        Constructor {
-                            name: Name {
-                                name: "()",
-                                span: Span {
-                                    start: 32,
-                                    end: 34,
-                                },
-                            },
-                            args: [],
-                            span: Span {
-                                start: 32,
-                                end: 34,
-                            },
-                        },
-                    ],
-                    body: Constructor {
-                        name: Name {
-                            name: "()",
-                            span: Span {
-                                start: 38,
-                                end: 40,
-                            },
-                        },
-                        args: [],
-                        span: Span {
-                            start: 38,
-                            end: 40,
-                        },
-                    },
-                    span: Span {
-                        start: 29,
-                        end: 40,
-                    },
-                },
-                span: Span {
-                    start: 15,
-                    end: 40,
+                scheme: Scheme {
+                    quantifier: [],
+                    body: Var(
+                        TypeVarId(
+                            4,
+                        ),
+                    ),
                 },
             },
-        ),
-        LetDecl(
-            Const {
+            ValueDescription {
                 name: Name {
                     name: "value",
                     span: Span {
@@ -94,67 +351,23 @@ Module {
                         end: 51,
                     },
                 },
-                body: Match {
-                    scrutinee: Constructor {
-                        name: Name {
-                            name: "()",
-                            span: Span {
-                                start: 60,
-                                end: 62,
-                            },
-                        },
-                        args: [],
-                        span: Span {
-                            start: 60,
-                            end: 62,
-                        },
-                    },
-                    arms: [
-                        MatchArm {
-                            pattern: Constructor {
-                                name: Name {
-                                    name: "()",
-                                    span: Span {
-                                        start: 69,
-                                        end: 71,
-                                    },
-                                },
-                                args: [],
-                                span: Span {
-                                    start: 69,
-                                    end: 71,
-                                },
-                            },
-                            body: Constructor {
-                                name: Name {
-                                    name: "()",
-                                    span: Span {
-                                        start: 75,
-                                        end: 77,
-                                    },
-                                },
-                                args: [],
-                                span: Span {
-                                    start: 75,
-                                    end: 77,
-                                },
-                            },
-                            span: Span {
-                                start: 69,
-                                end: 77,
-                            },
-                        },
-                    ],
-                    span: Span {
-                        start: 54,
-                        end: 79,
-                    },
-                },
-                span: Span {
-                    start: 42,
-                    end: 79,
+                scheme: Scheme {
+                    quantifier: [],
+                    body: Var(
+                        TypeVarId(
+                            6,
+                        ),
+                    ),
                 },
             },
-        ),
+        ],
+        constructors: [],
+        record_fields: [],
+        types: [],
+        modules: [],
+    },
+    diagnostics: [
+        UnsupportedExpression,
+        UnsupportedExpression,
     ],
 }

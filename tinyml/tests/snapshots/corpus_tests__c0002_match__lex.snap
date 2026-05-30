@@ -1,5 +1,5 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
 ---
 [
@@ -12,7 +12,7 @@ expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
     },
     Token {
         kind: Ident(
-            "option",
+            "Option",
         ),
         span: Span {
             start: 5,
@@ -57,7 +57,7 @@ expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "None",
         ),
         span: Span {
@@ -73,7 +73,7 @@ expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "Some",
         ),
         span: Span {
@@ -181,7 +181,7 @@ expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "None",
         ),
         span: Span {
@@ -213,7 +213,7 @@ expression: "lex_snapshot(\"tests/fixtures/0002_match.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "Some",
         ),
         span: Span {

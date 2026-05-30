@@ -1,0 +1,226 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "emit_wasm_snapshot(\"tests/fixtures/0005_unit.ml\")"
+---
+emit pending
+Module {
+    values: [
+        ValueDecl {
+            binding: BindingId(
+                0,
+            ),
+            entity: EntityId(
+                0,
+            ),
+            name: Name {
+                name: "unit",
+                span: Span {
+                    start: 4,
+                    end: 8,
+                },
+            },
+            body: Expr {
+                ty: Apply {
+                    ident: Name {
+                        name: "unit",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+                kind: Constant(
+                    Unit,
+                ),
+                span: Span {
+                    start: 11,
+                    end: 13,
+                },
+            },
+            ty: Apply {
+                ident: Name {
+                    name: "unit",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                arguments: [],
+            },
+            span: Span {
+                start: 0,
+                end: 13,
+            },
+        },
+        ValueDecl {
+            binding: BindingId(
+                1,
+            ),
+            entity: EntityId(
+                1,
+            ),
+            name: Name {
+                name: "id_unit",
+                span: Span {
+                    start: 19,
+                    end: 26,
+                },
+            },
+            body: Expr {
+                ty: Var(
+                    TypeVarId(
+                        4,
+                    ),
+                ),
+                kind: Function {
+                    params: [
+                        Pattern {
+                            ty: Var(
+                                TypeVarId(
+                                    3,
+                                ),
+                            ),
+                            kind: Constant(
+                                Unit,
+                            ),
+                            span: Span {
+                                start: 32,
+                                end: 34,
+                            },
+                        },
+                    ],
+                    body: Expr {
+                        ty: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        kind: Constant(
+                            Unit,
+                        ),
+                        span: Span {
+                            start: 38,
+                            end: 40,
+                        },
+                    },
+                },
+                span: Span {
+                    start: 29,
+                    end: 40,
+                },
+            },
+            ty: Var(
+                TypeVarId(
+                    4,
+                ),
+            ),
+            span: Span {
+                start: 15,
+                end: 40,
+            },
+        },
+        ValueDecl {
+            binding: BindingId(
+                2,
+            ),
+            entity: EntityId(
+                2,
+            ),
+            name: Name {
+                name: "value",
+                span: Span {
+                    start: 46,
+                    end: 51,
+                },
+            },
+            body: Expr {
+                ty: Var(
+                    TypeVarId(
+                        6,
+                    ),
+                ),
+                kind: Match {
+                    scrutinee: Expr {
+                        ty: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        kind: Constant(
+                            Unit,
+                        ),
+                        span: Span {
+                            start: 60,
+                            end: 62,
+                        },
+                    },
+                    arms: [
+                        MatchArm {
+                            pattern: Pattern {
+                                ty: Var(
+                                    TypeVarId(
+                                        5,
+                                    ),
+                                ),
+                                kind: Constant(
+                                    Unit,
+                                ),
+                                span: Span {
+                                    start: 69,
+                                    end: 71,
+                                },
+                            },
+                            body: Expr {
+                                ty: Apply {
+                                    ident: Name {
+                                        name: "unit",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                                kind: Constant(
+                                    Unit,
+                                ),
+                                span: Span {
+                                    start: 75,
+                                    end: 77,
+                                },
+                            },
+                            span: Span {
+                                start: 69,
+                                end: 77,
+                            },
+                        },
+                    ],
+                },
+                span: Span {
+                    start: 54,
+                    end: 79,
+                },
+            },
+            ty: Var(
+                TypeVarId(
+                    6,
+                ),
+            ),
+            span: Span {
+                start: 42,
+                end: 79,
+            },
+        },
+    ],
+}

@@ -6,11 +6,12 @@ use super::{
     builtin,
     diagnostic::CheckDiagnostic,
     env::EnvError,
+    interface::{ModuleInterface, ValueDescription},
     scheme::Scheme,
     state::State,
     tst::{
-        self, BindingId, EntityId, Expr, ExprKind, LetDecl, MatchArm, ModuleInterface, ModuleItem,
-        Pattern, PatternKind, Type, ValueDescription,
+        self, BindingId, EntityId, Expr, ExprKind, LetDecl, MatchArm, ModuleItem, Pattern,
+        PatternKind, Type,
     },
     unifier::Unifier,
 };
@@ -389,5 +390,5 @@ fn literal_type(value: &ast::Literal) -> tst::Type {
 }
 
 fn is_unit_constructor(name: &Ident, args: &[ast::Expr]) -> bool {
-    args.is_empty() && matches!(name.as_name(), Some("()"))
+    args.is_empty() && matches!(name.as_name(), Some(builtin::UNIT_CONSTRUCTOR))
 }

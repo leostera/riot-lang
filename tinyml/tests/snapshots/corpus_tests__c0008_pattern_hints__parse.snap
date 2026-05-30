@@ -1,0 +1,221 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "parse_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
+---
+Module {
+    items: [
+        LetDecl(
+            Fn {
+                name: Name {
+                    name: "foo",
+                    span: Span {
+                        start: 4,
+                        end: 7,
+                    },
+                },
+                args: [
+                    TypeHint {
+                        pattern: Tuple {
+                            items: [
+                                Var {
+                                    name: Name {
+                                        name: "a",
+                                        span: Span {
+                                            start: 10,
+                                            end: 11,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 10,
+                                        end: 11,
+                                    },
+                                },
+                                Var {
+                                    name: Name {
+                                        name: "b",
+                                        span: Span {
+                                            start: 13,
+                                            end: 14,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 13,
+                                        end: 14,
+                                    },
+                                },
+                            ],
+                            span: Span {
+                                start: 9,
+                                end: 15,
+                            },
+                        },
+                        hint: Tuple {
+                            items: [
+                                App {
+                                    name: Name {
+                                        name: "u8",
+                                        span: Span {
+                                            start: 18,
+                                            end: 20,
+                                        },
+                                    },
+                                    args: [],
+                                    span: Span {
+                                        start: 18,
+                                        end: 20,
+                                    },
+                                },
+                                App {
+                                    name: Name {
+                                        name: "u32",
+                                        span: Span {
+                                            start: 22,
+                                            end: 25,
+                                        },
+                                    },
+                                    args: [],
+                                    span: Span {
+                                        start: 22,
+                                        end: 25,
+                                    },
+                                },
+                            ],
+                            span: Span {
+                                start: 17,
+                                end: 26,
+                            },
+                        },
+                        span: Span {
+                            start: 8,
+                            end: 27,
+                        },
+                    },
+                ],
+                body: BinaryOp {
+                    ident: Name {
+                        name: "*",
+                        span: Span {
+                            start: 32,
+                            end: 33,
+                        },
+                    },
+                    left: Var {
+                        name: Name {
+                            name: "a",
+                            span: Span {
+                                start: 30,
+                                end: 31,
+                            },
+                        },
+                        span: Span {
+                            start: 30,
+                            end: 31,
+                        },
+                    },
+                    right: Literal {
+                        value: Int(
+                            "2",
+                        ),
+                        span: Span {
+                            start: 34,
+                            end: 35,
+                        },
+                    },
+                    span: Span {
+                        start: 30,
+                        end: 35,
+                    },
+                },
+                span: Span {
+                    start: 0,
+                    end: 35,
+                },
+            },
+        ),
+        LetDecl(
+            Const {
+                name: Name {
+                    name: "block",
+                    span: Span {
+                        start: 41,
+                        end: 46,
+                    },
+                },
+                body: Block {
+                    exprs: [
+                        Let {
+                            bind: TypeHint {
+                                pattern: Var {
+                                    name: Name {
+                                        name: "x",
+                                        span: Span {
+                                            start: 58,
+                                            end: 59,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 58,
+                                        end: 59,
+                                    },
+                                },
+                                hint: App {
+                                    name: Name {
+                                        name: "u8",
+                                        span: Span {
+                                            start: 61,
+                                            end: 63,
+                                        },
+                                    },
+                                    args: [],
+                                    span: Span {
+                                        start: 61,
+                                        end: 63,
+                                    },
+                                },
+                                span: Span {
+                                    start: 57,
+                                    end: 64,
+                                },
+                            },
+                            hint: None,
+                            body: Literal {
+                                value: Int(
+                                    "1",
+                                ),
+                                span: Span {
+                                    start: 67,
+                                    end: 68,
+                                },
+                            },
+                            span: Span {
+                                start: 53,
+                                end: 68,
+                            },
+                        },
+                        Var {
+                            name: Name {
+                                name: "x",
+                                span: Span {
+                                    start: 72,
+                                    end: 73,
+                                },
+                            },
+                            span: Span {
+                                start: 72,
+                                end: 73,
+                            },
+                        },
+                    ],
+                    span: Span {
+                        start: 49,
+                        end: 75,
+                    },
+                },
+                span: Span {
+                    start: 37,
+                    end: 75,
+                },
+            },
+        ),
+    ],
+}

@@ -1,0 +1,206 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "lex_snapshot(\"tests/fixtures/0007_annotations.ml\")"
+---
+[
+    Token {
+        kind: Let,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Ident(
+            "annotated",
+        ),
+        span: Span {
+            start: 4,
+            end: 13,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 14,
+            end: 15,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 16,
+            end: 17,
+        },
+    },
+    Token {
+        kind: Int(
+            "1",
+        ),
+        span: Span {
+            start: 17,
+            end: 18,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 18,
+            end: 19,
+        },
+    },
+    Token {
+        kind: Ident(
+            "u8",
+        ),
+        span: Span {
+            start: 20,
+            end: 22,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 22,
+            end: 23,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 25,
+            end: 28,
+        },
+    },
+    Token {
+        kind: Ident(
+            "block",
+        ),
+        span: Span {
+            start: 29,
+            end: 34,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 35,
+            end: 36,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 37,
+            end: 38,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 41,
+            end: 44,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 45,
+            end: 46,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 46,
+            end: 47,
+        },
+    },
+    Token {
+        kind: Ident(
+            "u8",
+        ),
+        span: Span {
+            start: 48,
+            end: 50,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 51,
+            end: 52,
+        },
+    },
+    Token {
+        kind: Int(
+            "1",
+        ),
+        span: Span {
+            start: 53,
+            end: 54,
+        },
+    },
+    Token {
+        kind: Semi,
+        span: Span {
+            start: 54,
+            end: 55,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 58,
+            end: 59,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 59,
+            end: 60,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 60,
+            end: 61,
+        },
+    },
+    Token {
+        kind: Ident(
+            "u8",
+        ),
+        span: Span {
+            start: 62,
+            end: 64,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 64,
+            end: 65,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 66,
+            end: 67,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 68,
+            end: 68,
+        },
+    },
+]

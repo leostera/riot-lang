@@ -1,5 +1,5 @@
 ---
-source: tinyml/tests/corpus_tests.rs
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "lex_snapshot(\"tests/fixtures/0001_basic.ml\")"
 ---
 [
@@ -12,7 +12,7 @@ expression: "lex_snapshot(\"tests/fixtures/0001_basic.ml\")"
     },
     Token {
         kind: Ident(
-            "list",
+            "List",
         ),
         span: Span {
             start: 4,
@@ -74,7 +74,7 @@ expression: "lex_snapshot(\"tests/fixtures/0001_basic.ml\")"
     },
     Token {
         kind: Ident(
-            "option",
+            "Option",
         ),
         span: Span {
             start: 27,
@@ -119,7 +119,7 @@ expression: "lex_snapshot(\"tests/fixtures/0001_basic.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "None",
         ),
         span: Span {
@@ -135,7 +135,7 @@ expression: "lex_snapshot(\"tests/fixtures/0001_basic.ml\")"
         },
     },
     Token {
-        kind: Constructor(
+        kind: Ident(
             "Some",
         ),
         span: Span {

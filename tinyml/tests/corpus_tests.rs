@@ -1,4 +1,10 @@
-use tinyml::parser::{lexer::Lexer, parse::Parser};
+use std::path::PathBuf;
+
+use tinyml::{
+    checker::Checker,
+    lambda::lower::Lowerer,
+    parser::{lexer::Lexer, parse::Parser},
+};
 
 fn source(path: &str) -> &'static str {
     Box::leak(std::fs::read_to_string(path).expect(path).into_boxed_str())
@@ -23,17 +29,49 @@ fn parse_snapshot(path: &str) -> String {
 
 fn check_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    format!("check pending\n{module:#?}")
+    let mut checker = Checker::new();
+    let summary = checker.check_module(&module);
+    format!("{summary:#?}")
 }
 
-fn emit_snapshot(path: &str) -> String {
+fn lower_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    format!("emit pending\n{module:#?}")
+    let mut checker = Checker::new();
+    let summary = checker.check_module(&module);
+    let lambda = Lowerer.lower_module(&summary.tst);
+    format!("{lambda:#?}")
 }
 
-fn build_snapshot(path: &str) -> String {
+fn emit_js_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    format!("build pending\n{module:#?}")
+    let mut checker = Checker::new();
+    let summary = checker.check_module(&module);
+    let lambda = Lowerer.lower_module(&summary.tst);
+    format!("emit pending\n{lambda:#?}")
+}
+
+fn emit_native_snapshot(path: &str) -> String {
+    let module = parse_module(path);
+    let mut checker = Checker::new();
+    let summary = checker.check_module(&module);
+    let lambda = Lowerer.lower_module(&summary.tst);
+    format!("emit pending\n{lambda:#?}")
+}
+
+fn emit_wasm_snapshot(path: &str) -> String {
+    let module = parse_module(path);
+    let mut checker = Checker::new();
+    let summary = checker.check_module(&module);
+    let lambda = Lowerer.lower_module(&summary.tst);
+    format!("emit pending\n{lambda:#?}")
+}
+
+macro_rules! assert_corpus_snapshot {
+    ($value:expr) => {{
+        let mut settings = insta::Settings::clone_current();
+        settings.set_snapshot_path(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots"));
+        settings.bind(|| insta::assert_snapshot!($value));
+    }};
 }
 
 macro_rules! corpus_tests {
@@ -44,27 +82,37 @@ macro_rules! corpus_tests {
 
                 #[test]
                 fn lex() {
-                    insta::assert_snapshot!(lex_snapshot($path));
+                    assert_corpus_snapshot!(lex_snapshot($path));
                 }
 
                 #[test]
                 fn parse() {
-                    insta::assert_snapshot!(parse_snapshot($path));
+                    assert_corpus_snapshot!(parse_snapshot($path));
+                }
+
+                #[test]
+                fn lower() {
+                    assert_corpus_snapshot!(lower_snapshot($path));
                 }
 
                 #[test]
                 fn check() {
-                    insta::assert_snapshot!(check_snapshot($path));
+                    assert_corpus_snapshot!(check_snapshot($path));
                 }
 
                 #[test]
-                fn emit() {
-                    insta::assert_snapshot!(emit_snapshot($path));
+                fn emit_js() {
+                    assert_corpus_snapshot!(emit_js_snapshot($path));
                 }
 
                 #[test]
-                fn build() {
-                    insta::assert_snapshot!(build_snapshot($path));
+                fn emit_native() {
+                    assert_corpus_snapshot!(emit_native_snapshot($path));
+                }
+
+                #[test]
+                fn emit_wasm() {
+                    assert_corpus_snapshot!(emit_wasm_snapshot($path));
                 }
             }
         )+

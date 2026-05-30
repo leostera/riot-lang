@@ -1,0 +1,275 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "lex_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
+---
+[
+    Token {
+        kind: Let,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Ident(
+            "foo",
+        ),
+        span: Span {
+            start: 4,
+            end: 7,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 8,
+            end: 9,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 9,
+            end: 10,
+        },
+    },
+    Token {
+        kind: Ident(
+            "a",
+        ),
+        span: Span {
+            start: 10,
+            end: 11,
+        },
+    },
+    Token {
+        kind: Comma,
+        span: Span {
+            start: 11,
+            end: 12,
+        },
+    },
+    Token {
+        kind: Ident(
+            "b",
+        ),
+        span: Span {
+            start: 13,
+            end: 14,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 14,
+            end: 15,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 15,
+            end: 16,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 17,
+            end: 18,
+        },
+    },
+    Token {
+        kind: Ident(
+            "u8",
+        ),
+        span: Span {
+            start: 18,
+            end: 20,
+        },
+    },
+    Token {
+        kind: Comma,
+        span: Span {
+            start: 20,
+            end: 21,
+        },
+    },
+    Token {
+        kind: Ident(
+            "u32",
+        ),
+        span: Span {
+            start: 22,
+            end: 25,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 25,
+            end: 26,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 26,
+            end: 27,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 28,
+            end: 29,
+        },
+    },
+    Token {
+        kind: Ident(
+            "a",
+        ),
+        span: Span {
+            start: 30,
+            end: 31,
+        },
+    },
+    Token {
+        kind: Star,
+        span: Span {
+            start: 32,
+            end: 33,
+        },
+    },
+    Token {
+        kind: Int(
+            "2",
+        ),
+        span: Span {
+            start: 34,
+            end: 35,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 37,
+            end: 40,
+        },
+    },
+    Token {
+        kind: Ident(
+            "block",
+        ),
+        span: Span {
+            start: 41,
+            end: 46,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 47,
+            end: 48,
+        },
+    },
+    Token {
+        kind: LBrace,
+        span: Span {
+            start: 49,
+            end: 50,
+        },
+    },
+    Token {
+        kind: Let,
+        span: Span {
+            start: 53,
+            end: 56,
+        },
+    },
+    Token {
+        kind: LParen,
+        span: Span {
+            start: 57,
+            end: 58,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 58,
+            end: 59,
+        },
+    },
+    Token {
+        kind: Colon,
+        span: Span {
+            start: 59,
+            end: 60,
+        },
+    },
+    Token {
+        kind: Ident(
+            "u8",
+        ),
+        span: Span {
+            start: 61,
+            end: 63,
+        },
+    },
+    Token {
+        kind: RParen,
+        span: Span {
+            start: 63,
+            end: 64,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 65,
+            end: 66,
+        },
+    },
+    Token {
+        kind: Int(
+            "1",
+        ),
+        span: Span {
+            start: 67,
+            end: 68,
+        },
+    },
+    Token {
+        kind: Semi,
+        span: Span {
+            start: 68,
+            end: 69,
+        },
+    },
+    Token {
+        kind: Ident(
+            "x",
+        ),
+        span: Span {
+            start: 72,
+            end: 73,
+        },
+    },
+    Token {
+        kind: RBrace,
+        span: Span {
+            start: 74,
+            end: 75,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 76,
+            end: 76,
+        },
+    },
+]

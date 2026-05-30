@@ -1,0 +1,8 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "emit_js_snapshot(\"tests/fixtures/0006_variant_record.ml\")"
+---
+emit pending
+Module {
+    values: [],
+}
