@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use tinyml::{
+    backend::js::{emit, lower as js_lower},
     checker::Checker,
     lambda::lower::Lowerer,
     parser::{lexer::Lexer, parse::Parser},
@@ -47,7 +48,8 @@ fn emit_js_snapshot(path: &str) -> String {
     let mut checker = Checker::new();
     let summary = checker.check_module(&module);
     let lambda = Lowerer.lower_module(&summary.tst);
-    format!("emit pending\n{lambda:#?}")
+    let js = js_lower::Lowerer::new(&summary.interface).lower_module(&lambda);
+    emit::Emitter::new(&js).to_ts_string()
 }
 
 fn emit_native_snapshot(path: &str) -> String {
@@ -69,7 +71,8 @@ fn emit_wasm_snapshot(path: &str) -> String {
 macro_rules! assert_corpus_snapshot {
     ($value:expr) => {{
         let mut settings = insta::Settings::clone_current();
-        settings.set_snapshot_path(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots"));
+        settings
+            .set_snapshot_path(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots"));
         settings.bind(|| insta::assert_snapshot!($value));
     }};
 }

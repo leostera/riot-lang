@@ -55,13 +55,13 @@ Module {
                                 kind: Constant(
                                     Literal(
                                         String(
-                                            "\"Leo\"",
+                                            "\"Luffy\"",
                                         ),
                                     ),
                                 ),
                                 span: Span {
                                     start: 24,
-                                    end: 29,
+                                    end: 31,
                                 },
                             },
                         ),
@@ -69,8 +69,8 @@ Module {
                             Name {
                                 name: "age",
                                 span: Span {
-                                    start: 31,
-                                    end: 34,
+                                    start: 33,
+                                    end: 36,
                                 },
                             },
                             Expr {
@@ -87,13 +87,13 @@ Module {
                                 kind: Constant(
                                     Literal(
                                         Int(
-                                            "30",
+                                            "19",
                                         ),
                                     ),
                                 ),
                                 span: Span {
-                                    start: 36,
-                                    end: 38,
+                                    start: 38,
+                                    end: 40,
                                 },
                             },
                         ),
@@ -101,7 +101,7 @@ Module {
                 },
                 span: Span {
                     start: 11,
-                    end: 40,
+                    end: 42,
                 },
             },
             ty: Var(
@@ -111,7 +111,7 @@ Module {
             ),
             span: Span {
                 start: 0,
-                end: 40,
+                end: 42,
             },
         },
         ValueDecl {
@@ -124,8 +124,8 @@ Module {
             name: Name {
                 name: "get_name",
                 span: Span {
-                    start: 46,
-                    end: 54,
+                    start: 48,
+                    end: 56,
                 },
             },
             body: Expr {
@@ -146,8 +146,8 @@ Module {
                                 name: Name {
                                     name: "User",
                                     span: Span {
-                                        start: 60,
-                                        end: 64,
+                                        start: 63,
+                                        end: 67,
                                     },
                                 },
                                 fields: [
@@ -155,8 +155,8 @@ Module {
                                         Name {
                                             name: "name",
                                             span: Span {
-                                                start: 67,
-                                                end: 71,
+                                                start: 70,
+                                                end: 74,
                                             },
                                         },
                                         Pattern {
@@ -169,8 +169,8 @@ Module {
                                                 name: Name {
                                                     name: "name",
                                                     span: Span {
-                                                        start: 67,
-                                                        end: 71,
+                                                        start: 70,
+                                                        end: 74,
                                                     },
                                                 },
                                                 binding: BindingId(
@@ -178,8 +178,8 @@ Module {
                                                 ),
                                             },
                                             span: Span {
-                                                start: 67,
-                                                end: 71,
+                                                start: 70,
+                                                end: 74,
                                             },
                                         },
                                     ),
@@ -187,8 +187,8 @@ Module {
                                         Name {
                                             name: "age",
                                             span: Span {
-                                                start: 73,
-                                                end: 76,
+                                                start: 76,
+                                                end: 79,
                                             },
                                         },
                                         Pattern {
@@ -199,16 +199,16 @@ Module {
                                             ),
                                             kind: Wildcard,
                                             span: Span {
-                                                start: 78,
-                                                end: 79,
+                                                start: 81,
+                                                end: 82,
                                             },
                                         },
                                     ),
                                 ],
                             },
                             span: Span {
-                                start: 60,
-                                end: 81,
+                                start: 62,
+                                end: 85,
                             },
                         },
                     ],
@@ -222,8 +222,8 @@ Module {
                             name: Name {
                                 name: "name",
                                 span: Span {
-                                    start: 85,
-                                    end: 89,
+                                    start: 89,
+                                    end: 93,
                                 },
                             },
                             entity: EntityId(
@@ -231,14 +231,14 @@ Module {
                             ),
                         },
                         span: Span {
-                            start: 85,
-                            end: 89,
+                            start: 89,
+                            end: 93,
                         },
                     },
                 },
                 span: Span {
-                    start: 57,
-                    end: 89,
+                    start: 59,
+                    end: 93,
                 },
             },
             ty: Var(
@@ -247,8 +247,8 @@ Module {
                 ),
             ),
             span: Span {
-                start: 42,
-                end: 89,
+                start: 44,
+                end: 93,
             },
         },
     ],

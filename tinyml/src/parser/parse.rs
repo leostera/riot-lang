@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
 
         let mut args = Vec::new();
         while !self.lexer.at(&TokenKind::Equal) {
-            args.push(self.parse_pattern()?);
+            args.push(self.parse_fn_param_pattern()?);
         }
         self.expect(&TokenKind::Equal)?;
         let body = self.parse_expr()?;
@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
         let start = self.expect(&TokenKind::Fn)?.span;
         let mut params = Vec::new();
         while self.starts_pattern() {
-            params.push(self.parse_pattern()?);
+            params.push(self.parse_fn_param_pattern()?);
         }
         if params.is_empty() {
             return self.err("expected at least one function parameter");
@@ -618,6 +618,33 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_fn_param_pattern(&mut self) -> Result<Pattern, ParseError> {
+        match self.lexer.peek() {
+            TokenKind::Ident(s) if s == "_" => {
+                let span = self.lexer.bump().span;
+                Ok(Pattern::Wildcard { span })
+            }
+            TokenKind::Ident(_) => {
+                let name = self.parse_ident()?;
+                if name.as_constructor_name().is_ok() {
+                    let span = name.span();
+                    Ok(Pattern::Constructor {
+                        name,
+                        args: Vec::new(),
+                        span,
+                    })
+                } else {
+                    self.validate_ident(name.as_value_name())?;
+                    let span = name.span();
+                    Ok(Pattern::Var { name, span })
+                }
+            }
+            TokenKind::LParen => self.parse_paren_pattern(),
+            TokenKind::Unit => self.parse_pattern(),
+            _ => self.err("expected function parameter pattern"),
+        }
+    }
+
     fn parse_named_pattern(&mut self) -> Result<Pattern, ParseError> {
         let name = self.parse_ident()?;
         if name.as_constructor_name().is_ok() {
@@ -640,13 +667,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::LParen => {
                 self.lexer.bump();
-                let mut args = Vec::new();
-                while !self.lexer.at(&TokenKind::RParen) {
-                    args.push(self.parse_pattern()?);
-                    if self.lexer.eat(&TokenKind::Comma).is_none() {
-                        break;
-                    }
-                }
+                let args = self.parse_constructor_tuple_pattern_args()?;
                 let end = self.expect(&TokenKind::RParen)?.span;
                 let span = name.span().join(end);
                 Ok(Pattern::Constructor { name, args, span })
@@ -668,7 +689,21 @@ impl<'a> Parser<'a> {
     /// parses grouped patterns and tuple patterns.
     fn parse_paren_pattern(&mut self) -> Result<Pattern, ParseError> {
         let start = self.expect(&TokenKind::LParen)?.span;
+        if let TokenKind::Ident(_) = self.lexer.peek() {
+            let name = self.parse_ident()?;
+            if name.as_constructor_name().is_ok() {
+                return self.parse_grouped_constructor_pattern(start, name);
+            }
+            self.validate_ident(name.as_value_name())?;
+            let span = name.span();
+            let first = Pattern::Var { name, span };
+            return self.finish_paren_pattern(start, first);
+        }
         let first = self.parse_pattern()?;
+        self.finish_paren_pattern(start, first)
+    }
+
+    fn finish_paren_pattern(&mut self, start: Span, first: Pattern) -> Result<Pattern, ParseError> {
         match self.lexer.peek() {
             TokenKind::Colon => {
                 self.lexer.bump();
@@ -700,6 +735,58 @@ impl<'a> Parser<'a> {
                 Ok(first)
             }
         }
+    }
+
+    fn parse_grouped_constructor_pattern(
+        &mut self,
+        start: Span,
+        name: Ident,
+    ) -> Result<Pattern, ParseError> {
+        if self.lexer.at(&TokenKind::RParen) {
+            let end = self.expect(&TokenKind::RParen)?.span;
+            return Ok(Pattern::Constructor {
+                name,
+                args: Vec::new(),
+                span: start.join(end),
+            });
+        }
+
+        if self.lexer.at(&TokenKind::LBrace) {
+            self.lexer.bump();
+            let fields = self.parse_record_pattern_fields()?;
+            self.expect(&TokenKind::RBrace)?;
+            let end = self.expect(&TokenKind::RParen)?.span;
+            return Ok(Pattern::Record {
+                name,
+                fields,
+                span: start.join(end),
+            });
+        }
+
+        if self.lexer.at(&TokenKind::LParen) {
+            self.lexer.bump();
+            let args = self.parse_constructor_tuple_pattern_args()?;
+            self.expect(&TokenKind::RParen)?;
+            let end = self.expect(&TokenKind::RParen)?.span;
+            return Ok(Pattern::Constructor {
+                name,
+                args,
+                span: start.join(end),
+            });
+        }
+
+        self.err("expected constructor pattern payload in parentheses")
+    }
+
+    fn parse_constructor_tuple_pattern_args(&mut self) -> Result<Vec<Pattern>, ParseError> {
+        let mut args = Vec::new();
+        while !self.lexer.at(&TokenKind::RParen) {
+            args.push(self.parse_pattern()?);
+            if self.lexer.eat(&TokenKind::Comma).is_none() {
+                break;
+            }
+        }
+        Ok(args)
     }
 
     /// Parse record pattern fields.
@@ -1067,6 +1154,71 @@ mod tests {
         let lexer = Lexer::new(src).expect("lex ok");
         let module = Parser::new(lexer).parse_module().expect("parse ok");
         insta::assert_snapshot!(format!("{module:#?}"));
+    }
+
+    #[test]
+    fn bare_constructor_function_params_are_nullary() {
+        let src = "let f = fn Some x -> x";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl::Const { body, .. }) = &module.items[0] else {
+            panic!("expected let declaration");
+        };
+        let Expr::Fn { params, .. } = body else {
+            panic!("expected function expression");
+        };
+        assert_eq!(params.len(), 2);
+        assert!(matches!(
+            &params[0],
+            Pattern::Constructor { name, args, .. }
+                if matches!(name.as_name(), Some("Some")) && args.is_empty()
+        ));
+        assert!(matches!(
+            &params[1],
+            Pattern::Var { name, .. } if matches!(name.as_name(), Some("x"))
+        ));
+    }
+
+    #[test]
+    fn parenthesized_constructor_function_params_carry_payloads() {
+        let src = "let f = fn (Some(x)) (Pair(left, right)) -> x";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl::Const { body, .. }) = &module.items[0] else {
+            panic!("expected let declaration");
+        };
+        let Expr::Fn { params, .. } = body else {
+            panic!("expected function expression");
+        };
+        assert_eq!(params.len(), 2);
+        assert!(matches!(
+            &params[0],
+            Pattern::Constructor { name, args, .. }
+                if matches!(name.as_name(), Some("Some")) && args.len() == 1
+        ));
+        assert!(matches!(
+            &params[1],
+            Pattern::Constructor { name, args, .. }
+                if matches!(name.as_name(), Some("Pair")) && args.len() == 2
+        ));
+    }
+
+    #[test]
+    fn constructor_patterns_use_declared_payload_parentheses() {
+        let src = "let value = match option { | Some(x) -> x }";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl::Const { body, .. }) = &module.items[0] else {
+            panic!("expected let declaration");
+        };
+        let Expr::Match { arms, .. } = body else {
+            panic!("expected match expression");
+        };
+        assert!(matches!(
+            &arms[0].pattern,
+            Pattern::Constructor { name, args, .. }
+                if matches!(name.as_name(), Some("Some")) && args.len() == 1
+        ));
     }
 
     #[test]

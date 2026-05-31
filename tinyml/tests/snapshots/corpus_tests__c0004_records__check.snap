@@ -57,12 +57,12 @@ ModuleSummary {
                                         },
                                         kind: Literal {
                                             value: String(
-                                                "\"Leo\"",
+                                                "\"Luffy\"",
                                             ),
                                         },
                                         span: Span {
                                             start: 24,
-                                            end: 29,
+                                            end: 31,
                                         },
                                     },
                                 ),
@@ -70,8 +70,8 @@ ModuleSummary {
                                     Name {
                                         name: "age",
                                         span: Span {
-                                            start: 31,
-                                            end: 34,
+                                            start: 33,
+                                            end: 36,
                                         },
                                     },
                                     Expr {
@@ -87,12 +87,12 @@ ModuleSummary {
                                         },
                                         kind: Literal {
                                             value: Int(
-                                                "30",
+                                                "19",
                                             ),
                                         },
                                         span: Span {
-                                            start: 36,
-                                            end: 38,
+                                            start: 38,
+                                            end: 40,
                                         },
                                     },
                                 ),
@@ -100,7 +100,7 @@ ModuleSummary {
                         },
                         span: Span {
                             start: 11,
-                            end: 40,
+                            end: 42,
                         },
                     },
                     scheme: Scheme {
@@ -113,7 +113,7 @@ ModuleSummary {
                     },
                     span: Span {
                         start: 0,
-                        end: 40,
+                        end: 42,
                     },
                 },
             ),
@@ -128,8 +128,8 @@ ModuleSummary {
                     name: Name {
                         name: "get_name",
                         span: Span {
-                            start: 46,
-                            end: 54,
+                            start: 48,
+                            end: 56,
                         },
                     },
                     hint: None,
@@ -151,8 +151,8 @@ ModuleSummary {
                                         name: Name {
                                             name: "User",
                                             span: Span {
-                                                start: 60,
-                                                end: 64,
+                                                start: 63,
+                                                end: 67,
                                             },
                                         },
                                         fields: [
@@ -160,8 +160,8 @@ ModuleSummary {
                                                 Name {
                                                     name: "name",
                                                     span: Span {
-                                                        start: 67,
-                                                        end: 71,
+                                                        start: 70,
+                                                        end: 74,
                                                     },
                                                 },
                                                 Pattern {
@@ -174,8 +174,8 @@ ModuleSummary {
                                                         name: Name {
                                                             name: "name",
                                                             span: Span {
-                                                                start: 67,
-                                                                end: 71,
+                                                                start: 70,
+                                                                end: 74,
                                                             },
                                                         },
                                                         binding: BindingId(
@@ -183,8 +183,8 @@ ModuleSummary {
                                                         ),
                                                     },
                                                     span: Span {
-                                                        start: 67,
-                                                        end: 71,
+                                                        start: 70,
+                                                        end: 74,
                                                     },
                                                 },
                                             ),
@@ -192,8 +192,8 @@ ModuleSummary {
                                                 Name {
                                                     name: "age",
                                                     span: Span {
-                                                        start: 73,
-                                                        end: 76,
+                                                        start: 76,
+                                                        end: 79,
                                                     },
                                                 },
                                                 Pattern {
@@ -204,16 +204,16 @@ ModuleSummary {
                                                     ),
                                                     kind: Wildcard,
                                                     span: Span {
-                                                        start: 78,
-                                                        end: 79,
+                                                        start: 81,
+                                                        end: 82,
                                                     },
                                                 },
                                             ),
                                         ],
                                     },
                                     span: Span {
-                                        start: 60,
-                                        end: 81,
+                                        start: 62,
+                                        end: 85,
                                     },
                                 },
                             ],
@@ -227,8 +227,8 @@ ModuleSummary {
                                     name: Name {
                                         name: "name",
                                         span: Span {
-                                            start: 85,
-                                            end: 89,
+                                            start: 89,
+                                            end: 93,
                                         },
                                     },
                                     entity: EntityId(
@@ -236,14 +236,14 @@ ModuleSummary {
                                     ),
                                 },
                                 span: Span {
-                                    start: 85,
-                                    end: 89,
+                                    start: 89,
+                                    end: 93,
                                 },
                             },
                         },
                         span: Span {
-                            start: 57,
-                            end: 89,
+                            start: 59,
+                            end: 93,
                         },
                     },
                     scheme: Scheme {
@@ -255,8 +255,8 @@ ModuleSummary {
                         ),
                     },
                     span: Span {
-                        start: 42,
-                        end: 89,
+                        start: 44,
+                        end: 93,
                     },
                 },
             ),
@@ -285,8 +285,8 @@ ModuleSummary {
                 name: Name {
                     name: "get_name",
                     span: Span {
-                        start: 46,
-                        end: 54,
+                        start: 48,
+                        end: 56,
                     },
                 },
                 scheme: Scheme {
