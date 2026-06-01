@@ -1,3 +1,9 @@
+//! Lambda-to-native IR lowering.
+//!
+//! This pass translates backend-independent Lambda into native IR, choosing
+//! native block layouts while preserving expression structure for later native
+//! passes.
+
 use crate::{
     backend::native::{ir, layout},
     lambda,
@@ -22,8 +28,9 @@ impl Lowerer {
 
     fn lower_value_decl(&mut self, value: &lambda::ir::ValueDecl) -> ir::ValueDecl {
         ir::ValueDecl {
-            binding: value.binding,
-            entity: value.entity,
+            binding: value.binding.clone(),
+            entity: value.entity.clone(),
+            symbol: ir::Symbol::from_ident(&value.name),
             name: value.name.clone(),
             body: self.lower_expr(&value.body),
             ty: value.ty.clone(),
@@ -35,8 +42,9 @@ impl Lowerer {
         let kind = match &expr.kind {
             lambda::ir::ExprKind::Constant(value) => ir::ExprKind::Constant(value.clone().into()),
             lambda::ir::ExprKind::Var { name, entity } => ir::ExprKind::Var {
+                symbol: ir::Symbol::from_ident(name),
                 name: name.clone(),
-                entity: *entity,
+                entity: entity.clone(),
             },
             lambda::ir::ExprKind::Construct { name, args, .. }
                 if matches!(
@@ -128,7 +136,7 @@ impl Lowerer {
             lambda::ir::PatternKind::Wildcard => ir::PatternKind::Wildcard,
             lambda::ir::PatternKind::Var { name, binding } => ir::PatternKind::Var {
                 name: name.clone(),
-                binding: *binding,
+                binding: binding.clone(),
             },
             lambda::ir::PatternKind::Constant(value) => {
                 ir::PatternKind::Constant(value.clone().into())
@@ -136,7 +144,7 @@ impl Lowerer {
             lambda::ir::PatternKind::Construct { name, entity, args } => {
                 ir::PatternKind::Construct {
                     name: name.clone(),
-                    entity: *entity,
+                    entity: entity.clone(),
                     args: args.iter().map(|arg| self.lower_pattern(arg)).collect(),
                 }
             }
@@ -163,7 +171,7 @@ impl Lowerer {
 mod tests {
     use crate::{
         backend::native::{ir, layout, lower::lower_module},
-        checker::{self, tst},
+        checker::{self, tir},
         lambda,
         parser::{ident::Ident, lexer::Span},
     };
@@ -179,8 +187,8 @@ mod tests {
     fn value(body: lambda::ir::Expr) -> lambda::ir::Module {
         lambda::ir::Module {
             values: vec![lambda::ir::ValueDecl {
-                binding: tst::BindingId::new(0),
-                entity: tst::EntityId::new(0),
+                binding: tir::BindingId::synthetic(0),
+                entity: tir::EntityId::synthetic_value(0),
                 name: Ident::from_string("x"),
                 ty: checker::builtin::unit(),
                 body,

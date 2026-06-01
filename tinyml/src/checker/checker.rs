@@ -1,3 +1,8 @@
+//! Public checker orchestration API.
+//!
+//! `Checker` owns mutable type-checking state and delegates typing work to the
+//! typer, exposing `Checker::new().check_module(&module)` as the entrypoint.
+
 use crate::parser::ast;
 
 use super::{state::State, typer::Typer};
@@ -49,7 +54,7 @@ let nothing = ()
         );
         let summary = Checker::new().check_module(&module);
         assert!(summary.diagnostics.is_empty());
-        assert_eq!(summary.tst.items.len(), 5);
+        assert_eq!(summary.tir.items.len(), 5);
         assert_eq!(summary.interface.values.len(), 5);
     }
 
@@ -57,7 +62,7 @@ let nothing = ()
     fn reports_duplicate_top_level_constants() {
         let module = parse_module("let value = 1\nlet value = 2");
         let summary = Checker::new().check_module(&module);
-        assert_eq!(summary.tst.items.len(), 1);
+        assert_eq!(summary.tir.items.len(), 1);
         assert_eq!(summary.interface.values.len(), 1);
         assert_eq!(
             summary.diagnostics[0],
@@ -71,7 +76,7 @@ let nothing = ()
     fn rejects_top_level_functions() {
         let module = parse_module("let f x = x");
         let summary = Checker::new().check_module(&module);
-        assert!(summary.tst.items.is_empty());
+        assert!(summary.tir.items.is_empty());
         assert!(summary.interface.values.is_empty());
         assert_eq!(
             summary.diagnostics[0],
@@ -83,7 +88,7 @@ let nothing = ()
     fn gives_unsupported_expressions_type_holes() {
         let module = parse_module("let value = answer");
         let summary = Checker::new().check_module(&module);
-        assert_eq!(summary.tst.items.len(), 1);
+        assert_eq!(summary.tir.items.len(), 1);
         assert_eq!(summary.interface.values.len(), 1);
         assert_eq!(
             summary.diagnostics[0],

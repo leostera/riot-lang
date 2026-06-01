@@ -1,17 +1,36 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
 ---
 ModuleSummary {
-    tst: Module {
+    tir: Module {
         items: [
             LetDecl(
                 Const {
-                    binding: BindingId(
-                        0,
-                    ),
-                    entity: EntityId(
-                        0,
+                    binding: BindingId {
+                        ident: Name {
+                            name: "_value",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 0,
+                    },
+                    entity: Value(
+                        ValueEntity {
+                            binding: BindingId {
+                                ident: Name {
+                                    name: "_value",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                stamp: 0,
+                            },
+                        },
                     ),
                     name: Name {
                         name: "_value",

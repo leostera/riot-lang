@@ -1,3 +1,9 @@
+//! TypeScript backend IR.
+//!
+//! The IR is a single algebra for runtime declarations and type declarations so
+//! the emitter can produce `.ts` output without coordinating separate JS and DTS
+//! modules.
+
 /// A complete JS-backend module containing runtime JavaScript and TypeScript declaration items.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {

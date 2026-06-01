@@ -1,6 +1,11 @@
+//! Native backend IR.
+//!
+//! This IR is backend-specific and may contain native representation constructs
+//! such as `MakeBlock`, stack/heap layout decisions, and native constants.
+
 use crate::{
     backend::native::layout::BlockLayout,
-    checker::tst::{BindingId, EntityId, Type},
+    checker::tir::{BindingId, EntityId, Type},
     lambda::ir::Primitive,
     parser::{ast, ident::Ident, lexer::Span},
 };
@@ -15,6 +20,7 @@ pub struct ValueDecl {
     pub binding: BindingId,
     pub entity: EntityId,
     pub name: Ident,
+    pub symbol: Symbol,
     pub body: Expr,
     pub ty: Type,
     pub span: Span,
@@ -32,6 +38,7 @@ pub enum ExprKind {
     Constant(Constant),
     Var {
         name: Ident,
+        symbol: Symbol,
         entity: EntityId,
     },
     Function {
@@ -66,6 +73,50 @@ pub enum ExprKind {
 pub enum Constant {
     Unit,
     Literal(ast::Literal),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Symbol(String);
+
+impl Symbol {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub fn from_ident(ident: &Ident) -> Self {
+        Self(symbol_name(ident))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+fn symbol_name(ident: &Ident) -> String {
+    match ident {
+        Ident::Name { name, .. } => sanitize_symbol(name),
+        Ident::Qualified { name, rest, .. } => {
+            format!("{}_{}", sanitize_symbol(name), symbol_name(rest))
+        }
+    }
+}
+
+fn sanitize_symbol(name: &str) -> String {
+    name.chars()
+        .map(|ch| {
+            if ch == '_' || ch.is_ascii_alphanumeric() {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 impl From<crate::lambda::ir::Constant> for Constant {

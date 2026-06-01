@@ -1,15 +1,34 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "lower_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
 Module {
     values: [
         ValueDecl {
-            binding: BindingId(
-                0,
-            ),
-            entity: EntityId(
-                0,
+            binding: BindingId {
+                ident: Name {
+                    name: "unit",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                stamp: 0,
+            },
+            entity: Value(
+                ValueEntity {
+                    binding: BindingId {
+                        ident: Name {
+                            name: "unit",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 0,
+                    },
+                },
             ),
             name: Name {
                 name: "unit",
@@ -53,11 +72,29 @@ Module {
             },
         },
         ValueDecl {
-            binding: BindingId(
-                1,
-            ),
-            entity: EntityId(
-                1,
+            binding: BindingId {
+                ident: Name {
+                    name: "id_unit",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                stamp: 1,
+            },
+            entity: Value(
+                ValueEntity {
+                    binding: BindingId {
+                        ident: Name {
+                            name: "id_unit",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 1,
+                    },
+                },
             ),
             name: Name {
                 name: "id_unit",
@@ -125,11 +162,29 @@ Module {
             },
         },
         ValueDecl {
-            binding: BindingId(
-                2,
-            ),
-            entity: EntityId(
-                2,
+            binding: BindingId {
+                ident: Name {
+                    name: "value",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                stamp: 2,
+            },
+            entity: Value(
+                ValueEntity {
+                    binding: BindingId {
+                        ident: Name {
+                            name: "value",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 2,
+                    },
+                },
             ),
             name: Name {
                 name: "value",

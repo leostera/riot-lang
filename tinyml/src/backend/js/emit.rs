@@ -1,3 +1,9 @@
+//! TypeScript source emitter for the JS backend IR.
+//!
+//! The emitter projects one combined backend IR into `.ts` text, preserving the
+//! lowered runtime declarations and type declarations in stable snapshot-friendly
+//! order.
+
 use std::fmt;
 
 use super::ir::{self, BinaryOp, TsType};

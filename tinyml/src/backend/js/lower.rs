@@ -1,7 +1,13 @@
+//! Lambda-to-TypeScript backend lowering.
+//!
+//! Lowering here is representation work only: it translates existing Lambda
+//! values and checker-provided type information into JS-backend IR. It does not
+//! infer new types.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    checker::{interface::ModuleInterface, scheme::Scheme, tst::Type},
+    checker::{interface::ModuleInterface, scheme::Scheme, tir::Type},
     lambda::ir as lambda,
     parser::{ast::Literal, ident::Ident},
     prelude,
@@ -609,7 +615,7 @@ mod tests {
         checker::{
             interface::ValueDescription,
             scheme::Scheme,
-            tst::{BindingId, EntityId},
+            tir::{BindingId, EntityId},
         },
         parser::lexer::Span,
     };
@@ -643,8 +649,8 @@ mod tests {
     fn module_with_value(name: &str, body: lambda::Expr) -> lambda::Module {
         lambda::Module {
             values: vec![lambda::ValueDecl {
-                binding: BindingId::new(0),
-                entity: EntityId::new(0),
+                binding: BindingId::synthetic(0),
+                entity: EntityId::synthetic_value(0),
                 name: ident(name),
                 ty: unit_type(),
                 body,
@@ -723,7 +729,7 @@ mod tests {
                 ty: unit_type(),
                 kind: lambda::ExprKind::Construct {
                     name: ident("Pair"),
-                    entity: EntityId::new(0),
+                    entity: EntityId::synthetic_value(0),
                     args: vec![int_expr("1"), int_expr("2")],
                 },
                 span: span(),
@@ -752,7 +758,7 @@ mod tests {
                         ty: unit_type(),
                         kind: lambda::PatternKind::Var {
                             name: ident("left"),
-                            binding: BindingId::new(1),
+                            binding: BindingId::synthetic(1),
                         },
                         span: span(),
                     },
@@ -760,7 +766,7 @@ mod tests {
                         ty: unit_type(),
                         kind: lambda::PatternKind::Var {
                             name: ident("right"),
-                            binding: BindingId::new(2),
+                            binding: BindingId::synthetic(2),
                         },
                         span: span(),
                     },
@@ -788,7 +794,7 @@ mod tests {
             ty: unit_type(),
             kind: lambda::ExprKind::Var {
                 name: ident("tree"),
-                entity: EntityId::new(0),
+                entity: EntityId::synthetic_value(0),
             },
             span: span(),
         };
@@ -801,7 +807,7 @@ mod tests {
                         ty: unit_type(),
                         kind: lambda::PatternKind::Construct {
                             name: ident("Leaf"),
-                            entity: EntityId::new(1),
+                            entity: EntityId::synthetic_value(1),
                             args: Vec::new(),
                         },
                         span: span(),

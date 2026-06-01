@@ -1,3 +1,8 @@
+//! TinyML command-line entrypoint.
+//!
+//! The binary is intentionally thin: it parses command-line arguments, reads
+//! source text, and delegates lexing/parsing/checking work to the library.
+
 use std::{fs, path::PathBuf};
 
 use clap::{Parser as ClapParser, Subcommand};

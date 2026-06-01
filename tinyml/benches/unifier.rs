@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use tinyml::checker::{builtin, state::State, tst::Type, unifier::Unifier};
+use tinyml::checker::{builtin, state::State, tir::Type, unifier::Unifier};
 
 fn primitive_equality(c: &mut Criterion) {
     c.bench_function("unifier primitive equality", |b| {

@@ -1,15 +1,34 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "lower_snapshot(\"tests/fixtures/0002_match.ml\")"
 ---
 Module {
     values: [
         ValueDecl {
-            binding: BindingId(
-                0,
-            ),
-            entity: EntityId(
-                0,
+            binding: BindingId {
+                ident: Name {
+                    name: "get_or_zero",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                stamp: 0,
+            },
+            entity: Value(
+                ValueEntity {
+                    binding: BindingId {
+                        ident: Name {
+                            name: "get_or_zero",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 0,
+                    },
+                },
             ),
             name: Name {
                 name: "get_or_zero",
@@ -40,9 +59,16 @@ Module {
                                         end: 63,
                                     },
                                 },
-                                binding: BindingId(
-                                    0,
-                                ),
+                                binding: BindingId {
+                                    ident: Name {
+                                        name: "x",
+                                        span: Span {
+                                            start: 62,
+                                            end: 63,
+                                        },
+                                    },
+                                    stamp: 0,
+                                },
                             },
                             span: Span {
                                 start: 62,
@@ -71,8 +97,19 @@ Module {
                                             end: 74,
                                         },
                                     },
-                                    entity: EntityId(
-                                        0,
+                                    entity: Value(
+                                        ValueEntity {
+                                            binding: BindingId {
+                                                ident: Name {
+                                                    name: "x",
+                                                    span: Span {
+                                                        start: 73,
+                                                        end: 74,
+                                                    },
+                                                },
+                                                stamp: 0,
+                                            },
+                                        },
                                     ),
                                 },
                                 span: Span {
@@ -96,8 +133,19 @@ Module {
                                                     end: 85,
                                                 },
                                             },
-                                            entity: EntityId(
-                                                0,
+                                            entity: Value(
+                                                ValueEntity {
+                                                    binding: BindingId {
+                                                        ident: Name {
+                                                            name: "None",
+                                                            span: Span {
+                                                                start: 81,
+                                                                end: 85,
+                                                            },
+                                                        },
+                                                        stamp: 0,
+                                                    },
+                                                },
                                             ),
                                             args: [],
                                         },
@@ -149,8 +197,19 @@ Module {
                                                     end: 99,
                                                 },
                                             },
-                                            entity: EntityId(
-                                                0,
+                                            entity: Value(
+                                                ValueEntity {
+                                                    binding: BindingId {
+                                                        ident: Name {
+                                                            name: "Some",
+                                                            span: Span {
+                                                                start: 95,
+                                                                end: 99,
+                                                            },
+                                                        },
+                                                        stamp: 0,
+                                                    },
+                                                },
                                             ),
                                             args: [
                                                 Pattern {
@@ -167,9 +226,16 @@ Module {
                                                                 end: 105,
                                                             },
                                                         },
-                                                        binding: BindingId(
-                                                            0,
-                                                        ),
+                                                        binding: BindingId {
+                                                            ident: Name {
+                                                                name: "value",
+                                                                span: Span {
+                                                                    start: 100,
+                                                                    end: 105,
+                                                                },
+                                                            },
+                                                            stamp: 0,
+                                                        },
                                                     },
                                                     span: Span {
                                                         start: 100,
@@ -197,8 +263,19 @@ Module {
                                                     end: 115,
                                                 },
                                             },
-                                            entity: EntityId(
-                                                0,
+                                            entity: Value(
+                                                ValueEntity {
+                                                    binding: BindingId {
+                                                        ident: Name {
+                                                            name: "value",
+                                                            span: Span {
+                                                                start: 110,
+                                                                end: 115,
+                                                            },
+                                                        },
+                                                        stamp: 0,
+                                                    },
+                                                },
                                             ),
                                         },
                                         span: Span {

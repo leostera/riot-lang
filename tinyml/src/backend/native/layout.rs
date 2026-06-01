@@ -1,4 +1,9 @@
-use crate::{checker::tst::Type, parser::ident::Ident};
+//! Native value layout descriptions.
+//!
+//! Layout metadata describes how tuples, records, and constructors should be
+//! represented by native code without leaking those choices into Lambda.
+
+use crate::{checker::tir::Type, parser::ident::Ident};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Allocation {

@@ -1,6 +1,11 @@
+//! Type unification.
+//!
+//! The unifier resolves type variables, links compatible types, checks occurs
+//! constraints, and reports structured mismatch errors.
+
 use super::{
     state::State,
-    tst::{Type, TypeVarId},
+    tir::{Type, TypeVarId},
 };
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,6 +1,11 @@
+//! Type-expression lowering.
+//!
+//! Converts parser type-expression AST nodes into checker semantic `Type` values
+//! using the current checker state and type-parameter scope.
+
 use crate::parser::{ast, ident::Ident};
 
-use super::{state::State, tst::Type};
+use super::{state::State, tir::Type};
 
 impl Type {
     pub fn from_type_expr(state: &mut State, annotation: &ast::TypeExpr) -> Self {
@@ -47,7 +52,7 @@ impl Type {
 #[cfg(test)]
 mod tests {
     use crate::{
-        checker::{state::State, tst::Type},
+        checker::{state::State, tir::Type},
         parser::{ast, ident::Ident, lexer::Span},
     };
 

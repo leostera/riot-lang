@@ -1,3 +1,8 @@
+//! Module and expression typing.
+//!
+//! The typer contains the core checking logic: top-level registration, expression
+//! inference/checking, pattern typing, interface construction, and diagnostics.
+
 use std::collections::HashSet;
 
 use crate::parser::{ast, ident::Ident};
@@ -9,7 +14,7 @@ use super::{
     interface::{ModuleInterface, ValueDescription},
     scheme::Scheme,
     state::State,
-    tst::{
+    tir::{
         self, BindingId, EntityId, Expr, ExprKind, LetDecl, MatchArm, ModuleItem, Pattern,
         PatternKind, Type,
     },
@@ -18,7 +23,7 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleSummary {
-    pub tst: tst::Module,
+    pub tir: tir::Module,
     pub interface: ModuleInterface,
     pub diagnostics: Vec<CheckDiagnostic>,
 }
@@ -61,7 +66,7 @@ impl<'state> Typer<'state> {
         }
 
         ModuleSummary {
-            tst: tst::Module { items },
+            tir: tir::Module { items },
             interface,
             diagnostics: self.state.diagnostics().to_vec(),
         }
@@ -133,11 +138,11 @@ impl<'state> Typer<'state> {
         };
         let scheme = Scheme::monomorphic(resolved);
         self.state
-            .update_value_scheme(symbol.entity, scheme.clone());
+            .update_value_scheme(symbol.entity.clone(), scheme.clone());
         Some((
             LetDecl::Const {
-                binding: symbol.binding,
-                entity: symbol.entity,
+                binding: symbol.binding.clone(),
+                entity: symbol.entity.clone(),
                 name: name.clone(),
                 hint: None,
                 body: value,
@@ -164,7 +169,7 @@ impl<'state> Typer<'state> {
                 Expr {
                     kind: ExprKind::Constructor {
                         name: name.clone(),
-                        entity: EntityId::new(0),
+                        entity: EntityId::value(BindingId::new(name.clone(), 0)),
                         args: Vec::new(),
                     },
                     ty: builtin::unit(),
@@ -176,7 +181,7 @@ impl<'state> Typer<'state> {
                 self.unsupported_expr(
                     ExprKind::Constructor {
                         name: name.clone(),
-                        entity: EntityId::new(0),
+                        entity: EntityId::value(BindingId::new(name.clone(), 0)),
                         args,
                     },
                     *span,
@@ -185,7 +190,7 @@ impl<'state> Typer<'state> {
             ast::Expr::Var { name, span } => self.unsupported_expr(
                 ExprKind::Var {
                     name: name.clone(),
-                    entity: EntityId::new(0),
+                    entity: EntityId::value(BindingId::new(name.clone(), 0)),
                 },
                 *span,
             ),
@@ -311,7 +316,7 @@ impl<'state> Typer<'state> {
                 ty: self.state.fresh_var(),
                 kind: PatternKind::Var {
                     name: name.clone(),
-                    binding: BindingId::new(0),
+                    binding: BindingId::new(name.clone(), 0),
                 },
                 span: *span,
             },
@@ -326,7 +331,7 @@ impl<'state> Typer<'state> {
                 ty: self.state.fresh_var(),
                 kind: PatternKind::Constructor {
                     name: name.clone(),
-                    entity: EntityId::new(0),
+                    entity: EntityId::value(BindingId::new(name.clone(), 0)),
                     args: args.iter().map(|arg| self.infer_pattern(arg)).collect(),
                 },
                 span: *span,
@@ -380,7 +385,7 @@ impl<'state> Typer<'state> {
     }
 }
 
-fn literal_type(value: &ast::Literal) -> tst::Type {
+fn literal_type(value: &ast::Literal) -> tir::Type {
     match value {
         ast::Literal::Int(_) => builtin::i32(),
         ast::Literal::Float(_) => builtin::f64(),

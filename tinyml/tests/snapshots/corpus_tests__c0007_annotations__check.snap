@@ -1,17 +1,36 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0007_annotations.ml\")"
 ---
 ModuleSummary {
-    tst: Module {
+    tir: Module {
         items: [
             LetDecl(
                 Const {
-                    binding: BindingId(
-                        0,
-                    ),
-                    entity: EntityId(
-                        0,
+                    binding: BindingId {
+                        ident: Name {
+                            name: "annotated",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 0,
+                    },
+                    entity: Value(
+                        ValueEntity {
+                            binding: BindingId {
+                                ident: Name {
+                                    name: "annotated",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                stamp: 0,
+                            },
+                        },
                     ),
                     name: Name {
                         name: "annotated",
@@ -91,11 +110,29 @@ ModuleSummary {
             ),
             LetDecl(
                 Const {
-                    binding: BindingId(
-                        1,
-                    ),
-                    entity: EntityId(
-                        1,
+                    binding: BindingId {
+                        ident: Name {
+                            name: "block",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 1,
+                    },
+                    entity: Value(
+                        ValueEntity {
+                            binding: BindingId {
+                                ident: Name {
+                                    name: "block",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                stamp: 1,
+                            },
+                        },
                     ),
                     name: Name {
                         name: "block",
@@ -134,9 +171,16 @@ ModuleSummary {
                                                         end: 46,
                                                     },
                                                 },
-                                                binding: BindingId(
-                                                    0,
-                                                ),
+                                                binding: BindingId {
+                                                    ident: Name {
+                                                        name: "x",
+                                                        span: Span {
+                                                            start: 45,
+                                                            end: 46,
+                                                        },
+                                                    },
+                                                    stamp: 0,
+                                                },
                                             },
                                             span: Span {
                                                 start: 45,
@@ -208,8 +252,19 @@ ModuleSummary {
                                                         end: 60,
                                                     },
                                                 },
-                                                entity: EntityId(
-                                                    0,
+                                                entity: Value(
+                                                    ValueEntity {
+                                                        binding: BindingId {
+                                                            ident: Name {
+                                                                name: "x",
+                                                                span: Span {
+                                                                    start: 59,
+                                                                    end: 60,
+                                                                },
+                                                            },
+                                                            stamp: 0,
+                                                        },
+                                                    },
                                                 ),
                                             },
                                             span: Span {

@@ -1,5 +1,10 @@
+//! Lambda intermediate representation.
+//!
+//! This IR removes source-only syntax while preserving typed expressions,
+//! patterns, primitives, functions, blocks, and matches for backend lowering.
+
 use crate::{
-    checker::tst::{BindingId, EntityId, Type},
+    checker::tir::{BindingId, EntityId, Type},
     parser::{ast, ident::Ident, lexer::Span},
 };
 

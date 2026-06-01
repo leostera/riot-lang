@@ -1,8 +1,13 @@
+//! Logos lexer and parser token cursor.
+//!
+//! The lexer borrows source text, produces tokens with spans, and exposes cursor
+//! helpers used by the recursive-descent parser.
+
 use logos::Logos;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Span {
     pub start: usize,
     pub end: usize,

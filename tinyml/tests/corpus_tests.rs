@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use tinyml::{
-    backend::js::{emit, lower as js_lower},
-    checker::Checker,
-    lambda::lower::Lowerer,
-    parser::{lexer::Lexer, parse::Parser},
+    backend::js,
+    backend::native,
+    checker, lambda,
+    parser::{self, lexer::Lexer},
 };
 
 fn source(path: &str) -> &'static str {
@@ -17,10 +17,8 @@ fn lex_snapshot(path: &str) -> String {
     format!("{:#?}", lexer.tokens())
 }
 
-fn parse_module(path: &str) -> tinyml::parser::ast::Module {
-    let src = source(path);
-    let lexer = Lexer::new(src).expect("lex ok");
-    Parser::new(lexer).parse_module().expect("parse ok")
+fn parse_module(path: &str) -> parser::Ast {
+    parser::parse(source(path)).expect("parse ok")
 }
 
 fn parse_snapshot(path: &str) -> String {
@@ -30,41 +28,38 @@ fn parse_snapshot(path: &str) -> String {
 
 fn check_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    let mut checker = Checker::new();
-    let summary = checker.check_module(&module);
+    let summary = checker::check_module(&module);
     format!("{summary:#?}")
 }
 
 fn lower_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    let mut checker = Checker::new();
-    let summary = checker.check_module(&module);
-    let lambda = Lowerer.lower_module(&summary.tst);
+    let summary = checker::check_module(&module);
+    let lambda = lambda::translate(&summary.tir);
     format!("{lambda:#?}")
 }
 
 fn emit_js_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    let mut checker = Checker::new();
-    let summary = checker.check_module(&module);
-    let lambda = Lowerer.lower_module(&summary.tst);
-    let js = js_lower::Lowerer::new(&summary.interface).lower_module(&lambda);
-    emit::Emitter::new(&js).to_ts_string()
+    let summary = checker::check_module(&module);
+    let lambda = lambda::translate(&summary.tir);
+    let js = js::lower(&summary.interface, &lambda);
+    js::emit_ts_string(&js)
 }
 
 fn emit_native_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    let mut checker = Checker::new();
-    let summary = checker.check_module(&module);
-    let lambda = Lowerer.lower_module(&summary.tst);
-    format!("emit pending\n{lambda:#?}")
+    let summary = checker::check_module(&module);
+    let lambda = lambda::translate(&summary.tir);
+    let nir = native::lower(&lambda);
+    let aarch64 = native::aarch64::select(&nir);
+    aarch64.to_asm_string()
 }
 
 fn emit_wasm_snapshot(path: &str) -> String {
     let module = parse_module(path);
-    let mut checker = Checker::new();
-    let summary = checker.check_module(&module);
-    let lambda = Lowerer.lower_module(&summary.tst);
+    let summary = checker::check_module(&module);
+    let lambda = lambda::translate(&summary.tir);
     format!("emit pending\n{lambda:#?}")
 }
 

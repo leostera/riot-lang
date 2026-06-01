@@ -1,3 +1,8 @@
+//! Mutable checker state.
+//!
+//! State owns environments, type variable slots, diagnostics, levels, and scoped
+//! type parameters used throughout type checking and unification.
+
 use std::collections::HashMap;
 
 use crate::parser::ast::TypeVar;
@@ -6,7 +11,7 @@ use super::{
     diagnostic::CheckDiagnostic,
     env::{Env, EnvError, LevelId, ValueSymbol},
     scheme::Scheme,
-    tst::{Type, TypeVarId},
+    tir::{Type, TypeVarId},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,7 +101,7 @@ impl State {
         self.env.has_value(name)
     }
 
-    pub fn update_value_scheme(&mut self, entity: super::tst::EntityId, scheme: Scheme) {
+    pub fn update_value_scheme(&mut self, entity: super::tir::EntityId, scheme: Scheme) {
         self.env.update_value_scheme(entity, scheme);
     }
 

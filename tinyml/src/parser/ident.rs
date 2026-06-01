@@ -1,8 +1,13 @@
+//! Identifier representation and naming validation.
+//!
+//! The lexer accepts broad identifier tokens, while parser contexts validate
+//! whether names are values, modules, constructors, fields, or types.
+
 use crate::prelude::PRIMITIVE_TYPES;
 
 use super::lexer::Span;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Ident {
     Name {
         name: String,

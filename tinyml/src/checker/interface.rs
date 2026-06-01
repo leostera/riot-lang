@@ -1,6 +1,11 @@
+//! Checked module interface summaries.
+//!
+//! Interfaces describe exported values, types, constructors, fields, and modules
+//! independently from source syntax so backends can emit API information.
+
 use crate::parser::{ast, ident::Ident};
 
-use super::{scheme::Scheme, tst::Type};
+use super::{scheme::Scheme, tir::Type};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleInterface {

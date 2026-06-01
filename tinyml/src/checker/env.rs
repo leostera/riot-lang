@@ -1,8 +1,15 @@
+//! Checker environment data structures.
+//!
+//! The environment tracks value scopes, root bindings, entities, and module
+//! summaries used during checking and interface construction.
+
 use std::collections::HashMap;
+
+use crate::parser::ident::Ident;
 
 use super::{
     scheme::Scheme,
-    tst::{BindingId, EntityId},
+    tir::{BindingId, EntityId},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -209,17 +216,17 @@ impl Env {
         scheme: Scheme,
     ) -> Result<ValueSymbol, EnvError> {
         let name = name.into();
-        let binding = BindingId::new(self.next_binding);
+        let binding = BindingId::new(Ident::from_string(name.clone()), self.next_binding);
         self.next_binding += 1;
-        let entity = EntityId::new(self.next_entity);
+        let entity = EntityId::value(binding.clone());
         self.next_entity += 1;
         let ordinal = self.next_ordinal;
         self.next_ordinal += 1;
 
         let symbol = ValueSymbol {
             name,
-            binding,
-            entity,
+            binding: binding.clone(),
+            entity: entity.clone(),
             scheme,
         };
         self.values.add(symbol.clone(), ordinal)?;
@@ -360,10 +367,10 @@ mod tests {
     fn symbol_scheme_and_entity_can_be_looked_up() {
         let mut env = Env::new();
         let symbol = env.add_value("answer", scheme()).expect("add");
-        assert_eq!(env.value_by_entity(symbol.entity), Some(&symbol));
+        assert_eq!(env.value_by_entity(symbol.entity.clone()), Some(&symbol));
         assert_eq!(
-            env.entity(symbol.entity).expect("entity").binding,
-            Some(symbol.binding)
+            env.entity(symbol.entity.clone()).expect("entity").binding,
+            Some(symbol.binding.clone())
         );
     }
 }

@@ -1,17 +1,36 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0004_records.ml\")"
 ---
 ModuleSummary {
-    tst: Module {
+    tir: Module {
         items: [
             LetDecl(
                 Const {
-                    binding: BindingId(
-                        0,
-                    ),
-                    entity: EntityId(
-                        0,
+                    binding: BindingId {
+                        ident: Name {
+                            name: "user",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 0,
+                    },
+                    entity: Value(
+                        ValueEntity {
+                            binding: BindingId {
+                                ident: Name {
+                                    name: "user",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                stamp: 0,
+                            },
+                        },
                     ),
                     name: Name {
                         name: "user",
@@ -119,11 +138,29 @@ ModuleSummary {
             ),
             LetDecl(
                 Const {
-                    binding: BindingId(
-                        1,
-                    ),
-                    entity: EntityId(
-                        1,
+                    binding: BindingId {
+                        ident: Name {
+                            name: "get_name",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 1,
+                    },
+                    entity: Value(
+                        ValueEntity {
+                            binding: BindingId {
+                                ident: Name {
+                                    name: "get_name",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                stamp: 1,
+                            },
+                        },
                     ),
                     name: Name {
                         name: "get_name",
@@ -178,9 +215,16 @@ ModuleSummary {
                                                                 end: 74,
                                                             },
                                                         },
-                                                        binding: BindingId(
-                                                            0,
-                                                        ),
+                                                        binding: BindingId {
+                                                            ident: Name {
+                                                                name: "name",
+                                                                span: Span {
+                                                                    start: 70,
+                                                                    end: 74,
+                                                                },
+                                                            },
+                                                            stamp: 0,
+                                                        },
                                                     },
                                                     span: Span {
                                                         start: 70,
@@ -231,8 +275,19 @@ ModuleSummary {
                                             end: 93,
                                         },
                                     },
-                                    entity: EntityId(
-                                        0,
+                                    entity: Value(
+                                        ValueEntity {
+                                            binding: BindingId {
+                                                ident: Name {
+                                                    name: "name",
+                                                    span: Span {
+                                                        start: 89,
+                                                        end: 93,
+                                                    },
+                                                },
+                                                stamp: 0,
+                                            },
+                                        },
                                     ),
                                 },
                                 span: Span {

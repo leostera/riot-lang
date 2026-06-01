@@ -1,16 +1,35 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "emit_wasm_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
 ---
 emit pending
 Module {
     values: [
         ValueDecl {
-            binding: BindingId(
-                0,
-            ),
-            entity: EntityId(
-                0,
+            binding: BindingId {
+                ident: Name {
+                    name: "block",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                stamp: 0,
+            },
+            entity: Value(
+                ValueEntity {
+                    binding: BindingId {
+                        ident: Name {
+                            name: "block",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 0,
+                    },
+                },
             ),
             name: Name {
                 name: "block",
@@ -53,9 +72,16 @@ Module {
                                                 end: 59,
                                             },
                                         },
-                                        binding: BindingId(
-                                            0,
-                                        ),
+                                        binding: BindingId {
+                                            ident: Name {
+                                                name: "x",
+                                                span: Span {
+                                                    start: 58,
+                                                    end: 59,
+                                                },
+                                            },
+                                            stamp: 0,
+                                        },
                                     },
                                     span: Span {
                                         start: 57,
@@ -106,8 +132,19 @@ Module {
                                         end: 73,
                                     },
                                 },
-                                entity: EntityId(
-                                    0,
+                                entity: Value(
+                                    ValueEntity {
+                                        binding: BindingId {
+                                            ident: Name {
+                                                name: "x",
+                                                span: Span {
+                                                    start: 72,
+                                                    end: 73,
+                                                },
+                                            },
+                                            stamp: 0,
+                                        },
+                                    },
                                 ),
                             },
                             span: Span {

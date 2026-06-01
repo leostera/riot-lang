@@ -1,3 +1,8 @@
+//! Untyped source AST.
+//!
+//! These nodes represent TinyML source syntax after parsing and before semantic
+//! checking attaches bindings, entities, and types.
+
 #![allow(dead_code)]
 
 use super::{ident::Ident, lexer::Span};

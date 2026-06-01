@@ -1,6 +1,11 @@
+//! Checker built-in types and constants.
+//!
+//! Centralizes semantic built-ins such as primitive types and the unit
+//! constructor name so later phases do not duplicate magic strings.
+
 use crate::parser::ident::Ident;
 
-use super::tst::Type;
+use super::tir::Type;
 
 pub const UNIT_CONSTRUCTOR: &str = "()";
 

@@ -1,23 +1,48 @@
+//! Typed IR.
+//!
+//! The TIR mirrors the parser AST shape while attaching semantic type
+//! information, bindings, entities, schemes, and preserved annotation hints.
+
 use crate::parser::{ast, ident::Ident, lexer::Span};
 
 use super::{builtin, scheme::Scheme};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BindingId(usize);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BindingId {
+    pub ident: Ident,
+    pub stamp: usize,
+}
 
 impl BindingId {
-    pub(crate) fn new(id: usize) -> Self {
-        Self(id)
+    pub(crate) fn new(ident: Ident, stamp: usize) -> Self {
+        Self { ident, stamp }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn synthetic(stamp: usize) -> Self {
+        Self::new(Ident::from_string(format!("_{stamp}")), stamp)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EntityId(usize);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EntityId {
+    Value(ValueEntity),
+}
 
 impl EntityId {
-    pub(crate) fn new(id: usize) -> Self {
-        Self(id)
+    pub(crate) fn value(binding: BindingId) -> Self {
+        Self::Value(ValueEntity { binding })
     }
+
+    #[cfg(test)]
+    pub(crate) fn synthetic_value(stamp: usize) -> Self {
+        Self::value(BindingId::synthetic(stamp))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ValueEntity {
+    pub binding: BindingId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
