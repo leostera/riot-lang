@@ -1,62 +1,7 @@
 //! TinyML command-line entrypoint.
-//!
-//! The binary is intentionally thin: it parses command-line arguments, reads
-//! source text, and delegates lexing/parsing/checking work to the library.
 
-use std::{fs, path::PathBuf};
+mod cli;
 
-use clap::{Parser as ClapParser, Subcommand};
-use miette::{IntoDiagnostic, Result};
-
-use tinyml::parser::{lexer::Lexer, parse::Parser};
-
-#[derive(Debug, ClapParser)]
-#[command(name = "tinyml")]
-#[command(about = "TinyML compiler frontend")]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    /// Print the token stream.
-    Lex { file: PathBuf },
-    /// Parse and print the AST.
-    Parse { file: PathBuf },
-    /// Typecheck a file. Not implemented yet.
-    Check { file: PathBuf },
-    /// Build a file. Not implemented yet.
-    Build { file: PathBuf },
-}
-
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-
-    match cli.command {
-        Command::Lex { file } => {
-            let src = fs::read_to_string(&file).into_diagnostic()?;
-            let lexer = Lexer::new(&src)?;
-            for token in lexer.tokens() {
-                println!(
-                    "{:?} @ {}..{}",
-                    token.kind, token.span.start, token.span.end
-                );
-            }
-        }
-        Command::Parse { file } => {
-            let src = fs::read_to_string(&file).into_diagnostic()?;
-            let lexer = Lexer::new(&src)?;
-            let module = Parser::new(lexer).parse_module()?;
-            println!("{module:#?}");
-        }
-        Command::Check { file } => {
-            println!("check not implemented yet: {}", file.display());
-        }
-        Command::Build { file } => {
-            println!("build not implemented yet: {}", file.display());
-        }
-    }
-
-    Ok(())
+fn main() -> miette::Result<()> {
+    cli::run()
 }
