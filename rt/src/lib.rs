@@ -4,6 +4,7 @@
 //! native compiler lowers into. It intentionally defines representation data
 //! only; it does not implement a collector yet.
 
+pub mod abi;
 pub mod layout;
 pub mod shape;
 pub mod value;

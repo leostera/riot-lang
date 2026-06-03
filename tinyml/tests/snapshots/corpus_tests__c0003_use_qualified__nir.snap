@@ -1,0 +1,5 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: "nir_snapshot(\"tests/fixtures/0003_use_qualified.ml\")"
+---
+global x: i32 = 1;

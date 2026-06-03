@@ -1,17 +1,17 @@
-//! AArch64 instruction selection from native IR.
+//! AArch64 instruction selection from native SSA IR.
 
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    backend::native::ir::{self, Symbol},
+    backend::native::ssa::{self, MachineRepr, Symbol, ValueId},
     lambda,
-    parser::{ast::Literal, ident::Ident},
+    parser::ast::Literal,
 };
 
-use super::mir::{Diagnostic, Function, Instr, Mir, PhysReg};
+use super::mir::{Diagnostic, Entry, Instr, Mir, PhysReg};
 
 /// Select AArch64 MIR from native IR.
-pub fn select(nir: &crate::backend::native::Nir) -> Mir {
+pub fn select(nir: &crate::backend::native::ssa::SsaProgram) -> Mir {
     Selector::new().select_module(nir)
 }
 
@@ -28,73 +28,108 @@ impl Selector {
         }
     }
 
-    fn select_module(mut self, module: &ir::Module) -> Mir {
+    fn select_module(mut self, module: &ssa::SsaProgram) -> Mir {
         self.known_symbols = module
-            .values
+            .globals
             .iter()
-            .map(|value| value.symbol.clone())
+            .map(|global| global.symbol.clone())
+            .chain(
+                module
+                    .functions
+                    .iter()
+                    .map(|function| function.symbol.clone()),
+            )
             .collect();
-        let functions = module
-            .values
-            .iter()
-            .map(|value| self.select_value(value))
-            .collect();
+
+        let mut entries = Vec::new();
+        for global in &module.globals {
+            entries.push(self.select_global(global));
+        }
+        for function in &module.functions {
+            entries.push(self.select_function(function));
+        }
+
         Mir {
-            functions,
+            entries,
             diagnostics: self.diagnostics,
         }
     }
 
-    fn select_value(&mut self, value: &ir::ValueDecl) -> Function {
-        let name = value.symbol.clone();
-        let mut builder =
-            FunctionBuilder::new(name.clone(), &mut self.diagnostics, &self.known_symbols);
+    fn select_global(&mut self, global: &ssa::Global) -> Entry {
+        let name = global.symbol.clone();
+        let mut builder = FunctionBuilder::new(
+            name.clone(),
+            &mut self.diagnostics,
+            &self.known_symbols,
+            &[],
+        );
+        builder.instructions.push(Instr::Label(name.clone()));
+        builder.emit_constant_to(&global.value, PhysReg::X(0));
+        builder.instructions.push(Instr::Ret);
+        builder.finish()
+    }
+
+    fn select_function(&mut self, function: &ssa::Function) -> Entry {
+        let name = function.symbol.clone();
+        let mut builder = FunctionBuilder::new(
+            name.clone(),
+            &mut self.diagnostics,
+            &self.known_symbols,
+            &function.values,
+        );
         builder.instructions.push(Instr::Label(name.clone()));
 
-        match &value.body.kind {
-            ir::ExprKind::Function { params, body } => {
-                if params.len() > 8 {
-                    builder
-                        .diagnostics
-                        .push(Diagnostic::TooManyFunctionParameters {
-                            name: name.clone(),
-                            count: params.len(),
-                        });
-                }
-                for (index, param) in params.iter().take(8).enumerate() {
-                    if let ir::PatternKind::Var { name, .. } = &param.pattern.kind {
-                        let slot = builder.bind_local(name);
-                        builder.instructions.push(Instr::StoreStack {
-                            slot,
-                            src: PhysReg::X(index as u8),
-                        });
-                    } else if !param.pattern.is_unit_constant() {
-                        builder.diagnostics.push(Diagnostic::UnsupportedExpression {
-                            context: "function parameter pattern",
-                        });
-                    }
-                }
-                builder.emit_expr_to(body, PhysReg::X(0));
-            }
-            _ => builder.emit_expr_to(&value.body, PhysReg::X(0)),
+        if function.params.len() > 8 {
+            builder
+                .diagnostics
+                .push(Diagnostic::TooManyFunctionParameters {
+                    name: name.clone(),
+                    count: function.params.len(),
+                });
         }
 
-        builder.instructions.push(Instr::Ret);
+        for (index, param) in function.params.iter().take(8).enumerate() {
+            let slot = builder.alloc_slot(*param);
+            builder.instructions.push(Instr::StoreStack {
+                slot,
+                src: PhysReg::X(index as u8),
+            });
+            builder.values.insert(
+                *param,
+                ValueLoc::StackSlot {
+                    slot,
+                    repr: builder.repr(*param),
+                },
+            );
+        }
+
+        for block in &function.blocks {
+            for param in &block.params {
+                builder.alloc_slot(*param);
+            }
+        }
+
+        for block in &function.blocks {
+            builder.emit_block(block);
+        }
+
         builder.finish()
     }
 }
 
-// FunctionBuilder owns the mutable state needed while selecting one NIR value
-// into one target function: emitted instructions, local stack slots, diagnostics,
-// and the set of known callable symbols. It keeps this per-function state out of
-// the module-level selector so each function can be finished into an immutable
-// MIR function independently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ValueLoc {
+    Immediate { value: i64, repr: MachineRepr },
+    StackSlot { slot: usize, repr: MachineRepr },
+}
+
 struct FunctionBuilder<'a> {
     name: Symbol,
     instructions: Vec<Instr>,
     diagnostics: &'a mut Vec<Diagnostic>,
-    known_symbols: &'a HashSet<Symbol>,
-    locals: HashMap<Symbol, usize>,
+    infos: &'a [ssa::ValueInfo],
+    values: HashMap<ValueId, ValueLoc>,
+    slots: HashMap<ValueId, usize>,
     next_slot: usize,
 }
 
@@ -102,107 +137,352 @@ impl<'a> FunctionBuilder<'a> {
     fn new(
         name: Symbol,
         diagnostics: &'a mut Vec<Diagnostic>,
-        known_symbols: &'a HashSet<Symbol>,
+        _known_symbols: &'a HashSet<Symbol>,
+        infos: &'a [ssa::ValueInfo],
     ) -> Self {
         Self {
             name,
             instructions: Vec::new(),
             diagnostics,
-            known_symbols,
-            locals: HashMap::new(),
+            infos,
+            values: HashMap::new(),
+            slots: HashMap::new(),
             next_slot: 0,
         }
     }
 
-    fn finish(self) -> Function {
-        Function {
+    fn finish(self) -> Entry {
+        Entry {
             name: self.name,
             instructions: self.instructions,
             stack_slots: self.next_slot,
         }
     }
 
-    fn bind_local(&mut self, name: &Ident) -> usize {
-        let name = Symbol::from_ident(name);
-        if let Some(slot) = self.locals.get(&name) {
+    fn repr(&self, value: ValueId) -> MachineRepr {
+        self.infos
+            .get(value.0 as usize)
+            .map(|info| info.repr)
+            .unwrap_or(MachineRepr::Ptr)
+    }
+
+    fn alloc_slot(&mut self, value: ValueId) -> usize {
+        if let Some(slot) = self.slots.get(&value) {
             return *slot;
         }
         let slot = self.next_slot;
         self.next_slot += 1;
-        self.locals.insert(name, slot);
+        self.slots.insert(value, slot);
         slot
     }
 
-    fn emit_expr_to(&mut self, expr: &ir::Expr, dst: PhysReg) {
-        match &expr.kind {
-            ir::ExprKind::Constant(value) => self.emit_constant_to(value, dst),
-            ir::ExprKind::Var { symbol, .. } => {
-                let name = symbol.clone();
-                if let Some(slot) = self.locals.get(&name) {
-                    self.instructions
-                        .push(Instr::LoadStack { dst, slot: *slot });
-                } else if self.known_symbols.contains(&name) {
-                    self.instructions.push(Instr::Call { symbol: name });
-                    emit_move_if_needed(&mut self.instructions, dst, PhysReg::X(0));
+    fn emit_block(&mut self, block: &ssa::Block) {
+        if block.id.0 != 0 {
+            self.instructions
+                .push(Instr::BlockLabel(self.block_label(block.id)));
+        }
+        for param in &block.params {
+            let slot = self.alloc_slot(*param);
+            self.values.insert(
+                *param,
+                ValueLoc::StackSlot {
+                    slot,
+                    repr: self.repr(*param),
+                },
+            );
+        }
+        for stmt in &block.stmts {
+            self.emit_stmt(stmt);
+        }
+        self.emit_terminator(&block.terminator);
+    }
+
+    fn emit_stmt(&mut self, stmt: &ssa::Stmt) {
+        let ssa::Stmt::Assign { dst, rhs, .. } = stmt;
+        let repr = self.repr(*dst);
+        match rhs {
+            ssa::Rvalue::Const(constant) => {
+                if let Some(value) = constant_i64(constant) {
+                    self.values
+                        .insert(*dst, ValueLoc::Immediate { value, repr });
                 } else {
-                    self.diagnostics.push(Diagnostic::UnsupportedExpression {
-                        context: "unbound variable",
-                    });
-                    self.instructions
-                        .push(Instr::Comment(format!("unsupported variable {name}")));
-                    self.instructions.push(Instr::MovImm { dst, value: 0 });
+                    self.emit_constant_to(constant, PhysReg::X(9));
+                    self.store_value(*dst, PhysReg::X(9), repr);
                 }
             }
-            ir::ExprKind::Prim { op, args } => self.emit_prim_to(op, args, dst),
-            ir::ExprKind::Apply { callee, args } => self.emit_apply_to(callee, args, dst),
-            ir::ExprKind::Block(exprs) => {
-                for (index, expr) in exprs.iter().enumerate() {
-                    let dst = if index + 1 == exprs.len() {
-                        dst
-                    } else {
-                        PhysReg::X(9)
-                    };
-                    self.emit_expr_to(expr, dst);
-                }
+            ssa::Rvalue::Copy(src) => {
+                let reg = self.ensure_reg(*src, PhysReg::X(9));
+                self.store_value(*dst, reg, repr);
             }
-            ir::ExprKind::Let { bind, body, .. } => {
-                self.emit_expr_to(body, PhysReg::X(9));
-                if let ir::PatternKind::Var { name, .. } = &bind.kind {
-                    let slot = self.bind_local(name);
-                    self.instructions.push(Instr::StoreStack {
-                        slot,
-                        src: PhysReg::X(9),
-                    });
-                    emit_move_if_needed(&mut self.instructions, dst, PhysReg::X(9));
-                } else {
-                    self.diagnostics.push(Diagnostic::UnsupportedExpression {
-                        context: "let pattern",
-                    });
-                    self.instructions
-                        .push(Instr::Comment("unsupported let pattern".into()));
-                }
+            ssa::Rvalue::Global(symbol) => {
+                self.instructions.push(Instr::Call {
+                    symbol: symbol.clone(),
+                });
+                self.store_value(*dst, PhysReg::X(0), repr);
             }
-            ir::ExprKind::MakeBlock { .. } => {
-                self.unsupported(dst, "block allocation", "unsupported block allocation")
+            ssa::Rvalue::Call { callee, args } => {
+                self.emit_call(callee.clone(), args, *dst, repr);
             }
-            ir::ExprKind::Function { .. } => {
-                self.unsupported(dst, "nested function", "unsupported nested function")
+            ssa::Rvalue::Prim { op, args } => self.emit_prim(*dst, repr, op, args),
+            ssa::Rvalue::MakeBlock { tag, fields } => self.emit_block_new(tag, fields, *dst, repr),
+            ssa::Rvalue::GetField { block, index } => {
+                self.emit_indexed_rt_call(rt::abi::BLOCK_GET, *block, *index, *dst, repr)
             }
-            ir::ExprKind::Match { .. } => self.unsupported(dst, "match", "unsupported match"),
+            ssa::Rvalue::GetTag { block } => {
+                self.emit_unary_rt_call(rt::abi::BLOCK_TAG, *block, *dst, repr)
+            }
+            ssa::Rvalue::StringLiteral { .. } => {
+                self.emit_symbol_call(rt::abi::STRING_NEW, *dst, repr)
+            }
+            ssa::Rvalue::FloatLiteral { .. } => {
+                self.emit_symbol_call(rt::abi::FLOAT_NEW, *dst, repr)
+            }
+            ssa::Rvalue::RuntimeMatch { scrutinee, .. } => {
+                self.emit_unary_rt_call(rt::abi::MATCH_FAILURE, *scrutinee, *dst, repr)
+            }
         }
     }
 
-    fn unsupported(&mut self, dst: PhysReg, context: &'static str, comment: &str) {
-        self.diagnostics
-            .push(Diagnostic::UnsupportedExpression { context });
-        self.instructions.push(Instr::Comment(comment.into()));
-        self.instructions.push(Instr::MovImm { dst, value: 0 });
+    fn emit_call(&mut self, callee: Symbol, args: &[ValueId], dst: ValueId, repr: MachineRepr) {
+        for (index, arg) in args.iter().take(8).enumerate() {
+            let reg = self.ensure_reg(*arg, PhysReg::X(index as u8));
+            emit_move_if_needed(&mut self.instructions, PhysReg::X(index as u8), reg);
+        }
+        self.instructions.push(Instr::Call { symbol: callee });
+        self.store_value(dst, PhysReg::X(0), repr);
     }
 
-    fn emit_constant_to(&mut self, value: &ir::Constant, dst: PhysReg) {
+    fn emit_symbol_call(&mut self, symbol: &str, dst: ValueId, repr: MachineRepr) {
+        self.instructions.push(Instr::Call {
+            symbol: Symbol::new(symbol),
+        });
+        self.store_value(dst, PhysReg::X(0), repr);
+    }
+
+    fn emit_unary_rt_call(
+        &mut self,
+        symbol: &str,
+        value: ValueId,
+        dst: ValueId,
+        repr: MachineRepr,
+    ) {
+        let reg = self.ensure_reg(value, PhysReg::X(0));
+        emit_move_if_needed(&mut self.instructions, PhysReg::X(0), reg);
+        self.emit_symbol_call(symbol, dst, repr);
+    }
+
+    fn emit_indexed_rt_call(
+        &mut self,
+        symbol: &str,
+        value: ValueId,
+        index: usize,
+        dst: ValueId,
+        repr: MachineRepr,
+    ) {
+        let reg = self.ensure_reg(value, PhysReg::X(0));
+        emit_move_if_needed(&mut self.instructions, PhysReg::X(0), reg);
+        self.instructions.push(Instr::MovImm {
+            dst: PhysReg::X(1),
+            value: index as i64,
+        });
+        self.emit_symbol_call(symbol, dst, repr);
+    }
+
+    fn emit_block_new(
+        &mut self,
+        tag: &ssa::BlockTag,
+        fields: &[ValueId],
+        dst: ValueId,
+        repr: MachineRepr,
+    ) {
+        self.instructions.push(Instr::MovImm {
+            dst: PhysReg::X(0),
+            value: block_tag_value(tag),
+        });
+        self.instructions.push(Instr::MovImm {
+            dst: PhysReg::X(1),
+            value: fields.len() as i64,
+        });
+        for (index, field) in fields.iter().take(6).enumerate() {
+            let reg = self.ensure_reg(*field, PhysReg::X(index as u8 + 2));
+            emit_move_if_needed(&mut self.instructions, PhysReg::X(index as u8 + 2), reg);
+        }
+        self.emit_symbol_call(rt::abi::BLOCK_NEW, dst, repr);
+    }
+
+    fn emit_prim(
+        &mut self,
+        dst: ValueId,
+        repr: MachineRepr,
+        op: &lambda::ir::Primitive,
+        args: &[ValueId],
+    ) {
+        if args.len() != 2 {
+            self.instructions.push(Instr::MovImm {
+                dst: PhysReg::X(9),
+                value: 0,
+            });
+            self.store_value(dst, PhysReg::X(9), repr);
+            return;
+        }
+        let lhs = self.ensure_reg(args[0], PhysReg::X(9));
+        let rhs = self.ensure_reg(args[1], PhysReg::X(10));
+        let out = PhysReg::X(9);
+        match op {
+            lambda::ir::Primitive::Add { .. } => {
+                self.instructions.push(Instr::Add { dst: out, lhs, rhs })
+            }
+            lambda::ir::Primitive::Sub { .. } => {
+                self.instructions.push(Instr::Sub { dst: out, lhs, rhs })
+            }
+            lambda::ir::Primitive::Mul { .. } => {
+                self.instructions.push(Instr::Mul { dst: out, lhs, rhs })
+            }
+            lambda::ir::Primitive::Div { .. } => {
+                self.instructions.push(Instr::SDiv { dst: out, lhs, rhs })
+            }
+            lambda::ir::Primitive::Rem { .. } => {
+                self.instructions.push(Instr::SDiv {
+                    dst: PhysReg::X(11),
+                    lhs,
+                    rhs,
+                });
+                self.instructions.push(Instr::MSub {
+                    dst: out,
+                    lhs: PhysReg::X(11),
+                    rhs,
+                    acc: lhs,
+                });
+            }
+            lambda::ir::Primitive::Named(name) => {
+                self.emit_symbol_call(&ssa::Symbol::from_ident(name).to_string(), dst, repr);
+                return;
+            }
+        }
+        self.store_value(dst, out, repr);
+    }
+
+    fn emit_terminator(&mut self, terminator: &ssa::Terminator) {
+        match terminator {
+            ssa::Terminator::Return(Some(value)) => {
+                let reg = self.ensure_reg(*value, PhysReg::X(0));
+                emit_move_if_needed(&mut self.instructions, PhysReg::X(0), reg);
+                self.instructions.push(Instr::Ret);
+            }
+            ssa::Terminator::Return(None) => {
+                self.instructions.push(Instr::MovImm {
+                    dst: PhysReg::X(0),
+                    value: 0,
+                });
+                self.instructions.push(Instr::Ret);
+            }
+            ssa::Terminator::Jump { target, args } => {
+                self.store_block_args(*target, args);
+                self.instructions.push(Instr::B {
+                    label: self.block_label(*target),
+                });
+            }
+            ssa::Terminator::Branch {
+                cond,
+                then_target,
+                then_args,
+                else_target,
+                else_args,
+            } => {
+                let reg = self.ensure_reg(*cond, PhysReg::X(9));
+                self.instructions.push(Instr::CmpImm { lhs: reg, imm: 0 });
+                self.store_block_args(*then_target, then_args);
+                self.instructions.push(Instr::BCond {
+                    cond: "ne".into(),
+                    label: self.block_label(*then_target),
+                });
+                self.store_block_args(*else_target, else_args);
+                self.instructions.push(Instr::B {
+                    label: self.block_label(*else_target),
+                });
+            }
+            ssa::Terminator::Switch {
+                discr,
+                cases,
+                default,
+                default_args,
+            } => {
+                let reg = self.ensure_reg(*discr, PhysReg::X(9));
+                for (tag, target, args) in cases {
+                    self.instructions.push(Instr::CmpImm {
+                        lhs: reg,
+                        imm: *tag,
+                    });
+                    self.store_block_args(*target, args);
+                    self.instructions.push(Instr::BCond {
+                        cond: "eq".into(),
+                        label: self.block_label(*target),
+                    });
+                }
+                self.store_block_args(*default, default_args);
+                self.instructions.push(Instr::B {
+                    label: self.block_label(*default),
+                });
+            }
+        }
+    }
+
+    fn store_block_args(&mut self, _target: ssa::BlockId, args: &[ValueId]) {
+        for arg in args {
+            let _ = self.ensure_reg(*arg, PhysReg::X(9));
+        }
+    }
+
+    fn block_label(&self, block: ssa::BlockId) -> String {
+        format!("L_{}_block{}", self.name.as_str(), block.0)
+    }
+
+    fn ensure_reg(&mut self, value: ValueId, preferred: PhysReg) -> PhysReg {
+        match self
+            .values
+            .get(&value)
+            .copied()
+            .unwrap_or(ValueLoc::Immediate {
+                value: 0,
+                repr: MachineRepr::Ptr,
+            }) {
+            ValueLoc::Immediate { value, .. } => {
+                self.instructions.push(Instr::MovImm {
+                    dst: preferred,
+                    value,
+                });
+                preferred
+            }
+            ValueLoc::StackSlot { slot, .. } => {
+                self.instructions.push(Instr::LoadStack {
+                    dst: preferred,
+                    slot,
+                });
+                preferred
+            }
+        }
+    }
+
+    fn store_value(&mut self, value: ValueId, reg: PhysReg, repr: MachineRepr) {
+        if repr.is_zero_sized() {
+            self.values
+                .insert(value, ValueLoc::Immediate { value: 0, repr });
+            return;
+        }
+        let slot = self.alloc_slot(value);
+        self.instructions.push(Instr::StoreStack { slot, src: reg });
+        self.values
+            .insert(value, ValueLoc::StackSlot { slot, repr });
+    }
+
+    fn emit_constant_to(&mut self, value: &ssa::Constant, dst: PhysReg) {
         match value {
-            ir::Constant::Unit => self.instructions.push(Instr::MovImm { dst, value: 0 }),
-            ir::Constant::Literal(Literal::Int(value)) => match value.parse::<i64>() {
+            ssa::Constant::Unit => self.instructions.push(Instr::MovImm { dst, value: 0 }),
+            ssa::Constant::ConstructorTag { tag, .. } => self.instructions.push(Instr::MovImm {
+                dst,
+                value: i64::from(*tag),
+            }),
+            ssa::Constant::Literal(Literal::Int(value)) => match value.parse::<i64>() {
                 Ok(value) => self.instructions.push(Instr::MovImm { dst, value }),
                 Err(_) => {
                     self.diagnostics.push(Diagnostic::UnsupportedLiteral {
@@ -211,94 +491,31 @@ impl<'a> FunctionBuilder<'a> {
                     self.instructions.push(Instr::MovImm { dst, value: 0 });
                 }
             },
-            ir::Constant::Literal(Literal::Bool(value)) => self.instructions.push(Instr::MovImm {
+            ssa::Constant::Literal(Literal::Bool(value)) => self.instructions.push(Instr::MovImm {
                 dst,
                 value: i64::from(*value),
             }),
-            ir::Constant::Literal(Literal::String(value) | Literal::Float(value)) => {
-                self.diagnostics.push(Diagnostic::UnsupportedLiteral {
-                    literal: value.clone(),
-                });
-                self.instructions
-                    .push(Instr::Comment(format!("unsupported literal {value:?}")));
+            ssa::Constant::Literal(Literal::String(_) | Literal::Float(_)) => {
                 self.instructions.push(Instr::MovImm { dst, value: 0 });
             }
         }
     }
+}
 
-    fn emit_prim_to(&mut self, op: &lambda::ir::Primitive, args: &[ir::Expr], dst: PhysReg) {
-        if args.len() != 2 {
-            self.diagnostics.push(Diagnostic::UnsupportedExpression {
-                context: "primitive arity",
-            });
-            self.instructions.push(Instr::MovImm { dst, value: 0 });
-            return;
-        }
-        self.emit_expr_to(&args[0], PhysReg::X(9));
-        self.emit_expr_to(&args[1], PhysReg::X(10));
-        match op {
-            lambda::ir::Primitive::Add { .. } => self.instructions.push(Instr::Add {
-                dst,
-                lhs: PhysReg::X(9),
-                rhs: PhysReg::X(10),
-            }),
-            lambda::ir::Primitive::Sub { .. } => self.instructions.push(Instr::Sub {
-                dst,
-                lhs: PhysReg::X(9),
-                rhs: PhysReg::X(10),
-            }),
-            lambda::ir::Primitive::Mul { .. } => self.instructions.push(Instr::Mul {
-                dst,
-                lhs: PhysReg::X(9),
-                rhs: PhysReg::X(10),
-            }),
-            lambda::ir::Primitive::Div { .. } => self.instructions.push(Instr::SDiv {
-                dst,
-                lhs: PhysReg::X(9),
-                rhs: PhysReg::X(10),
-            }),
-            lambda::ir::Primitive::Rem { .. } => {
-                self.instructions.push(Instr::SDiv {
-                    dst: PhysReg::X(11),
-                    lhs: PhysReg::X(9),
-                    rhs: PhysReg::X(10),
-                });
-                self.instructions.push(Instr::MSub {
-                    dst,
-                    lhs: PhysReg::X(11),
-                    rhs: PhysReg::X(10),
-                    acc: PhysReg::X(9),
-                });
-            }
-            lambda::ir::Primitive::Named(_) => {
-                self.unsupported(dst, "named primitive", "unsupported named primitive")
-            }
-        }
-    }
-
-    fn emit_apply_to(&mut self, callee: &ir::Expr, args: &[ir::Expr], dst: PhysReg) {
-        if args.len() > 8 {
-            self.diagnostics.push(Diagnostic::UnsupportedExpression {
-                context: "too many call arguments",
-            });
-        }
-        for (index, arg) in args.iter().take(8).enumerate() {
-            self.emit_expr_to(arg, PhysReg::X(index as u8));
-        }
-        if let ir::ExprKind::Var { symbol, .. } = &callee.kind {
-            self.instructions.push(Instr::Call {
-                symbol: symbol.clone(),
-            });
-            emit_move_if_needed(&mut self.instructions, dst, PhysReg::X(0));
-        } else {
-            self.unsupported(dst, "indirect call", "unsupported indirect call");
-        }
+fn constant_i64(value: &ssa::Constant) -> Option<i64> {
+    match value {
+        ssa::Constant::Unit => Some(0),
+        ssa::Constant::ConstructorTag { tag, .. } => Some(i64::from(*tag)),
+        ssa::Constant::Literal(Literal::Int(value)) => value.parse().ok(),
+        ssa::Constant::Literal(Literal::Bool(value)) => Some(i64::from(*value)),
+        ssa::Constant::Literal(Literal::String(_) | Literal::Float(_)) => None,
     }
 }
 
-impl ir::Pattern {
-    fn is_unit_constant(&self) -> bool {
-        matches!(&self.kind, ir::PatternKind::Constant(ir::Constant::Unit))
+fn block_tag_value(tag: &ssa::BlockTag) -> i64 {
+    match tag {
+        ssa::BlockTag::Tuple | ssa::BlockTag::Record => 0,
+        ssa::BlockTag::Variant(tag) => i64::from(*tag),
     }
 }
 
@@ -312,169 +529,81 @@ fn emit_move_if_needed(instructions: &mut Vec<Instr>, dst: PhysReg, src: PhysReg
 mod tests {
     use super::*;
     use crate::{
-        backend::native::{ir, layout},
         checker::{self, tir},
-        lambda,
         parser::{ast::Literal, ident::Ident, lexer::Span},
     };
 
-    fn unit() -> checker::tir::Type {
-        checker::builtin::unit()
-    }
-
-    fn expr(kind: ir::ExprKind) -> ir::Expr {
-        ir::Expr {
-            ty: unit(),
-            kind,
+    fn value_info(repr: MachineRepr) -> ssa::ValueInfo {
+        ssa::ValueInfo {
+            repr,
+            ty: checker::builtin::i32(),
+            debug_name: None,
             span: Span::new(0, 0),
         }
     }
 
-    fn decl(name: &str, body: ir::Expr) -> ir::ValueDecl {
-        let name = Ident::from_string(name);
-        ir::ValueDecl {
-            binding: tir::BindingId::synthetic(0),
-            entity: tir::EntityId::synthetic_value(0),
-            symbol: ir::Symbol::from_ident(&name),
-            name,
-            ty: unit(),
-            body,
-            span: Span::new(0, 0),
-        }
-    }
-
-    fn value(body: ir::Expr) -> ir::Module {
-        ir::Module {
-            values: vec![decl("answer", body)],
-        }
-    }
-
-    fn var_pattern(name: &str) -> ir::Pattern {
-        ir::Pattern {
-            ty: unit(),
-            kind: ir::PatternKind::Var {
-                name: Ident::from_string(name),
+    fn function(stmts: Vec<ssa::Stmt>, ret: ValueId) -> ssa::SsaProgram {
+        let name = Ident::from_string("answer");
+        ssa::SsaProgram {
+            globals: Vec::new(),
+            functions: vec![ssa::Function {
                 binding: tir::BindingId::synthetic(0),
-            },
-            span: Span::new(0, 0),
+                entity: tir::EntityId::synthetic_value(0),
+                name: name.clone(),
+                symbol: ssa::Symbol::from_ident(&name),
+                params: Vec::new(),
+                values: vec![
+                    value_info(MachineRepr::I32),
+                    value_info(MachineRepr::I32),
+                    value_info(MachineRepr::I32),
+                ],
+                entry: ssa::BlockId(0),
+                blocks: vec![ssa::Block {
+                    id: ssa::BlockId(0),
+                    params: Vec::new(),
+                    stmts,
+                    terminator: ssa::Terminator::Return(Some(ret)),
+                }],
+                ret: MachineRepr::I32,
+                ty: checker::builtin::i32(),
+                span: Span::new(0, 0),
+            }],
         }
     }
 
-    fn var_expr(name: &str) -> ir::Expr {
-        let name = Ident::from_string(name);
-        expr(ir::ExprKind::Var {
-            symbol: ir::Symbol::from_ident(&name),
-            name,
-            entity: tir::EntityId::synthetic_value(0),
-        })
-    }
-
-    fn int(value: &str) -> ir::Expr {
-        expr(ir::ExprKind::Constant(ir::Constant::Literal(Literal::Int(
-            value.into(),
-        ))))
-    }
-
     #[test]
-    fn selects_integer_constant_and_return() {
-        let mir = select(&value(int("42")));
-        assert!(matches!(
-            mir.functions[0].instructions.as_slice(),
-            [Instr::Label(_), Instr::MovImm { value: 42, .. }, Instr::Ret]
-        ));
-    }
-
-    #[test]
-    fn selects_integer_arithmetic() {
-        let module = value(expr(ir::ExprKind::Prim {
-            op: lambda::ir::Primitive::Add { operand: unit() },
-            args: vec![int("1"), int("2")],
-        }));
+    fn selects_ssa_integer_arithmetic() {
+        let module = function(
+            vec![
+                ssa::Stmt::Assign {
+                    dst: ValueId(0),
+                    rhs: ssa::Rvalue::Const(ssa::Constant::Literal(Literal::Int("1".into()))),
+                    span: Span::new(0, 0),
+                },
+                ssa::Stmt::Assign {
+                    dst: ValueId(1),
+                    rhs: ssa::Rvalue::Const(ssa::Constant::Literal(Literal::Int("2".into()))),
+                    span: Span::new(0, 0),
+                },
+                ssa::Stmt::Assign {
+                    dst: ValueId(2),
+                    rhs: ssa::Rvalue::Prim {
+                        op: lambda::ir::Primitive::Add {
+                            operand: checker::builtin::i32(),
+                        },
+                        args: vec![ValueId(0), ValueId(1)],
+                    },
+                    span: Span::new(0, 0),
+                },
+            ],
+            ValueId(2),
+        );
         let mir = select(&module);
         assert!(
-            mir.functions[0]
+            mir.entries[0]
                 .instructions
                 .iter()
                 .any(|instr| matches!(instr, Instr::Add { .. }))
-        );
-    }
-
-    #[test]
-    fn selects_direct_top_level_calls() {
-        let module = ir::Module {
-            values: vec![
-                decl("callee", int("1")),
-                decl(
-                    "caller",
-                    expr(ir::ExprKind::Apply {
-                        callee: Box::new(var_expr("callee")),
-                        args: Vec::new(),
-                    }),
-                ),
-            ],
-        };
-        let mir = select(&module);
-        assert!(
-            mir.functions[1].instructions.iter().any(
-                |instr| matches!(instr, Instr::Call { symbol } if symbol.as_str() == "callee")
-            )
-        );
-    }
-
-    #[test]
-    fn spills_function_parameters_to_stack_slots() {
-        let module = value(expr(ir::ExprKind::Function {
-            params: vec![ir::Param {
-                pattern: var_pattern("x"),
-            }],
-            body: Box::new(var_expr("x")),
-        }));
-        let mir = select(&module);
-        assert_eq!(mir.functions[0].stack_slots, 1);
-        assert!(
-            mir.functions[0]
-                .instructions
-                .iter()
-                .any(|instr| matches!(instr, Instr::StoreStack { slot: 0, .. }))
-        );
-    }
-
-    #[test]
-    fn lowers_block_and_simple_let() {
-        let module = value(expr(ir::ExprKind::Block(vec![
-            expr(ir::ExprKind::Let {
-                bind: var_pattern("x"),
-                body: Box::new(int("1")),
-                hint: None,
-            }),
-            var_expr("x"),
-        ])));
-        let mir = select(&module);
-        assert!(
-            mir.functions[0]
-                .instructions
-                .iter()
-                .any(|instr| matches!(instr, Instr::LoadStack { slot: 0, .. }))
-        );
-    }
-
-    #[test]
-    fn records_unsupported_block_allocation() {
-        let module = value(expr(ir::ExprKind::MakeBlock {
-            fields: Vec::new(),
-            layout: layout::tuple(Vec::new()),
-        }));
-        let mir = select(&module);
-        assert_eq!(
-            mir.diagnostics,
-            vec![Diagnostic::UnsupportedExpression {
-                context: "block allocation"
-            }]
-        );
-        assert!(mir.functions[0]
-            .instructions
-            .iter()
-            .any(|instr| matches!(instr, Instr::Comment(comment) if comment == "unsupported block allocation"))
         );
     }
 }

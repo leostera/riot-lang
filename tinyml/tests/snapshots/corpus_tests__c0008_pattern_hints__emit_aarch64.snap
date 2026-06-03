@@ -1,17 +1,13 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
-expression: "emit_native_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
+expression: "emit_aarch64_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
 ---
 .text
 .globl _block
 _block:
   stp x29, x30, [sp, #-16]!
   mov x29, sp
-  sub sp, sp, #16
-  mov x9, #1
-  str x9, [sp, #0]
-  ldr x0, [sp, #0]
+  mov x0, #1
   mov sp, x29
   ldp x29, x30, [sp], #16
   ret

@@ -38,6 +38,8 @@ pub struct ValueDescription {
 pub struct ConstructorDescription {
     pub name: Ident,
     pub scheme: Scheme,
+    pub owner: Ident,
+    pub tag: u32,
     pub result: Type,
     pub arguments: Vec<Type>,
 }
@@ -47,6 +49,7 @@ pub struct RecordFieldDescription {
     pub name: Ident,
     pub owner: Type,
     pub field: Type,
+    pub index: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]

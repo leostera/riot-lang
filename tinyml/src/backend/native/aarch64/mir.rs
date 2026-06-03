@@ -1,16 +1,23 @@
 //! AArch64 target MIR.
 
-use crate::backend::native::ir::Symbol;
+use crate::backend::native::ssa::Symbol;
 
 /// Selected AArch64 MIR ready for textual assembly emission.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mir {
-    pub functions: Vec<Function>,
+    pub entries: Vec<Entry>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
+/// One emitted assembly entry point.
+///
+/// Native globals and TinyML functions are both currently emitted as callable
+/// labels so existing call-based global lookup and function invocation can share
+/// the same AArch64 path. This is intentionally named `Entry`, not `Function`,
+/// because it is an assembly-level label plus instructions, not necessarily a
+/// source/native function declaration.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Function {
+pub struct Entry {
     pub name: Symbol,
     pub instructions: Vec<Instr>,
     pub stack_slots: usize,
@@ -32,6 +39,7 @@ pub enum PhysReg {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instr {
     Label(Symbol),
+    BlockLabel(String),
     MovImm {
         dst: PhysReg,
         value: i64,
@@ -73,6 +81,17 @@ pub enum Instr {
         lhs: PhysReg,
         rhs: PhysReg,
         acc: PhysReg,
+    },
+    CmpImm {
+        lhs: PhysReg,
+        imm: i64,
+    },
+    BCond {
+        cond: String,
+        label: String,
+    },
+    B {
+        label: String,
     },
     Call {
         symbol: Symbol,

@@ -1,16 +1,14 @@
 //! Native code generation pipeline.
 //!
-//! Native lowering consumes Lambda, produces machine-independent NIR, then target
-//! selectors produce target MIRs such as AArch64 MIR for emission.
+//! Native lowering consumes Lambda, produces machine-independent native SSA,
+//! then target selectors produce target MIRs such as AArch64 MIR for emission.
 
 pub mod aarch64;
-pub mod ir;
 pub mod layout;
-pub mod lower;
+pub mod opt;
+pub mod ssa;
 
-pub use ir::Module as Nir;
-
-/// Lower Lambda into TinyML's native, machine-independent IR.
-pub fn lower(lambda: &crate::lambda::Lambda) -> Nir {
-    lower::lower_module(lambda)
+/// Lower Lambda into TinyML's native SSA IR.
+pub fn lower(lambda: &crate::lambda::Lambda) -> ssa::SsaProgram {
+    ssa::builder::lower_module(lambda)
 }

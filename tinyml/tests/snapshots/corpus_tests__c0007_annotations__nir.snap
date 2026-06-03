@@ -1,0 +1,11 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: snapshot
+---
+global annotated: i32 = 1;
+
+fn block() -> ptr {
+block0:
+  %v0: i32 = 1;
+  return %v0;
+}

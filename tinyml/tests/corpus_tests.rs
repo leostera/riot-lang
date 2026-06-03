@@ -47,11 +47,26 @@ fn emit_js_snapshot(path: &str) -> String {
     js::emit_ts_string(&js)
 }
 
-fn emit_native_snapshot(path: &str) -> String {
+fn nir_snapshot(path: &str) -> String {
     let module = parse_module(path);
     let summary = checker::check_module(&module);
     let lambda = lambda::translate(&summary.tir);
-    let nir = native::lower(&lambda);
+    let nir = native::lower(&lambda).optimize();
+    nir.to_string()
+}
+
+fn assert_no_native_unsupported(text: &str) {
+    assert!(
+        !text.to_ascii_lowercase().contains("unsupported"),
+        "native output should not contain unsupported placeholders:\n{text}"
+    );
+}
+
+fn emit_aarch64_snapshot(path: &str) -> String {
+    let module = parse_module(path);
+    let summary = checker::check_module(&module);
+    let lambda = lambda::translate(&summary.tir);
+    let nir = native::lower(&lambda).optimize();
     let aarch64 = native::aarch64::select(&nir);
     aarch64.to_asm_string()
 }
@@ -104,8 +119,17 @@ macro_rules! corpus_tests {
                 }
 
                 #[test]
-                fn emit_native() {
-                    assert_corpus_snapshot!(emit_native_snapshot($path));
+                fn nir() {
+                    let snapshot = nir_snapshot($path);
+                    assert_no_native_unsupported(&snapshot);
+                    assert_corpus_snapshot!(snapshot);
+                }
+
+                #[test]
+                fn emit_aarch64() {
+                    let snapshot = emit_aarch64_snapshot($path);
+                    assert_no_native_unsupported(&snapshot);
+                    assert_corpus_snapshot!(snapshot);
                 }
 
                 #[test]

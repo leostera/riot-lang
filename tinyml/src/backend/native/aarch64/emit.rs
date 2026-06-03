@@ -2,9 +2,9 @@
 
 use std::fmt;
 
-use crate::backend::native::ir::Symbol;
+use crate::backend::native::ssa::Symbol;
 
-use super::mir::{Function, Instr, Mir, PhysReg};
+use super::mir::{Entry, Instr, Mir, PhysReg};
 
 impl Mir {
     pub fn emit(&self, sink: &mut impl fmt::Write) -> fmt::Result {
@@ -27,8 +27,8 @@ impl<'a> Emitter<'a> {
 
     pub fn emit(&self, sink: &mut impl fmt::Write) -> fmt::Result {
         sink.write_str(".text\n")?;
-        for function in &self.module.functions {
-            self.emit_function(sink, function)?;
+        for entry in &self.module.entries {
+            self.emit_entry(sink, entry)?;
         }
         if !self.module.diagnostics.is_empty() {
             sink.write_str("\n// diagnostics\n")?;
@@ -45,23 +45,23 @@ impl<'a> Emitter<'a> {
         out
     }
 
-    fn emit_function(&self, sink: &mut impl fmt::Write, function: &Function) -> fmt::Result {
-        let symbol = asm_symbol(&function.name);
+    fn emit_entry(&self, sink: &mut impl fmt::Write, entry: &Entry) -> fmt::Result {
+        let symbol = asm_symbol(&entry.name);
         writeln!(sink, ".globl {symbol}")?;
         writeln!(sink, "{symbol}:")?;
-        self.emit_prologue(sink, function)?;
-        for instruction in &function.instructions {
+        self.emit_prologue(sink, entry)?;
+        for instruction in &entry.instructions {
             self.emit_instr(sink, instruction)?;
         }
         Ok(())
     }
 
-    fn emit_prologue(&self, sink: &mut impl fmt::Write, function: &Function) -> fmt::Result {
+    fn emit_prologue(&self, sink: &mut impl fmt::Write, entry: &Entry) -> fmt::Result {
         // Keep prologue generation in the target MIR emitter, like Zig's target
         // MIR emitters. Frame metadata is already part of AArch64 MIR.
         writeln!(sink, "  stp x29, x30, [sp, #-16]!")?;
         writeln!(sink, "  mov x29, sp")?;
-        let frame_size = aligned_frame_size(function.stack_slots);
+        let frame_size = aligned_frame_size(entry.stack_slots);
         if frame_size > 0 {
             writeln!(sink, "  sub sp, sp, #{frame_size}")?;
         }
@@ -71,6 +71,7 @@ impl<'a> Emitter<'a> {
     fn emit_instr(&self, sink: &mut impl fmt::Write, instr: &Instr) -> fmt::Result {
         match instr {
             Instr::Label(_) => Ok(()),
+            Instr::BlockLabel(label) => writeln!(sink, "{label}:"),
             Instr::MovImm { dst, value } => writeln!(sink, "  mov {}, #{value}", reg(*dst)),
             Instr::Mov { dst, src } => writeln!(sink, "  mov {}, {}", reg(*dst), reg(*src)),
             Instr::LoadStack { dst, slot } => {
@@ -99,6 +100,9 @@ impl<'a> Emitter<'a> {
                 reg(*rhs),
                 reg(*acc)
             ),
+            Instr::CmpImm { lhs, imm } => writeln!(sink, "  cmp {}, #{imm}", reg(*lhs)),
+            Instr::BCond { cond, label } => writeln!(sink, "  b.{cond} {label}"),
+            Instr::B { label } => writeln!(sink, "  b {label}"),
             Instr::Call { symbol } => writeln!(sink, "  bl {}", asm_symbol(symbol)),
             Instr::Ret => {
                 writeln!(sink, "  mov sp, x29")?;
@@ -135,13 +139,13 @@ fn asm_symbol(symbol: &Symbol) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Function, Instr, Mir, PhysReg};
-    use crate::backend::native::ir::Symbol;
+    use super::super::{Entry, Instr, Mir, PhysReg};
+    use crate::backend::native::ssa::Symbol;
 
     #[test]
     fn emits_function_prologue_and_return() {
         let mir = Mir {
-            functions: vec![Function {
+            entries: vec![Entry {
                 name: Symbol::new("answer"),
                 instructions: vec![
                     Instr::Label(Symbol::new("answer")),

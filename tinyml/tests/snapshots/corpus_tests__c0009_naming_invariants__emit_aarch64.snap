@@ -1,6 +1,6 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-expression: "emit_native_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
+expression: "emit_aarch64_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
 ---
 .text
 .globl __value

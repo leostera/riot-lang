@@ -1,0 +1,18 @@
+---
+source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+expression: snapshot
+---
+global unit: unit = ();
+
+fn id_unit() -> ptr {
+block0:
+  %v0: unit = ();
+  return %v0;
+}
+
+fn value() -> ptr {
+block0:
+  %v0: unit = ();
+  %v1: ptr = match_runtime(%v0, arms = 1);
+  return %v1;
+}

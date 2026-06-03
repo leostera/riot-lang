@@ -9,6 +9,7 @@ clap = { version = "4", features = ["derive"] }
 logos = "0.16"
 miette = { version = "7", features = ["fancy"] }
 once_cell = "1"
+rt = { path = "../rt" }
 thiserror = "2"
 
 [dev-dependencies]

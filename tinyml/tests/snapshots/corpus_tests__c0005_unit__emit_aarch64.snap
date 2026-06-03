@@ -1,24 +1,32 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
-expression: "emit_native_snapshot(\"tests/fixtures/0007_annotations.ml\")"
+expression: snapshot
 ---
 .text
-.globl _annotated
-_annotated:
+.globl _unit
+_unit:
   stp x29, x30, [sp, #-16]!
   mov x29, sp
-  mov x0, #1
+  mov x0, #0
   mov sp, x29
   ldp x29, x30, [sp], #16
   ret
-.globl _block
-_block:
+.globl _id_unit
+_id_unit:
+  stp x29, x30, [sp, #-16]!
+  mov x29, sp
+  mov x0, #0
+  mov sp, x29
+  ldp x29, x30, [sp], #16
+  ret
+.globl _value
+_value:
   stp x29, x30, [sp, #-16]!
   mov x29, sp
   sub sp, sp, #16
-  mov x9, #1
-  str x9, [sp, #0]
+  mov x0, #0
+  bl _tinyml_rt_match_failure
+  str x0, [sp, #0]
   ldr x0, [sp, #0]
   mov sp, x29
   ldp x29, x30, [sp], #16

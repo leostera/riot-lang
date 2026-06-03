@@ -960,6 +960,7 @@ dependencies = [
  "logos",
  "miette",
  "once_cell",
+ "rt",
  "thiserror",
 ]
 
