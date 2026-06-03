@@ -4,7 +4,7 @@ expression: snapshot
 ---
 global annotated: i32 = 1;
 
-fn block() -> ptr {
+fn block() -> i32 {
 block0:
   %v0: i32 = 1;
   return %v0;

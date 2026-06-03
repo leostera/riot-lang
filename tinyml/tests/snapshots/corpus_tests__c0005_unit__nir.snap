@@ -10,7 +10,7 @@ block0:
   return %v0;
 }
 
-fn value() -> ptr {
+fn value() -> unit {
 block0:
   %v0: unit = ();
   %v1: ptr = match_runtime(%v0, arms = 1);

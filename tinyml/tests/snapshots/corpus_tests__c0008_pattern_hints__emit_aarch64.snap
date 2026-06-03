@@ -1,8 +1,30 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-expression: "emit_aarch64_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
+expression: snapshot
 ---
 .text
+.globl _foo
+_foo:
+  stp x29, x30, [sp, #-16]!
+  mov x29, sp
+  sub sp, sp, #32
+  str x0, [sp, #0]
+  ldr x0, [sp, #0]
+  mov x1, #0
+  bl _tinyml_rt_block_get
+  str x0, [sp, #8]
+  ldr x0, [sp, #0]
+  mov x1, #1
+  bl _tinyml_rt_block_get
+  str x0, [sp, #16]
+  ldr x9, [sp, #8]
+  mov x10, #2
+  mul x9, x9, x10
+  str x9, [sp, #24]
+  ldr x0, [sp, #24]
+  mov sp, x29
+  ldp x29, x30, [sp], #16
+  ret
 .globl _block
 _block:
   stp x29, x30, [sp, #-16]!

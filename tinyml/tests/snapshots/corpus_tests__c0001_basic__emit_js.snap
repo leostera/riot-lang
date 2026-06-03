@@ -2,7 +2,7 @@
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0001_basic.ml\")"
 ---
-function double(x: unknown): unknown {
+function double(x: unknown): number {
   return (x * 2);
 }
 
@@ -12,3 +12,5 @@ function main(x: unknown): unknown {
 }
 
 export { double, main };
+
+export type Option<a> = variant;

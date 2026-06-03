@@ -1,20 +1,48 @@
 //! Type unification.
 //!
-//! The unifier resolves type variables, links compatible types, checks occurs
-//! constraints, and reports structured mismatch errors.
+//! The unifier is the low-level equality engine for checker types.  It consumes
+//! two `Type` values that should describe the same thing, resolves any existing
+//! inference-variable links, and either records new links or reports a
+//! structured `UnifyError`.
+//!
+//! This module intentionally knows nothing about source syntax.  It does not
+//! decide *why* two types must be equal; `typer.rs` does that.  `unifier.rs`
+//! only implements the mechanical Hindley-Milner operations:
+//!
+//! - resolving linked inference variables;
+//! - checking whether a variable occurs inside a candidate solution;
+//! - solving unbound variables by linking them to types;
+//! - recursively unifying tuples, arrows, and nominal applications; and
+//! - preserving generic variables as rigid variables.
+//!
+//! The occurs check is what prevents constructing infinite types such as
+//! `'a = 'a -> 'b`.  Generic variables are intentionally rigid: they only unify
+//! with the same generic variable, while schemes are instantiated into fresh
+//! inference variables before normal use-site unification.
+
+use thiserror::Error;
 
 use super::{
     state::State,
     tir::{Type, TypeVarId},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+/// Errors produced by type equality/unification.
+#[derive(Debug, Clone, PartialEq, Error)]
 pub enum UnifyError {
+    #[error("type mismatch: expected {expected:?}, got {actual:?}")]
     TypeMismatch { expected: Type, actual: Type },
+    #[error("recursive type: type variable {var:?} occurs in {ty:?}")]
     InfiniteSubstitution { var: TypeVarId, ty: Type },
+    #[error("unknown type variable {0:?}")]
     UnknownVar(TypeVarId),
 }
 
+/// Mutable unifier view over checker state.
+///
+/// The unifier borrows `State` mutably because solving a variable records a link
+/// in that state's `TypeVarSlot` table.  A fresh `Unifier` is typically created
+/// for each typing constraint; all of them share the same underlying state.
 pub struct Unifier<'state> {
     state: &'state mut State,
 }
@@ -24,6 +52,11 @@ impl<'state> Unifier<'state> {
         Self { state }
     }
 
+    /// Resolve type-variable links inside `ty`.
+    ///
+    /// This performs path compression for linked variables: when a variable
+    /// points to another variable that points to a concrete type, the original
+    /// variable is updated to point directly at the concrete resolved type.
     pub fn resolve(&mut self, ty: &Type) -> Result<Type, UnifyError> {
         match ty {
             Type::Var(id) => {
@@ -62,6 +95,11 @@ impl<'state> Unifier<'state> {
         }
     }
 
+    /// Return whether `var` appears anywhere inside `ty` after resolving links.
+    ///
+    /// This is the occurs check used before solving a variable.  Without it,
+    /// unifying a variable with a type containing that same variable would create
+    /// an infinite recursive type.
     pub fn occurs_in(&mut self, var: TypeVarId, ty: &Type) -> Result<bool, UnifyError> {
         match self.resolve(ty)? {
             Type::Var(other) => Ok(var == other),
@@ -88,6 +126,55 @@ impl<'state> Unifier<'state> {
         }
     }
 
+    /// Lower free inference variables in `ty` so they cannot escape `max_level`.
+    ///
+    /// This is the core Rémy-style level adjustment.  If an older variable is
+    /// solved to a type containing younger variables, those younger variables are
+    /// now reachable from the older scope and must be lowered before the link is
+    /// installed.  Rigid generics are left untouched.
+    pub fn adjust_levels(
+        &mut self,
+        max_level: super::env::LevelId,
+        ty: &Type,
+    ) -> Result<(), UnifyError> {
+        match ty {
+            Type::Var(id) => {
+                let Some(slot) = self.state.type_var(*id).cloned() else {
+                    return Err(UnifyError::UnknownVar(*id));
+                };
+                if let Some(link) = slot.link {
+                    self.adjust_levels(max_level, &link)
+                } else {
+                    self.state
+                        .set_var_level(*id, max_level)
+                        .ok_or(UnifyError::UnknownVar(*id))
+                }
+            }
+            Type::Arrow { parameter, result } => {
+                self.adjust_levels(max_level, parameter)?;
+                self.adjust_levels(max_level, result)
+            }
+            Type::Tuple(items) => {
+                for item in items {
+                    self.adjust_levels(max_level, item)?;
+                }
+                Ok(())
+            }
+            Type::Apply { arguments, .. } => {
+                for arg in arguments {
+                    self.adjust_levels(max_level, arg)?;
+                }
+                Ok(())
+            }
+            Type::Generic(_) => Ok(()),
+        }
+    }
+
+    /// Solve one inference variable against a type.
+    ///
+    /// If the type is the same variable, the constraint is already satisfied. If
+    /// the variable occurs in the type, solving would create an infinite type and
+    /// is rejected. Otherwise the variable is linked to the resolved type.
     pub fn solve_var(&mut self, var: TypeVarId, ty: &Type) -> Result<(), UnifyError> {
         match self.resolve(ty)? {
             Type::Var(other) if var == other => Ok(()),
@@ -95,6 +182,10 @@ impl<'state> Unifier<'state> {
                 Err(UnifyError::InfiniteSubstitution { var, ty: resolved })
             }
             resolved => {
+                let Some(slot) = self.state.type_var(var).cloned() else {
+                    return Err(UnifyError::UnknownVar(var));
+                };
+                self.adjust_levels(slot.level, &resolved)?;
                 self.state
                     .link_var(var, resolved)
                     .ok_or(UnifyError::UnknownVar(var))?;
@@ -103,6 +194,12 @@ impl<'state> Unifier<'state> {
         }
     }
 
+    /// Enforce equality between `expected` and `actual`.
+    ///
+    /// The names are for diagnostics only; unification itself is symmetric for
+    /// inference variables.  Nominal applications must have the same name and
+    /// arity, arrows unify parameter/result pairwise, and tuples unify element by
+    /// element.
     pub fn unify(&mut self, expected: &Type, actual: &Type) -> Result<(), UnifyError> {
         match (self.resolve(expected)?, self.resolve(actual)?) {
             (Type::Generic(a), Type::Generic(b)) if a == b => Ok(()),

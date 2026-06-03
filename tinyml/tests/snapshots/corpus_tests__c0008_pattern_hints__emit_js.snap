@@ -2,9 +2,13 @@
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
 ---
+function foo($x: readonly [number, number]): number {
+  return (a * 2);
+}
+
 const block: unknown = (() => {
   const x = 1;
   return x;
 })();
 
-export { block };
+export { foo, block };

@@ -4,16 +4,296 @@ expression: "check_snapshot(\"tests/fixtures/0006_variant_record.ml\")"
 ---
 ModuleSummary {
     tir: Module {
-        items: [],
+        items: [
+            TypeDecl(
+                TypeDecl {
+                    name: Name {
+                        name: "Msg",
+                        span: Span {
+                            start: 5,
+                            end: 8,
+                        },
+                    },
+                    params: [
+                        TypeVar {
+                            name: "a",
+                            span: Span {
+                                start: 9,
+                                end: 11,
+                            },
+                        },
+                    ],
+                    body: Apply {
+                        ident: Name {
+                            name: "variant",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
+                    span: Span {
+                        start: 0,
+                        end: 60,
+                    },
+                },
+            ),
+        ],
     },
     interface: ModuleInterface {
         values: [],
-        constructors: [],
-        record_fields: [],
-        types: [],
+        constructors: [
+            ConstructorDescription {
+                name: Name {
+                    name: "Ping",
+                    span: Span {
+                        start: 19,
+                        end: 23,
+                    },
+                },
+                scheme: Scheme {
+                    quantifier: [
+                        TypeVarId(
+                            0,
+                        ),
+                    ],
+                    body: Apply {
+                        ident: Name {
+                            name: "Msg",
+                            span: Span {
+                                start: 5,
+                                end: 8,
+                            },
+                        },
+                        arguments: [
+                            Generic(
+                                TypeVarId(
+                                    0,
+                                ),
+                            ),
+                        ],
+                    },
+                },
+                owner: Name {
+                    name: "Msg",
+                    span: Span {
+                        start: 5,
+                        end: 8,
+                    },
+                },
+                tag: 0,
+                result: Apply {
+                    ident: Name {
+                        name: "Msg",
+                        span: Span {
+                            start: 5,
+                            end: 8,
+                        },
+                    },
+                    arguments: [
+                        Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                    ],
+                },
+                arguments: [],
+            },
+            ConstructorDescription {
+                name: Name {
+                    name: "User",
+                    span: Span {
+                        start: 28,
+                        end: 32,
+                    },
+                },
+                scheme: Scheme {
+                    quantifier: [
+                        TypeVarId(
+                            0,
+                        ),
+                    ],
+                    body: Arrow {
+                        parameter: Apply {
+                            ident: Name {
+                                name: "string",
+                                span: Span {
+                                    start: 41,
+                                    end: 47,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        result: Arrow {
+                            parameter: Generic(
+                                TypeVarId(
+                                    0,
+                                ),
+                            ),
+                            result: Apply {
+                                ident: Name {
+                                    name: "Msg",
+                                    span: Span {
+                                        start: 5,
+                                        end: 8,
+                                    },
+                                },
+                                arguments: [
+                                    Generic(
+                                        TypeVarId(
+                                            0,
+                                        ),
+                                    ),
+                                ],
+                            },
+                        },
+                    },
+                },
+                owner: Name {
+                    name: "Msg",
+                    span: Span {
+                        start: 5,
+                        end: 8,
+                    },
+                },
+                tag: 1,
+                result: Apply {
+                    ident: Name {
+                        name: "Msg",
+                        span: Span {
+                            start: 5,
+                            end: 8,
+                        },
+                    },
+                    arguments: [
+                        Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                    ],
+                },
+                arguments: [
+                    Apply {
+                        ident: Name {
+                            name: "string",
+                            span: Span {
+                                start: 41,
+                                end: 47,
+                            },
+                        },
+                        arguments: [],
+                    },
+                    Generic(
+                        TypeVarId(
+                            0,
+                        ),
+                    ),
+                ],
+            },
+        ],
+        record_fields: [
+            RecordFieldDescription {
+                name: Name {
+                    name: "name",
+                    span: Span {
+                        start: 35,
+                        end: 39,
+                    },
+                },
+                owner: Apply {
+                    ident: Name {
+                        name: "Msg",
+                        span: Span {
+                            start: 5,
+                            end: 8,
+                        },
+                    },
+                    arguments: [
+                        Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                    ],
+                },
+                field: Apply {
+                    ident: Name {
+                        name: "string",
+                        span: Span {
+                            start: 41,
+                            end: 47,
+                        },
+                    },
+                    arguments: [],
+                },
+                index: 0,
+            },
+            RecordFieldDescription {
+                name: Name {
+                    name: "value",
+                    span: Span {
+                        start: 49,
+                        end: 54,
+                    },
+                },
+                owner: Apply {
+                    ident: Name {
+                        name: "Msg",
+                        span: Span {
+                            start: 5,
+                            end: 8,
+                        },
+                    },
+                    arguments: [
+                        Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                    ],
+                },
+                field: Generic(
+                    TypeVarId(
+                        0,
+                    ),
+                ),
+                index: 1,
+            },
+        ],
+        types: [
+            TypeDescription {
+                name: Name {
+                    name: "Msg",
+                    span: Span {
+                        start: 5,
+                        end: 8,
+                    },
+                },
+                params: [
+                    TypeVar {
+                        name: "a",
+                        span: Span {
+                            start: 9,
+                            end: 11,
+                        },
+                    },
+                ],
+                body: Apply {
+                    ident: Name {
+                        name: "variant",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+            },
+        ],
         modules: [],
     },
-    diagnostics: [
-        UnsupportedTypeDeclaration,
-    ],
+    diagnostics: [],
 }

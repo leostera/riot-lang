@@ -1,6 +1,5 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0004_records.ml\")"
 ---
 ModuleSummary {
@@ -41,11 +40,16 @@ ModuleSummary {
                     },
                     hint: None,
                     body: Expr {
-                        ty: Var(
-                            TypeVarId(
-                                2,
-                            ),
-                        ),
+                        ty: Apply {
+                            ident: Name {
+                                name: "User",
+                                span: Span {
+                                    start: 11,
+                                    end: 15,
+                                },
+                            },
+                            arguments: [],
+                        },
                         kind: Record {
                             name: Name {
                                 name: "User",
@@ -124,11 +128,16 @@ ModuleSummary {
                     },
                     scheme: Scheme {
                         quantifier: [],
-                        body: Var(
-                            TypeVarId(
-                                2,
-                            ),
-                        ),
+                        body: Apply {
+                            ident: Name {
+                                name: "User",
+                                span: Span {
+                                    start: 11,
+                                    end: 15,
+                                },
+                            },
+                            arguments: [],
+                        },
                     },
                     span: Span {
                         start: 0,
@@ -171,19 +180,36 @@ ModuleSummary {
                     },
                     hint: None,
                     body: Expr {
-                        ty: Var(
-                            TypeVarId(
-                                7,
+                        ty: Arrow {
+                            parameter: Apply {
+                                ident: Name {
+                                    name: "User",
+                                    span: Span {
+                                        start: 63,
+                                        end: 67,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                            result: Var(
+                                TypeVarId(
+                                    2,
+                                ),
                             ),
-                        ),
+                        },
                         kind: Fn {
                             params: [
                                 Pattern {
-                                    ty: Var(
-                                        TypeVarId(
-                                            3,
-                                        ),
-                                    ),
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "User",
+                                            span: Span {
+                                                start: 63,
+                                                end: 67,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
                                     kind: Record {
                                         name: Name {
                                             name: "User",
@@ -204,7 +230,7 @@ ModuleSummary {
                                                 Pattern {
                                                     ty: Var(
                                                         TypeVarId(
-                                                            4,
+                                                            2,
                                                         ),
                                                     ),
                                                     kind: Var {
@@ -219,11 +245,11 @@ ModuleSummary {
                                                             ident: Name {
                                                                 name: "name",
                                                                 span: Span {
-                                                                    start: 70,
-                                                                    end: 74,
+                                                                    start: 0,
+                                                                    end: 0,
                                                                 },
                                                             },
-                                                            stamp: 0,
+                                                            stamp: 2,
                                                         },
                                                     },
                                                     span: Span {
@@ -243,7 +269,7 @@ ModuleSummary {
                                                 Pattern {
                                                     ty: Var(
                                                         TypeVarId(
-                                                            5,
+                                                            3,
                                                         ),
                                                     ),
                                                     kind: Wildcard,
@@ -264,7 +290,7 @@ ModuleSummary {
                             body: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        6,
+                                        2,
                                     ),
                                 ),
                                 kind: Var {
@@ -281,11 +307,11 @@ ModuleSummary {
                                                 ident: Name {
                                                     name: "name",
                                                     span: Span {
-                                                        start: 89,
-                                                        end: 93,
+                                                        start: 0,
+                                                        end: 0,
                                                     },
                                                 },
-                                                stamp: 0,
+                                                stamp: 2,
                                             },
                                         },
                                     ),
@@ -302,12 +328,28 @@ ModuleSummary {
                         },
                     },
                     scheme: Scheme {
-                        quantifier: [],
-                        body: Var(
+                        quantifier: [
                             TypeVarId(
-                                7,
+                                2,
                             ),
-                        ),
+                        ],
+                        body: Arrow {
+                            parameter: Apply {
+                                ident: Name {
+                                    name: "User",
+                                    span: Span {
+                                        start: 63,
+                                        end: 67,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                            result: Generic(
+                                TypeVarId(
+                                    2,
+                                ),
+                            ),
+                        },
                     },
                     span: Span {
                         start: 44,
@@ -329,11 +371,16 @@ ModuleSummary {
                 },
                 scheme: Scheme {
                     quantifier: [],
-                    body: Var(
-                        TypeVarId(
-                            2,
-                        ),
-                    ),
+                    body: Apply {
+                        ident: Name {
+                            name: "User",
+                            span: Span {
+                                start: 11,
+                                end: 15,
+                            },
+                        },
+                        arguments: [],
+                    },
                 },
             },
             ValueDescription {
@@ -345,12 +392,28 @@ ModuleSummary {
                     },
                 },
                 scheme: Scheme {
-                    quantifier: [],
-                    body: Var(
+                    quantifier: [
                         TypeVarId(
-                            7,
+                            2,
                         ),
-                    ),
+                    ],
+                    body: Arrow {
+                        parameter: Apply {
+                            ident: Name {
+                                name: "User",
+                                span: Span {
+                                    start: 63,
+                                    end: 67,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        result: Generic(
+                            TypeVarId(
+                                2,
+                            ),
+                        ),
+                    },
                 },
             },
         ],
@@ -359,9 +422,5 @@ ModuleSummary {
         types: [],
         modules: [],
     },
-    diagnostics: [
-        UnsupportedExpression,
-        UnsupportedExpression,
-        UnsupportedExpression,
-    ],
+    diagnostics: [],
 }

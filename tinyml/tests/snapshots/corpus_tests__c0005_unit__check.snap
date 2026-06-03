@@ -1,6 +1,5 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
 ModuleSummary {
@@ -134,19 +133,41 @@ ModuleSummary {
                     },
                     hint: None,
                     body: Expr {
-                        ty: Var(
-                            TypeVarId(
-                                4,
-                            ),
-                        ),
+                        ty: Arrow {
+                            parameter: Apply {
+                                ident: Name {
+                                    name: "unit",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                            result: Apply {
+                                ident: Name {
+                                    name: "unit",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                        },
                         kind: Fn {
                             params: [
                                 Pattern {
-                                    ty: Var(
-                                        TypeVarId(
-                                            3,
-                                        ),
-                                    ),
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "unit",
+                                            span: Span {
+                                                start: 0,
+                                                end: 0,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
                                     kind: Constructor {
                                         name: Name {
                                             name: "()",
@@ -225,11 +246,28 @@ ModuleSummary {
                     },
                     scheme: Scheme {
                         quantifier: [],
-                        body: Var(
-                            TypeVarId(
-                                4,
-                            ),
-                        ),
+                        body: Arrow {
+                            parameter: Apply {
+                                ident: Name {
+                                    name: "unit",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                            result: Apply {
+                                ident: Name {
+                                    name: "unit",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                        },
                     },
                     span: Span {
                         start: 15,
@@ -274,7 +312,7 @@ ModuleSummary {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                6,
+                                3,
                             ),
                         ),
                         kind: Match {
@@ -321,11 +359,16 @@ ModuleSummary {
                             arms: [
                                 MatchArm {
                                     pattern: Pattern {
-                                        ty: Var(
-                                            TypeVarId(
-                                                5,
-                                            ),
-                                        ),
+                                        ty: Apply {
+                                            ident: Name {
+                                                name: "unit",
+                                                span: Span {
+                                                    start: 0,
+                                                    end: 0,
+                                                },
+                                            },
+                                            arguments: [],
+                                        },
                                         kind: Constructor {
                                             name: Name {
                                                 name: "()",
@@ -409,11 +452,16 @@ ModuleSummary {
                     },
                     scheme: Scheme {
                         quantifier: [],
-                        body: Var(
-                            TypeVarId(
-                                6,
-                            ),
-                        ),
+                        body: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
                     },
                     span: Span {
                         start: 42,
@@ -457,11 +505,28 @@ ModuleSummary {
                 },
                 scheme: Scheme {
                     quantifier: [],
-                    body: Var(
-                        TypeVarId(
-                            4,
-                        ),
-                    ),
+                    body: Arrow {
+                        parameter: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        result: Apply {
+                            ident: Name {
+                                name: "unit",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                    },
                 },
             },
             ValueDescription {
@@ -474,11 +539,16 @@ ModuleSummary {
                 },
                 scheme: Scheme {
                     quantifier: [],
-                    body: Var(
-                        TypeVarId(
-                            6,
-                        ),
-                    ),
+                    body: Apply {
+                        ident: Name {
+                            name: "unit",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
                 },
             },
         ],
@@ -487,8 +557,5 @@ ModuleSummary {
         types: [],
         modules: [],
     },
-    diagnostics: [
-        UnsupportedExpression,
-        UnsupportedExpression,
-    ],
+    diagnostics: [],
 }

@@ -4,7 +4,7 @@ expression: "emit_js_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
 const unit: undefined = undefined;
 
-function id_unit($x: unknown): undefined {
+function id_unit($x: undefined): undefined {
   return undefined;
 }
 

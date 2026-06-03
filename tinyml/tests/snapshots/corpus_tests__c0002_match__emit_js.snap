@@ -12,3 +12,5 @@ function get_or_zero(x: unknown): unknown {
 }
 
 export { get_or_zero };
+
+export type Option<a> = variant;

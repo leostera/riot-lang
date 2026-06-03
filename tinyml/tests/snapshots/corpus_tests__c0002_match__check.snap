@@ -1,11 +1,44 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0002_match.ml\")"
 ---
 ModuleSummary {
     tir: Module {
         items: [
+            TypeDecl(
+                TypeDecl {
+                    name: Name {
+                        name: "Option",
+                        span: Span {
+                            start: 5,
+                            end: 11,
+                        },
+                    },
+                    params: [
+                        TypeVar {
+                            name: "a",
+                            span: Span {
+                                start: 12,
+                                end: 14,
+                            },
+                        },
+                    ],
+                    body: Apply {
+                        ident: Name {
+                            name: "variant",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
+                    span: Span {
+                        start: 0,
+                        end: 39,
+                    },
+                },
+            ),
             LetDecl(
                 Const {
                     binding: BindingId {
@@ -41,11 +74,18 @@ ModuleSummary {
                     },
                     hint: None,
                     body: Expr {
-                        ty: Var(
-                            TypeVarId(
-                                8,
+                        ty: Arrow {
+                            parameter: Var(
+                                TypeVarId(
+                                    1,
+                                ),
                             ),
-                        ),
+                            result: Var(
+                                TypeVarId(
+                                    2,
+                                ),
+                            ),
+                        },
                         kind: Fn {
                             params: [
                                 Pattern {
@@ -66,11 +106,11 @@ ModuleSummary {
                                             ident: Name {
                                                 name: "x",
                                                 span: Span {
-                                                    start: 62,
-                                                    end: 63,
+                                                    start: 0,
+                                                    end: 0,
                                                 },
                                             },
-                                            stamp: 0,
+                                            stamp: 1,
                                         },
                                     },
                                     span: Span {
@@ -82,14 +122,14 @@ ModuleSummary {
                             body: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        7,
+                                        2,
                                     ),
                                 ),
                                 kind: Match {
                                     scrutinee: Expr {
                                         ty: Var(
                                             TypeVarId(
-                                                2,
+                                                1,
                                             ),
                                         ),
                                         kind: Var {
@@ -106,11 +146,11 @@ ModuleSummary {
                                                         ident: Name {
                                                             name: "x",
                                                             span: Span {
-                                                                start: 73,
-                                                                end: 74,
+                                                                start: 0,
+                                                                end: 0,
                                                             },
                                                         },
-                                                        stamp: 0,
+                                                        stamp: 1,
                                                     },
                                                 },
                                             ),
@@ -123,11 +163,22 @@ ModuleSummary {
                                     arms: [
                                         MatchArm {
                                             pattern: Pattern {
-                                                ty: Var(
-                                                    TypeVarId(
-                                                        3,
-                                                    ),
-                                                ),
+                                                ty: Apply {
+                                                    ident: Name {
+                                                        name: "Option",
+                                                        span: Span {
+                                                            start: 5,
+                                                            end: 11,
+                                                        },
+                                                    },
+                                                    arguments: [
+                                                        Var(
+                                                            TypeVarId(
+                                                                3,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
                                                 kind: Constructor {
                                                     name: Name {
                                                         name: "None",
@@ -185,11 +236,22 @@ ModuleSummary {
                                         },
                                         MatchArm {
                                             pattern: Pattern {
-                                                ty: Var(
-                                                    TypeVarId(
-                                                        4,
-                                                    ),
-                                                ),
+                                                ty: Apply {
+                                                    ident: Name {
+                                                        name: "Option",
+                                                        span: Span {
+                                                            start: 5,
+                                                            end: 11,
+                                                        },
+                                                    },
+                                                    arguments: [
+                                                        Var(
+                                                            TypeVarId(
+                                                                5,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                },
                                                 kind: Constructor {
                                                     name: Name {
                                                         name: "Some",
@@ -231,11 +293,11 @@ ModuleSummary {
                                                                     ident: Name {
                                                                         name: "value",
                                                                         span: Span {
-                                                                            start: 100,
-                                                                            end: 105,
+                                                                            start: 0,
+                                                                            end: 0,
                                                                         },
                                                                     },
-                                                                    stamp: 0,
+                                                                    stamp: 2,
                                                                 },
                                                             },
                                                             span: Span {
@@ -253,7 +315,7 @@ ModuleSummary {
                                             body: Expr {
                                                 ty: Var(
                                                     TypeVarId(
-                                                        6,
+                                                        5,
                                                     ),
                                                 ),
                                                 kind: Var {
@@ -270,11 +332,11 @@ ModuleSummary {
                                                                 ident: Name {
                                                                     name: "value",
                                                                     span: Span {
-                                                                        start: 110,
-                                                                        end: 115,
+                                                                        start: 0,
+                                                                        end: 0,
                                                                     },
                                                                 },
-                                                                stamp: 0,
+                                                                stamp: 2,
                                                             },
                                                         },
                                                     ),
@@ -304,11 +366,39 @@ ModuleSummary {
                     },
                     scheme: Scheme {
                         quantifier: [],
-                        body: Var(
-                            TypeVarId(
-                                8,
-                            ),
-                        ),
+                        body: Arrow {
+                            parameter: Apply {
+                                ident: Name {
+                                    name: "Option",
+                                    span: Span {
+                                        start: 5,
+                                        end: 11,
+                                    },
+                                },
+                                arguments: [
+                                    Apply {
+                                        ident: Name {
+                                            name: "i32",
+                                            span: Span {
+                                                start: 0,
+                                                end: 0,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                ],
+                            },
+                            result: Apply {
+                                ident: Name {
+                                    name: "i32",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                        },
                     },
                     span: Span {
                         start: 41,
@@ -330,24 +420,203 @@ ModuleSummary {
                 },
                 scheme: Scheme {
                     quantifier: [],
-                    body: Var(
-                        TypeVarId(
-                            8,
-                        ),
-                    ),
+                    body: Arrow {
+                        parameter: Apply {
+                            ident: Name {
+                                name: "Option",
+                                span: Span {
+                                    start: 5,
+                                    end: 11,
+                                },
+                            },
+                            arguments: [
+                                Apply {
+                                    ident: Name {
+                                        name: "i32",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                            ],
+                        },
+                        result: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                    },
                 },
             },
         ],
-        constructors: [],
+        constructors: [
+            ConstructorDescription {
+                name: Name {
+                    name: "None",
+                    span: Span {
+                        start: 22,
+                        end: 26,
+                    },
+                },
+                scheme: Scheme {
+                    quantifier: [
+                        TypeVarId(
+                            0,
+                        ),
+                    ],
+                    body: Apply {
+                        ident: Name {
+                            name: "Option",
+                            span: Span {
+                                start: 5,
+                                end: 11,
+                            },
+                        },
+                        arguments: [
+                            Generic(
+                                TypeVarId(
+                                    0,
+                                ),
+                            ),
+                        ],
+                    },
+                },
+                owner: Name {
+                    name: "Option",
+                    span: Span {
+                        start: 5,
+                        end: 11,
+                    },
+                },
+                tag: 0,
+                result: Apply {
+                    ident: Name {
+                        name: "Option",
+                        span: Span {
+                            start: 5,
+                            end: 11,
+                        },
+                    },
+                    arguments: [
+                        Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                    ],
+                },
+                arguments: [],
+            },
+            ConstructorDescription {
+                name: Name {
+                    name: "Some",
+                    span: Span {
+                        start: 31,
+                        end: 35,
+                    },
+                },
+                scheme: Scheme {
+                    quantifier: [
+                        TypeVarId(
+                            0,
+                        ),
+                    ],
+                    body: Arrow {
+                        parameter: Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                        result: Apply {
+                            ident: Name {
+                                name: "Option",
+                                span: Span {
+                                    start: 5,
+                                    end: 11,
+                                },
+                            },
+                            arguments: [
+                                Generic(
+                                    TypeVarId(
+                                        0,
+                                    ),
+                                ),
+                            ],
+                        },
+                    },
+                },
+                owner: Name {
+                    name: "Option",
+                    span: Span {
+                        start: 5,
+                        end: 11,
+                    },
+                },
+                tag: 1,
+                result: Apply {
+                    ident: Name {
+                        name: "Option",
+                        span: Span {
+                            start: 5,
+                            end: 11,
+                        },
+                    },
+                    arguments: [
+                        Generic(
+                            TypeVarId(
+                                0,
+                            ),
+                        ),
+                    ],
+                },
+                arguments: [
+                    Generic(
+                        TypeVarId(
+                            0,
+                        ),
+                    ),
+                ],
+            },
+        ],
         record_fields: [],
-        types: [],
+        types: [
+            TypeDescription {
+                name: Name {
+                    name: "Option",
+                    span: Span {
+                        start: 5,
+                        end: 11,
+                    },
+                },
+                params: [
+                    TypeVar {
+                        name: "a",
+                        span: Span {
+                            start: 12,
+                            end: 14,
+                        },
+                    },
+                ],
+                body: Apply {
+                    ident: Name {
+                        name: "variant",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+            },
+        ],
         modules: [],
     },
-    diagnostics: [
-        UnsupportedTypeDeclaration,
-        UnsupportedExpression,
-        UnsupportedExpression,
-        UnsupportedExpression,
-        UnsupportedExpression,
-    ],
+    diagnostics: [],
 }

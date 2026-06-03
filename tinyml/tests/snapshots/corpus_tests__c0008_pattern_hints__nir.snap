@@ -2,6 +2,15 @@
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: snapshot
 ---
+fn foo(%param0: ptr) -> ptr {
+block0(%param0: ptr):
+  %v1: ptr = get_field(%param0, 0);
+  %v2: ptr = get_field(%param0, 1);
+  %v3: i32 = 2;
+  %v4: i32 = mul(%v1, %v3);
+  return %v4;
+}
+
 fn block() -> ptr {
 block0:
   %v0: i32 = 1;

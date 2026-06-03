@@ -1,16 +1,15 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "check_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
 ---
 ModuleSummary {
     tir: Module {
         items: [
             LetDecl(
-                Const {
+                Fn {
                     binding: BindingId {
                         ident: Name {
-                            name: "block",
+                            name: "foo",
                             span: Span {
                                 start: 0,
                                 end: 0,
@@ -22,13 +21,313 @@ ModuleSummary {
                         ValueEntity {
                             binding: BindingId {
                                 ident: Name {
-                                    name: "block",
+                                    name: "foo",
                                     span: Span {
                                         start: 0,
                                         end: 0,
                                     },
                                 },
                                 stamp: 0,
+                            },
+                        },
+                    ),
+                    name: Name {
+                        name: "foo",
+                        span: Span {
+                            start: 4,
+                            end: 7,
+                        },
+                    },
+                    args: [
+                        Pattern {
+                            ty: Tuple(
+                                [
+                                    Apply {
+                                        ident: Name {
+                                            name: "u8",
+                                            span: Span {
+                                                start: 18,
+                                                end: 20,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                    Apply {
+                                        ident: Name {
+                                            name: "u32",
+                                            span: Span {
+                                                start: 22,
+                                                end: 25,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                ],
+                            ),
+                            kind: TypeHint {
+                                pattern: Pattern {
+                                    ty: Tuple(
+                                        [
+                                            Var(
+                                                TypeVarId(
+                                                    2,
+                                                ),
+                                            ),
+                                            Var(
+                                                TypeVarId(
+                                                    3,
+                                                ),
+                                            ),
+                                        ],
+                                    ),
+                                    kind: Tuple {
+                                        items: [
+                                            Pattern {
+                                                ty: Var(
+                                                    TypeVarId(
+                                                        2,
+                                                    ),
+                                                ),
+                                                kind: Var {
+                                                    name: Name {
+                                                        name: "a",
+                                                        span: Span {
+                                                            start: 10,
+                                                            end: 11,
+                                                        },
+                                                    },
+                                                    binding: BindingId {
+                                                        ident: Name {
+                                                            name: "a",
+                                                            span: Span {
+                                                                start: 0,
+                                                                end: 0,
+                                                            },
+                                                        },
+                                                        stamp: 2,
+                                                    },
+                                                },
+                                                span: Span {
+                                                    start: 10,
+                                                    end: 11,
+                                                },
+                                            },
+                                            Pattern {
+                                                ty: Var(
+                                                    TypeVarId(
+                                                        3,
+                                                    ),
+                                                ),
+                                                kind: Var {
+                                                    name: Name {
+                                                        name: "b",
+                                                        span: Span {
+                                                            start: 13,
+                                                            end: 14,
+                                                        },
+                                                    },
+                                                    binding: BindingId {
+                                                        ident: Name {
+                                                            name: "b",
+                                                            span: Span {
+                                                                start: 0,
+                                                                end: 0,
+                                                            },
+                                                        },
+                                                        stamp: 3,
+                                                    },
+                                                },
+                                                span: Span {
+                                                    start: 13,
+                                                    end: 14,
+                                                },
+                                            },
+                                        ],
+                                    },
+                                    span: Span {
+                                        start: 9,
+                                        end: 15,
+                                    },
+                                },
+                                hint: Tuple(
+                                    [
+                                        Apply {
+                                            ident: Name {
+                                                name: "u8",
+                                                span: Span {
+                                                    start: 18,
+                                                    end: 20,
+                                                },
+                                            },
+                                            arguments: [],
+                                        },
+                                        Apply {
+                                            ident: Name {
+                                                name: "u32",
+                                                span: Span {
+                                                    start: 22,
+                                                    end: 25,
+                                                },
+                                            },
+                                            arguments: [],
+                                        },
+                                    ],
+                                ),
+                            },
+                            span: Span {
+                                start: 8,
+                                end: 27,
+                            },
+                        },
+                    ],
+                    body: Expr {
+                        ty: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                        kind: BinaryOp {
+                            ident: Name {
+                                name: "*",
+                                span: Span {
+                                    start: 32,
+                                    end: 33,
+                                },
+                            },
+                            left: Expr {
+                                ty: Var(
+                                    TypeVarId(
+                                        2,
+                                    ),
+                                ),
+                                kind: Var {
+                                    name: Name {
+                                        name: "a",
+                                        span: Span {
+                                            start: 30,
+                                            end: 31,
+                                        },
+                                    },
+                                    entity: Value(
+                                        ValueEntity {
+                                            binding: BindingId {
+                                                ident: Name {
+                                                    name: "a",
+                                                    span: Span {
+                                                        start: 0,
+                                                        end: 0,
+                                                    },
+                                                },
+                                                stamp: 2,
+                                            },
+                                        },
+                                    ),
+                                },
+                                span: Span {
+                                    start: 30,
+                                    end: 31,
+                                },
+                            },
+                            right: Expr {
+                                ty: Apply {
+                                    ident: Name {
+                                        name: "i32",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                                kind: Literal {
+                                    value: Int(
+                                        "2",
+                                    ),
+                                },
+                                span: Span {
+                                    start: 34,
+                                    end: 35,
+                                },
+                            },
+                        },
+                        span: Span {
+                            start: 30,
+                            end: 35,
+                        },
+                    },
+                    scheme: Scheme {
+                        quantifier: [],
+                        body: Arrow {
+                            parameter: Tuple(
+                                [
+                                    Apply {
+                                        ident: Name {
+                                            name: "u8",
+                                            span: Span {
+                                                start: 18,
+                                                end: 20,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                    Apply {
+                                        ident: Name {
+                                            name: "u32",
+                                            span: Span {
+                                                start: 22,
+                                                end: 25,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
+                                ],
+                            ),
+                            result: Apply {
+                                ident: Name {
+                                    name: "i32",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
+                        },
+                    },
+                    span: Span {
+                        start: 0,
+                        end: 35,
+                    },
+                },
+            ),
+            LetDecl(
+                Const {
+                    binding: BindingId {
+                        ident: Name {
+                            name: "block",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        stamp: 1,
+                    },
+                    entity: Value(
+                        ValueEntity {
+                            binding: BindingId {
+                                ident: Name {
+                                    name: "block",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                stamp: 1,
                             },
                         },
                     ),
@@ -49,11 +348,16 @@ ModuleSummary {
                         kind: Block {
                             exprs: [
                                 Expr {
-                                    ty: Var(
-                                        TypeVarId(
-                                            2,
-                                        ),
-                                    ),
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "i32",
+                                            span: Span {
+                                                start: 0,
+                                                end: 0,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
                                     kind: Let {
                                         bind: Pattern {
                                             ty: Apply {
@@ -70,7 +374,7 @@ ModuleSummary {
                                                 pattern: Pattern {
                                                     ty: Var(
                                                         TypeVarId(
-                                                            1,
+                                                            4,
                                                         ),
                                                     ),
                                                     kind: Var {
@@ -85,11 +389,11 @@ ModuleSummary {
                                                             ident: Name {
                                                                 name: "x",
                                                                 span: Span {
-                                                                    start: 58,
-                                                                    end: 59,
+                                                                    start: 0,
+                                                                    end: 0,
                                                                 },
                                                             },
-                                                            stamp: 0,
+                                                            stamp: 4,
                                                         },
                                                     },
                                                     span: Span {
@@ -144,7 +448,7 @@ ModuleSummary {
                                 Expr {
                                     ty: Var(
                                         TypeVarId(
-                                            3,
+                                            4,
                                         ),
                                     ),
                                     kind: Var {
@@ -161,11 +465,11 @@ ModuleSummary {
                                                     ident: Name {
                                                         name: "x",
                                                         span: Span {
-                                                            start: 72,
-                                                            end: 73,
+                                                            start: 0,
+                                                            end: 0,
                                                         },
                                                     },
-                                                    stamp: 0,
+                                                    stamp: 4,
                                                 },
                                             },
                                         ),
@@ -183,8 +487,12 @@ ModuleSummary {
                         },
                     },
                     scheme: Scheme {
-                        quantifier: [],
-                        body: Var(
+                        quantifier: [
+                            TypeVarId(
+                                4,
+                            ),
+                        ],
+                        body: Generic(
                             TypeVarId(
                                 4,
                             ),
@@ -202,6 +510,54 @@ ModuleSummary {
         values: [
             ValueDescription {
                 name: Name {
+                    name: "foo",
+                    span: Span {
+                        start: 4,
+                        end: 7,
+                    },
+                },
+                scheme: Scheme {
+                    quantifier: [],
+                    body: Arrow {
+                        parameter: Tuple(
+                            [
+                                Apply {
+                                    ident: Name {
+                                        name: "u8",
+                                        span: Span {
+                                            start: 18,
+                                            end: 20,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                                Apply {
+                                    ident: Name {
+                                        name: "u32",
+                                        span: Span {
+                                            start: 22,
+                                            end: 25,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
+                            ],
+                        ),
+                        result: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
+                    },
+                },
+            },
+            ValueDescription {
+                name: Name {
                     name: "block",
                     span: Span {
                         start: 41,
@@ -209,8 +565,12 @@ ModuleSummary {
                     },
                 },
                 scheme: Scheme {
-                    quantifier: [],
-                    body: Var(
+                    quantifier: [
+                        TypeVarId(
+                            4,
+                        ),
+                    ],
+                    body: Generic(
                         TypeVarId(
                             4,
                         ),
@@ -224,9 +584,33 @@ ModuleSummary {
         modules: [],
     },
     diagnostics: [
-        UnsupportedTopLevelFunction,
-        UnsupportedExpression,
-        UnsupportedExpression,
-        UnsupportedExpression,
+        TypeMismatch {
+            span: Span {
+                start: 53,
+                end: 68,
+            },
+            error: TypeMismatch {
+                expected: Apply {
+                    ident: Name {
+                        name: "u8",
+                        span: Span {
+                            start: 61,
+                            end: 63,
+                        },
+                    },
+                    arguments: [],
+                },
+                actual: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+            },
+        },
     ],
 }

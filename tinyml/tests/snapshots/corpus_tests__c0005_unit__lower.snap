@@ -1,6 +1,5 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "lower_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
 Module {
@@ -104,19 +103,41 @@ Module {
                 },
             },
             body: Expr {
-                ty: Var(
-                    TypeVarId(
-                        4,
-                    ),
-                ),
+                ty: Arrow {
+                    parameter: Apply {
+                        ident: Name {
+                            name: "unit",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
+                    result: Apply {
+                        ident: Name {
+                            name: "unit",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
+                },
                 kind: Function {
                     params: [
                         Pattern {
-                            ty: Var(
-                                TypeVarId(
-                                    3,
-                                ),
-                            ),
+                            ty: Apply {
+                                ident: Name {
+                                    name: "unit",
+                                    span: Span {
+                                        start: 0,
+                                        end: 0,
+                                    },
+                                },
+                                arguments: [],
+                            },
                             kind: Constant(
                                 Unit,
                             ),
@@ -151,11 +172,28 @@ Module {
                     end: 40,
                 },
             },
-            ty: Var(
-                TypeVarId(
-                    4,
-                ),
-            ),
+            ty: Arrow {
+                parameter: Apply {
+                    ident: Name {
+                        name: "unit",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+                result: Apply {
+                    ident: Name {
+                        name: "unit",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+            },
             span: Span {
                 start: 15,
                 end: 40,
@@ -196,7 +234,7 @@ Module {
             body: Expr {
                 ty: Var(
                     TypeVarId(
-                        6,
+                        3,
                     ),
                 ),
                 kind: Match {
@@ -222,11 +260,16 @@ Module {
                     arms: [
                         MatchArm {
                             pattern: Pattern {
-                                ty: Var(
-                                    TypeVarId(
-                                        5,
-                                    ),
-                                ),
+                                ty: Apply {
+                                    ident: Name {
+                                        name: "unit",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
                                 kind: Constant(
                                     Unit,
                                 ),
@@ -266,11 +309,16 @@ Module {
                     end: 79,
                 },
             },
-            ty: Var(
-                TypeVarId(
-                    6,
-                ),
-            ),
+            ty: Apply {
+                ident: Name {
+                    name: "unit",
+                    span: Span {
+                        start: 0,
+                        end: 0,
+                    },
+                },
+                arguments: [],
+            },
             span: Span {
                 start: 42,
                 end: 79,

@@ -1,23 +1,49 @@
 //! Checker environment data structures.
 //!
-//! The environment tracks value scopes, root bindings, entities, and module
-//! summaries used during checking and interface construction.
+//! The environment is the checker's symbol table.  It keeps lexical value
+//! scopes, stable binding/entity identifiers, and module-summary metadata in one
+//! place.  `typer.rs` owns the typing rules; `env.rs` only answers questions like
+//! "what value named `x` is currently visible?" and "which public values were
+//! introduced at the module root?".
+//!
+//! A few invariants are important:
+//!
+//! - Value lookup is lexical: innermost scopes shadow outer scopes.
+//! - Root-scope value order is stable, so interfaces and snapshots do not depend
+//!   on hash-map iteration order.
+//! - Every value binding has both a `BindingId` and an `EntityId`.  `BindingId`
+//!   identifies a particular source binding occurrence; `EntityId` is the stable
+//!   semantic identity used by TIR and later stages.
+//! - Environment levels line up with checker inference levels.  Entering a value
+//!   scope increments the level used for fresh type variables; leaving the scope
+//!   decrements it.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::parser::ident::Ident;
 
 use super::{
+    interface::RecordFieldDescription,
     scheme::Scheme,
     tir::{BindingId, EntityId},
 };
 
+/// Lexical inference level.
+///
+/// Levels are deliberately small integers.  The root module scope is level 0;
+/// each nested value scope increments the level.  Hindley-Milner
+/// generalization uses these levels to decide which inference variables belong
+/// to a binding and can therefore be quantified.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LevelId(usize);
 
 impl LevelId {
     pub fn new(id: usize) -> Self {
         Self(id)
+    }
+
+    pub fn index(self) -> usize {
+        self.0
     }
 
     pub fn root() -> Self {
@@ -38,6 +64,11 @@ pub enum EntityKind {
     Value,
 }
 
+/// Semantic entity stored in the checker environment.
+///
+/// For now TinyML only creates value entities, but keeping the explicit entity
+/// table gives TIR a stable identity system that can later grow to types,
+/// constructors, modules, or fields without relying on source names alone.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
     pub id: EntityId,
@@ -45,6 +76,11 @@ pub struct Entity {
     pub binding: Option<BindingId>,
 }
 
+/// A value binding visible through lexical lookup.
+///
+/// `scheme` is the type scheme currently assigned to the value.  Top-level
+/// values are first registered with placeholder schemes to support recursive
+/// references, then updated after their bodies are inferred and generalized.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueSymbol {
     pub name: String,
@@ -53,23 +89,33 @@ pub struct ValueSymbol {
     pub scheme: Scheme,
 }
 
+/// Environment mutation errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnvError {
     DuplicateValue { name: String },
     CannotPopRootScope,
 }
 
+/// Scope-local value plus root-order metadata.
+///
+/// `ordinal` is assigned monotonically as values are added.  It is used only
+/// when projecting root bindings into a stable module interface order.
 #[derive(Debug, Clone)]
 struct ValueBinding {
     symbol: ValueSymbol,
     ordinal: usize,
 }
 
+/// One lexical frame of value bindings.
 #[derive(Debug, Clone, Default)]
 struct ValueScope {
     values: HashMap<String, ValueBinding>,
 }
 
+/// Stack of lexical value scopes.
+///
+/// Lookup walks this stack from innermost to outermost; insertion only affects
+/// the current frame.  The number of frames also defines `LevelId`.
 #[derive(Debug, Clone)]
 struct ValueScopes {
     scopes: Vec<ValueScope>,
@@ -147,18 +193,33 @@ impl ValueScopes {
     }
 }
 
+/// Constructor metadata visible in the current module environment.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ConstructorBinding;
+pub struct ConstructorBinding {
+    pub scheme: Scheme,
+    pub field_names: Vec<Ident>,
+    pub result_type: String,
+}
 
+/// Record-field metadata visible in the current module environment.
 #[derive(Debug, Clone, PartialEq)]
-pub struct RecordFieldBinding;
+pub struct RecordFieldBinding {
+    pub description: RecordFieldDescription,
+}
 
+/// Type metadata visible in the current module environment.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeBinding;
+pub struct TypeBinding {
+    pub arity: usize,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModuleBinding;
 
+/// Snapshot of module-level environment metadata.
+///
+/// This is intentionally independent from source syntax: consumers get the
+/// checked semantic declarations that survived name registration and scoping.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnvModuleSummary {
     pub values: Vec<ValueSymbol>,
@@ -173,9 +234,15 @@ struct ModuleFrame {
     constructors: HashMap<String, ConstructorBinding>,
     record_fields: HashMap<String, RecordFieldBinding>,
     types: HashMap<String, TypeBinding>,
+    constructors_by_result: HashMap<String, HashSet<String>>,
     modules: HashMap<String, ModuleBinding>,
 }
 
+/// Checker symbol environment.
+///
+/// `Env` is responsible for deterministic identity allocation and lexical
+/// lookup.  It does not perform type inference; it stores the schemes and
+/// entities computed by `Typer`/`State`.
 #[derive(Debug, Clone)]
 pub struct Env {
     values: ValueScopes,
@@ -210,6 +277,11 @@ impl Env {
         self.values.pop()
     }
 
+    /// Add a value to the current scope and allocate its binding/entity IDs.
+    ///
+    /// Duplicate names are rejected only within the current scope.  Inner scopes
+    /// may shadow outer values, which is required for function parameters and
+    /// local lets.
     pub fn add_value(
         &mut self,
         name: impl Into<String>,
@@ -260,10 +332,65 @@ impl Env {
         self.entities.iter().find(|item| item.id == entity)
     }
 
+    /// Return values defined at module root in deterministic declaration order.
     pub fn root_values(&self) -> Vec<&ValueSymbol> {
         self.values.root_bindings()
     }
 
+    /// Add or update a type binding in the module environment.
+    pub fn add_type(
+        &mut self,
+        name: impl Into<String>,
+        binding: TypeBinding,
+    ) -> Option<TypeBinding> {
+        self.module.types.insert(name.into(), binding)
+    }
+
+    /// Look up the arity for a type constructor visible in this module.
+    pub fn type_arity(&self, name: &str) -> Option<usize> {
+        self.module.types.get(name).map(|binding| binding.arity)
+    }
+
+    /// Register a constructor in the module environment.
+    pub fn add_constructor(
+        &mut self,
+        name: impl Into<String>,
+        binding: ConstructorBinding,
+    ) -> Option<ConstructorBinding> {
+        let name = name.into();
+        self.module
+            .constructors_by_result
+            .entry(binding.result_type.clone())
+            .or_default()
+            .insert(name.clone());
+        self.module.constructors.insert(name, binding)
+    }
+
+    /// Look up a constructor visible in this module.
+    pub fn constructor(&self, name: &str) -> Option<&ConstructorBinding> {
+        self.module.constructors.get(name)
+    }
+
+    /// Return constructor names known to produce `result_type`.
+    pub fn constructors_for_result(&self, result_type: &str) -> Option<&HashSet<String>> {
+        self.module.constructors_by_result.get(result_type)
+    }
+
+    /// Register a record field in the module environment.
+    pub fn add_record_field(
+        &mut self,
+        name: impl Into<String>,
+        binding: RecordFieldBinding,
+    ) -> Option<RecordFieldBinding> {
+        self.module.record_fields.insert(name.into(), binding)
+    }
+
+    /// Look up a record field visible in this module.
+    pub fn record_field(&self, name: &str) -> Option<&RecordFieldBinding> {
+        self.module.record_fields.get(name)
+    }
+
+    /// Build a checked module summary from environment state.
     pub fn module_summary(&self) -> EnvModuleSummary {
         EnvModuleSummary {
             values: self.root_values().into_iter().cloned().collect(),

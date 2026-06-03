@@ -64,35 +64,71 @@ let nothing = ()
         let summary = Checker::new().check_module(&module);
         assert_eq!(summary.tir.items.len(), 1);
         assert_eq!(summary.interface.values.len(), 1);
-        assert_eq!(
-            summary.diagnostics[0],
-            crate::checker::CheckDiagnostic::DuplicateTopLevelValue {
-                name: "value".into()
-            }
-        );
+        assert!(matches!(
+            &summary.diagnostics[0],
+            crate::checker::CheckDiagnostic::DuplicateTopLevelValue { name, .. }
+                if name == "value"
+        ));
     }
 
     #[test]
-    fn rejects_top_level_functions() {
+    fn checks_top_level_functions() {
         let module = parse_module("let f x = x");
         let summary = Checker::new().check_module(&module);
-        assert!(summary.tir.items.is_empty());
-        assert!(summary.interface.values.is_empty());
-        assert_eq!(
-            summary.diagnostics[0],
-            crate::checker::CheckDiagnostic::UnsupportedTopLevelFunction
-        );
+        assert_eq!(summary.tir.items.len(), 1);
+        assert_eq!(summary.interface.values.len(), 1);
+        assert!(summary.diagnostics.is_empty());
     }
 
     #[test]
-    fn gives_unsupported_expressions_type_holes() {
+    fn infers_principal_identity_scheme() {
+        let module = parse_module("let id x = x");
+        let summary = Checker::new().check_module(&module);
+        assert!(summary.diagnostics.is_empty());
+        assert_eq!(summary.interface.values[0].scheme.quantifier.len(), 1);
+    }
+
+    #[test]
+    fn infers_principal_const_scheme() {
+        let module = parse_module("let const x = fn y -> x");
+        let summary = Checker::new().check_module(&module);
+        assert!(summary.diagnostics.is_empty());
+        assert_eq!(summary.interface.values[0].scheme.quantifier.len(), 2);
+    }
+
+    #[test]
+    fn constructor_scheme_instantiates_independently() {
+        let module = parse_module(
+            r#"
+type Option<'a> =
+  | None
+  | Some('a)
+
+let a = Some(1)
+let b = Some("x")
+"#,
+        );
+        let summary = Checker::new().check_module(&module);
+        assert!(summary.diagnostics.is_empty(), "{:#?}", summary.diagnostics);
+        assert_eq!(summary.interface.constructors.len(), 2);
+    }
+
+    #[test]
+    fn polymorphic_local_let_can_be_reused_at_different_types() {
+        let module = parse_module("let pair = { let id = fn x -> x; (id 1, id true) }");
+        let summary = Checker::new().check_module(&module);
+        assert!(summary.diagnostics.is_empty(), "{:#?}", summary.diagnostics);
+    }
+
+    #[test]
+    fn gives_unknown_value_type_holes() {
         let module = parse_module("let value = answer");
         let summary = Checker::new().check_module(&module);
         assert_eq!(summary.tir.items.len(), 1);
         assert_eq!(summary.interface.values.len(), 1);
-        assert_eq!(
+        assert!(matches!(
             summary.diagnostics[0],
-            crate::checker::CheckDiagnostic::UnsupportedExpression
-        );
+            crate::checker::CheckDiagnostic::UnknownValue { .. }
+        ));
     }
 }

@@ -9,6 +9,18 @@ use super::tir::Type;
 
 pub const UNIT_CONSTRUCTOR: &str = "()";
 
+pub const TYPE_ARITIES: &[(&str, usize)] = &[
+    ("unit", 0),
+    ("bool", 0),
+    ("i32", 0),
+    ("i64", 0),
+    ("u8", 0),
+    ("u32", 0),
+    ("f32", 0),
+    ("f64", 0),
+    ("string", 0),
+];
+
 fn primitive(name: &str) -> Type {
     Type::Apply {
         ident: Ident::from_string(name),

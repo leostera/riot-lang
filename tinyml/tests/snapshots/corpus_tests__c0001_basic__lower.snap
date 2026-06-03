@@ -1,6 +1,5 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "lower_snapshot(\"tests/fixtures/0001_basic.ml\")"
 ---
 Module {
@@ -38,11 +37,23 @@ Module {
                 },
             },
             body: Expr {
-                ty: Var(
-                    TypeVarId(
-                        5,
+                ty: Arrow {
+                    parameter: Var(
+                        TypeVarId(
+                            2,
+                        ),
                     ),
-                ),
+                    result: Apply {
+                        ident: Name {
+                            name: "i32",
+                            span: Span {
+                                start: 0,
+                                end: 0,
+                            },
+                        },
+                        arguments: [],
+                    },
+                },
                 kind: Function {
                     params: [
                         Pattern {
@@ -63,11 +74,11 @@ Module {
                                     ident: Name {
                                         name: "x",
                                         span: Span {
-                                            start: 79,
-                                            end: 80,
+                                            start: 0,
+                                            end: 0,
                                         },
                                     },
-                                    stamp: 0,
+                                    stamp: 2,
                                 },
                             },
                             span: Span {
@@ -77,16 +88,21 @@ Module {
                         },
                     ],
                     body: Expr {
-                        ty: Var(
-                            TypeVarId(
-                                4,
-                            ),
-                        ),
+                        ty: Apply {
+                            ident: Name {
+                                name: "i32",
+                                span: Span {
+                                    start: 0,
+                                    end: 0,
+                                },
+                            },
+                            arguments: [],
+                        },
                         kind: Prim {
                             op: Mul {
                                 operand: Var(
                                     TypeVarId(
-                                        3,
+                                        2,
                                     ),
                                 ),
                             },
@@ -94,7 +110,7 @@ Module {
                                 Expr {
                                     ty: Var(
                                         TypeVarId(
-                                            3,
+                                            2,
                                         ),
                                     ),
                                     kind: Var {
@@ -111,11 +127,11 @@ Module {
                                                     ident: Name {
                                                         name: "x",
                                                         span: Span {
-                                                            start: 84,
-                                                            end: 85,
+                                                            start: 0,
+                                                            end: 0,
                                                         },
                                                     },
-                                                    stamp: 0,
+                                                    stamp: 2,
                                                 },
                                             },
                                         ),
@@ -161,11 +177,28 @@ Module {
                     end: 89,
                 },
             },
-            ty: Var(
-                TypeVarId(
-                    5,
-                ),
-            ),
+            ty: Arrow {
+                parameter: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+                result: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+            },
             span: Span {
                 start: 63,
                 end: 89,
@@ -204,17 +237,24 @@ Module {
                 },
             },
             body: Expr {
-                ty: Var(
-                    TypeVarId(
-                        15,
+                ty: Arrow {
+                    parameter: Var(
+                        TypeVarId(
+                            3,
+                        ),
                     ),
-                ),
+                    result: Var(
+                        TypeVarId(
+                            6,
+                        ),
+                    ),
+                },
                 kind: Function {
                     params: [
                         Pattern {
                             ty: Var(
                                 TypeVarId(
-                                    6,
+                                    3,
                                 ),
                             ),
                             kind: Var {
@@ -229,11 +269,11 @@ Module {
                                     ident: Name {
                                         name: "x",
                                         span: Span {
-                                            start: 105,
-                                            end: 106,
+                                            start: 0,
+                                            end: 0,
                                         },
                                     },
-                                    stamp: 0,
+                                    stamp: 3,
                                 },
                             },
                             span: Span {
@@ -245,24 +285,34 @@ Module {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                14,
+                                6,
                             ),
                         ),
                         kind: Block(
                             [
                                 Expr {
-                                    ty: Var(
-                                        TypeVarId(
-                                            10,
-                                        ),
-                                    ),
+                                    ty: Apply {
+                                        ident: Name {
+                                            name: "i32",
+                                            span: Span {
+                                                start: 0,
+                                                end: 0,
+                                            },
+                                        },
+                                        arguments: [],
+                                    },
                                     kind: Let {
                                         bind: Pattern {
-                                            ty: Var(
-                                                TypeVarId(
-                                                    7,
-                                                ),
-                                            ),
+                                            ty: Apply {
+                                                ident: Name {
+                                                    name: "i32",
+                                                    span: Span {
+                                                        start: 0,
+                                                        end: 0,
+                                                    },
+                                                },
+                                                arguments: [],
+                                            },
                                             kind: Var {
                                                 name: Name {
                                                     name: "y",
@@ -275,11 +325,11 @@ Module {
                                                     ident: Name {
                                                         name: "y",
                                                         span: Span {
-                                                            start: 118,
-                                                            end: 119,
+                                                            start: 0,
+                                                            end: 0,
                                                         },
                                                     },
-                                                    stamp: 0,
+                                                    stamp: 4,
                                                 },
                                             },
                                             span: Span {
@@ -289,16 +339,21 @@ Module {
                                         },
                                         hint: None,
                                         body: Expr {
-                                            ty: Var(
-                                                TypeVarId(
-                                                    9,
-                                                ),
-                                            ),
+                                            ty: Apply {
+                                                ident: Name {
+                                                    name: "i32",
+                                                    span: Span {
+                                                        start: 0,
+                                                        end: 0,
+                                                    },
+                                                },
+                                                arguments: [],
+                                            },
                                             kind: Prim {
                                                 op: Add {
                                                     operand: Var(
                                                         TypeVarId(
-                                                            8,
+                                                            3,
                                                         ),
                                                     ),
                                                 },
@@ -306,7 +361,7 @@ Module {
                                                     Expr {
                                                         ty: Var(
                                                             TypeVarId(
-                                                                8,
+                                                                3,
                                                             ),
                                                         ),
                                                         kind: Var {
@@ -323,11 +378,11 @@ Module {
                                                                         ident: Name {
                                                                             name: "x",
                                                                             span: Span {
-                                                                                start: 122,
-                                                                                end: 123,
+                                                                                start: 0,
+                                                                                end: 0,
                                                                             },
                                                                         },
-                                                                        stamp: 0,
+                                                                        stamp: 3,
                                                                     },
                                                                 },
                                                             ),
@@ -376,16 +431,33 @@ Module {
                                 Expr {
                                     ty: Var(
                                         TypeVarId(
-                                            13,
+                                            6,
                                         ),
                                     ),
                                     kind: Apply {
                                         callee: Expr {
-                                            ty: Var(
-                                                TypeVarId(
-                                                    11,
-                                                ),
-                                            ),
+                                            ty: Arrow {
+                                                parameter: Apply {
+                                                    ident: Name {
+                                                        name: "i32",
+                                                        span: Span {
+                                                            start: 0,
+                                                            end: 0,
+                                                        },
+                                                    },
+                                                    arguments: [],
+                                                },
+                                                result: Apply {
+                                                    ident: Name {
+                                                        name: "i32",
+                                                        span: Span {
+                                                            start: 0,
+                                                            end: 0,
+                                                        },
+                                                    },
+                                                    arguments: [],
+                                                },
+                                            },
                                             kind: Var {
                                                 name: Name {
                                                     name: "double",
@@ -400,8 +472,8 @@ Module {
                                                             ident: Name {
                                                                 name: "double",
                                                                 span: Span {
-                                                                    start: 131,
-                                                                    end: 137,
+                                                                    start: 0,
+                                                                    end: 0,
                                                                 },
                                                             },
                                                             stamp: 0,
@@ -416,11 +488,16 @@ Module {
                                         },
                                         args: [
                                             Expr {
-                                                ty: Var(
-                                                    TypeVarId(
-                                                        12,
-                                                    ),
-                                                ),
+                                                ty: Apply {
+                                                    ident: Name {
+                                                        name: "i32",
+                                                        span: Span {
+                                                            start: 0,
+                                                            end: 0,
+                                                        },
+                                                    },
+                                                    arguments: [],
+                                                },
                                                 kind: Var {
                                                     name: Name {
                                                         name: "y",
@@ -435,11 +512,11 @@ Module {
                                                                 ident: Name {
                                                                     name: "y",
                                                                     span: Span {
-                                                                        start: 138,
-                                                                        end: 139,
+                                                                        start: 0,
+                                                                        end: 0,
                                                                     },
                                                                 },
-                                                                stamp: 0,
+                                                                stamp: 4,
                                                             },
                                                         },
                                                     ),
@@ -469,11 +546,28 @@ Module {
                     end: 141,
                 },
             },
-            ty: Var(
-                TypeVarId(
-                    15,
-                ),
-            ),
+            ty: Arrow {
+                parameter: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+                result: Apply {
+                    ident: Name {
+                        name: "i32",
+                        span: Span {
+                            start: 0,
+                            end: 0,
+                        },
+                    },
+                    arguments: [],
+                },
+            },
             span: Span {
                 start: 91,
                 end: 141,

@@ -1,6 +1,5 @@
 ---
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-assertion_line: 1
 expression: "emit_wasm_snapshot(\"tests/fixtures/0004_records.ml\")"
 ---
 emit pending
@@ -39,11 +38,16 @@ Module {
                 },
             },
             body: Expr {
-                ty: Var(
-                    TypeVarId(
-                        2,
-                    ),
-                ),
+                ty: Apply {
+                    ident: Name {
+                        name: "User",
+                        span: Span {
+                            start: 11,
+                            end: 15,
+                        },
+                    },
+                    arguments: [],
+                },
                 kind: Record {
                     name: Name {
                         name: "User",
@@ -124,11 +128,16 @@ Module {
                     end: 42,
                 },
             },
-            ty: Var(
-                TypeVarId(
-                    2,
-                ),
-            ),
+            ty: Apply {
+                ident: Name {
+                    name: "User",
+                    span: Span {
+                        start: 11,
+                        end: 15,
+                    },
+                },
+                arguments: [],
+            },
             span: Span {
                 start: 0,
                 end: 42,
@@ -167,19 +176,36 @@ Module {
                 },
             },
             body: Expr {
-                ty: Var(
-                    TypeVarId(
-                        7,
+                ty: Arrow {
+                    parameter: Apply {
+                        ident: Name {
+                            name: "User",
+                            span: Span {
+                                start: 63,
+                                end: 67,
+                            },
+                        },
+                        arguments: [],
+                    },
+                    result: Var(
+                        TypeVarId(
+                            2,
+                        ),
                     ),
-                ),
+                },
                 kind: Function {
                     params: [
                         Pattern {
-                            ty: Var(
-                                TypeVarId(
-                                    3,
-                                ),
-                            ),
+                            ty: Apply {
+                                ident: Name {
+                                    name: "User",
+                                    span: Span {
+                                        start: 63,
+                                        end: 67,
+                                    },
+                                },
+                                arguments: [],
+                            },
                             kind: Record {
                                 name: Name {
                                     name: "User",
@@ -200,7 +226,7 @@ Module {
                                         Pattern {
                                             ty: Var(
                                                 TypeVarId(
-                                                    4,
+                                                    2,
                                                 ),
                                             ),
                                             kind: Var {
@@ -215,11 +241,11 @@ Module {
                                                     ident: Name {
                                                         name: "name",
                                                         span: Span {
-                                                            start: 70,
-                                                            end: 74,
+                                                            start: 0,
+                                                            end: 0,
                                                         },
                                                     },
-                                                    stamp: 0,
+                                                    stamp: 2,
                                                 },
                                             },
                                             span: Span {
@@ -239,7 +265,7 @@ Module {
                                         Pattern {
                                             ty: Var(
                                                 TypeVarId(
-                                                    5,
+                                                    3,
                                                 ),
                                             ),
                                             kind: Wildcard,
@@ -260,7 +286,7 @@ Module {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                6,
+                                2,
                             ),
                         ),
                         kind: Var {
@@ -277,11 +303,11 @@ Module {
                                         ident: Name {
                                             name: "name",
                                             span: Span {
-                                                start: 89,
-                                                end: 93,
+                                                start: 0,
+                                                end: 0,
                                             },
                                         },
-                                        stamp: 0,
+                                        stamp: 2,
                                     },
                                 },
                             ),
@@ -297,11 +323,23 @@ Module {
                     end: 93,
                 },
             },
-            ty: Var(
-                TypeVarId(
-                    7,
+            ty: Arrow {
+                parameter: Apply {
+                    ident: Name {
+                        name: "User",
+                        span: Span {
+                            start: 63,
+                            end: 67,
+                        },
+                    },
+                    arguments: [],
+                },
+                result: Generic(
+                    TypeVarId(
+                        2,
+                    ),
                 ),
-            ),
+            },
             span: Span {
                 start: 44,
                 end: 93,

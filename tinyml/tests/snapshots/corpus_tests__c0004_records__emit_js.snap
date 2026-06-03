@@ -2,9 +2,9 @@
 source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0004_records.ml\")"
 ---
-const user: unknown = { name: "Luffy", age: 19 };
+const user: User = { name: "Luffy", age: 19 };
 
-function get_name($x: unknown): unknown {
+function get_name($x: User): unknown {
   return $x.name;
 }
 
