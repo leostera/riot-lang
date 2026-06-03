@@ -45,6 +45,8 @@ enum Command {
         targets: Vec<EmitTarget>,
         file: PathBuf,
     },
+    /// Run the TinyML language server over stdio.
+    Lsp,
     /// Compile and link a TinyML file.
     Compile {
         /// Compilation target triple. Only aarch64-apple-darwin is supported for now.
@@ -103,6 +105,7 @@ pub fn run() -> Result<()> {
             targets,
             file,
         } => emit_command(&file, &stages, &targets),
+        Command::Lsp => tinyml::lsp::run_stdio(),
         Command::Compile {
             target,
             output,

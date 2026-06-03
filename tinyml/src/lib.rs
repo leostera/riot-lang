@@ -8,5 +8,6 @@
 pub mod backend;
 pub mod checker;
 pub mod lambda;
+pub mod lsp;
 pub mod parser;
 pub mod prelude;
