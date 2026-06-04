@@ -356,6 +356,7 @@ fn emit_type(out: &mut impl fmt::Write, ty: &TsType, nested: bool) -> fmt::Resul
         TsType::Boolean => out.write_str("boolean"),
         TsType::String => out.write_str("string"),
         TsType::Undefined => out.write_str("undefined"),
+        TsType::Null => out.write_str("null"),
         TsType::Void => out.write_str("void"),
         TsType::Unknown => out.write_str("unknown"),
         TsType::TypeParam(name) => out.write_str(name),

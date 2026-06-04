@@ -175,6 +175,8 @@ pub enum TsType {
     String,
     /// `undefined`.
     Undefined,
+    /// `null`.
+    Null,
     /// `void`.
     Void,
     /// `unknown`.

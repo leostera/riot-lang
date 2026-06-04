@@ -96,7 +96,9 @@ impl<'a> Lowerer<'a> {
                 .get(&js_name(name))
                 .cloned()
                 .unwrap_or_else(|| ir::Expr::Var(js_name(name))),
-            lambda::ExprKind::Construct { name, args, .. } => self.lower_construct(name, args),
+            lambda::ExprKind::Construct { name, args, .. } => {
+                self.lower_construct(name, args, &expr.ty)
+            }
             lambda::ExprKind::Function { params, body } => {
                 let param_names = params
                     .iter()
@@ -141,6 +143,10 @@ impl<'a> Lowerer<'a> {
                     })
                     .collect(),
             ),
+            lambda::ExprKind::Field { base, field, .. } => ir::Expr::Member {
+                object: Box::new(self.lower_expr_with_env(base, env)),
+                property: js_name(field),
+            },
             lambda::ExprKind::Block(exprs) => self.lower_block_expr(exprs),
             lambda::ExprKind::Match { scrutinee, arms } => self.lower_match_expr(scrutinee, arms),
         }
@@ -215,8 +221,15 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn lower_construct(&self, name: &Ident, args: &[lambda::Expr]) -> ir::Expr {
+    fn lower_construct(&self, name: &Ident, args: &[lambda::Expr], ty: &Type) -> ir::Expr {
         let tag = name_string(name);
+        if is_std_option_type(ty) {
+            return match (tag.as_str(), args) {
+                ("None", []) => ir::Expr::Null,
+                ("Some", [value]) => self.lower_expr(value),
+                _ => ir::Expr::Null,
+            };
+        }
         if args.is_empty() {
             return ir::Expr::Object(vec![ir::Property {
                 name: "type".into(),
@@ -279,6 +292,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn lower_match_stmt(&self, scrutinee: &lambda::Expr, arms: &[lambda::MatchArm]) -> ir::Stmt {
+        if let Some(option_match) = self.lower_option_match(scrutinee, arms) {
+            return option_match;
+        }
         if let Some(switch) = self.lower_switch_match(scrutinee, arms) {
             return switch;
         }
@@ -298,6 +314,74 @@ impl<'a> Lowerer<'a> {
             }
         }
         ir::Stmt::Block(current_else)
+    }
+
+    fn lower_option_match(
+        &self,
+        scrutinee: &lambda::Expr,
+        arms: &[lambda::MatchArm],
+    ) -> Option<ir::Stmt> {
+        if !is_std_option_type(&scrutinee.ty) {
+            return None;
+        }
+        let scrutinee_expr = self.lower_expr(scrutinee);
+        let mut none_branch = None;
+        let mut some_branch = None;
+        let mut default_branch = Vec::new();
+
+        for arm in arms {
+            match &arm.pattern.kind {
+                lambda::PatternKind::Construct { name, args, .. }
+                    if name.as_name() == Some("None") && args.is_empty() =>
+                {
+                    none_branch = Some(self.lower_option_match_branch(
+                        &arm.pattern,
+                        &arm.body,
+                        &scrutinee_expr,
+                    ));
+                }
+                lambda::PatternKind::Construct { name, args, .. }
+                    if name.as_name() == Some("Some") && args.len() == 1 =>
+                {
+                    some_branch = Some(self.lower_option_match_branch(
+                        &arm.pattern,
+                        &arm.body,
+                        &scrutinee_expr,
+                    ));
+                }
+                lambda::PatternKind::Wildcard => {
+                    default_branch =
+                        self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr);
+                }
+                _ => return None,
+            }
+        }
+
+        Some(ir::Stmt::If {
+            condition: ir::Expr::Binary {
+                op: ir::BinaryOp::Eq,
+                left: Box::new(scrutinee_expr),
+                right: Box::new(ir::Expr::Null),
+            },
+            then_branch: none_branch.unwrap_or_else(|| default_branch.clone()),
+            else_branch: some_branch.unwrap_or(default_branch),
+        })
+    }
+
+    fn lower_option_match_branch(
+        &self,
+        pattern: &lambda::Pattern,
+        body: &lambda::Expr,
+        scrutinee: &ir::Expr,
+    ) -> Vec<ir::Stmt> {
+        let mut env = HashMap::new();
+        if let lambda::PatternKind::Construct { name, args, .. } = &pattern.kind
+            && name.as_name() == Some("Some")
+            && let [arg] = args.as_slice()
+        {
+            self.bind_pattern_env(&mut env, arg, scrutinee.clone());
+        }
+        vec![ir::Stmt::Return(self.lower_expr_with_env(body, &env))]
     }
 
     fn lower_switch_match(
@@ -462,7 +546,7 @@ impl<'a> Lowerer<'a> {
                     .collect(),
             ),
             Type::Arrow { .. } => self.lower_function_type(ty),
-            Type::Apply { ident, arguments } => match ident.as_name() {
+            Type::Apply { ident, arguments } => match crate::checker::builtin::type_name(ty) {
                 Some(
                     "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f8" | "f16"
                     | "f32" | "f64",
@@ -470,6 +554,14 @@ impl<'a> Lowerer<'a> {
                 Some("bool") => ir::TsType::Boolean,
                 Some("string") => ir::TsType::String,
                 Some("unit") => ir::TsType::Undefined,
+                Some("Option")
+                    if arguments.len() == 1 && ident.is_qualified_as("Std", "Option") =>
+                {
+                    ir::TsType::Union(vec![
+                        self.lower_type(&arguments[0], false),
+                        ir::TsType::Null,
+                    ])
+                }
                 Some(name) if prelude::PRIMITIVE_TYPES.contains(&name) => ir::TsType::Unknown,
                 _ => ir::TsType::Named {
                     name: name_string(ident),
@@ -494,6 +586,10 @@ impl<'a> Lowerer<'a> {
             result: Box::new(self.lower_type(current, true)),
         }
     }
+}
+
+fn is_std_option_type(ty: &Type) -> bool {
+    crate::checker::builtin::is_std_type(ty, "Option")
 }
 
 fn lower_constant(constant: &lambda::Constant) -> ir::Expr {
@@ -831,6 +927,34 @@ mod tests {
                     cases,
                     ..
                 } if property == "type" && cases.len() == 1))
+        ));
+    }
+
+    #[test]
+    fn std_option_lowers_to_null_union_but_user_option_does_not() {
+        let interface = ModuleInterface::empty();
+        let lowerer = Lowerer::new(&interface);
+        let number = Type::Apply {
+            ident: crate::checker::builtin::canonical_type_ident("i32"),
+            arguments: Vec::new(),
+        };
+        let std_option = Type::Apply {
+            ident: crate::parser::ident::Ident::qualified("Std", "Option"),
+            arguments: vec![number.clone()],
+        };
+        let user_option = Type::Apply {
+            ident: ident("Option"),
+            arguments: vec![number],
+        };
+
+        assert!(matches!(
+            lowerer.lower_type(&std_option, false),
+            ir::TsType::Union(items)
+                if matches!(items.as_slice(), [ir::TsType::Number, ir::TsType::Null])
+        ));
+        assert!(matches!(
+            lowerer.lower_type(&user_option, false),
+            ir::TsType::Named { name, .. } if name == "Option"
         ));
     }
 
