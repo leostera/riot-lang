@@ -15,13 +15,37 @@
 
 use std::collections::HashMap;
 
-use miette::{Diagnostic, SourceSpan};
 use once_cell::sync::Lazy;
-use thiserror::Error;
 
 use super::ast::*;
+use super::error::{Expected, ParseError};
 use super::ident::{Ident, IdentNameError};
 use super::lexer::{Lexer, Span, Token, TokenKind};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ItemVisibility {
+    Private,
+    Public(Option<TypeCapability>),
+}
+
+impl ItemVisibility {
+    fn is_private(&self) -> bool {
+        matches!(self, Self::Private)
+    }
+
+    fn type_visibility(self) -> TypeVisibility {
+        match self {
+            Self::Private => TypeVisibility::Private,
+            Self::Public(None) => TypeVisibility::Public(TypeCapability::Name),
+            Self::Public(Some(capability)) => TypeVisibility::Public(capability),
+        }
+    }
+}
+
+const EXPR_PROJECTION_L_BP: u8 = 31;
+const EXPR_APPLICATION_L_BP: u8 = 21;
+const EXPR_APPLICATION_R_BP: u8 = 22;
+const MATCH_SCRUTINEE_MIN_BP: u8 = EXPR_APPLICATION_L_BP;
 
 static INFIX_BINDING_POWER: Lazy<HashMap<TokenKind, (&'static str, u8, u8)>> = Lazy::new(|| {
     HashMap::from([
@@ -32,16 +56,6 @@ static INFIX_BINDING_POWER: Lazy<HashMap<TokenKind, (&'static str, u8, u8)>> = L
         (TokenKind::Percent, ("%", 12, 13)),
     ])
 });
-
-#[derive(Debug, Error, Diagnostic)]
-#[error("parse error")]
-pub struct ParseError {
-    #[source_code]
-    pub src: String,
-    #[label("{message}")]
-    pub span: SourceSpan,
-    pub message: String,
-}
 
 /// Stateful recursive-descent parser.
 ///
@@ -69,47 +83,98 @@ impl<'a> Parser<'a> {
 
     /// Route a top-level declaration by its leading keyword.
     ///
-    /// This is a good `next()` use-case: every successful branch consumes the
-    /// keyword and then delegates to the matching declaration parser.
+    /// Item-level modifiers are parsed before dispatching to the concrete
+    /// declaration parser. This keeps the declaration grammar uniform: `pub`,
+    /// `pub(view)`, and `pub(make)` are recognized once, then each item parser
+    /// decides which modifier forms it accepts.
     fn parse_item(&mut self) -> Result<ModuleItem, ParseError> {
+        let visibility = self.parse_visibility_modifier()?;
         match self.lexer.next() {
-            TokenKind::Use => self.parse_use_decl().map(ModuleItem::UseDecl),
-            TokenKind::Type => self.parse_type_decl().map(ModuleItem::TypeDecl),
-            TokenKind::Let => self.parse_let_decl().map(ModuleItem::LetDecl),
-            _ => self.err("expected item: use, type, or let"),
+            TokenKind::Use => self.parse_use_decl(visibility).map(ModuleItem::UseDecl),
+            TokenKind::Type => self
+                .parse_type_decl(visibility.type_visibility())
+                .map(ModuleItem::TypeDecl),
+            TokenKind::Let => self.parse_let_decl(visibility).map(ModuleItem::LetDecl),
+            _ => self.err(Expected::Item),
         }
+    }
+
+    fn parse_visibility_modifier(&mut self) -> Result<ItemVisibility, ParseError> {
+        if !self.lexer.at(&TokenKind::Pub) {
+            return Ok(ItemVisibility::Private);
+        }
+        self.lexer.bump();
+        let capability = if self.lexer.at(&TokenKind::LParen) {
+            Some(self.parse_type_capability_modifier()?)
+        } else {
+            None
+        };
+        Ok(ItemVisibility::Public(capability))
+    }
+
+    fn parse_type_capability_modifier(&mut self) -> Result<TypeCapability, ParseError> {
+        self.expect(&TokenKind::LParen)?;
+        let modifier = self.parse_ident()?;
+        let capability = match modifier.as_name() {
+            Some("view") => TypeCapability::View,
+            Some("make") => TypeCapability::Make,
+            _ => return self.err(Expected::TypeCapability),
+        };
+        self.expect(&TokenKind::RParen)?;
+        Ok(capability)
     }
 
     /// Parse a module-level `let` declaration.
     ///
     /// Module declarations are implicitly corecursive, so `let rec` is rejected.
-    /// After the name, `=` means a constant declaration; otherwise we parse one
-    /// or more function argument patterns before `=`.
-    fn parse_let_decl(&mut self) -> Result<LetDecl, ParseError> {
+    ///
+    /// TinyML currently keeps module-level `let` syntax intentionally small:
+    ///
+    /// ```text
+    /// let name [: type] = expr
+    /// ```
+    ///
+    /// Functions must be written explicitly as values, e.g.
+    /// `let f = fn x -> x`. We do not parse ML-style shorthand
+    /// `let f x = x` yet, so a formatter can preserve the user's explicit
+    /// function spelling instead of normalizing between two equivalent forms.
+    fn parse_let_decl(&mut self, item_visibility: ItemVisibility) -> Result<LetDecl, ParseError> {
+        let visibility = match item_visibility {
+            ItemVisibility::Private => Visibility::Private,
+            ItemVisibility::Public(None) => Visibility::Public,
+            ItemVisibility::Public(Some(_)) => {
+                return Err(ParseError::type_modifier_on_let(
+                    self.lexer.source().to_string(),
+                    self.lexer.current_span(),
+                ));
+            }
+        };
         let start = self.lexer.prev_span().start;
         if self.lexer.at(&TokenKind::Rec) {
-            return self.err("module-level let declarations are already corecursive; remove `rec`");
+            return Err(ParseError::module_let_rec(
+                self.lexer.source().to_string(),
+                self.lexer.current_span(),
+            ));
         }
         let name = self.parse_ident()?;
         self.validate_ident(name.as_value_name())?;
 
-        let mut args = Vec::new();
-        while !self.lexer.at(&TokenKind::Equal) {
-            args.push(self.parse_fn_param_pattern()?);
-        }
+        let hint = if self.lexer.eat(&TokenKind::Colon).is_some() {
+            Some(self.parse_type_expr()?)
+        } else {
+            None
+        };
+
         self.expect(&TokenKind::Equal)?;
         let body = self.parse_expr()?;
         let span = Span::new(start, self.lexer.prev_span().end);
-        if args.is_empty() {
-            Ok(LetDecl::Const { name, body, span })
-        } else {
-            Ok(LetDecl::Fn {
-                name,
-                args,
-                body,
-                span,
-            })
-        }
+        Ok(LetDecl {
+            visibility,
+            name,
+            hint,
+            body,
+            span,
+        })
     }
 
     /// Parse a local/block `let` expression.
@@ -137,51 +202,124 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse a module-level type declaration.
+    /// Parse a module-level type declaration after `type` or `pub ... type`.
     ///
-    /// The right-hand side can be a record body, a variant body, or an alias.
-    fn parse_type_decl(&mut self) -> Result<TypeDecl, ParseError> {
+    /// The caller has already consumed the keyword that selected this parser:
+    /// either bare `type`, which passes `TypeVisibility::Private`, or `pub`,
+    /// which first parses an optional type visibility modifier and then consumes
+    /// `type`. Bare `pub type` is intentionally opaque to consumers; `pub(view)`
+    /// permits viewing/pattern matching, and `pub(make)` permits viewing plus
+    /// construction.
+    ///
+    /// Type declarations are split into two syntactic parts:
+    ///
+    /// ```text
+    /// type-decl   ::= visibility? type-header type-def?
+    /// type-header ::= TypeName type-params?
+    /// type-def    ::= = abstract-or-alias-or-record-or-variant
+    /// ```
+    ///
+    /// The header accepts a type name plus optional generic parameters:
+    ///
+    /// ```text
+    /// type Name
+    /// type Name<'a, 'b>
+    /// ```
+    ///
+    /// If no `=` follows the header, the declaration is fully abstract:
+    ///
+    /// ```text
+    /// type Handle
+    /// type Handle<'a>
+    /// ```
+    ///
+    /// If `=` is present, `parse_type_def` classifies the definition by its
+    /// first token:
+    ///
+    /// - `|` starts a variant definition. Variants must use this marker, so
+    ///   `type X = | User` is a nullary constructor while `type X = User` is an
+    ///   alias to a type named `User`.
+    /// - `{` starts a record definition, e.g.
+    ///   `type User = { name: string, age: i32 }`.
+    /// - anything else is parsed as a normal type expression and becomes an
+    ///   alias, e.g. `type Pair = (i32, i32)` or `type X = User`.
+    ///
+    /// Variant constructors accept three payload shapes:
+    ///
+    /// ```text
+    /// | None                // nullary constructor
+    /// | Some('a)            // tuple/payload constructor
+    /// | User { name: Str }  // record constructor
+    /// ```
+    ///
+    /// The parser validates only syntactic/name-shape invariants here:
+    /// declaration names must be type-like, fields must be field-like, and type
+    /// parameters must be type variables. Semantic checks such as duplicate
+    /// declarations, unknown type references, constructor uniqueness, and arity
+    /// correctness are left to the checker.
+    fn parse_type_decl(&mut self, visibility: TypeVisibility) -> Result<TypeDecl, ParseError> {
+        let (start, name, params) = self.parse_type_decl_header()?;
+        let def = if self.lexer.eat(&TokenKind::Equal).is_some() {
+            self.parse_type_def()?
+        } else {
+            TypeDef::Abstract {
+                span: Span::new(start, self.lexer.prev_span().end),
+            }
+        };
+        Ok(TypeDecl {
+            visibility,
+            name,
+            params,
+            def,
+            span: Span::new(start, self.lexer.prev_span().end),
+        })
+    }
+
+    fn parse_type_decl_header(&mut self) -> Result<(usize, Ident, Vec<TypeVar>), ParseError> {
         let start = self.lexer.prev_span().start;
         let name = self.parse_ident()?;
         self.validate_ident(name.as_type_name())?;
         let params = self.parse_type_params()?;
-        self.expect(&TokenKind::Equal)?;
-        let body = match self.lexer.peek() {
-            TokenKind::Pipe => {
-                let variants = self.parse_variants()?;
-                let span = variants
-                    .first()
-                    .map(|first| first.span().join(variants.last().expect("variant").span()))
-                    .unwrap_or_else(|| self.lexer.prev_span());
-                TypeExpr::Variant { variants, span }
+        Ok((start, name, params))
+    }
+
+    fn parse_type_def(&mut self) -> Result<TypeDef, ParseError> {
+        match self.lexer.peek() {
+            TokenKind::Pipe => self.parse_type_variant_def(),
+            TokenKind::LBrace => {
+                let start = self.lexer.bump().span;
+                let fields = self.parse_type_record_fields()?;
+                Ok(TypeDef::Record {
+                    fields,
+                    span: start.join(self.lexer.prev_span()),
+                })
             }
-            TokenKind::Ident(name) if starts_uppercase(name) => {
-                let variants = self.parse_variants()?;
-                let span = variants
-                    .first()
-                    .map(|first| first.span().join(variants.last().expect("variant").span()))
-                    .unwrap_or_else(|| self.lexer.prev_span());
-                TypeExpr::Variant { variants, span }
+            _ => {
+                let manifest = self.parse_type_expr()?;
+                let span = manifest.span();
+                Ok(TypeDef::Alias { manifest, span })
             }
-            _ => self.parse_type_expr()?,
-        };
-        Ok(TypeDecl {
-            name,
-            params,
-            body,
-            span: Span::new(start, self.lexer.prev_span().end),
-        })
+        }
+    }
+
+    fn parse_type_variant_def(&mut self) -> Result<TypeDef, ParseError> {
+        let variants = self.parse_variants()?;
+        let span = variants
+            .first()
+            .map(|first| first.span().join(variants.last().expect("variant").span()))
+            .unwrap_or_else(|| self.lexer.prev_span());
+        Ok(TypeDef::Variant { variants, span })
     }
 
     /// Parse a variant constructor list.
     fn parse_variants(&mut self) -> Result<Vec<Variant>, ParseError> {
         let mut variants = Vec::new();
         while self.lexer.eat(&TokenKind::Pipe).is_some() || variants.is_empty() {
-            let ident = self.expect_constructor()?;
+            let ident = self.parse_ident_constructor()?;
             let variant = match self.lexer.peek() {
                 TokenKind::LBrace => {
                     self.lexer.bump();
-                    let fields = self.parse_record_type_fields()?;
+                    let fields = self.parse_type_record_fields()?;
                     let span = ident.span().join(self.lexer.prev_span());
                     Variant::RecordConstructor {
                         ident,
@@ -191,7 +329,7 @@ impl<'a> Parser<'a> {
                 }
                 TokenKind::LParen => {
                     self.lexer.bump();
-                    let args = self.parse_comma_types_until(TokenKind::RParen)?;
+                    let args = self.parse_type_comma_exprs_until(TokenKind::RParen)?;
                     let end = self.expect(&TokenKind::RParen)?.span;
                     let span = ident.span().join(end);
                     Variant::TupleConstructor { ident, args, span }
@@ -218,44 +356,56 @@ impl<'a> Parser<'a> {
         self.parse_expr_bp(0)
     }
 
-    // Pratt parser: prefix atoms + infix operators + postfix/call application.
     /// Pratt parser core.
     ///
-    /// `min_bp` is the minimum left binding power accepted by this call.
-    /// Higher binding power means tighter binding. Postfix record construction
-    /// binds tighter than function application, and application binds tighter
-    /// than arithmetic-like binary operators.
+    /// `min_bp` is the minimum left binding power accepted by this recursive
+    /// call. Higher binding power means the syntax groups first, as if the
+    /// source had implicit parentheses around the tighter expression:
+    ///
+    /// ```text
+    /// f x.y        => f (x.y)
+    /// f x + y      => (f x) + y
+    /// f (g x) y    => (f (g x)) y
+    /// ```
+    ///
+    /// The parser starts with one expression head (`parse_expr_one`) and then
+    /// repeatedly extends it with projection, application, or infix operators
+    /// while those operators bind tightly enough for this call.
     fn parse_expr_bp(&mut self, min_bp: u8) -> Result<Expr, ParseError> {
-        let mut lhs = self.parse_prefix()?;
+        let mut lhs = self.parse_expr_one()?;
 
         loop {
-            if self.lexer.at(&TokenKind::LBrace) {
-                let l_bp = 30;
-                if l_bp < min_bp {
+            // Field projection is the tightest expression extension, so `f x.y`
+            // parses as `f (x.y)` rather than `(f x).y`.
+            if self.lexer.at(&TokenKind::Dot) {
+                if EXPR_PROJECTION_L_BP < min_bp {
                     break;
                 }
-                match expr_into_ident(lhs) {
-                    Ok(name) => {
-                        self.validate_ident(name.as_constructor_name())?;
-                        self.lexer.bump();
-                        let fields = self.parse_record_expr_fields()?;
-                        let end = self.expect(&TokenKind::RBrace)?.span;
-                        let span = name.span().join(end);
-                        lhs = Expr::Record { name, fields, span };
-                        continue;
-                    }
-                    Err(expr) => lhs = expr,
-                }
+                self.lexer.bump();
+                let (name, span) = self.parse_ident_part()?;
+                let field = Ident::Name { name, span };
+                self.validate_ident(field.as_value_name())?;
+                let span = lhs.span().join(field.span());
+                lhs = Expr::Field {
+                    base: Box::new(lhs),
+                    field,
+                    span,
+                };
+                continue;
             }
 
-            // Juxtaposition application: `f x y`, tighter than binary ops.
-            if self.starts_prefix() {
-                let (l_bp, r_bp) = (21, 22);
-                if l_bp < min_bp {
+            // Juxtaposition application: `f x y`. Application binds tighter
+            // than infix operators, so `f x + y` parses as `(f x) + y`.
+            // A bare `{` is not accepted as a juxtaposition argument because it
+            // is also used as a delimiter by forms such as `match scrutinee {`;
+            // write `f ({ ... })` when passing a block explicitly.
+            if self.lexer.peek().starts_application_arg() {
+                if EXPR_APPLICATION_L_BP < min_bp {
                     break;
                 }
+                let r_bp = EXPR_APPLICATION_R_BP;
                 let mut args = vec![self.parse_expr_bp(r_bp)?];
-                while self.starts_prefix() {
+                while self.lexer.peek().starts_application_arg() {
                     args.push(self.parse_expr_bp(r_bp)?);
                 }
                 let span = lhs
@@ -269,6 +419,8 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            // Infix operators are table-driven. The recursive RHS parse uses
+            // the operator's right binding power, which controls associativity.
             let Some((ident, l_bp, r_bp)) = self.infix_binding_power() else {
                 break;
             };
@@ -308,11 +460,11 @@ impl<'a> Parser<'a> {
             })
     }
 
-    /// Parse expression forms that can appear at the start of an expression.
+    /// Parse one expression head before Pratt-loop extensions are applied.
     ///
     /// This handles literals, variables, constructors, unit, lambdas, matches,
     /// parenthesized/tuple expressions, and block expressions.
-    fn parse_prefix(&mut self) -> Result<Expr, ParseError> {
+    fn parse_expr_one(&mut self) -> Result<Expr, ParseError> {
         match self.lexer.peek() {
             TokenKind::Int(n) => {
                 let n = n.to_string();
@@ -352,7 +504,14 @@ impl<'a> Parser<'a> {
                     span,
                 })
             }
-            TokenKind::Ident(_) => self.parse_named_expr(),
+            TokenKind::Ident(_) => {
+                let name = self.parse_ident()?;
+                if name.as_constructor_name().is_ok() {
+                    self.parse_expr_constructor(name)
+                } else {
+                    self.parse_expr_var(name)
+                }
+            }
             TokenKind::Unit => {
                 let span = self.lexer.bump().span;
                 Ok(Expr::Constructor {
@@ -364,27 +523,29 @@ impl<'a> Parser<'a> {
                     span,
                 })
             }
-            TokenKind::Fn => self.parse_fn(),
-            TokenKind::Match => self.parse_match(),
-            TokenKind::LParen => self.parse_paren_expr(),
-            TokenKind::LBrace => self.parse_brace_expr(),
-            _ => self.err("expected expression"),
+            TokenKind::Fn => self.parse_expr_fn(),
+            TokenKind::Match => self.parse_expr_match(),
+            TokenKind::LParen => self.parse_expr_paren(),
+            TokenKind::LBrace => self.parse_expr_block(),
+            _ => self.err(Expected::Expression),
         }
     }
 
-    fn parse_named_expr(&mut self) -> Result<Expr, ParseError> {
-        let name = self.parse_ident()?;
-        if name.as_constructor_name().is_ok() {
-            self.parse_constructor_expr_after_name(name)
-        } else {
-            self.validate_ident(name.as_value_name())?;
-            let span = name.span();
-            Ok(Expr::Var { name, span })
-        }
+    fn parse_expr_var(&mut self, name: Ident) -> Result<Expr, ParseError> {
+        self.validate_ident(name.as_value_name())?;
+        let span = name.span();
+        Ok(Expr::Var { name, span })
     }
 
-    fn parse_constructor_expr_after_name(&mut self, name: Ident) -> Result<Expr, ParseError> {
-        let args = match self.lexer.peek() {
+    fn parse_expr_constructor(&mut self, name: Ident) -> Result<Expr, ParseError> {
+        match self.lexer.peek() {
+            TokenKind::LBrace => {
+                self.lexer.bump();
+                let fields = self.parse_record_expr_fields()?;
+                let end = self.expect(&TokenKind::RBrace)?.span;
+                let span = name.span().join(end);
+                Ok(Expr::Record { name, fields, span })
+            }
             TokenKind::LParen => {
                 self.lexer.bump();
                 let mut args = Vec::new();
@@ -395,26 +556,32 @@ impl<'a> Parser<'a> {
                     }
                 }
                 self.expect(&TokenKind::RParen)?;
-                args
+                let span = args
+                    .last()
+                    .map(|arg| name.span().join(arg.span()))
+                    .unwrap_or_else(|| name.span());
+                Ok(Expr::Constructor { name, args, span })
             }
-            _ => Vec::new(),
-        };
-        let span = args
-            .last()
-            .map(|arg| name.span().join(arg.span()))
-            .unwrap_or_else(|| name.span());
-        Ok(Expr::Constructor { name, args, span })
+            _ => {
+                let span = name.span();
+                Ok(Expr::Constructor {
+                    name,
+                    args: Vec::new(),
+                    span,
+                })
+            }
+        }
     }
 
     /// Parse lambda syntax: `fn <patterns...> -> <expr>`.
-    fn parse_fn(&mut self) -> Result<Expr, ParseError> {
+    fn parse_expr_fn(&mut self) -> Result<Expr, ParseError> {
         let start = self.expect(&TokenKind::Fn)?.span;
         let mut params = Vec::new();
-        while self.starts_pattern() {
-            params.push(self.parse_fn_param_pattern()?);
+        while self.lexer.peek().starts_pattern() {
+            params.push(self.parse_pattern_fn_param()?);
         }
         if params.is_empty() {
-            return self.err("expected at least one function parameter");
+            return self.err(Expected::FunctionParameter);
         }
         self.expect(&TokenKind::Arrow)?;
         let body = self.parse_expr()?;
@@ -426,10 +593,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse match syntax: `match <expr> { | <pat> -> <expr>, ... }`.
-    fn parse_match(&mut self) -> Result<Expr, ParseError> {
+    /// Parse match syntax: `match <expr> { | <pat> -> <expr> ... }`.
+    fn parse_expr_match(&mut self) -> Result<Expr, ParseError> {
         let start = self.expect(&TokenKind::Match)?.span;
-        let scrutinee = self.parse_expr_bp(31)?;
+        let scrutinee = self.parse_expr_bp(MATCH_SCRUTINEE_MIN_BP)?;
         self.expect(&TokenKind::LBrace)?;
         let mut arms = Vec::new();
         while self.lexer.eat(&TokenKind::Pipe).is_some() {
@@ -442,11 +609,10 @@ impl<'a> Parser<'a> {
                 body,
                 span,
             });
-            self.lexer.eat(&TokenKind::Comma);
         }
         let end = self.expect(&TokenKind::RBrace)?.span;
         if arms.is_empty() {
-            return self.err("expected at least one match arm");
+            return self.err(Expected::MatchArm);
         }
         Ok(Expr::Match {
             scrutinee: Box::new(scrutinee),
@@ -457,9 +623,9 @@ impl<'a> Parser<'a> {
 
     /// Parse parenthesized expressions and tuple expressions.
     ///
-    /// Unit `()` is lexed as a dedicated token and handled by `parse_prefix`.
+    /// Unit `()` is lexed as a dedicated token and handled by `parse_expr_one`.
     /// This function parses grouped expressions and tuple expressions.
-    fn parse_paren_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_expr_paren(&mut self) -> Result<Expr, ParseError> {
         let start = self.expect(&TokenKind::LParen)?.span;
         let first = self.parse_expr()?;
         match self.lexer.peek() {
@@ -499,25 +665,9 @@ impl<'a> Parser<'a> {
     ///
     /// Blocks contain a semicolon-separated sequence of expressions. Local
     /// `let` forms are parsed as `Expr::Let`; the block itself is `Expr::Block`.
-    /// Empty `{}` currently lowers to the unit constructor.
-    fn parse_brace_expr(&mut self) -> Result<Expr, ParseError> {
+    /// Empty `{}` is an empty block; the checker decides its type.
+    fn parse_expr_block(&mut self) -> Result<Expr, ParseError> {
         let start = self.expect(&TokenKind::LBrace)?.span;
-        match self.lexer.peek() {
-            TokenKind::RBrace => {
-                let end = self.lexer.bump().span;
-                let span = start.join(end);
-                return Ok(Expr::Constructor {
-                    name: Ident::Name {
-                        name: "()".into(),
-                        span,
-                    },
-                    args: vec![],
-                    span,
-                });
-            }
-            _ => {}
-        }
-
         let mut exprs = Vec::new();
         while !self.lexer.at(&TokenKind::RBrace) {
             match self.lexer.peek() {
@@ -563,7 +713,16 @@ impl<'a> Parser<'a> {
                 let span = self.lexer.bump().span;
                 Ok(Pattern::Wildcard { span })
             }
-            TokenKind::Ident(_) => self.parse_named_pattern(),
+            TokenKind::Ident(_) => {
+                let name = self.parse_ident()?;
+                if name.as_constructor_name().is_ok() {
+                    self.parse_pattern_constructor(name)
+                } else {
+                    self.validate_ident(name.as_value_name())?;
+                    let span = name.span();
+                    Ok(Pattern::Var { name, span })
+                }
+            }
             TokenKind::Int(n) => {
                 let n = n.to_string();
                 let span = self.lexer.bump().span;
@@ -613,12 +772,12 @@ impl<'a> Parser<'a> {
                     span,
                 })
             }
-            TokenKind::LParen => self.parse_paren_pattern(),
-            _ => self.err("expected pattern"),
+            TokenKind::LParen => self.parse_pattern_paren(),
+            _ => self.err(Expected::Pattern),
         }
     }
 
-    fn parse_fn_param_pattern(&mut self) -> Result<Pattern, ParseError> {
+    fn parse_pattern_fn_param(&mut self) -> Result<Pattern, ParseError> {
         match self.lexer.peek() {
             TokenKind::Ident(s) if s == "_" => {
                 let span = self.lexer.bump().span;
@@ -639,35 +798,24 @@ impl<'a> Parser<'a> {
                     Ok(Pattern::Var { name, span })
                 }
             }
-            TokenKind::LParen => self.parse_paren_pattern(),
+            TokenKind::LParen => self.parse_pattern_paren(),
             TokenKind::Unit => self.parse_pattern(),
-            _ => self.err("expected function parameter pattern"),
+            _ => self.err(Expected::FunctionParameter),
         }
     }
 
-    fn parse_named_pattern(&mut self) -> Result<Pattern, ParseError> {
-        let name = self.parse_ident()?;
-        if name.as_constructor_name().is_ok() {
-            self.parse_constructor_pattern_after_name(name)
-        } else {
-            self.validate_ident(name.as_value_name())?;
-            let span = name.span();
-            Ok(Pattern::Var { name, span })
-        }
-    }
-
-    fn parse_constructor_pattern_after_name(&mut self, name: Ident) -> Result<Pattern, ParseError> {
+    fn parse_pattern_constructor(&mut self, name: Ident) -> Result<Pattern, ParseError> {
         match self.lexer.peek() {
             TokenKind::LBrace => {
                 self.lexer.bump();
-                let fields = self.parse_record_pattern_fields()?;
+                let fields = self.parse_pattern_record_fields()?;
                 let end = self.expect(&TokenKind::RBrace)?.span;
                 let span = name.span().join(end);
                 Ok(Pattern::Record { name, fields, span })
             }
             TokenKind::LParen => {
                 self.lexer.bump();
-                let args = self.parse_constructor_tuple_pattern_args()?;
+                let args = self.parse_pattern_constructor_tuple_args()?;
                 let end = self.expect(&TokenKind::RParen)?.span;
                 let span = name.span().join(end);
                 Ok(Pattern::Constructor { name, args, span })
@@ -687,12 +835,12 @@ impl<'a> Parser<'a> {
     ///
     /// Unit `()` is a dedicated token handled in `parse_pattern`. This function
     /// parses grouped patterns and tuple patterns.
-    fn parse_paren_pattern(&mut self) -> Result<Pattern, ParseError> {
+    fn parse_pattern_paren(&mut self) -> Result<Pattern, ParseError> {
         let start = self.expect(&TokenKind::LParen)?.span;
         if let TokenKind::Ident(_) = self.lexer.peek() {
             let name = self.parse_ident()?;
             if name.as_constructor_name().is_ok() {
-                return self.parse_grouped_constructor_pattern(start, name);
+                return self.parse_pattern_grouped_constructor(start, name);
             }
             self.validate_ident(name.as_value_name())?;
             let span = name.span();
@@ -737,7 +885,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_grouped_constructor_pattern(
+    fn parse_pattern_grouped_constructor(
         &mut self,
         start: Span,
         name: Ident,
@@ -753,7 +901,7 @@ impl<'a> Parser<'a> {
 
         if self.lexer.at(&TokenKind::LBrace) {
             self.lexer.bump();
-            let fields = self.parse_record_pattern_fields()?;
+            let fields = self.parse_pattern_record_fields()?;
             self.expect(&TokenKind::RBrace)?;
             let end = self.expect(&TokenKind::RParen)?.span;
             return Ok(Pattern::Record {
@@ -765,7 +913,7 @@ impl<'a> Parser<'a> {
 
         if self.lexer.at(&TokenKind::LParen) {
             self.lexer.bump();
-            let args = self.parse_constructor_tuple_pattern_args()?;
+            let args = self.parse_pattern_constructor_tuple_args()?;
             self.expect(&TokenKind::RParen)?;
             let end = self.expect(&TokenKind::RParen)?.span;
             return Ok(Pattern::Constructor {
@@ -775,10 +923,10 @@ impl<'a> Parser<'a> {
             });
         }
 
-        self.err("expected constructor pattern payload in parentheses")
+        self.err(Expected::ConstructorPatternPayload)
     }
 
-    fn parse_constructor_tuple_pattern_args(&mut self) -> Result<Vec<Pattern>, ParseError> {
+    fn parse_pattern_constructor_tuple_args(&mut self) -> Result<Vec<Pattern>, ParseError> {
         let mut args = Vec::new();
         while !self.lexer.at(&TokenKind::RParen) {
             args.push(self.parse_pattern()?);
@@ -793,7 +941,7 @@ impl<'a> Parser<'a> {
     ///
     /// Field punning is supported: `{ name }` means `{ name: name }`. Qualified
     /// fields use explicit patterns, as in `{ module.name: pattern }`.
-    fn parse_record_pattern_fields(&mut self) -> Result<Vec<(Ident, Pattern)>, ParseError> {
+    fn parse_pattern_record_fields(&mut self) -> Result<Vec<(Ident, Pattern)>, ParseError> {
         let mut fields = Vec::new();
         while !self.lexer.at(&TokenKind::RBrace) {
             let name = self.parse_ident()?;
@@ -811,7 +959,7 @@ impl<'a> Parser<'a> {
                         },
                         span: *span,
                     },
-                    _ => return self.err("expected pattern after qualified record field"),
+                    _ => return self.err(Expected::RecordFieldPattern),
                 },
             };
             fields.push((name, pattern));
@@ -841,7 +989,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a type expression.
+    /// Parse a type expression used in annotations, aliases, and payloads.
     ///
     /// Named types are represented as `TypeExpr::App { name, args }`, even when
     /// `args` is empty. Type variables use apostrophe syntax, such as `'a`.
@@ -853,7 +1001,7 @@ impl<'a> Parser<'a> {
                 match self.lexer.peek() {
                     TokenKind::LBrace => {
                         self.lexer.bump();
-                        let fields = self.parse_record_type_fields()?;
+                        let fields = self.parse_type_record_fields()?;
                         let span = name.span().join(self.lexer.prev_span());
                         return Ok(TypeExpr::Record { name, fields, span });
                     }
@@ -862,7 +1010,7 @@ impl<'a> Parser<'a> {
                 let args = match self.lexer.peek() {
                     TokenKind::LAngle => {
                         self.lexer.bump();
-                        let args = self.parse_comma_types_until(TokenKind::RAngle)?;
+                        let args = self.parse_type_comma_exprs_until(TokenKind::RAngle)?;
                         self.expect(&TokenKind::RAngle)?;
                         args
                     }
@@ -882,20 +1030,20 @@ impl<'a> Parser<'a> {
             TokenKind::LParen => {
                 self.lexer.bump();
                 let start = self.lexer.prev_span();
-                let items = self.parse_comma_types_until(TokenKind::RParen)?;
+                let items = self.parse_type_comma_exprs_until(TokenKind::RParen)?;
                 let end = self.expect(&TokenKind::RParen)?.span;
                 Ok(TypeExpr::Tuple {
                     items,
                     span: start.join(end),
                 })
             }
-            TokenKind::LBrace => self.err("expected named record type"),
-            _ => self.err("expected type"),
+            TokenKind::LBrace => self.err(Expected::NamedRecordType),
+            _ => self.err(Expected::Type),
         }
     }
 
     /// Parse fields inside a named record type expression or declaration.
-    fn parse_record_type_fields(&mut self) -> Result<Vec<(Ident, TypeExpr)>, ParseError> {
+    fn parse_type_record_fields(&mut self) -> Result<Vec<(Ident, TypeExpr)>, ParseError> {
         let mut fields = Vec::new();
         while !self.lexer.at(&TokenKind::RBrace) {
             let name = self.parse_ident()?;
@@ -911,8 +1059,11 @@ impl<'a> Parser<'a> {
         Ok(fields)
     }
 
-    /// Parse comma-separated type expressions until `end` is reached.
-    fn parse_comma_types_until(&mut self, end: TokenKind) -> Result<Vec<TypeExpr>, ParseError> {
+    /// Parse comma-separated non-variant type expressions until `end` is reached.
+    fn parse_type_comma_exprs_until(
+        &mut self,
+        end: TokenKind,
+    ) -> Result<Vec<TypeExpr>, ParseError> {
         let mut tys = Vec::new();
         while !self.lexer.at(&end) {
             tys.push(self.parse_type_expr()?);
@@ -923,43 +1074,6 @@ impl<'a> Parser<'a> {
         Ok(tys)
     }
 
-    /// Return whether the current token can start a pattern.
-    fn starts_pattern(&self) -> bool {
-        matches!(
-            self.lexer.peek(),
-            TokenKind::Ident(_)
-                | TokenKind::Unit
-                | TokenKind::Int(_)
-                | TokenKind::Float(_)
-                | TokenKind::String(_)
-                | TokenKind::True
-                | TokenKind::False
-                | TokenKind::LParen
-                | TokenKind::LBrace
-        )
-    }
-
-    /// Return whether the current token can start a prefix expression.
-    ///
-    /// This is also used by the Pratt parser to detect juxtaposition-based
-    /// function application.
-    fn starts_prefix(&self) -> bool {
-        matches!(
-            self.lexer.peek(),
-            TokenKind::Int(_)
-                | TokenKind::Float(_)
-                | TokenKind::String(_)
-                | TokenKind::True
-                | TokenKind::False
-                | TokenKind::Ident(_)
-                | TokenKind::Unit
-                | TokenKind::Fn
-                | TokenKind::Match
-                | TokenKind::LParen
-                | TokenKind::LBrace
-        )
-    }
-
     /// Parse a `use` declaration after the leading `use` token.
     ///
     /// Supported forms:
@@ -967,67 +1081,110 @@ impl<'a> Parser<'a> {
     /// - `use A.B.c`
     /// - `use A.B.{c, d}`
     /// - `use A.B.*`
-    fn parse_use_decl(&mut self) -> Result<UseDecl, ParseError> {
-        let start = self.lexer.prev_span().start;
-        let module = self.parse_ident()?;
-        self.validate_ident(module.as_module_name())?;
+    /// - `use A.B.{C.d, E.F.g}`
+    /// - `use A.{B.{C, d}}`
+    fn parse_use_decl(&mut self, visibility: ItemVisibility) -> Result<UseDecl, ParseError> {
+        if !visibility.is_private() {
+            return Err(ParseError::visibility_on_use(
+                self.lexer.source().to_string(),
+                self.lexer.current_span(),
+            ));
+        }
+        self.parse_use_tree(false, self.lexer.prev_span().start)
+    }
 
-        match self.lexer.peek() {
+    fn parse_use_tree(
+        &mut self,
+        allow_bare_value: bool,
+        start: usize,
+    ) -> Result<UseDecl, ParseError> {
+        let target = self.parse_ident()?;
+        let start = start.min(target.span().start);
+        let (module, leading_member) = target.split_qualified_leaf();
+
+        match leading_member {
+            Some(member) => {
+                self.validate_ident(module.as_module_name())?;
+                self.validate_use_member(&member)?;
+                Ok(UseDecl::Module {
+                    name: module,
+                    members: vec![UseDecl::Value {
+                        span: member.span(),
+                        name: member,
+                    }],
+                    span: Span::new(start, self.lexer.prev_span().end),
+                })
+            }
+            None if allow_bare_value && module.as_value_name().is_ok() => Ok(UseDecl::Value {
+                span: module.span(),
+                name: module,
+            }),
+            None => {
+                self.validate_ident(module.as_module_name())?;
+                self.parse_use_module_suffix(module, start)
+            }
+        }
+    }
+
+    fn parse_use_module_suffix(
+        &mut self,
+        name: Ident,
+        start: usize,
+    ) -> Result<UseDecl, ParseError> {
+        let members = match self.lexer.peek() {
             TokenKind::Dot => {
                 self.lexer.bump();
                 match self.lexer.peek() {
                     TokenKind::Star => {
                         self.lexer.bump();
-                        Ok(UseDecl::Wildcard {
-                            module,
-                            span: Span::new(start, self.lexer.prev_span().end),
-                        })
+                        vec![UseDecl::Wildcard {
+                            span: self.lexer.prev_span(),
+                        }]
                     }
                     TokenKind::LBrace => {
                         self.lexer.bump();
-                        let mut members = Vec::new();
-                        while !self.lexer.at(&TokenKind::RBrace) {
-                            let member = self.parse_ident()?;
-                            self.validate_use_member(&member)?;
-                            members.push(member);
-                            if self.lexer.eat(&TokenKind::Comma).is_none() {
-                                break;
-                            }
-                        }
-                        self.expect(&TokenKind::RBrace)?;
-                        Ok(UseDecl::Concrete {
-                            module,
-                            members,
-                            span: Span::new(start, self.lexer.prev_span().end),
-                        })
+                        self.parse_use_group_members()?
                     }
-                    _ => {
-                        let member = self.parse_ident()?;
-                        self.validate_use_member(&member)?;
-                        Ok(UseDecl::Concrete {
-                            module,
-                            members: vec![member],
-                            span: Span::new(start, self.lexer.prev_span().end),
-                        })
-                    }
+                    _ => return self.err(Expected::UseSuffix),
                 }
             }
-            _ => Ok(UseDecl::Concrete {
-                module,
-                members: Vec::new(),
-                span: Span::new(start, self.lexer.prev_span().end),
-            }),
-        }
+            _ => Vec::new(),
+        };
+
+        Ok(UseDecl::Module {
+            name,
+            members,
+            span: Span::new(start, self.lexer.prev_span().end),
+        })
     }
 
-    /// Parse a possibly-qualified identifier.
+    fn parse_use_group_members(&mut self) -> Result<Vec<UseDecl>, ParseError> {
+        let mut members = Vec::new();
+        while !self.lexer.at(&TokenKind::RBrace) {
+            members.push(self.parse_use_tree(true, self.lexer.current_span().start)?);
+            if self.lexer.eat(&TokenKind::Comma).is_none() {
+                break;
+            }
+        }
+        self.expect(&TokenKind::RBrace)?;
+        Ok(members)
+    }
+
+    /// Parse an identifier, including module-qualified identifiers.
     ///
-    /// Stops before `.*` and `.{...}` so `parse_use_decl` can route those forms.
+    /// The lexer only knows about identifier *tokens*; this parser function owns
+    /// identifier *structure*. A dotted name is considered qualified only when
+    /// the head is module-like (uppercase). That means `Std.Option` becomes one
+    /// `Ident::Qualified`, while `value.field` remains a bare `value` followed by
+    /// a field-projection token for the Pratt loop to consume. The function also
+    /// stops before `.*` and `.{...}` so `parse_use_decl` can route wildcard and
+    /// grouped imports.
     fn parse_ident(&mut self) -> Result<Ident, ParseError> {
         let (head, head_span) = self.parse_ident_part()?;
         match self.lexer.peek() {
             TokenKind::Dot
-                if !matches!(self.lexer.peek_n(1), TokenKind::Star | TokenKind::LBrace) =>
+                if starts_uppercase(&head)
+                    && !matches!(self.lexer.peek_n(1), TokenKind::Star | TokenKind::LBrace) =>
             {
                 self.lexer.bump();
                 let rest = self.parse_ident()?;
@@ -1047,16 +1204,22 @@ impl<'a> Parser<'a> {
 
     /// Parse a type variable.
     fn parse_type_var(&mut self) -> Result<TypeVar, ParseError> {
-        match self.lexer.peek() {
+        let span = self.lexer.current_span();
+        match self.lexer.next() {
             TokenKind::TypeVar(name) => {
-                if !starts_lowercase(name) {
-                    return self.err("expected type variable starting with lowercase after '");
+                if !starts_lowercase(&name) {
+                    return Err(ParseError::invalid_type_variable_name(
+                        self.lexer.source().to_string(),
+                        span,
+                    ));
                 }
-                let name = name.to_string();
-                let span = self.lexer.bump().span;
                 Ok(TypeVar { name, span })
             }
-            _ => self.err("expected type variable"),
+            _ => Err(ParseError::expected(
+                self.lexer.source().to_string(),
+                span,
+                Expected::TypeVariable,
+            )),
         }
     }
 
@@ -1069,12 +1232,12 @@ impl<'a> Parser<'a> {
                 let span = self.lexer.bump().span;
                 Ok((name, span))
             }
-            _ => self.err("expected identifier"),
+            _ => self.err(Expected::Identifier),
         }
     }
 
     /// Parse a constructor name or report a parser error.
-    fn expect_constructor(&mut self) -> Result<Ident, ParseError> {
+    fn parse_ident_constructor(&mut self) -> Result<Ident, ParseError> {
         let ident = self.parse_ident()?;
         self.validate_ident(ident.as_constructor_name())?;
         Ok(ident)
@@ -1083,18 +1246,21 @@ impl<'a> Parser<'a> {
     fn expect(&mut self, kind: &TokenKind) -> Result<Token, ParseError> {
         match self.lexer.eat(kind) {
             Some(tok) => Ok(tok),
-            None => self.err(&format!("expected {:?}", kind)),
+            None => self.err(Expected::Token(kind.clone())),
         }
     }
-    /// Build and return a parser error at the current token.
-    fn err<T>(&self, message: &str) -> Result<T, ParseError> {
-        Err(self.make_err(message))
+
+    fn err<T>(&self, expected: Expected) -> Result<T, ParseError> {
+        Err(ParseError::expected(
+            self.lexer.source().to_string(),
+            self.lexer.current_span(),
+            expected,
+        ))
     }
+
     fn validate_ident(&self, result: Result<&Ident, IdentNameError>) -> Result<(), ParseError> {
-        result.map(|_| ()).map_err(|err| ParseError {
-            src: self.lexer.source().to_string(),
-            span: err.span.as_source_span(),
-            message: err.message.to_string(),
+        result.map(|_| ()).map_err(|err| {
+            ParseError::invalid_identifier(self.lexer.source().to_string(), err.span, err.message)
         })
     }
 
@@ -1105,22 +1271,8 @@ impl<'a> Parser<'a> {
             self.validate_ident(ident.as_value_name())
         }
     }
-
-    /// Build a parser error at the current token.
-    fn make_err(&self, message: &str) -> ParseError {
-        ParseError {
-            src: self.lexer.source().to_string(),
-            span: self.lexer.current_span().as_source_span(),
-            message: message.to_string(),
-        }
-    }
 }
 
-/// Convert expression nodes that can act as record constructor names into `Ident`.
-///
-/// Record construction is parsed as a Pratt postfix form: after parsing `User`,
-/// seeing `{ ... }` rewrites the left expression into `Expr::Record`. Other
-/// expressions are returned to the Pratt parser unchanged.
 fn starts_uppercase(name: &str) -> bool {
     name.chars()
         .next()
@@ -1133,27 +1285,278 @@ fn starts_lowercase(name: &str) -> bool {
         .is_some_and(|ch| ch.is_ascii_lowercase())
 }
 
-fn expr_into_ident(expr: Expr) -> Result<Ident, Expr> {
-    match expr {
-        Expr::Var { name, .. } => Ok(name),
-        Expr::Constructor { name, args, .. } if args.is_empty() => Ok(name),
-        expr => Err(expr),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse_ident_from(src: &str) -> (Ident, TokenKind) {
+        let lexer = Lexer::new(src).expect("lex ok");
+        let mut parser = Parser::new(lexer);
+        let ident = parser.parse_ident().expect("parse ident ok");
+        (ident, parser.lexer.peek().clone())
+    }
+
+    fn ident_path(ident: &Ident) -> Vec<&str> {
+        match ident {
+            Ident::Name { name, .. } => vec![name.as_str()],
+            Ident::Qualified { name, rest, .. } => {
+                let mut path = vec![name.as_str()];
+                path.extend(ident_path(rest));
+                path
+            }
+        }
+    }
+
+    #[test]
+    fn parse_ident_accepts_bare_names() {
+        let (ident, next) = parse_ident_from("Value");
+        assert!(matches!(ident, Ident::Name { name, .. } if name == "Value"));
+        assert_eq!(next, TokenKind::Eof);
+
+        let (ident, next) = parse_ident_from("value");
+        assert!(matches!(ident, Ident::Name { name, .. } if name == "value"));
+        assert_eq!(next, TokenKind::Eof);
+    }
+
+    #[test]
+    fn parse_ident_accepts_qualified_module_chains() {
+        let (ident, next) = parse_ident_from("A.B.C");
+        assert_eq!(ident_path(&ident), ["A", "B", "C"]);
+        assert_eq!(next, TokenKind::Eof);
+    }
+
+    #[test]
+    fn parse_ident_accepts_qualified_module_then_value() {
+        let (ident, next) = parse_ident_from("A.B.value");
+        assert_eq!(ident_path(&ident), ["A", "B", "value"]);
+        assert_eq!(next, TokenKind::Eof);
+    }
+
+    #[test]
+    fn parse_ident_leaves_value_field_projection_for_expression_parser() {
+        let (ident, next) = parse_ident_from("value.field");
+        assert!(matches!(ident, Ident::Name { name, .. } if name == "value"));
+        assert_eq!(next, TokenKind::Dot);
+    }
+
+    #[test]
+    fn parse_ident_stops_before_use_wildcard_and_grouped_imports() {
+        let (ident, next) = parse_ident_from("A.B.*");
+        assert_eq!(ident_path(&ident), ["A", "B"]);
+        assert_eq!(next, TokenKind::Dot);
+
+        let (ident, next) = parse_ident_from("A.B.{value}");
+        assert_eq!(ident_path(&ident), ["A", "B"]);
+        assert_eq!(next, TokenKind::Dot);
+    }
+
+    #[test]
+    fn parses_documented_use_forms() {
+        let src = "use A.B\n\
+                   use A.B.c\n\
+                   use A.B.{c, D}\n\
+                   use A.B.*\n\
+                   use A.B.{C.d, E.F.g}\n\
+                   use A.{B.{C, d}}";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let parsed = Parser::new(lexer).parse_module().expect("parse ok");
+        assert_eq!(parsed.items.len(), 6);
+
+        let ModuleItem::UseDecl(UseDecl::Module { name, members, .. }) = &parsed.items[0] else {
+            panic!("expected module use");
+        };
+        assert_eq!(ident_path(name), ["A", "B"]);
+        assert!(members.is_empty());
+
+        let ModuleItem::UseDecl(UseDecl::Module { name, members, .. }) = &parsed.items[1] else {
+            panic!("expected concrete member use");
+        };
+        assert_eq!(ident_path(name), ["A", "B"]);
+        assert!(matches!(&members[0], UseDecl::Value { name, .. } if ident_path(name) == ["c"]));
+
+        let ModuleItem::UseDecl(UseDecl::Module { name, members, .. }) = &parsed.items[2] else {
+            panic!("expected grouped member use");
+        };
+        assert_eq!(ident_path(name), ["A", "B"]);
+        assert!(matches!(&members[0], UseDecl::Value { name, .. } if ident_path(name) == ["c"]));
+        assert!(
+            matches!(&members[1], UseDecl::Module { name, members, .. } if ident_path(name) == ["D"] && members.is_empty())
+        );
+
+        let ModuleItem::UseDecl(UseDecl::Module { name, members, .. }) = &parsed.items[3] else {
+            panic!("expected wildcard module use");
+        };
+        assert_eq!(ident_path(name), ["A", "B"]);
+        assert!(matches!(&members[0], UseDecl::Wildcard { .. }));
+
+        let ModuleItem::UseDecl(UseDecl::Module { name, members, .. }) = &parsed.items[4] else {
+            panic!("expected grouped prefixed member use");
+        };
+        assert_eq!(ident_path(name), ["A", "B"]);
+        assert!(
+            matches!(&members[0], UseDecl::Module { name, members, .. } if ident_path(name) == ["C"] && matches!(&members[0], UseDecl::Value { name, .. } if ident_path(name) == ["d"]))
+        );
+        assert!(
+            matches!(&members[1], UseDecl::Module { name, members, .. } if ident_path(name) == ["E", "F"] && matches!(&members[0], UseDecl::Value { name, .. } if ident_path(name) == ["g"]))
+        );
+
+        let ModuleItem::UseDecl(UseDecl::Module { name, members, .. }) = &parsed.items[5] else {
+            panic!("expected nested grouped use");
+        };
+        assert_eq!(ident_path(name), ["A"]);
+        assert!(
+            matches!(&members[0], UseDecl::Module { name, members, .. } if ident_path(name) == ["B"] && matches!(&members[0], UseDecl::Module { name, members, .. } if ident_path(name) == ["C"] && members.is_empty()) && matches!(&members[1], UseDecl::Value { name, .. } if ident_path(name) == ["d"]))
+        );
+    }
+
+    #[test]
+    fn rejects_grouping_after_concrete_use_member() {
+        let src = "use A.B.c.*";
+        let lexer = Lexer::new(src).expect("lex ok");
+        assert!(Parser::new(lexer).parse_module().is_err());
+    }
+
+    #[test]
+    fn parses_type_declaration_definitions_and_visibility() {
+        let src = "type Abstract\n\
+                   type Alias = User\n\
+                   type Variant = | User\n\
+                   pub type Public = User\n\
+                   pub(view) type View = User\n\
+                   pub(make) type Make = User\n\
+                   pub let exposed = 1";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        assert_eq!(module.items.len(), 7);
+
+        let ModuleItem::TypeDecl(TypeDecl { def, .. }) = &module.items[0] else {
+            panic!("expected type decl");
+        };
+        assert!(matches!(def, TypeDef::Abstract { .. }));
+
+        let ModuleItem::TypeDecl(TypeDecl { def, .. }) = &module.items[1] else {
+            panic!("expected type decl");
+        };
+        assert!(
+            matches!(def, TypeDef::Alias { manifest, .. } if matches!(manifest, TypeExpr::App { name, .. } if ident_path(name) == ["User"]))
+        );
+
+        let ModuleItem::TypeDecl(TypeDecl { def, .. }) = &module.items[2] else {
+            panic!("expected type decl");
+        };
+        assert!(matches!(def, TypeDef::Variant { variants, .. } if variants.len() == 1));
+
+        let visibilities = module.items[3..6]
+            .iter()
+            .map(|item| match item {
+                ModuleItem::TypeDecl(TypeDecl { visibility, .. }) => visibility,
+                _ => panic!("expected type decl"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            visibilities,
+            [
+                &TypeVisibility::Public(TypeCapability::Name),
+                &TypeVisibility::Public(TypeCapability::View),
+                &TypeVisibility::Public(TypeCapability::Make)
+            ]
+        );
+
+        let ModuleItem::LetDecl(LetDecl { visibility, .. }) = &module.items[6] else {
+            panic!("expected public let decl");
+        };
+        assert_eq!(visibility, &Visibility::Public);
+    }
+
+    #[test]
+    fn rejects_type_visibility_modifier_on_let() {
+        let lexer = Lexer::new("pub(view) let x = 1").expect("lex ok");
+        assert!(Parser::new(lexer).parse_module().is_err());
+    }
+
+    #[test]
+    fn rejects_module_function_shorthand() {
+        let lexer = Lexer::new("let id x = x").expect("lex ok");
+        assert!(Parser::new(lexer).parse_module().is_err());
+    }
+
+    #[test]
+    fn parses_let_bound_fn_expression_as_const_decl() {
+        let lexer = Lexer::new("let id = fn x -> x").expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
+            panic!("expected let decl");
+        };
+        assert!(matches!(body, Expr::Fn { params, .. } if params.len() == 1));
+    }
 
     #[test]
     fn accepts_valid_naming_invariants() {
         let src = "use App.Core.{make_user, User}\n\
              type Maybe<'a> = | None | Some('a)\n\
              let _value = 1\n\
-             let read (User { name }) = name\n";
+             let read = fn (User { name }) -> name\n";
         let lexer = Lexer::new(src).expect("lex ok");
         let module = Parser::new(lexer).parse_module().expect("parse ok");
         insta::assert_snapshot!(format!("{module:#?}"));
+    }
+
+    #[test]
+    fn accepts_top_level_constant_type_hint_syntax() {
+        let src = "let x: u8 = 1";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { hint, body, .. }) = &module.items[0] else {
+            panic!("expected let decl");
+        };
+        assert!(hint.is_some());
+        assert!(!matches!(body, Expr::TypeHint { .. }));
+    }
+
+    #[test]
+    fn accepts_parenthesized_expression_type_hint_syntax() {
+        let src = "let x = (1: u8)";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
+            panic!("expected let decl");
+        };
+        assert!(matches!(body, Expr::TypeHint { .. }));
+    }
+
+    #[test]
+    fn rejects_unparenthesized_postfix_expression_type_hint_syntax() {
+        let src = "let x = 1: u8";
+        let lexer = Lexer::new(src).expect("lex ok");
+        assert!(Parser::new(lexer).parse_module().is_err());
+    }
+
+    #[test]
+    fn accepts_record_field_projection_syntax() {
+        let src = "let get_id = fn x -> x.id";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
+            panic!("expected let decl");
+        };
+        let Expr::Fn { body, .. } = body else {
+            panic!("expected function expression");
+        };
+        assert!(matches!(&**body, Expr::Field { field, .. } if field.as_name() == Some("id")));
+    }
+
+    #[test]
+    fn uppercase_dot_expression_remains_qualified_identifier() {
+        let src = "let value = Module.value";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
+            panic!("expected let decl");
+        };
+        assert!(matches!(
+            body,
+            Expr::Var { name: Ident::Qualified { name, .. }, .. } if name == "Module"
+        ));
     }
 
     #[test]
@@ -1161,7 +1564,7 @@ mod tests {
         let src = "let f = fn Some x -> x";
         let lexer = Lexer::new(src).expect("lex ok");
         let module = Parser::new(lexer).parse_module().expect("parse ok");
-        let ModuleItem::LetDecl(LetDecl::Const { body, .. }) = &module.items[0] else {
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
             panic!("expected let declaration");
         };
         let Expr::Fn { params, .. } = body else {
@@ -1184,7 +1587,7 @@ mod tests {
         let src = "let f = fn (Some(x)) (Pair(left, right)) -> x";
         let lexer = Lexer::new(src).expect("lex ok");
         let module = Parser::new(lexer).parse_module().expect("parse ok");
-        let ModuleItem::LetDecl(LetDecl::Const { body, .. }) = &module.items[0] else {
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
             panic!("expected let declaration");
         };
         let Expr::Fn { params, .. } = body else {
@@ -1208,7 +1611,7 @@ mod tests {
         let src = "let value = match option { | Some(x) -> x }";
         let lexer = Lexer::new(src).expect("lex ok");
         let module = Parser::new(lexer).parse_module().expect("parse ok");
-        let ModuleItem::LetDecl(LetDecl::Const { body, .. }) = &module.items[0] else {
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
             panic!("expected let declaration");
         };
         let Expr::Match { arms, .. } = body else {
@@ -1222,13 +1625,45 @@ mod tests {
     }
 
     #[test]
+    fn match_scrutinee_accepts_application_before_body_brace() {
+        let src = "let value = match f a b { | Some(x) -> x }";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
+            panic!("expected let declaration");
+        };
+        let Expr::Match { scrutinee, .. } = body else {
+            panic!("expected match expression");
+        };
+        assert!(matches!(&**scrutinee, Expr::Apply { args, .. } if args.len() == 2));
+    }
+
+    #[test]
+    fn rejects_match_arm_commas() {
+        let src = "let value = match option { | Some(x) -> x, | None -> 0 }";
+        let lexer = Lexer::new(src).expect("lex ok");
+        assert!(Parser::new(lexer).parse_module().is_err());
+    }
+
+    #[test]
+    fn empty_braces_parse_as_empty_block() {
+        let src = "let value = {}";
+        let lexer = Lexer::new(src).expect("lex ok");
+        let module = Parser::new(lexer).parse_module().expect("parse ok");
+        let ModuleItem::LetDecl(LetDecl { body, .. }) = &module.items[0] else {
+            panic!("expected let declaration");
+        };
+        assert!(matches!(body, Expr::Block { exprs, .. } if exprs.is_empty()));
+    }
+
+    #[test]
     fn rejects_uppercase_value_binding() {
         let src = "let Foo = 1";
         let lexer = Lexer::new(src).expect("lex ok");
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("uppercase value name is rejected");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 
     #[test]
@@ -1238,7 +1673,7 @@ mod tests {
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("lowercase module name is rejected");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 
     #[test]
@@ -1248,7 +1683,7 @@ mod tests {
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("lowercase type name is rejected");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 
     #[test]
@@ -1258,7 +1693,7 @@ mod tests {
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("lowercase constructor name is rejected");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 
     #[test]
@@ -1268,7 +1703,7 @@ mod tests {
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("uppercase field name is rejected");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 
     #[test]
@@ -1278,7 +1713,7 @@ mod tests {
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("uppercase type var is rejected");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 
     #[test]
@@ -1288,6 +1723,6 @@ mod tests {
         let err = Parser::new(lexer)
             .parse_module()
             .expect_err("wildcard is not a value declaration name");
-        insta::assert_snapshot!(err.message);
+        insta::assert_snapshot!(err.message());
     }
 }
