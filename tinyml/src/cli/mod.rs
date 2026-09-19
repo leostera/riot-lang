@@ -173,7 +173,7 @@ fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Re
             }
             EmitTarget::Js => {
                 let js = backend::js::lower(&pipeline.checked.summary.interface, &pipeline.lambda);
-                write_artifact(file, "js", backend::js::emit_js_string(&js))?;
+                write_artifact(file, "mjs", backend::js::emit_js_string(&js))?;
             }
         }
     }

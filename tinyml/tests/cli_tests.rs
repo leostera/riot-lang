@@ -76,6 +76,44 @@ fn emit_writes_selected_artifacts() {
 }
 
 #[test]
+fn emit_javascript_produces_executable_module() {
+    let dir = temp_dir("emit-js");
+    let file = dir.join("main.ml");
+    fs::write(&file, "let add = fn x -> x + 1\n").unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let module = dir.join("main.mjs");
+    assert!(module.exists());
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ add }} from {:?}; if (add(41) !== 42) process.exit(1)",
+            module.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
