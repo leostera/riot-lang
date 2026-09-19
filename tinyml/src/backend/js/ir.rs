@@ -18,6 +18,8 @@ pub enum Item {
         names: Vec<ImportName>,
         from: String,
     },
+    /// `import * as local from "module";`
+    ImportAll { local: String, from: String },
     /// `const name: Type = value;`
     Const {
         name: String,

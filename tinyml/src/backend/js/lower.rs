@@ -34,7 +34,16 @@ impl<'a> Lowerer<'a> {
     }
 
     pub fn lower_module(&self, module: &lambda::Module) -> ir::Module {
-        let mut items = Vec::new();
+        self.lower_module_with_imports(module, &[])
+    }
+
+    pub fn lower_module_with_imports(
+        &self,
+        module: &lambda::Module,
+        imports: &[crate::parser::ast::UseDecl],
+    ) -> ir::Module {
+        let mut items = lower_imports(imports);
+        
         let mut exports = Vec::new();
 
         for value in &module.values {
@@ -648,6 +657,28 @@ fn js_name(ident: &Ident) -> String {
             })
             .collect()
     }
+}
+
+fn lower_imports(imports: &[crate::parser::ast::UseDecl]) -> Vec<ir::Item> {
+    imports
+        .iter()
+        .map(|import| match import {
+            crate::parser::ast::UseDecl::Concrete { module, members, .. } => ir::Item::Import {
+                names: members
+                    .iter()
+                    .map(|member| ir::ImportName {
+                        imported: name_string(member),
+                        local: js_name(member),
+                    })
+                    .collect(),
+                from: format!("./{}.mjs", name_string(module)),
+            },
+            crate::parser::ast::UseDecl::Wildcard { module, .. } => ir::Item::ImportAll {
+                local: js_name(module),
+                from: format!("./{}.mjs", name_string(module)),
+            },
+        })
+        .collect()
 }
 
 fn name_string(ident: &Ident) -> String {

@@ -172,7 +172,21 @@ fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Re
                 write_artifact(file, "S", mir.to_asm_string())?;
             }
             EmitTarget::Js => {
-                let js = backend::js::lower(&pipeline.checked.summary.interface, &pipeline.lambda);
+                let imports = pipeline
+                    .checked
+                    .ast
+                    .items
+                    .iter()
+                    .filter_map(|item| match item {
+                        parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                let js = backend::js::lower_with_imports(
+                    &pipeline.checked.summary.interface,
+                    &pipeline.lambda,
+                    &imports,
+                );
                 write_artifact(file, "mjs", backend::js::emit_js_string(&js))?;
             }
         }

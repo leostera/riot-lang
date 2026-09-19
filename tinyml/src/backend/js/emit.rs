@@ -76,7 +76,11 @@ impl ir::Item {
     fn is_js_item(&self) -> bool {
         matches!(
             self,
-            Self::Import { .. } | Self::Const { .. } | Self::Function { .. } | Self::Export { .. }
+            Self::Import { .. }
+                | Self::ImportAll { .. }
+                | Self::Const { .. }
+                | Self::Function { .. }
+                | Self::Export { .. }
         )
     }
 }
@@ -124,6 +128,11 @@ fn emit_js_decl(out: &mut impl fmt::Write, decl: &ir::Item) -> fmt::Result {
 
 fn emit_decl(out: &mut impl fmt::Write, decl: &ir::Item) -> fmt::Result {
     match decl {
+        ir::Item::ImportAll { local, from } => {
+            write!(out, "import * as {local} from ")?;
+            emit_string(out, from)?;
+            out.write_char(';')
+        }
         ir::Item::Import { names, from } => {
             out.write_str("import { ")?;
             for (index, name) in names.iter().enumerate() {

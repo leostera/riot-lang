@@ -15,6 +15,15 @@ pub fn lower(interface: &crate::checker::ModuleInterface, lambda: &crate::lambda
     lower::Lowerer::new(interface).lower_module(lambda)
 }
 
+/// Lower a module and preserve its source-level JavaScript imports.
+pub fn lower_with_imports(
+    interface: &crate::checker::ModuleInterface,
+    lambda: &crate::lambda::Lambda,
+    imports: &[crate::parser::ast::UseDecl],
+) -> Js {
+    lower::Lowerer::new(interface).lower_module_with_imports(lambda, imports)
+}
+
 /// Emit JS backend IR as TypeScript source.
 pub fn emit_ts(js: &Js, sink: &mut impl std::fmt::Write) -> std::fmt::Result {
     emit::Emitter::new(js).emit_ts(sink)
