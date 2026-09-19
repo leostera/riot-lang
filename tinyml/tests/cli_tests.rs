@@ -114,6 +114,39 @@ fn emit_javascript_produces_executable_module() {
 }
 
 #[test]
+fn emitted_match_module_executes() {
+    let dir = temp_dir("emit-js-match");
+    let file = dir.join("match.ml");
+    fs::write(
+        &file,
+        "type Option<'a> = | None | Some('a)\nlet get = fn x -> match x { | None -> 0 | Some(value) -> value }\n",
+    )
+    .unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+
+    let module = dir.join("match.mjs");
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ get }} from {:?}; if (get({{type: 'Some', value: 41}}) !== 41 || get({{type: 'None'}}) !== 0) process.exit(1)",
+            module.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
