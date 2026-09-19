@@ -92,6 +92,12 @@ pub enum Primitive {
     Mul { operand: Type },
     Div { operand: Type },
     Rem { operand: Type },
+    Eq { operand: Type },
+    Ne { operand: Type },
+    Lt { operand: Type },
+    Lte { operand: Type },
+    Gt { operand: Type },
+    Gte { operand: Type },
     Named(Ident),
 }
 
@@ -103,6 +109,12 @@ impl Primitive {
             Some("*") => Self::Mul { operand },
             Some("/") => Self::Div { operand },
             Some("%") => Self::Rem { operand },
+            Some("==") => Self::Eq { operand },
+            Some("!=") => Self::Ne { operand },
+            Some("<") => Self::Lt { operand },
+            Some("<=") => Self::Lte { operand },
+            Some(">") => Self::Gt { operand },
+            Some(">=") => Self::Gte { operand },
             _ => Self::Named(ident.clone()),
         }
     }

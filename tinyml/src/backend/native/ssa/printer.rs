@@ -221,6 +221,12 @@ fn primitive_name(op: &Primitive) -> &'static str {
         Primitive::Mul { .. } => "mul",
         Primitive::Div { .. } => "div",
         Primitive::Rem { .. } => "rem",
+        Primitive::Eq { .. } => "eq",
+        Primitive::Ne { .. } => "ne",
+        Primitive::Lt { .. } => "lt",
+        Primitive::Lte { .. } => "lte",
+        Primitive::Gt { .. } => "gt",
+        Primitive::Gte { .. } => "gte",
         Primitive::Named(_) => "primitive",
     }
 }

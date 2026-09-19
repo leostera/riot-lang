@@ -30,6 +30,12 @@ static INFIX_BINDING_POWER: Lazy<HashMap<TokenKind, (&'static str, u8, u8)>> = L
         (TokenKind::Star, ("*", 12, 13)),
         (TokenKind::Slash, ("/", 12, 13)),
         (TokenKind::Percent, ("%", 12, 13)),
+        (TokenKind::EqEq, ("==", 5, 6)),
+        (TokenKind::NotEqual, ("!=", 5, 6)),
+        (TokenKind::LAngle, ("<", 5, 6)),
+        (TokenKind::RAngle, (">", 5, 6)),
+        (TokenKind::LessEqual, ("<=", 5, 6)),
+        (TokenKind::GreaterEqual, (">=", 5, 6)),
     ])
 });
 

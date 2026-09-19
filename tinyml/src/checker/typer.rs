@@ -823,8 +823,12 @@ impl<'state> Typer<'state> {
                             .add_diagnostic(CheckDiagnostic::TypeMismatch { error, span: *span });
                     }
                 }
+                let result_ty = match ident.as_name() {
+                    Some("==" | "!=" | "<" | "<=" | ">" | ">=") => builtin::bool(),
+                    _ => builtin::i32(),
+                };
                 Expr {
-                    ty: builtin::i32(),
+                    ty: result_ty,
                     kind: ExprKind::BinaryOp {
                         ident: ident.clone(),
                         left,

@@ -42,7 +42,13 @@ fn const_fold(function: &mut ssa::Function) {
                         lambda::ir::Primitive::Rem { .. } => {
                             (rhs_value != 0).then(|| lhs % rhs_value)
                         }
-                        lambda::ir::Primitive::Named(_) => None,
+                        lambda::ir::Primitive::Eq { .. }
+                        | lambda::ir::Primitive::Ne { .. }
+                        | lambda::ir::Primitive::Lt { .. }
+                        | lambda::ir::Primitive::Lte { .. }
+                        | lambda::ir::Primitive::Gt { .. }
+                        | lambda::ir::Primitive::Gte { .. }
+                        | lambda::ir::Primitive::Named(_) => None,
                     };
                     if let Some(value) = folded {
                         let constant = ssa::Constant::Literal(Literal::Int(value.to_string()));

@@ -354,6 +354,15 @@ impl<'a> FunctionBuilder<'a> {
                     acc: lhs,
                 });
             }
+            lambda::ir::Primitive::Eq { .. }
+            | lambda::ir::Primitive::Ne { .. }
+            | lambda::ir::Primitive::Lt { .. }
+            | lambda::ir::Primitive::Lte { .. }
+            | lambda::ir::Primitive::Gt { .. }
+            | lambda::ir::Primitive::Gte { .. } => {
+                self.emit_symbol_call("tinyml_rt_compare", dst, repr);
+                return;
+            }
             lambda::ir::Primitive::Named(name) => {
                 self.emit_symbol_call(&ssa::Symbol::from_ident(name).to_string(), dst, repr);
                 return;

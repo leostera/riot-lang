@@ -99,6 +99,14 @@ pub enum TokenKind {
     Dot,
     #[token("|")]
     Pipe,
+    #[token("==")]
+    EqEq,
+    #[token("!=")]
+    NotEqual,
+    #[token("<=")]
+    LessEqual,
+    #[token(">=")]
+    GreaterEqual,
     #[token("=")]
     Equal,
     #[token("+")]

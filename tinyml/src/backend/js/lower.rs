@@ -288,6 +288,12 @@ impl<'a> Lowerer<'a> {
             lambda::Primitive::Mul { .. } => Some(ir::BinaryOp::Mul),
             lambda::Primitive::Div { .. } => Some(ir::BinaryOp::Div),
             lambda::Primitive::Rem { .. } => Some(ir::BinaryOp::Rem),
+            lambda::Primitive::Eq { .. } => Some(ir::BinaryOp::Eq),
+            lambda::Primitive::Ne { .. } => Some(ir::BinaryOp::Ne),
+            lambda::Primitive::Lt { .. } => Some(ir::BinaryOp::Lt),
+            lambda::Primitive::Lte { .. } => Some(ir::BinaryOp::Lte),
+            lambda::Primitive::Gt { .. } => Some(ir::BinaryOp::Gt),
+            lambda::Primitive::Gte { .. } => Some(ir::BinaryOp::Gte),
             lambda::Primitive::Named(_) => None,
         };
         if let (Some(op), [left, right]) = (bin, args) {

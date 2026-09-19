@@ -207,6 +207,38 @@ fn emitted_closures_capture_values() {
 }
 
 #[test]
+fn emitted_comparisons_execute() {
+    let dir = temp_dir("emit-js-comparisons");
+    let file = dir.join("comparisons.ml");
+    fs::write(
+        &file,
+        "let less = fn x -> x < 3\nlet same = fn x -> x == 3\n",
+    )
+    .unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ less, same }} from {:?}; if (!less(2) || less(3) || !same(3) || same(2)) process.exit(1)",
+            dir.join("comparisons.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
