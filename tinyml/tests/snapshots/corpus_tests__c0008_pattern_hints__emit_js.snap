@@ -1,9 +1,10 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-33092964ffd976e7/out/corpus_tests_generated.rs
+assertion_line: 1
 expression: "emit_js_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
 ---
 function foo($x: readonly [number, number]): number {
-  return (a * 2);
+  return ($x["0"] * 2);
 }
 
 const block: unknown = (() => {
