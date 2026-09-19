@@ -53,12 +53,6 @@ pub enum TokenKind {
     Match,
     #[token("use")]
     Use,
-    #[token("pub")]
-    Pub,
-    #[token("external")]
-    External,
-    #[token("mod")]
-    Mod,
 
     // Literals
     #[token("true")]
@@ -79,6 +73,8 @@ pub enum TokenKind {
     // Symbols
     #[token("->")]
     Arrow,
+    #[token("=>")]
+    FatArrow,
     #[token("()")]
     Unit,
     #[token("(")]
@@ -117,44 +113,6 @@ pub enum TokenKind {
     Percent,
 
     Eof,
-}
-
-impl TokenKind {
-    pub fn starts_expr_one(&self) -> bool {
-        matches!(
-            self,
-            TokenKind::Int(_)
-                | TokenKind::Float(_)
-                | TokenKind::String(_)
-                | TokenKind::True
-                | TokenKind::False
-                | TokenKind::Ident(_)
-                | TokenKind::Unit
-                | TokenKind::Fn
-                | TokenKind::Match
-                | TokenKind::LParen
-                | TokenKind::LBrace
-        )
-    }
-
-    pub fn starts_application_arg(&self) -> bool {
-        self.starts_expr_one() && !matches!(self, TokenKind::LBrace)
-    }
-
-    pub fn starts_pattern(&self) -> bool {
-        matches!(
-            self,
-            TokenKind::Ident(_)
-                | TokenKind::Unit
-                | TokenKind::Int(_)
-                | TokenKind::Float(_)
-                | TokenKind::String(_)
-                | TokenKind::True
-                | TokenKind::False
-                | TokenKind::LParen
-                | TokenKind::LBrace
-        )
-    }
 }
 
 #[derive(Debug, Error, Diagnostic)]

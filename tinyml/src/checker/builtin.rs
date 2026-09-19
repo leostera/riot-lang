@@ -41,3 +41,25 @@ macro_rules! builtins {
 builtins![
     u8, u16, u32, u64, i8, i16, i32, i64, f8, f16, f32, f64, bool, string, unit
 ];
+
+/// Return the unqualified name of a type application.
+pub fn type_name(ty: &Type) -> Option<&str> {
+    fn ident_name(ident: &Ident) -> Option<&str> {
+        match ident {
+            Ident::Name { name, .. } => Some(name),
+            Ident::Qualified { rest, .. } => ident_name(rest),
+        }
+    }
+    match ty {
+        Type::Apply { ident, .. } => ident_name(ident),
+        _ => None,
+    }
+}
+
+pub fn canonical_type_ident(name: &str) -> Ident {
+    Ident::from_string(name)
+}
+
+pub fn is_std_type(ty: &Type, name: &str) -> bool {
+    matches!(ty, Type::Apply { ident, .. } if ident.is_qualified_as("Std", name))
+}

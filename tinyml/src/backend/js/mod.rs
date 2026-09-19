@@ -24,3 +24,12 @@ pub fn emit_ts(js: &Js, sink: &mut impl std::fmt::Write) -> std::fmt::Result {
 pub fn emit_ts_string(js: &Js) -> String {
     emit::Emitter::new(js).to_ts_string()
 }
+
+/// Emit runtime JavaScript, omitting TypeScript-only annotations and aliases.
+pub fn emit_js_string(js: &Js) -> String {
+    let mut output = String::new();
+    emit::Emitter::new(js)
+        .emit_js(&mut output)
+        .expect("writing JavaScript to a String cannot fail");
+    output
+}

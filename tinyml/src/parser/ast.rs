@@ -21,79 +21,38 @@ pub enum ModuleItem {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UseDecl {
-    Module {
-        name: Ident,
-        members: Vec<UseDecl>,
-        span: Span,
-    },
-    Value {
-        name: Ident,
+    Concrete {
+        module: Ident,
+        members: Vec<Ident>,
         span: Span,
     },
     Wildcard {
+        module: Ident,
         span: Span,
     },
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct LetDecl {
-    pub visibility: Visibility,
-    pub name: Ident,
-    pub hint: Option<TypeExpr>,
-    pub body: Expr,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Visibility {
-    Private,
-    Public,
+pub enum LetDecl {
+    Const {
+        name: Ident,
+        body: Expr,
+        span: Span,
+    },
+    Fn {
+        name: Ident,
+        args: Vec<Pattern>,
+        body: Expr,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeDecl {
-    pub visibility: TypeVisibility,
     pub name: Ident,
     pub params: Vec<TypeVar>,
-    pub def: TypeDef,
+    pub body: TypeExpr,
     pub span: Span,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeVisibility {
-    /// Module-local declaration, not exported.
-    Private,
-    /// Public declaration with an explicit external capability.
-    Public(TypeCapability),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypeCapability {
-    /// Public name only; definition/constructors are hidden from consumers.
-    Name,
-    /// Public name and view/pattern-match access, but construction is hidden.
-    View,
-    /// Public name with both view/pattern-match and construction access.
-    Make,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypeDef {
-    Abstract {
-        span: Span,
-    },
-    Alias {
-        manifest: TypeExpr,
-        span: Span,
-    },
-    Variant {
-        variants: Vec<Variant>,
-        span: Span,
-    },
-    Record {
-        fields: Vec<(Ident, TypeExpr)>,
-        span: Span,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -185,11 +144,6 @@ pub enum Expr {
         fields: Vec<(Ident, Expr)>,
         span: Span,
     },
-    Field {
-        base: Box<Expr>,
-        field: Ident,
-        span: Span,
-    },
     Block {
         exprs: Vec<Expr>,
         span: Span,
@@ -214,7 +168,6 @@ impl Expr {
             | Expr::TypeHint { span, .. }
             | Expr::Tuple { span, .. }
             | Expr::Record { span, .. }
-            | Expr::Field { span, .. }
             | Expr::Block { span, .. }
             | Expr::Match { span, .. } => *span,
         }
@@ -301,6 +254,10 @@ pub enum TypeExpr {
         fields: Vec<(Ident, TypeExpr)>,
         span: Span,
     },
+    Variant {
+        variants: Vec<Variant>,
+        span: Span,
+    },
 }
 
 impl TypeExpr {
@@ -310,7 +267,8 @@ impl TypeExpr {
             | TypeExpr::App { span, .. }
             | TypeExpr::Fn { span, .. }
             | TypeExpr::Tuple { span, .. }
-            | TypeExpr::Record { span, .. } => *span,
+            | TypeExpr::Record { span, .. }
+            | TypeExpr::Variant { span, .. } => *span,
         }
     }
 }

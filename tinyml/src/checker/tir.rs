@@ -188,6 +188,10 @@ pub enum ExprKind {
         name: Ident,
         fields: Vec<(Ident, Expr)>,
     },
+    Field {
+        base: Box<Expr>,
+        field: Ident,
+    },
     Block {
         exprs: Vec<Expr>,
     },

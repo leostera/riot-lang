@@ -23,7 +23,7 @@ impl<'a> Emitter<'a> {
             if index > 0 {
                 sink.write_char('\n')?;
             }
-            emit_decl(sink, decl)?;
+            emit_js_decl(sink, decl)?;
             sink.write_char('\n')?;
             index += 1;
         }
@@ -100,6 +100,23 @@ fn emit_ts_runtime_item(
             out.write_str(" = ")?;
             emit_expr(out, value)?;
             out.write_char(';')
+        }
+        _ => emit_decl(out, decl),
+    }
+}
+
+fn emit_js_decl(out: &mut impl fmt::Write, decl: &ir::Item) -> fmt::Result {
+    match decl {
+        ir::Item::Function { name, params, body, .. } => {
+            write!(out, "function {name}(")?;
+            for (index, param) in params.iter().enumerate() {
+                if index > 0 { out.write_str(", ")?; }
+                out.write_str(&param.name)?;
+            }
+            out.write_str(") {")?;
+            emit_stmt_block_contents(out, body, 1)?;
+            out.write_char('\n')?;
+            out.write_char('}')
         }
         _ => emit_decl(out, decl),
     }

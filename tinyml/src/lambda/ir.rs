@@ -64,6 +64,10 @@ pub enum ExprKind {
         name: Ident,
         fields: Vec<(Ident, Expr)>,
     },
+    Field {
+        base: Box<Expr>,
+        field: Ident,
+    },
     Block(Vec<Expr>),
     Match {
         scrutinee: Box<Expr>,

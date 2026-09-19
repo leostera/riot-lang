@@ -14,7 +14,7 @@ use miette::{Diagnostic, IntoDiagnostic, LabeledSpan, NamedSource, Result, Sourc
 use thiserror::Error;
 
 use tinyml::{
-    backend::native,
+    backend::{self, native},
     checker, lambda,
     parser::{self, lexer::Lexer, parse::Parser},
 };
@@ -70,6 +70,7 @@ enum EmitStage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum EmitTarget {
     Aarch64,
+    Js,
 }
 
 struct CheckedPipeline {
@@ -169,6 +170,10 @@ fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Re
             EmitTarget::Aarch64 => {
                 let mir = native::aarch64::select(&pipeline.ssa);
                 write_artifact(file, "S", mir.to_asm_string())?;
+            }
+            EmitTarget::Js => {
+                let js = backend::js::lower(&pipeline.checked.summary.interface, &pipeline.lambda);
+                write_artifact(file, "js", backend::js::emit_js_string(&js))?;
             }
         }
     }

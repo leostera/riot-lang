@@ -4,14 +4,13 @@
 //! the recursive-descent plus Pratt parser implementation.
 
 pub mod ast;
-pub mod error;
 pub mod ident;
 pub mod lexer;
 pub mod parse;
 
 pub use ast::Module as Ast;
-pub use error::ParseError;
 pub use lexer::LexError;
+pub use parse::ParseError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

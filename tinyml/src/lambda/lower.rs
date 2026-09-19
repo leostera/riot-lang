@@ -132,6 +132,10 @@ impl Lowerer {
                     .map(|(name, value)| (name.clone(), self.lower_expr(value)))
                     .collect(),
             },
+            tir::ExprKind::Field { base, field } => ir::ExprKind::Field {
+                base: Box::new(self.lower_expr(base)),
+                field: field.clone(),
+            },
             tir::ExprKind::Block { exprs } => {
                 ir::ExprKind::Block(exprs.iter().map(|item| self.lower_expr(item)).collect())
             }

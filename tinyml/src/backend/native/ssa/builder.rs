@@ -309,6 +309,7 @@ impl FunctionBuilder {
                     },
                 ))
             }
+            lambda::ir::ExprKind::Field { base, .. } => self.lower_expr(base),
             lambda::ir::ExprKind::Record { name: _, fields } => {
                 let fields = fields
                     .iter()
