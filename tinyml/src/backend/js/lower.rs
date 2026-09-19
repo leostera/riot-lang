@@ -119,19 +119,9 @@ impl<'a> Lowerer<'a> {
                     body: self.lower_function_body_with_params(params, &param_names, body),
                 }
             }
-            lambda::ExprKind::Let { bind, body, .. } => ir::Expr::Call {
-                callee: Box::new(ir::Expr::Function {
-                    params: Vec::new(),
-                    body: vec![
-                        ir::Stmt::Const {
-                            name: pattern_param_name((0, bind)),
-                            value: ir::Expr::Undefined,
-                        },
-                        ir::Stmt::Return(self.lower_expr(body)),
-                    ],
-                }),
-                args: Vec::new(),
-            },
+            // A standalone let expression carries its value in TIR; block
+            // lowering handles the binding and extends the environment.
+            lambda::ExprKind::Let { body, .. } => self.lower_expr_with_env(body, env),
             lambda::ExprKind::Apply { callee, args } => ir::Expr::Call {
                 callee: Box::new(self.lower_expr_with_env(callee, env)),
                 args: args
@@ -200,17 +190,23 @@ impl<'a> Lowerer<'a> {
         env: &HashMap<String, ir::Expr>,
     ) -> Vec<ir::Stmt> {
         let mut stmts = Vec::new();
+        let mut env = env.clone();
         for (index, expr) in exprs.iter().enumerate() {
             match &expr.kind {
-                lambda::ExprKind::Let { bind, body, .. } => stmts.push(ir::Stmt::Const {
-                    name: pattern_param_name((0, bind)),
-                    value: self.lower_expr_with_env(body, env),
-                }),
+                lambda::ExprKind::Let { bind, body, .. } => {
+                    let value = self.lower_expr_with_env(body, &env);
+                    let name = pattern_param_name((0, bind));
+                    stmts.push(ir::Stmt::Const {
+                        name: name.clone(),
+                        value: value.clone(),
+                    });
+                    self.bind_pattern_env(&mut env, bind, ir::Expr::Var(name));
+                }
                 _ if index + 1 == exprs.len() => {
-                    stmts.push(ir::Stmt::Return(self.lower_expr_with_env(expr, env)));
+                    stmts.push(ir::Stmt::Return(self.lower_expr_with_env(expr, &env)));
                 }
                 _ => {
-                    stmts.push(ir::Stmt::Expr(self.lower_expr_with_env(expr, env)));
+                    stmts.push(ir::Stmt::Expr(self.lower_expr_with_env(expr, &env)));
                 }
             }
         }
