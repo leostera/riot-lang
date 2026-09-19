@@ -106,7 +106,7 @@ impl<'a> Lowerer<'a> {
                 .cloned()
                 .unwrap_or_else(|| ir::Expr::Var(js_name(name))),
             lambda::ExprKind::Construct { name, args, .. } => {
-                self.lower_construct(name, args, &expr.ty)
+                self.lower_construct(name, args, &expr.ty, env)
             }
             lambda::ExprKind::Function { params, body } => {
                 let param_names = params
@@ -139,7 +139,7 @@ impl<'a> Lowerer<'a> {
                     .map(|arg| self.lower_expr_with_env(arg, env))
                     .collect(),
             },
-            lambda::ExprKind::Prim { op, args } => self.lower_primitive(op, args),
+            lambda::ExprKind::Prim { op, args } => self.lower_primitive(op, args, env),
             lambda::ExprKind::Tuple(items) => {
                 ir::Expr::Array(items.iter().map(|item| self.lower_expr(item)).collect())
             }
@@ -157,7 +157,7 @@ impl<'a> Lowerer<'a> {
                 property: js_name(field),
             },
             lambda::ExprKind::Block(exprs) => self.lower_block_expr(exprs),
-            lambda::ExprKind::Match { scrutinee, arms } => self.lower_match_expr(scrutinee, arms),
+            lambda::ExprKind::Match { scrutinee, arms } => self.lower_match_expr(scrutinee, arms, env),
         }
     }
 
@@ -184,7 +184,7 @@ impl<'a> Lowerer<'a> {
         match &body.kind {
             lambda::ExprKind::Block(exprs) => self.lower_block_returning_with_env(exprs, env),
             lambda::ExprKind::Match { scrutinee, arms } => {
-                vec![self.lower_match_stmt(scrutinee, arms)]
+                vec![self.lower_match_stmt(scrutinee, arms, env)]
             }
             _ => vec![ir::Stmt::Return(self.lower_expr_with_env(body, env))],
         }
@@ -230,12 +230,18 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn lower_construct(&self, name: &Ident, args: &[lambda::Expr], ty: &Type) -> ir::Expr {
+    fn lower_construct(
+        &self,
+        name: &Ident,
+        args: &[lambda::Expr],
+        ty: &Type,
+        env: &HashMap<String, ir::Expr>,
+    ) -> ir::Expr {
         let tag = name_string(name);
         if is_std_option_type(ty) {
             return match (tag.as_str(), args) {
                 ("None", []) => ir::Expr::Null,
-                ("Some", [value]) => self.lower_expr(value),
+                ("Some", [value]) => self.lower_expr_with_env(value, env),
                 _ => ir::Expr::Null,
             };
         }
@@ -253,18 +259,27 @@ impl<'a> Lowerer<'a> {
         if args.len() == 1 {
             properties.push(ir::Property {
                 name: "value".into(),
-                value: self.lower_expr(&args[0]),
+                value: self.lower_expr_with_env(&args[0], env),
             });
         } else {
             properties.push(ir::Property {
                 name: "value".into(),
-                value: ir::Expr::Array(args.iter().map(|arg| self.lower_expr(arg)).collect()),
+                value: ir::Expr::Array(
+                    args.iter()
+                        .map(|arg| self.lower_expr_with_env(arg, env))
+                        .collect(),
+                ),
             });
         }
         ir::Expr::Object(properties)
     }
 
-    fn lower_primitive(&self, op: &lambda::Primitive, args: &[lambda::Expr]) -> ir::Expr {
+    fn lower_primitive(
+        &self,
+        op: &lambda::Primitive,
+        args: &[lambda::Expr],
+        env: &HashMap<String, ir::Expr>,
+    ) -> ir::Expr {
         let bin = match op {
             lambda::Primitive::Add { .. } => Some(ir::BinaryOp::Add),
             lambda::Primitive::Sub { .. } => Some(ir::BinaryOp::Sub),
@@ -276,8 +291,8 @@ impl<'a> Lowerer<'a> {
         if let (Some(op), [left, right]) = (bin, args) {
             ir::Expr::Binary {
                 op,
-                left: Box::new(self.lower_expr(left)),
-                right: Box::new(self.lower_expr(right)),
+                left: Box::new(self.lower_expr_with_env(left, env)),
+                right: Box::new(self.lower_expr_with_env(right, env)),
             }
         } else {
             ir::Expr::Call {
@@ -285,30 +300,43 @@ impl<'a> Lowerer<'a> {
                     lambda::Primitive::Named(name) => js_name(name),
                     _ => "__tinyml_primitive".into(),
                 })),
-                args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
+                args: args
+                        .iter()
+                        .map(|arg| self.lower_expr_with_env(arg, env))
+                        .collect(),
             }
         }
     }
 
-    fn lower_match_expr(&self, scrutinee: &lambda::Expr, arms: &[lambda::MatchArm]) -> ir::Expr {
+    fn lower_match_expr(
+        &self,
+        scrutinee: &lambda::Expr,
+        arms: &[lambda::MatchArm],
+        env: &HashMap<String, ir::Expr>,
+    ) -> ir::Expr {
         ir::Expr::Call {
             callee: Box::new(ir::Expr::Function {
                 params: Vec::new(),
-                body: vec![self.lower_match_stmt(scrutinee, arms)],
+                body: vec![self.lower_match_stmt(scrutinee, arms, env)],
             }),
             args: Vec::new(),
         }
     }
 
-    fn lower_match_stmt(&self, scrutinee: &lambda::Expr, arms: &[lambda::MatchArm]) -> ir::Stmt {
-        if let Some(option_match) = self.lower_option_match(scrutinee, arms) {
+    fn lower_match_stmt(
+        &self,
+        scrutinee: &lambda::Expr,
+        arms: &[lambda::MatchArm],
+        env: &HashMap<String, ir::Expr>,
+    ) -> ir::Stmt {
+        if let Some(option_match) = self.lower_option_match(scrutinee, arms, env) {
             return option_match;
         }
-        if let Some(switch) = self.lower_switch_match(scrutinee, arms) {
+        if let Some(switch) = self.lower_switch_match(scrutinee, arms, env) {
             return switch;
         }
 
-        let scrutinee_expr = self.lower_expr(scrutinee);
+        let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
         let mut current_else = Vec::new();
         for arm in arms.iter().rev() {
             let branch = self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr);
@@ -329,11 +357,12 @@ impl<'a> Lowerer<'a> {
         &self,
         scrutinee: &lambda::Expr,
         arms: &[lambda::MatchArm],
+        env: &HashMap<String, ir::Expr>,
     ) -> Option<ir::Stmt> {
         if !is_std_option_type(&scrutinee.ty) {
             return None;
         }
-        let scrutinee_expr = self.lower_expr(scrutinee);
+        let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
         let mut none_branch = None;
         let mut some_branch = None;
         let mut default_branch = Vec::new();
@@ -397,13 +426,14 @@ impl<'a> Lowerer<'a> {
         &self,
         scrutinee: &lambda::Expr,
         arms: &[lambda::MatchArm],
+        env: &HashMap<String, ir::Expr>,
     ) -> Option<ir::Stmt> {
         let mut constructor_match = false;
         let mut literal_match = false;
         let mut cases = Vec::new();
         let mut default = Vec::new();
-        let scrutinee_expr = self.lower_expr(scrutinee);
-
+        let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
+        
         for arm in arms {
             match &arm.pattern.kind {
                 lambda::PatternKind::Constant(constant) => {

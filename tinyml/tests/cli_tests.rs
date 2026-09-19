@@ -119,7 +119,7 @@ fn emitted_match_module_executes() {
     let file = dir.join("match.ml");
     fs::write(
         &file,
-        "type Option<'a> = | None | Some('a)\nlet get = fn x -> match x { | None -> 0 | Some(value) -> value }\n",
+        "type Option<'a> = | None | Some('a)\nlet get = fn x -> match x { | None -> 0 | Some(value) -> value }\nlet unwrap = fn (Some(value)) -> value\n",
     )
     .unwrap();
 
@@ -138,7 +138,7 @@ fn emitted_match_module_executes() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ get }} from {:?}; if (get({{type: 'Some', value: 41}}) !== 41 || get({{type: 'None'}}) !== 0) process.exit(1)",
+            "import {{ get, unwrap }} from {:?}; if (get({{type: 'Some', value: 41}}) !== 41 || get({{type: 'None'}}) !== 0 || unwrap({{type: 'Some', value: 9}}) !== 9) process.exit(1)",
             module.to_str().unwrap()
         ))
         .output()
