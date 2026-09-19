@@ -813,10 +813,18 @@ impl<'state> Typer<'state> {
             } => {
                 let left = Box::new(self.infer_expression(left));
                 let right = Box::new(self.infer_expression(right));
+                let string_addition = ident.as_name() == Some("+")
+                    && left.ty == builtin::string()
+                    && right.ty == builtin::string();
+                let operand_ty = if string_addition {
+                    builtin::string()
+                } else {
+                    builtin::i32()
+                };
                 for operand in [&left.ty, &right.ty] {
                     let unify_result = {
                         let mut unifier = Unifier::new(self.state);
-                        unifier.unify(operand, &builtin::i32())
+                        unifier.unify(operand, &operand_ty)
                     };
                     if let Err(error) = unify_result {
                         self.state
@@ -825,6 +833,7 @@ impl<'state> Typer<'state> {
                 }
                 let result_ty = match ident.as_name() {
                     Some("==" | "!=" | "<" | "<=" | ">" | ">=") => builtin::bool(),
+                    _ if string_addition => builtin::string(),
                     _ => builtin::i32(),
                 };
                 Expr {

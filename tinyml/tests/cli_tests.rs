@@ -271,6 +271,34 @@ fn emitted_tuple_and_record_patterns_execute() {
 }
 
 #[test]
+fn emitted_string_concatenation_executes() {
+    let dir = temp_dir("emit-js-strings");
+    let file = dir.join("strings.ml");
+    fs::write(&file, "let greeting = \"hello, \" + \"world\"\n").unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ greeting }} from {:?}; if (greeting !== 'hello, world') process.exit(1)",
+            dir.join("strings.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
