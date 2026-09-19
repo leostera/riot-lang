@@ -239,6 +239,38 @@ fn emitted_comparisons_execute() {
 }
 
 #[test]
+fn emitted_tuple_and_record_patterns_execute() {
+    let dir = temp_dir("emit-js-patterns");
+    let file = dir.join("patterns.ml");
+    fs::write(
+        &file,
+        "let first = fn (a, b) -> a\nlet get_name = fn (User { name, age: _ }) -> name\n",
+    )
+    .unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ first, get_name }} from {:?}; if (first([7, 8]) !== 7 || get_name({{name: 'Ada', age: 42}}) !== 'Ada') process.exit(1)",
+            dir.join("patterns.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
