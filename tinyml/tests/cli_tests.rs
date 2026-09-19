@@ -179,6 +179,34 @@ fn emitted_recursive_functions_execute() {
 }
 
 #[test]
+fn emitted_closures_capture_values() {
+    let dir = temp_dir("emit-js-closure");
+    let file = dir.join("closure.ml");
+    fs::write(&file, "let make_adder = fn x -> fn y -> x + y\n").unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ make_adder }} from {:?}; if (make_adder(2)(40) !== 42) process.exit(1)",
+            dir.join("closure.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);

@@ -71,7 +71,12 @@ impl<'a> Lowerer<'a> {
                             .map(|(name, ty)| ir::Param { name, ty })
                             .collect(),
                         return_type: Some(self.lower_type(&body.ty, true)),
-                        body: self.lower_function_body_with_params(params, &param_names, body),
+                        body: self.lower_function_body_with_params(
+                            params,
+                            &param_names,
+                            body,
+                            &HashMap::new(),
+                        ),
                     })
                 }
                 _ => items.push(ir::Item::Const {
@@ -116,7 +121,7 @@ impl<'a> Lowerer<'a> {
                     .collect::<Vec<_>>();
                 ir::Expr::Function {
                     params: param_names.clone(),
-                    body: self.lower_function_body_with_params(params, &param_names, body),
+                    body: self.lower_function_body_with_params(params, &param_names, body, env),
                 }
             }
             // A standalone let expression carries its value in TIR; block
@@ -156,9 +161,10 @@ impl<'a> Lowerer<'a> {
         params: &[lambda::Pattern],
         param_names: &[String],
         body: &lambda::Expr,
+        outer_env: &HashMap<String, ir::Expr>,
     ) -> Vec<ir::Stmt> {
         let mut stmts = Vec::new();
-        let mut env = HashMap::new();
+        let mut env = outer_env.clone();
         for (pattern, name) in params.iter().zip(param_names) {
             self.bind_pattern_env(&mut env, pattern, ir::Expr::Var(name.clone()));
         }
