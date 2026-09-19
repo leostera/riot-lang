@@ -147,6 +147,38 @@ fn emitted_match_module_executes() {
 }
 
 #[test]
+fn emitted_recursive_functions_execute() {
+    let dir = temp_dir("emit-js-recursive");
+    let file = dir.join("fact.ml");
+    fs::write(
+        &file,
+        "let fact = fn n -> match n { | 0 -> 1 | n -> n * fact (n - 1) }\n",
+    )
+    .unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("emit")
+        .arg("--target")
+        .arg("js")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ fact }} from {:?}; if (fact(6) !== 720) process.exit(1)",
+            dir.join("fact.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
