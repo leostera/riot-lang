@@ -1,6 +1,6 @@
 //! Tower-LSP backend for TinyML.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use tokio::sync::RwLock;
 use tower_lsp::{
@@ -40,6 +40,10 @@ pub struct CheckedSource {
 }
 
 pub fn check_source(source: &str) -> CheckedSource {
+    check_source_with_include_dirs(source, &[])
+}
+
+fn check_source_with_include_dirs(source: &str, include_dirs: &[PathBuf]) -> CheckedSource {
     let lexer = match Lexer::new(source) {
         Ok(lexer) => lexer,
         Err(error) => {
@@ -68,7 +72,30 @@ pub fn check_source(source: &str) -> CheckedSource {
         }
     };
 
-    let summary = checker::check_module(&ast);
+    let mut imported = checker::interface::ModuleInterface::empty();
+    let modules = ast.items.iter().filter_map(|item| match item {
+        parser::ast::ModuleItem::UseDecl(parser::ast::UseDecl::Concrete { module, .. })
+        | parser::ast::ModuleItem::UseDecl(parser::ast::UseDecl::Wildcard { module, .. }) => {
+            Some(module_name(module))
+        }
+        _ => None,
+    }).collect::<std::collections::HashSet<_>>();
+    for dir in include_dirs {
+        let Ok(entries) = fs::read_dir(dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("tmi")
+                || !modules.contains(&path.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default().to_string())
+            { continue; }
+            let Ok(bytes) = fs::read(path) else { continue };
+            let Ok(interface) = checker::interface::decode_interface(&bytes) else { continue; };
+            imported.values.extend(interface.values);
+            imported.types.extend(interface.types);
+            imported.constructors.extend(interface.constructors);
+            imported.record_fields.extend(interface.record_fields);
+        }
+    }
+    let summary = checker::Checker::new().check_module_with_interface(&ast, &imported);
     let diagnostics = diagnostics::checker_diagnostics(source, &summary.diagnostics);
     CheckedSource {
         ast: Some(ast),
@@ -80,6 +107,7 @@ pub fn check_source(source: &str) -> CheckedSource {
 struct Backend {
     client: Client,
     documents: Arc<RwLock<HashMap<Url, Document>>>,
+    include_dirs: Vec<PathBuf>,
 }
 
 impl Backend {
@@ -87,11 +115,15 @@ impl Backend {
         Self {
             client,
             documents: Arc::new(RwLock::new(HashMap::new())),
+            include_dirs: {
+                let cwd = std::env::current_dir().unwrap_or_default();
+                vec![cwd.join("build"), cwd.join("std"), cwd]
+            },
         }
     }
 
     async fn check_and_publish(&self, uri: Url, source: String) {
-        let checked = check_source(&source);
+        let checked = check_source_with_include_dirs(&source, &self.include_dirs);
         let document = Document {
             source,
             checked: checked.summary.map(|summary| CheckedDocument { summary }),
@@ -195,6 +227,13 @@ impl LanguageServer for Backend {
             &checked.summary,
             position,
         ))
+    }
+}
+
+fn module_name(ident: &parser::ident::Ident) -> String {
+    match ident {
+        parser::ident::Ident::Name { name, .. } => name.clone(),
+        parser::ident::Ident::Qualified { name, rest, .. } => format!("{}_{}", name, module_name(rest)),
     }
 }
 
