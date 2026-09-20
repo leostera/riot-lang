@@ -10,12 +10,40 @@ use serde::{Deserialize, Serialize};
 struct InterfaceArtifact {
     version: u32,
     values: Vec<ArtifactValue>,
+    types: Vec<ArtifactTypeDecl>,
+    constructors: Vec<ArtifactConstructor>,
+    record_fields: Vec<ArtifactRecordField>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ArtifactValue {
     name: String,
     scheme: ArtifactScheme,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ArtifactTypeDecl {
+    name: String,
+    params: Vec<String>,
+    body: ArtifactType,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ArtifactConstructor {
+    name: String,
+    owner: String,
+    scheme: ArtifactScheme,
+    tag: u32,
+    result: ArtifactType,
+    arguments: Vec<ArtifactType>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ArtifactRecordField {
+    name: String,
+    owner: ArtifactType,
+    field: ArtifactType,
+    index: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,26 +68,60 @@ pub fn encode_interface(interface: &ModuleInterface) -> Result<Vec<u8>, String> 
         values: interface.values.iter().filter_map(|value| {
             value.name.as_name().map(|name| ArtifactValue {
                 name: name.to_string(),
-                scheme: ArtifactScheme {
-                    quantifier: value.scheme.quantifier.iter().map(|id| id.index()).collect(),
-                    body: artifact_type(&value.scheme.body),
-                },
+                scheme: artifact_scheme(&value.scheme),
             })
         }).collect(),
+        types: interface.types.iter().filter_map(|ty| ty.name.as_name().map(|name| ArtifactTypeDecl {
+            name: name.to_string(),
+            params: ty.params.iter().map(|param| param.name.clone()).collect(),
+            body: artifact_type(&ty.body),
+        })).collect(),
+        constructors: interface.constructors.iter().filter_map(|constructor| constructor.name.as_name().map(|name| ArtifactConstructor {
+            name: name.to_string(),
+            owner: ident_path(&constructor.owner),
+            scheme: artifact_scheme(&constructor.scheme),
+            tag: constructor.tag,
+            result: artifact_type(&constructor.result),
+            arguments: constructor.arguments.iter().map(artifact_type).collect(),
+        })).collect(),
+        record_fields: interface.record_fields.iter().filter_map(|field| field.name.as_name().map(|name| ArtifactRecordField {
+            name: name.to_string(),
+            owner: artifact_type(&field.owner),
+            field: artifact_type(&field.field),
+            index: field.index,
+        })).collect(),
     };
     bincode::serialize(&artifact).map_err(|error| error.to_string())
 }
 
-/// Deserialize value signatures from a binary interface artifact.
-pub fn decode_interface(bytes: &[u8]) -> Result<Vec<(String, Scheme)>, String> {
+/// Deserialize a complete module interface artifact.
+pub fn decode_interface(bytes: &[u8]) -> Result<ModuleInterface, String> {
     let artifact: InterfaceArtifact = bincode::deserialize(bytes).map_err(|error| error.to_string())?;
     if artifact.version != 1 { return Err("unsupported interface version".into()); }
-    artifact.values.into_iter().map(|value| {
-        Ok((value.name, Scheme {
-            quantifier: value.scheme.quantifier.into_iter().map(TypeVarId::from_index).collect(),
-            body: tir_type(value.scheme.body),
-        }))
-    }).collect()
+    Ok(ModuleInterface {
+        values: artifact.values.into_iter().map(|value| ValueDescription { name: Ident::from_string(value.name), scheme: tir_scheme(value.scheme) }).collect(),
+        types: artifact.types.into_iter().map(|ty| TypeDescription {
+            name: Ident::from_string(ty.name),
+            params: ty.params.into_iter().map(|name| ast::TypeVar { name, span: crate::parser::lexer::Span::new(0, 0) }).collect(),
+            body: tir_type(ty.body),
+        }).collect(),
+        constructors: artifact.constructors.into_iter().map(|constructor| ConstructorDescription {
+            name: Ident::from_string(constructor.name), owner: ident_from_path(&constructor.owner), scheme: tir_scheme(constructor.scheme), tag: constructor.tag,
+            result: tir_type(constructor.result), arguments: constructor.arguments.into_iter().map(tir_type).collect(),
+        }).collect(),
+        record_fields: artifact.record_fields.into_iter().map(|field| RecordFieldDescription {
+            name: Ident::from_string(field.name), owner: tir_type(field.owner), field: tir_type(field.field), index: field.index,
+        }).collect(),
+        modules: Vec::new(),
+    })
+}
+
+fn artifact_scheme(scheme: &Scheme) -> ArtifactScheme {
+    ArtifactScheme { quantifier: scheme.quantifier.iter().map(|id| id.index()).collect(), body: artifact_type(&scheme.body) }
+}
+
+fn tir_scheme(scheme: ArtifactScheme) -> Scheme {
+    Scheme { quantifier: scheme.quantifier.into_iter().map(TypeVarId::from_index).collect(), body: tir_type(scheme.body) }
 }
 
 fn artifact_type(ty: &Type) -> ArtifactType {

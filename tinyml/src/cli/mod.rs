@@ -360,10 +360,9 @@ fn load_interface_values(
                 continue;
             }
             let bytes = fs::read(path).into_diagnostic()?;
-            values.extend(
-                checker::interface::decode_interface(&bytes)
-                    .map_err(|error| miette!("malformed interface artifact: {error}"))?,
-            );
+            let interface = checker::interface::decode_interface(&bytes)
+                .map_err(|error| miette!("malformed interface artifact: {error}"))?;
+            values.extend(interface.values.into_iter().map(|value| (value.name.as_name().unwrap_or("").to_string(), value.scheme)));
         }
     }
     values.sort_by(|left, right| left.0.cmp(&right.0));
