@@ -1,82 +1,48 @@
-/// The uninhabited type for computations that never produce a value.
-type Never
+// Core algebraic data types and pure standard operations.
 
-/// The target-sized integer type.
-type int
+type Option<'value> =
+  | None
+  | Some('value)
 
-/// Text stored as a runtime string value.
-type String
+type Result<'value, 'error> =
+  | Ok('value)
+  | Err('error)
 
-/// Persistent lists of values.
 type List<'value> =
   | Nil
   | Cons('value, List<'value>)
 
-/// Optional values.
-type Option<'value> = Some('value) | None
+let option_map = fn f -> fn value -> match value {
+  | None -> None
+  | Some(item) -> Some(f item)
+}
 
-/// Fallible results.
-type Result<'value, 'err> = Ok('value) | Err('err)
+let option_unwrap_or = fn fallback -> fn value -> match value {
+  | None -> fallback
+  | Some(item) -> item
+}
 
-/// Add two values with the target primitive implementation.
-external (+) : 'a -> 'a -> 'a = "riot_rt_prim_add"
+let result_map = fn f -> fn value -> match value {
+  | Ok(item) -> Ok(f item)
+  | Err(error) -> Err(error)
+}
 
-/// Subtract two values with the target primitive implementation.
-external (-) : 'a -> 'a -> 'a = "riot_rt_prim_sub"
+let result_unwrap_or = fn fallback -> fn value -> match value {
+  | Ok(item) -> item
+  | Err(_) -> fallback
+}
 
-/// Negate one value with the target primitive implementation.
-external neg : 'a -> 'a = "riot_rt_prim_neg"
+let list_map = fn f -> fn values -> match values {
+  | Nil -> Nil
+  | Cons(item, rest) -> Cons(f item, list_map f rest)
+}
 
-/// Multiply two values with the target primitive implementation.
-external (*) : 'a -> 'a -> 'a = "riot_rt_prim_mul"
+let list_length = fn values -> match values {
+  | Nil -> 0
+  | Cons(_, rest) -> 1 + list_length rest
+}
 
-/// Divide two values with the target primitive implementation.
-external (/) : 'a -> 'a -> 'a = "riot_rt_prim_div"
-
-/// Compute the remainder of two values with the target primitive implementation.
-external (%) : 'a -> 'a -> 'a = "riot_rt_prim_mod"
-
-/// Compare two values for equality.
-external (==) : 'a -> 'a -> bool = "riot_rt_prim_eq"
-
-/// Compare two ordered values.
-external (<) : 'a -> 'a -> bool = "riot_rt_prim_lt"
-
-/// Combine two boolean values.
-external (&&) : bool -> bool -> bool = "riot_rt_prim_and"
-
-/// Combine two boolean values.
-external (||) : bool -> bool -> bool = "riot_rt_prim_or"
-
-/// Negate a boolean value.
-external (!) : bool -> bool = "riot_rt_prim_not"
-
-/// Print a debug representation of any boxed runtime value.
-external dbg : 'msg -> unit = "riot_rt_dbg_value"
-
-/// Print one string followed by a newline.
-external println : String -> unit = "riot_rt_println"
-
-/// Send one message to an actor.
-external send : actor_id<'msg> -> 'msg -> unit = "riot_rt_send_value"
-
-/// Monitor an actor and receive a Down message when it exits.
-external monitor : actor_id<'msg> -> unit = "riot_rt_monitor"
-
-/// Link the current actor to another actor.
-external link : actor_id<'msg> -> unit = "riot_rt_link"
-
-/// Return the length of a list.
-external list_len : List<'item> -> i64 = "riot_rt_value_list_len"
-
-/// Return a list with one item prepended.
-external list_cons : 'item -> List<'item> -> List<'item> = "riot_rt_value_list_cons"
-
-/// Return the list item at an index.
-external list_get : List<'item> -> i64 -> 'item = "riot_rt_value_list_get"
-
-/// Return the length of a string.
-external string_len : String -> i64 = "riot_rt_value_string_len"
-
-/// Concatenate two strings.
-external string_concat : String -> String -> String = "riot_rt_value_string_concat"
+let list_fold = fn f -> fn initial -> fn values -> match values {
+  | Nil -> initial
+  | Cons(item, rest) -> list_fold f (f initial item) rest
+}
