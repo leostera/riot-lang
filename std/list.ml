@@ -1,5 +1,17 @@
-/// Return the length of a list.
-external len : List<'item> -> i64 = "riot_rt_value_list_len"
+// Pure list operations.
+use Prelude.{List, Nil, Cons}
 
-/// Return the list item at an index.
-external get : List<'item> -> i64 -> 'item = "riot_rt_value_list_get"
+let map = fn f -> fn values -> match values {
+  | Nil -> Nil
+  | Cons(item, rest) -> Cons(f item, map f rest)
+}
+
+let length = fn values -> match values {
+  | Nil -> 0
+  | Cons(_, rest) -> 1 + length rest
+}
+
+let fold = fn f -> fn initial -> fn values -> match values {
+  | Nil -> initial
+  | Cons(item, rest) -> fold f (f initial item) rest
+}

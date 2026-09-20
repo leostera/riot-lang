@@ -1,8 +1,12 @@
-/// Return true when the option is Some.
-external is_some : Option<'value> -> bool = "riot_rt_option_is_some"
+// Pure option operations.
+use Prelude.{Option, None, Some}
 
-/// Return true when the option is None.
-external is_none : Option<'value> -> bool = "riot_rt_option_is_none"
+let map = fn f -> fn value -> match value {
+  | None -> None
+  | Some(item) -> Some(f item)
+}
 
-/// Return the contained value or a fallback.
-external unwrap_or : Option<'value> -> 'value -> 'value = "riot_rt_option_unwrap_or"
+let unwrap_or = fn fallback -> fn value -> match value {
+  | None -> fallback
+  | Some(item) -> item
+}
