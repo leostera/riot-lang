@@ -345,7 +345,14 @@ fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> R
         .map(Path::to_path_buf)
         .unwrap_or_else(|| default_compile_output(file).with_extension("mjs"));
     fs::write(&output, tinyml::backend::js::emit_js_string(&js)).into_diagnostic()?;
-    write_interface_artifact(&output, &checked.summary.interface)?;
+    let import_names = imports
+        .iter()
+        .map(|import| match import {
+            parser::ast::UseDecl::Concrete { module, .. }
+            | parser::ast::UseDecl::Wildcard { module, .. } => js_module_name(module),
+        })
+        .collect::<Vec<_>>();
+    write_interface_artifact(&output, &checked.summary.interface, &import_names)?;
     Ok(())
 }
 
@@ -399,9 +406,10 @@ fn js_module_name(ident: &parser::ident::Ident) -> String {
 fn write_interface_artifact(
     output: &Path,
     interface: &checker::interface::ModuleInterface,
+    imports: &[String],
 ) -> Result<()> {
     let artifact = output.with_extension("tmi");
-    let contents = checker::interface::encode_interface(interface)
+    let contents = checker::interface::encode_interface_with_imports(interface, imports)
         .map_err(|error| miette!("could not encode interface: {error}"))?;
     fs::write(artifact, contents).into_diagnostic()
 }

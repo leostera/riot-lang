@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 struct InterfaceArtifact {
     version: u32,
     values: Vec<ArtifactValue>,
+    imports: Vec<String>,
     types: Vec<ArtifactTypeDecl>,
     constructors: Vec<ArtifactConstructor>,
     record_fields: Vec<ArtifactRecordField>,
@@ -63,6 +64,13 @@ enum ArtifactType {
 
 /// Serialize the checked value signatures as a versioned binary artifact.
 pub fn encode_interface(interface: &ModuleInterface) -> Result<Vec<u8>, String> {
+    encode_interface_with_imports(interface, &[])
+}
+
+pub fn encode_interface_with_imports(
+    interface: &ModuleInterface,
+    imports: &[String],
+) -> Result<Vec<u8>, String> {
     let artifact = InterfaceArtifact {
         version: 1,
         values: interface.values.iter().filter_map(|value| {
@@ -71,6 +79,7 @@ pub fn encode_interface(interface: &ModuleInterface) -> Result<Vec<u8>, String> 
                 scheme: artifact_scheme(&value.scheme),
             })
         }).collect(),
+        imports: imports.to_vec(),
         types: interface.types.iter().filter_map(|ty| ty.name.as_name().map(|name| ArtifactTypeDecl {
             name: name.to_string(),
             params: ty.params.iter().map(|param| param.name.clone()).collect(),
@@ -96,9 +105,15 @@ pub fn encode_interface(interface: &ModuleInterface) -> Result<Vec<u8>, String> 
 
 /// Deserialize a complete module interface artifact.
 pub fn decode_interface(bytes: &[u8]) -> Result<ModuleInterface, String> {
+    Ok(decode_interface_with_imports(bytes)?.0)
+}
+
+pub fn decode_interface_with_imports(
+    bytes: &[u8],
+) -> Result<(ModuleInterface, Vec<String>), String> {
     let artifact: InterfaceArtifact = bincode::deserialize(bytes).map_err(|error| error.to_string())?;
     if artifact.version != 1 { return Err("unsupported interface version".into()); }
-    Ok(ModuleInterface {
+    Ok((ModuleInterface {
         values: artifact.values.into_iter().map(|value| ValueDescription { name: Ident::from_string(value.name), scheme: tir_scheme(value.scheme) }).collect(),
         types: artifact.types.into_iter().map(|ty| TypeDescription {
             name: Ident::from_string(ty.name),
@@ -113,7 +128,7 @@ pub fn decode_interface(bytes: &[u8]) -> Result<ModuleInterface, String> {
             name: Ident::from_string(field.name), owner: tir_type(field.owner), field: tir_type(field.field), index: field.index,
         }).collect(),
         modules: Vec::new(),
-    })
+    }, artifact.imports))
 }
 
 fn artifact_scheme(scheme: &Scheme) -> ArtifactScheme {

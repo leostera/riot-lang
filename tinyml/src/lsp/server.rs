@@ -80,20 +80,9 @@ fn check_source_with_include_dirs(source: &str, include_dirs: &[PathBuf]) -> Che
         }
         _ => None,
     }).collect::<std::collections::HashSet<_>>();
-    for dir in include_dirs {
-        let Ok(entries) = fs::read_dir(dir) else { continue };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|ext| ext.to_str()) != Some("tmi")
-                || !modules.contains(&path.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default().to_string())
-            { continue; }
-            let Ok(bytes) = fs::read(path) else { continue };
-            let Ok(interface) = checker::interface::decode_interface(&bytes) else { continue; };
-            imported.values.extend(interface.values);
-            imported.types.extend(interface.types);
-            imported.constructors.extend(interface.constructors);
-            imported.record_fields.extend(interface.record_fields);
-        }
+    let mut visited = std::collections::HashSet::new();
+    for module in modules {
+        load_interface_chain(&module, include_dirs, &mut visited, &mut imported);
     }
     let summary = checker::Checker::new().check_module_with_interface(&ast, &imported);
     let diagnostics = diagnostics::checker_diagnostics(source, &summary.diagnostics);
@@ -227,6 +216,28 @@ impl LanguageServer for Backend {
             &checked.summary,
             position,
         ))
+    }
+}
+
+fn load_interface_chain(
+    module: &str,
+    include_dirs: &[PathBuf],
+    visited: &mut std::collections::HashSet<String>,
+    imported: &mut checker::interface::ModuleInterface,
+) {
+    if !visited.insert(module.to_string()) { return; }
+    for dir in include_dirs {
+        let path = dir.join(format!("{module}.tmi"));
+        let Ok(bytes) = fs::read(path) else { continue; };
+        let Ok((interface, imports)) = checker::interface::decode_interface_with_imports(&bytes) else { continue; };
+        imported.values.extend(interface.values);
+        imported.types.extend(interface.types);
+        imported.constructors.extend(interface.constructors);
+        imported.record_fields.extend(interface.record_fields);
+        for dependency in imports {
+            load_interface_chain(&dependency, include_dirs, visited, imported);
+        }
+        break;
     }
 }
 
