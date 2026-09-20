@@ -68,8 +68,28 @@ fn artifact_type(ty: &Type) -> ArtifactType {
         Type::Generic(id) => ArtifactType::Generic(id.index()),
         Type::Tuple(items) => ArtifactType::Tuple(items.iter().map(artifact_type).collect()),
         Type::Arrow { parameter, result } => ArtifactType::Arrow(Box::new(artifact_type(parameter)), Box::new(artifact_type(result))),
-        Type::Apply { ident, arguments } => ArtifactType::Apply(ident.as_name().unwrap_or("_").to_string(), arguments.iter().map(artifact_type).collect()),
+        Type::Apply { ident, arguments } => ArtifactType::Apply(ident_path(ident), arguments.iter().map(artifact_type).collect()),
     }
+}
+
+fn ident_path(ident: &Ident) -> String {
+    match ident {
+        Ident::Name { name, .. } => name.clone(),
+        Ident::Qualified { name, rest, .. } => format!("{}.{}", name, ident_path(rest)),
+    }
+}
+
+fn ident_from_path(path: &str) -> Ident {
+    let mut parts = path.split('.').rev();
+    let mut ident = Ident::from_string(parts.next().unwrap_or(path));
+    for part in parts {
+        ident = Ident::Qualified {
+            name: part.to_string(),
+            rest: Box::new(ident),
+            span: crate::parser::lexer::Span::new(0, 0),
+        };
+    }
+    ident
 }
 
 fn tir_type(ty: ArtifactType) -> Type {
@@ -78,7 +98,7 @@ fn tir_type(ty: ArtifactType) -> Type {
         ArtifactType::Generic(id) => Type::Generic(TypeVarId::from_index(id)),
         ArtifactType::Tuple(items) => Type::Tuple(items.into_iter().map(tir_type).collect()),
         ArtifactType::Arrow(parameter, result) => Type::Arrow { parameter: Box::new(tir_type(*parameter)), result: Box::new(tir_type(*result)) },
-        ArtifactType::Apply(name, arguments) => Type::Apply { ident: Ident::from_string(name), arguments: arguments.into_iter().map(tir_type).collect() },
+        ArtifactType::Apply(name, arguments) => Type::Apply { ident: ident_from_path(&name), arguments: arguments.into_iter().map(tir_type).collect() },
     }
 }
 
