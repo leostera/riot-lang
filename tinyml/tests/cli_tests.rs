@@ -321,6 +321,41 @@ fn compile_js_writes_module_and_interface_artifacts() {
 }
 
 #[test]
+fn compile_js_consumes_interface_artifacts() {
+    let dir = temp_dir("compile-js-import");
+    let prelude = dir.join("Prelude.ml");
+    let main = dir.join("Main.ml");
+    fs::write(&prelude, "let answer = 41\n").unwrap();
+    fs::write(&main, "use Prelude.{answer}\nlet result = answer + 1\n").unwrap();
+
+    for (source, output) in [(&prelude, "Prelude.mjs"), (&main, "Main.mjs")] {
+        let mut command = Command::new(tinyml());
+        command
+            .arg("compile")
+            .arg("--target")
+            .arg("js")
+            .arg("-o")
+            .arg(dir.join(output));
+        if source == &main {
+            command.arg("-I").arg(&dir);
+        }
+        let result = command.arg(source).output().unwrap();
+        assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    }
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ result }} from {:?}; if (result !== 42) process.exit(1)",
+            dir.join("Main.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);

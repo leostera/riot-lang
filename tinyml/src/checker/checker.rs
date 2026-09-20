@@ -21,6 +21,27 @@ impl Checker {
     }
 
     pub fn check_module(&mut self, module: &ast::Module) -> ModuleSummary {
+        self.check_module_with_imported_values(module, &[])
+    }
+
+    /// Check a module with values supplied by previously compiled interfaces.
+    ///
+    /// Interface loading deliberately starts with opaque monomorphic holes. The
+    /// source module can constrain imported functions at call sites while the
+    /// artifact format is still kept tiny and textual.
+    pub fn check_module_with_imported_values(
+        &mut self,
+        module: &ast::Module,
+        imported_values: &[String],
+    ) -> ModuleSummary {
+        for name in imported_values {
+            if !self.state.has_value(name) {
+                let ty = self.state.fresh_var();
+                let _ = self
+                    .state
+                    .add_value(name.clone(), super::scheme::Scheme::monomorphic(ty));
+            }
+        }
         Typer::new(&mut self.state).type_module(module)
     }
 }

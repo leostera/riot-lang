@@ -212,7 +212,7 @@ fn compile_command(
     }
 
     if target == "js" {
-        return compile_js(file, output);
+        return compile_js(file, output, include_dirs);
     }
 
     if target != "aarch64-apple-darwin" {
@@ -303,8 +303,17 @@ fn print_check_diagnostics(
 }
 
 fn checked_pipeline(file: &Path) -> Result<CheckedPipeline> {
+    checked_pipeline_with_imports(file, &[])
+}
+
+fn checked_pipeline_with_imports(
+    file: &Path,
+    include_dirs: &[PathBuf],
+) -> Result<CheckedPipeline> {
     let parsed = parse_source_file(file)?;
-    let summary = checker::check_module(&parsed.ast);
+    let imported_values = load_interface_values(include_dirs)?;
+    let summary = checker::Checker::new()
+        .check_module_with_imported_values(&parsed.ast, &imported_values);
     if !summary.diagnostics.is_empty() {
         print_check_diagnostics(&parsed.source_name, &parsed.source, &summary.diagnostics);
         return Err(miette!("typecheck failed"));
@@ -315,8 +324,8 @@ fn checked_pipeline(file: &Path) -> Result<CheckedPipeline> {
     })
 }
 
-fn compile_js(file: &Path, output: Option<&Path>) -> Result<()> {
-    let checked = checked_pipeline(file)?;
+fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> Result<()> {
+    let checked = checked_pipeline_with_imports(file, include_dirs)?;
     let imports = checked
         .ast
         .items
@@ -338,6 +347,27 @@ fn compile_js(file: &Path, output: Option<&Path>) -> Result<()> {
     fs::write(&output, tinyml::backend::js::emit_js_string(&js)).into_diagnostic()?;
     write_interface_artifact(&output, &checked.summary.interface)?;
     Ok(())
+}
+
+fn load_interface_values(include_dirs: &[PathBuf]) -> Result<Vec<String>> {
+    let mut values = Vec::new();
+    for dir in include_dirs {
+        for entry in fs::read_dir(dir).into_diagnostic()? {
+            let path = entry.into_diagnostic()?.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("tmi") {
+                continue;
+            }
+            let text = fs::read_to_string(path).into_diagnostic()?;
+            for line in text.lines() {
+                if let Some(name) = line.strip_prefix("value ") {
+                    values.push(name.to_string());
+                }
+            }
+        }
+    }
+    values.sort();
+    values.dedup();
+    Ok(values)
 }
 
 fn write_interface_artifact(
