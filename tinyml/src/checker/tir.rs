@@ -53,7 +53,11 @@ impl TypeVarId {
         Self(id)
     }
 
-    pub(crate) fn index(self) -> usize {
+    pub fn from_index(id: usize) -> Self {
+        Self(id)
+    }
+
+    pub fn index(self) -> usize {
         self.0
     }
 }

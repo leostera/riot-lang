@@ -349,7 +349,9 @@ fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> R
     Ok(())
 }
 
-fn load_interface_values(include_dirs: &[PathBuf]) -> Result<Vec<String>> {
+fn load_interface_values(
+    include_dirs: &[PathBuf],
+) -> Result<Vec<(String, checker::scheme::Scheme)>> {
     let mut values = Vec::new();
     for dir in include_dirs {
         for entry in fs::read_dir(dir).into_diagnostic()? {
@@ -357,16 +359,15 @@ fn load_interface_values(include_dirs: &[PathBuf]) -> Result<Vec<String>> {
             if path.extension().and_then(|ext| ext.to_str()) != Some("tmi") {
                 continue;
             }
-            let text = fs::read_to_string(path).into_diagnostic()?;
-            for line in text.lines() {
-                if let Some(name) = line.strip_prefix("value ") {
-                    values.push(name.to_string());
-                }
-            }
+            let bytes = fs::read(path).into_diagnostic()?;
+            values.extend(
+                checker::interface::decode_interface(&bytes)
+                    .map_err(|error| miette!("malformed interface artifact: {error}"))?,
+            );
         }
     }
-    values.sort();
-    values.dedup();
+    values.sort_by(|left, right| left.0.cmp(&right.0));
+    values.dedup_by(|left, right| left.0 == right.0);
     Ok(values)
 }
 
@@ -375,23 +376,11 @@ fn write_interface_artifact(
     interface: &checker::interface::ModuleInterface,
 ) -> Result<()> {
     let artifact = output.with_extension("tmi");
-    let mut contents = String::from("tinyml-interface-v1\n");
-    for value in &interface.values {
-        if let Some(name) = value.name.as_name() {
-            contents.push_str("value ");
-            contents.push_str(name);
-            contents.push('\n');
-        }
-    }
-    for ty in &interface.types {
-        if let Some(name) = ty.name.as_name() {
-            contents.push_str("type ");
-            contents.push_str(name);
-            contents.push('\n');
-        }
-    }
+    let contents = checker::interface::encode_interface(interface)
+        .map_err(|error| miette!("could not encode interface: {error}"))?;
     fs::write(artifact, contents).into_diagnostic()
 }
+
 
 fn native_pipeline(file: &Path) -> Result<NativePipeline> {
     let checked = checked_pipeline(file)?;

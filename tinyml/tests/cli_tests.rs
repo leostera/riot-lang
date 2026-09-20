@@ -315,9 +315,8 @@ fn compile_js_writes_module_and_interface_artifacts() {
         .unwrap();
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     assert!(dir.join("prelude.mjs").exists());
-    let interface = fs::read_to_string(dir.join("prelude.tmi")).unwrap();
-    assert!(interface.contains("tinyml-interface-v1"));
-    assert!(interface.contains("value answer"));
+    let interface = fs::read(dir.join("prelude.tmi")).unwrap();
+    assert!(!interface.is_empty());
 }
 
 #[test]
@@ -325,8 +324,12 @@ fn compile_js_consumes_interface_artifacts() {
     let dir = temp_dir("compile-js-import");
     let prelude = dir.join("Prelude.ml");
     let main = dir.join("Main.ml");
-    fs::write(&prelude, "let answer = 41\n").unwrap();
-    fs::write(&main, "use Prelude.{answer}\nlet result = answer + 1\n").unwrap();
+    fs::write(&prelude, "let answer = 41\nlet identity = fn x -> x\n").unwrap();
+    fs::write(
+        &main,
+        "use Prelude.{answer, identity}\nlet result = identity (answer + 1)\n",
+    )
+    .unwrap();
 
     for (source, output) in [(&prelude, "Prelude.mjs"), (&main, "Main.mjs")] {
         let mut command = Command::new(tinyml());

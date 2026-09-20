@@ -32,14 +32,11 @@ impl Checker {
     pub fn check_module_with_imported_values(
         &mut self,
         module: &ast::Module,
-        imported_values: &[String],
+        imported_values: &[(String, super::scheme::Scheme)],
     ) -> ModuleSummary {
-        for name in imported_values {
+        for (name, scheme) in imported_values {
             if !self.state.has_value(name) {
-                let ty = self.state.fresh_var();
-                let _ = self
-                    .state
-                    .add_value(name.clone(), super::scheme::Scheme::monomorphic(ty));
+                let _ = self.state.add_value(name.clone(), scheme.clone());
             }
         }
         Typer::new(&mut self.state).type_module(module)
