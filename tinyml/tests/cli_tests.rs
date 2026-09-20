@@ -299,6 +299,28 @@ fn emitted_string_concatenation_executes() {
 }
 
 #[test]
+fn compile_js_writes_module_and_interface_artifacts() {
+    let dir = temp_dir("compile-js");
+    let file = dir.join("prelude.ml");
+    fs::write(&file, "let answer = 42\n").unwrap();
+
+    let output = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("js")
+        .arg("-o")
+        .arg(dir.join("prelude.mjs"))
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(dir.join("prelude.mjs").exists());
+    let interface = fs::read_to_string(dir.join("prelude.tmi")).unwrap();
+    assert!(interface.contains("tinyml-interface-v1"));
+    assert!(interface.contains("value answer"));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);

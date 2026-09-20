@@ -52,9 +52,12 @@ enum Command {
         /// Compilation target triple. Only aarch64-apple-darwin is supported for now.
         #[arg(long, default_value = "aarch64-apple-darwin")]
         target: String,
-        /// Output executable path. Defaults to the input path without its extension.
+        /// Output path. JavaScript defaults to a `.mjs` module.
         #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Search path for compiled module interfaces.
+        #[arg(short = 'I', value_name = "DIR")]
+        include_dirs: Vec<PathBuf>,
         file: PathBuf,
     },
 }
@@ -110,8 +113,9 @@ pub fn run() -> Result<()> {
         Command::Compile {
             target,
             output,
+            include_dirs,
             file,
-        } => compile_command(&file, &target, output.as_deref()),
+        } => compile_command(&file, &target, output.as_deref(), &include_dirs),
     }
 }
 
@@ -195,7 +199,22 @@ fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Re
     Ok(())
 }
 
-fn compile_command(file: &Path, target: &str, output: Option<&Path>) -> Result<()> {
+fn compile_command(
+    file: &Path,
+    target: &str,
+    output: Option<&Path>,
+    include_dirs: &[PathBuf],
+) -> Result<()> {
+    for dir in include_dirs {
+        if !dir.is_dir() {
+            return Err(miette!("include directory does not exist: {}", dir.display()));
+        }
+    }
+
+    if target == "js" {
+        return compile_js(file, output);
+    }
+
     if target != "aarch64-apple-darwin" {
         return Err(miette!(
             "unsupported compile target `{target}`; only aarch64-apple-darwin is supported"
@@ -294,6 +313,54 @@ fn checked_pipeline(file: &Path) -> Result<CheckedPipeline> {
         ast: parsed.ast,
         summary,
     })
+}
+
+fn compile_js(file: &Path, output: Option<&Path>) -> Result<()> {
+    let checked = checked_pipeline(file)?;
+    let imports = checked
+        .ast
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let lambda = lambda::translate(&checked.summary.tir);
+    let js = tinyml::backend::js::lower_with_imports(
+        &checked.summary.interface,
+        &lambda,
+        &imports,
+    );
+    let output = output
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| default_compile_output(file).with_extension("mjs"));
+    fs::write(&output, tinyml::backend::js::emit_js_string(&js)).into_diagnostic()?;
+    write_interface_artifact(&output, &checked.summary.interface)?;
+    Ok(())
+}
+
+fn write_interface_artifact(
+    output: &Path,
+    interface: &checker::interface::ModuleInterface,
+) -> Result<()> {
+    let artifact = output.with_extension("tmi");
+    let mut contents = String::from("tinyml-interface-v1\n");
+    for value in &interface.values {
+        if let Some(name) = value.name.as_name() {
+            contents.push_str("value ");
+            contents.push_str(name);
+            contents.push('\n');
+        }
+    }
+    for ty in &interface.types {
+        if let Some(name) = ty.name.as_name() {
+            contents.push_str("type ");
+            contents.push_str(name);
+            contents.push('\n');
+        }
+    }
+    fs::write(artifact, contents).into_diagnostic()
 }
 
 fn native_pipeline(file: &Path) -> Result<NativePipeline> {
