@@ -311,9 +311,9 @@ fn checked_pipeline_with_imports(
     include_dirs: &[PathBuf],
 ) -> Result<CheckedPipeline> {
     let parsed = parse_source_file(file)?;
-    let imported_values = load_interface_values(include_dirs)?;
+    let imported = load_interfaces(&parsed.ast, include_dirs)?;
     let summary = checker::Checker::new()
-        .check_module_with_imported_values(&parsed.ast, &imported_values);
+        .check_module_with_interface(&parsed.ast, &imported);
     if !summary.diagnostics.is_empty() {
         print_check_diagnostics(&parsed.source_name, &parsed.source, &summary.diagnostics);
         return Err(miette!("typecheck failed"));
@@ -349,25 +349,51 @@ fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> R
     Ok(())
 }
 
-fn load_interface_values(
+fn load_interfaces(
+    module: &parser::ast::Module,
     include_dirs: &[PathBuf],
-) -> Result<Vec<(String, checker::scheme::Scheme)>> {
-    let mut values = Vec::new();
+) -> Result<checker::interface::ModuleInterface> {
+    let modules = module
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            parser::ast::ModuleItem::UseDecl(parser::ast::UseDecl::Concrete { module, .. })
+            | parser::ast::ModuleItem::UseDecl(parser::ast::UseDecl::Wildcard { module, .. }) => {
+                Some(js_module_name(module))
+            }
+            _ => None,
+        })
+        .collect::<std::collections::HashSet<_>>();
+    let mut imported = checker::interface::ModuleInterface::empty();
     for dir in include_dirs {
         for entry in fs::read_dir(dir).into_diagnostic()? {
             let path = entry.into_diagnostic()?.path();
-            if path.extension().and_then(|ext| ext.to_str()) != Some("tmi") {
+            if path.extension().and_then(|ext| ext.to_str()) != Some("tmi")
+                || !modules.contains(
+                    &path.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default().to_string(),
+                )
+            {
                 continue;
             }
             let bytes = fs::read(path).into_diagnostic()?;
             let interface = checker::interface::decode_interface(&bytes)
                 .map_err(|error| miette!("malformed interface artifact: {error}"))?;
-            values.extend(interface.values.into_iter().map(|value| (value.name.as_name().unwrap_or("").to_string(), value.scheme)));
+            imported.values.extend(interface.values);
+            imported.types.extend(interface.types);
+            imported.constructors.extend(interface.constructors);
+            imported.record_fields.extend(interface.record_fields);
         }
     }
-    values.sort_by(|left, right| left.0.cmp(&right.0));
-    values.dedup_by(|left, right| left.0 == right.0);
-    Ok(values)
+    Ok(imported)
+}
+
+fn js_module_name(ident: &parser::ident::Ident) -> String {
+    match ident {
+        parser::ident::Ident::Name { name, .. } => name.clone(),
+        parser::ident::Ident::Qualified { name, rest, .. } => {
+            format!("{}_{}", name, js_module_name(rest))
+        }
+    }
 }
 
 fn write_interface_artifact(

@@ -5,7 +5,12 @@
 
 use crate::parser::ast;
 
-use super::{state::State, typer::Typer};
+use super::{
+    env::{ConstructorBinding, RecordFieldBinding, TypeBinding},
+    interface::ModuleInterface,
+    state::State,
+    typer::Typer,
+};
 
 pub use super::typer::ModuleSummary;
 
@@ -24,22 +29,64 @@ impl Checker {
         self.check_module_with_imported_values(module, &[])
     }
 
-    /// Check a module with values supplied by previously compiled interfaces.
-    ///
-    /// Interface loading deliberately starts with opaque monomorphic holes. The
-    /// source module can constrain imported functions at call sites while the
-    /// artifact format is still kept tiny and textual.
+    /// Check a module against declarations loaded from compiled interfaces.
+    pub fn check_module_with_interface(
+        &mut self,
+        module: &ast::Module,
+        imported: &ModuleInterface,
+    ) -> ModuleSummary {
+        for value in &imported.values {
+            if let Some(name) = value.name.as_name() && !self.state.has_value(name) {
+                let _ = self.state.add_value(name, value.scheme.clone());
+            }
+        }
+        for ty in &imported.types {
+            if let Some(name) = ty.name.as_name() {
+                self.state.env_mut().add_type(
+                    name.to_string(),
+                    TypeBinding { arity: ty.params.len() },
+                );
+            }
+        }
+        for constructor in &imported.constructors {
+            if let Some(name) = constructor.name.as_name() {
+                self.state.env_mut().add_constructor(
+                    name.to_string(),
+                    ConstructorBinding {
+                        scheme: constructor.scheme.clone(),
+                        field_names: Vec::new(),
+                        result_type: constructor.owner.as_name().unwrap_or("").to_string(),
+                    },
+                );
+            }
+        }
+        for field in &imported.record_fields {
+            if let Some(name) = field.name.as_name() {
+                self.state.env_mut().add_record_field(
+                    name.to_string(),
+                    RecordFieldBinding { description: field.clone() },
+                );
+            }
+        }
+        Typer::new(&mut self.state).type_module(module)
+    }
+
     pub fn check_module_with_imported_values(
         &mut self,
         module: &ast::Module,
         imported_values: &[(String, super::scheme::Scheme)],
     ) -> ModuleSummary {
-        for (name, scheme) in imported_values {
-            if !self.state.has_value(name) {
-                let _ = self.state.add_value(name.clone(), scheme.clone());
-            }
-        }
-        Typer::new(&mut self.state).type_module(module)
+        let interface = ModuleInterface {
+            values: imported_values
+                .iter()
+                .map(|(name, scheme)| super::interface::ValueDescription {
+                    name: crate::parser::ident::Ident::from_string(name),
+                    scheme: scheme.clone(),
+                })
+                .collect(),
+            ..ModuleInterface::empty()
+        };
+        self.check_module_with_interface(module, &interface)
     }
 }
 
