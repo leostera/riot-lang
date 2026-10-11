@@ -49,8 +49,9 @@ produces the JS compiler, that compiler produces a native compiler, and the
 native compiler builds and runs a fixture. The native checker performs rank-1
 HM inference for its supported subset, with tests for local and imported
 polymorphism and nominal type mismatches. Runtime discovery is exercised from
-outside the repository working directory; clean-checkout validation and final
-documentation reconciliation remain part of the release gate.
+outside the repository working directory. The clean-checkout validation and
+documentation reconciliation described below have passed; the native route
+remains provisional until the release gate is formally closed.
 
 The bootstrap has two compilers and two backend roles:
 
