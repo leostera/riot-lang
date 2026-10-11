@@ -1,0 +1,63 @@
+---
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
+expression: "lex_snapshot(\"tests/fixtures/0010_hello_world.ml\")"
+---
+[
+    Token {
+        kind: Let,
+        span: Span {
+            start: 0,
+            end: 3,
+        },
+    },
+    Token {
+        kind: Ident(
+            "main",
+        ),
+        span: Span {
+            start: 4,
+            end: 8,
+        },
+    },
+    Token {
+        kind: Ident(
+            "args",
+        ),
+        span: Span {
+            start: 9,
+            end: 13,
+        },
+    },
+    Token {
+        kind: Equal,
+        span: Span {
+            start: 14,
+            end: 15,
+        },
+    },
+    Token {
+        kind: Ident(
+            "println",
+        ),
+        span: Span {
+            start: 16,
+            end: 23,
+        },
+    },
+    Token {
+        kind: String(
+            "\"hello world\"",
+        ),
+        span: Span {
+            start: 24,
+            end: 37,
+        },
+    },
+    Token {
+        kind: Eof,
+        span: Span {
+            start: 38,
+            end: 38,
+        },
+    },
+]

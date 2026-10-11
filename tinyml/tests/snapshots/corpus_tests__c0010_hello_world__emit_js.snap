@@ -1,0 +1,9 @@
+---
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
+expression: "emit_js_snapshot(\"tests/fixtures/0010_hello_world.ml\")"
+---
+function main(args: unknown): unknown {
+  return println("hello world");
+}
+
+export { main };
