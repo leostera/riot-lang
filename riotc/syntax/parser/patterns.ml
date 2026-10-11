@@ -123,13 +123,17 @@ let parse_parenthesized_pattern_tail = fn parse_nested_pattern -> fn (first: Pat
         })
         | _ -> Err("expected `)` after pattern annotation")
       }
-    | Cons(SymbolToken(TokenInfo { lexeme: ",", span: _ }), remaining) ->
-      match (parse_pattern_list_tail parse_nested_pattern (Cons(first, Nil)) remaining) {
+    | Cons(SymbolToken(TokenInfo { lexeme: ",", span: _ }), _) ->
+      match (parse_pattern_list_tail parse_nested_pattern (Cons(first, Nil)) tokens) {
         | Err(message) -> Err(message)
-        | Ok(ParseStep { value: patterns, remaining_tokens }) -> Ok(ParseStep {
+        | Ok(ParseStep {
+            value: patterns,
+            remaining_tokens: Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), rest)
+          }) -> Ok(ParseStep {
           value: TuplePattern(patterns),
-          remaining_tokens: remaining_tokens
+          remaining_tokens: rest
         })
+        | _ -> Err("expected `)` after tuple pattern")
       }
     | Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), remaining) ->
       Ok(ParseStep { value: first, remaining_tokens: remaining })

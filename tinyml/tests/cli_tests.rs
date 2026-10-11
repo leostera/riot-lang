@@ -668,7 +668,7 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
     let client_source = dir.join("parser_client.ml");
     fs::write(
         &client_source,
-        "use Syntax.Parser.SourceModule.{parse_source_module}\nlet main = fn () -> 0\n",
+        "use Syntax.Parser.SourceModule.{parse_source_module}\nuse Modules.{load_source_units}\nlet main = fn () -> 0\n",
     )
     .unwrap();
     let compile = Command::new(tinyml())
@@ -687,10 +687,40 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
     );
 
     let source_paths = riotml_sources(&include_root);
+    let valid_dir = dir.join("valid");
+    fs::create_dir_all(&valid_dir).unwrap();
+    let valid_root = valid_dir.join("main.ml");
+    fs::write(
+        &valid_root,
+        "use Helper.{value}\nlet main = fn () -> value\n",
+    )
+    .unwrap();
+    fs::write(valid_dir.join("helper.ml"), "let value = 42\n").unwrap();
+
+    let missing_root = dir.join("missing.ml");
+    fs::write(
+        &missing_root,
+        "use Missing.{value}\nlet main = fn () -> value\n",
+    )
+    .unwrap();
+
+    let cycle_dir = dir.join("cycle");
+    fs::create_dir_all(&cycle_dir).unwrap();
+    let cycle_root = cycle_dir.join("main.ml");
+    fs::write(&cycle_root, "use Helper.{value}\nlet result = value\n").unwrap();
+    fs::write(
+        cycle_dir.join("helper.ml"),
+        "use Main.{result}\nlet value = result\n",
+    )
+    .unwrap();
+
     let node_script = r#"
         import { readFileSync } from 'node:fs';
         const { parse_source_module } = await import(process.argv[1]);
-        for (const path of process.argv.slice(2)) {
+        const { load_source_units } = await import(process.argv[2]);
+        const [compilerRoot, compilerInclude, validRoot, missingRoot, cycleRoot, ...sources] = process.argv.slice(3);
+
+        for (const path of sources) {
             const result = parse_source_module(readFileSync(path, 'utf8'));
             if (result.type !== 'Ok') {
                 console.error(path + ': ' + result.value);
@@ -705,23 +735,59 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
           let main = fn () -> 42
         `);
         if (valid.type !== 'Ok' || valid.value.imports.type !== 'Cons') process.exit(2);
-
         const invalid = parse_source_module('type Broken = { field i32 }');
         if (invalid.type !== 'Err') process.exit(3);
+
+        const nil = { type: 'Nil' };
+        const cons = (head, tail) => ({ type: 'Cons', value: [head, tail] });
+        const compilerModules = load_source_units(compilerRoot)(cons(compilerInclude, nil));
+        if (compilerModules.type !== 'Ok') {
+            console.error(compilerModules.value);
+            process.exit(4);
+        }
+        const moduleCount = (modules) => {
+            let count = 0;
+            while (modules.type === 'Cons') {
+                count += 1;
+                modules = modules.value[1];
+            }
+            return count;
+        };
+        if (moduleCount(compilerModules.value) < 10) process.exit(5);
+
+        const validGraph = load_source_units(validRoot)(nil);
+        if (validGraph.type !== 'Ok' || moduleCount(validGraph.value) !== 2) process.exit(6);
+        const helperUnit = validGraph.value.value[0];
+        const rootUnit = validGraph.value.value[1].value[0];
+        if (!helperUnit[0].endsWith('/helper.ml') || rootUnit[0] !== validRoot) {
+            console.error({ helper: helperUnit[0], root: rootUnit[0], expectedRoot: validRoot });
+            process.exit(7);
+        }
+        if (load_source_units(missingRoot)(nil).type !== 'Err') process.exit(8);
+        const cycle = load_source_units(cycleRoot)(nil);
+        if (cycle.type !== 'Err' || !cycle.value.includes('cycle')) process.exit(9);
     "#;
     let mut node_command = Command::new("node");
     node_command
+        .current_dir(&repository_root)
         .arg("--input-type=module")
         .arg("-e")
         .arg(node_script)
-        .arg(dir.join("Syntax_Parser_SourceModule.mjs"));
+        .arg(dir.join("Syntax_Parser_SourceModule.mjs"))
+        .arg(dir.join("Modules.mjs"))
+        .arg(include_root.join("main.ml"))
+        .arg(&include_root)
+        .arg(&valid_root)
+        .arg(&missing_root)
+        .arg(&cycle_root);
     for path in source_paths {
         node_command.arg(path);
     }
     let node = node_command.output().unwrap();
     assert!(
         node.status.success(),
-        "{}",
+        "node exited {:?}: {}",
+        node.status.code(),
         String::from_utf8_lossy(&node.stderr)
     );
 }

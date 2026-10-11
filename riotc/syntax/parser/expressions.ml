@@ -493,13 +493,17 @@ let parse_parenthesized_tail = fn parse_nested_expression -> fn first -> fn toke
           })
         | _ -> Err("expected `)` after expression annotation")
       }
-    | Cons(SymbolToken(TokenInfo { lexeme: ",", span: _ }), remaining) ->
-      match (parse_expression_list_tail parse_nested_expression (Cons(first, Nil)) remaining) {
+    | Cons(SymbolToken(TokenInfo { lexeme: ",", span: _ }), _) ->
+      match (parse_expression_list_tail parse_nested_expression (Cons(first, Nil)) tokens) {
         | Err(message) -> Err(message)
-        | Ok(ParseStep { value: items, remaining_tokens }) -> Ok(ParseStep {
+        | Ok(ParseStep {
+            value: items,
+            remaining_tokens: Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), rest)
+          }) -> Ok(ParseStep {
           value: TupleExpr(items),
-          remaining_tokens: remaining_tokens
+          remaining_tokens: rest
         })
+        | _ -> Err("expected `)` after tuple expression")
       }
     | Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), remaining) ->
       Ok(ParseStep { value: first, remaining_tokens: remaining })

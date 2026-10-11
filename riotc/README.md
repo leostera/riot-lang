@@ -32,6 +32,8 @@ node build/run-compiler.mjs compile path/to/Smoke.ml -o build/smoke
   entry contract after parsing the source module.
 - `syntax/parser/source_module.ml`: parses imports, type declarations, and
   top-level value declarations into `SourceModule`.
+- `modules.ml`: loads imported source files in dependency order using importer
+  directories, ordered include roots, and bundled library roots.
 - `syntax/parser/common.ml`: token-stream results, delimiter helpers, and
   source-aware lexer error mapping.
 - `syntax/parser/types.ml`: named, generic, tuple, type-variable, and arrow
@@ -49,10 +51,9 @@ node build/run-compiler.mjs compile path/to/Smoke.ml -o build/smoke
 
 The native compiler remains intentionally incomplete. The current entry
 expression subset includes `i32` literals, parentheses, unary minus, arithmetic
-and comparisons, plus exhaustive boolean `match` expressions. The expression
-and pattern components are being built as reusable frontend modules, but the
-public parser still accepts only the single `main` entry declaration: it does
-not yet parse a complete module, resolve RiotML imports, or compile the
-compiler's own source tree. The required JS-to-native self-compilation gate and
-the RFD0050 completion criteria remain open; this slice is not a substitute for
-them.
+and comparisons, plus exhaustive boolean `match` expressions. The frontend can
+parse complete source modules and load their dependency graph, but the native
+compile pipeline still accepts only a standalone module containing `main`; it
+does not yet typecheck or compile the loaded graph or the compiler's own source
+tree. The required JS-to-native self-compilation gate and the RFD0050
+completion criteria remain open; this slice is not a substitute for them.
