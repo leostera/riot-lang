@@ -2,13 +2,13 @@
 source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
 ---
-const _value: number = 1;
+const _value: bigint = BigInt("1");
 
 function make_user(name: string): User {
-  return { name: name, _id: 1, active: true };
+  return { name: name, _id: BigInt("1"), active: true };
 }
 
-function read_id($x: User): number {
+function read_id($x: User): bigint {
   return $x._id;
 }
 
@@ -17,3 +17,5 @@ export { _value, make_user, read_id };
 export type Maybe<a> = variant;
 
 export type User = variant;
+
+declare function $tinyml_integer(op: "add" | "sub" | "mul" | "div" | "rem", left: bigint, right: bigint, bits: number, signed: boolean): bigint;

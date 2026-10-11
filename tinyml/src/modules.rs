@@ -20,6 +20,8 @@ use crate::parser::{
 
 const BUNDLED_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib");
 const BUNDLED_STANDARD_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib/std");
+const BUNDLED_HOST_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib/host.ml");
+const HOST_SOURCE: &str = include_str!("../lib/host.ml");
 
 const BUNDLED_SOURCES: &[(&str, &str)] = &[
     ("std/prelude.ml", include_str!("../lib/std/prelude.ml")),
@@ -78,6 +80,17 @@ impl ModuleName {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModuleKind {
+    Source,
+    Intrinsic(IntrinsicModule),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntrinsicModule {
+    Host,
+}
+
 /// One parsed module in a dependency-first source graph.
 #[derive(Debug, Clone)]
 pub struct SourceModule {
@@ -85,6 +98,7 @@ pub struct SourceModule {
     pub name: Option<ModuleName>,
     /// Canonical file path, or the stable bundled-library path when embedded.
     pub path: PathBuf,
+    pub kind: ModuleKind,
     pub source: String,
     pub ast: ast::Module,
     /// Indices of direct dependencies in this graph's dependency-first order.
@@ -112,6 +126,7 @@ impl ModuleGraph {
         let root_index = builder.visit(
             SourceFile {
                 path: root_path,
+                kind: ModuleKind::Source,
                 embedded_source: None,
             },
             None,
@@ -164,6 +179,7 @@ pub enum ModuleError {
 #[derive(Clone)]
 struct SourceFile {
     path: PathBuf,
+    kind: ModuleKind,
     embedded_source: Option<&'static str>,
 }
 
@@ -282,6 +298,7 @@ impl Builder {
         self.modules.push(Some(SourceModule {
             name: name.clone(),
             path: source_file.path.clone(),
+            kind: source_file.kind,
             source,
             ast: ast.clone(),
             dependencies: Vec::new(),
@@ -334,6 +351,14 @@ impl Builder {
         importer: &Path,
         name: &ModuleName,
     ) -> Result<Option<SourceFile>, ModuleError> {
+        if name.components.as_slice() == ["Host"] {
+            return Ok(Some(SourceFile {
+                path: PathBuf::from(BUNDLED_HOST_PATH),
+                kind: ModuleKind::Intrinsic(IntrinsicModule::Host),
+                embedded_source: Some(HOST_SOURCE),
+            }));
+        }
+
         let relative = name.source_path();
         let mut roots = Vec::with_capacity(1 + self.include_dirs.len() + 2);
         if let Some(directory) = importer.parent() {
@@ -359,12 +384,14 @@ impl Builder {
                 })?;
                 return Ok(Some(SourceFile {
                     path,
+                    kind: ModuleKind::Source,
                     embedded_source: None,
                 }));
             }
             if let Some(source) = root.embedded_source(&relative) {
                 return Ok(Some(SourceFile {
                     path: candidate,
+                    kind: ModuleKind::Source,
                     embedded_source: Some(source),
                 }));
             }

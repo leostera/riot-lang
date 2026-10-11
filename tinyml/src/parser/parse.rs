@@ -721,7 +721,9 @@ impl<'a> Parser<'a> {
     /// parses grouped patterns and tuple patterns.
     fn parse_paren_pattern(&mut self) -> Result<Pattern, ParseError> {
         let start = self.expect(&TokenKind::LParen)?.span;
-        if let TokenKind::Ident(_) = self.lexer.peek() {
+        if let TokenKind::Ident(name) = self.lexer.peek()
+            && name != "_"
+        {
             let name = self.parse_ident()?;
             if name.as_constructor_name().is_ok() {
                 return self.parse_grouped_constructor_pattern(start, name);

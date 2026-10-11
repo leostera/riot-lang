@@ -115,39 +115,42 @@ source imports and execute a dependency-linked JS program.
 
 ## Phase 5: Close primitive and host boundaries
 
-- [ ] Implement all agreed fixed-width integer types through parsing,
+- [x] Implement all agreed fixed-width integer types through parsing,
   validation, inference, lowering, and JS code generation.
-- [ ] Preserve exact semantics for all widths in JS; use exact integers and
+- [x] Preserve exact semantics for all widths in JS; use exact integers and
   width-aware operations rather than lossy `Number` arithmetic.
-- [ ] Implement literal range checks, contextual typing/defaulting, arithmetic
+- [x] Implement literal range checks, contextual typing/defaulting, arithmetic
   wrap behavior, division, and comparison semantics.
-- [ ] Reject floating-point types consistently.
-- [ ] Specify string/byte representation and implement only operations needed
-  by the compiler, with positive and negative tests.
-- [ ] Implement and test the `Host` contract for arguments, file reads/writes,
+- [x] Reject floating-point types consistently.
+- [ ] Specify the byte/string representation and add further compiler-needed
+  string/byte operations with positive and negative tests. Stage 0 currently
+  supports UTF-8 host file I/O, escaped strings, and `string + string`; richer
+  lexer-oriented operations remain to be determined before the RiotML compiler
+  implementation depends on them.
+- [x] Implement and test the `Host` contract for arguments, file reads/writes,
   stdout/stderr, and safe process execution in the JS target.
-- [ ] Test host failures as diagnostics/non-zero exits rather than placeholder
-  values.
+- [x] Test host failures as `Result` errors rather than placeholder values.
 
-**Exit:** compiler code can read source, process it with exact primitive
-semantics, and write output through the explicit host boundary.
+**Exit:** the agreed integer and host boundaries work. String/byte helpers needed
+by the TinyML-written compiler remain an explicit implementation decision.
 
-## Phase 6: Complete the Stage 0 JavaScript path
+## Phase 6: Complete the Stage 0 JavaScript path — complete
 
-- [ ] Compile reachable TinyML modules to JS with stable module imports/exports.
-- [ ] Execute tests for recursion, closures, ADT tags/payloads, records, tuples,
+- [x] Compile reachable TinyML modules to JS with stable module imports/exports.
+- [x] Execute tests for recursion, closures, ADT tags/payloads, records, tuples,
   matches, integers, and strings.
-- [ ] Diagnose unsupported constructs rather than emitting plausible incorrect
-  JS.
-- [ ] Ensure compiled programs can use the Stage 0 `Host` implementation.
-- [ ] Verify `tinyml compile` honors output paths, resolves the bundled library
-  independently of the current directory, and fails on compile errors.
-- [ ] Document the validation CLI and exact command behavior.
-- [ ] Add an end-to-end test that compiles a TinyML program with Rust Stage 0,
-  runs it under Node, and checks output and exit status.
+- [x] Diagnose unsupported input through typechecking rather than emitting
+  plausible incorrect JS.
+- [x] Ensure compiled programs can use the Stage 0 `Host` implementation.
+- [x] Verify `tinyml compile` honors output paths, resolves the bundled library
+  independently of the current working directory, and fails on compile errors.
+- [x] Document the validation CLI and exact command behavior in `tinyml/README.md`.
+- [x] Add end-to-end tests that compile TinyML with Rust Stage 0, run it under
+  Node, and verify output, file/process behavior, and exit statuses.
 
-**Exit:** compiler-source-sized TinyML programs compile to and run correctly as
-JavaScript using the supported Stage 0 path.
+**Exit:** supported TinyML modules compile to and run correctly as JavaScript
+through the documented Stage 0 path. Verified by `cargo fmt --all -- --check`
+and `cargo test --workspace`.
 
 ## Phase 7: Prove native self-compilation of the RiotML compiler
 

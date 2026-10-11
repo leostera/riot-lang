@@ -43,6 +43,9 @@ impl<'a> Emitter<'a> {
             }
             match item {
                 ir::Item::TypeAlias { .. } => emit_ts_decl(sink, item)?,
+                ir::Item::IntegerRuntime => {
+                    sink.write_str("declare function $tinyml_integer(op: \"add\" | \"sub\" | \"mul\" | \"div\" | \"rem\", left: bigint, right: bigint, bits: number, signed: boolean): bigint;")?;
+                }
                 _ => emit_ts_runtime_item(sink, item, self.type_for_item(item))?,
             }
             sink.write_char('\n')?;
@@ -81,6 +84,7 @@ impl ir::Item {
                 | Self::Const { .. }
                 | Self::Function { .. }
                 | Self::Export { .. }
+                | Self::IntegerRuntime
         )
     }
 }
@@ -169,6 +173,7 @@ fn emit_decl(out: &mut impl fmt::Write, decl: &ir::Item) -> fmt::Result {
             out.write_char('}')
         }
         ir::Item::Export { names } => write!(out, "export {{ {} }};", names.join(", ")),
+        ir::Item::IntegerRuntime => emit_integer_runtime(out),
         _ => Ok(()),
     }
 }
@@ -287,6 +292,11 @@ fn emit_stmt(out: &mut impl fmt::Write, stmt: &ir::Stmt, indent: usize) -> fmt::
 fn emit_expr(out: &mut impl fmt::Write, expr: &ir::Expr) -> fmt::Result {
     match expr {
         ir::Expr::Number(value) => out.write_str(value),
+        ir::Expr::BigInt(value) => {
+            out.write_str("BigInt(")?;
+            emit_string(out, value)?;
+            out.write_char(')')
+        }
         ir::Expr::String(value) => emit_string(out, value),
         ir::Expr::Bool(value) => out.write_str(if *value { "true" } else { "false" }),
         ir::Expr::Undefined => out.write_str("undefined"),
@@ -322,6 +332,28 @@ fn emit_expr(out: &mut impl fmt::Write, expr: &ir::Expr) -> fmt::Result {
             write!(out, " {} ", op.as_js())?;
             emit_expr(out, right)?;
             out.write_char(')')
+        }
+        ir::Expr::IntegerOp {
+            op,
+            bits,
+            signed,
+            left,
+            right,
+        } => {
+            let operation = match op {
+                ir::IntegerOp::Add => "add",
+                ir::IntegerOp::Sub => "sub",
+                ir::IntegerOp::Mul => "mul",
+                ir::IntegerOp::Div => "div",
+                ir::IntegerOp::Rem => "rem",
+            };
+            out.write_str("$tinyml_integer(")?;
+            emit_string(out, operation)?;
+            out.write_str(", ")?;
+            emit_expr(out, left)?;
+            out.write_str(", ")?;
+            emit_expr(out, right)?;
+            write!(out, ", {bits}, {signed})")
         }
         ir::Expr::Array(items) => {
             out.write_char('[')?;
@@ -383,6 +415,7 @@ fn emit_ts_decl(out: &mut impl fmt::Write, decl: &ir::Item) -> fmt::Result {
 fn emit_type(out: &mut impl fmt::Write, ty: &TsType, nested: bool) -> fmt::Result {
     match ty {
         TsType::Number => out.write_str("number"),
+        TsType::BigInt => out.write_str("bigint"),
         TsType::Boolean => out.write_str("boolean"),
         TsType::String => out.write_str("string"),
         TsType::Undefined => out.write_str("undefined"),
@@ -481,8 +514,15 @@ impl BinaryOp {
             Self::Lte => "<=",
             Self::Gt => ">",
             Self::Gte => ">=",
+            Self::And => "&&",
         }
     }
+}
+
+fn emit_integer_runtime(out: &mut impl fmt::Write) -> fmt::Result {
+    out.write_str(
+        "function $tinyml_integer(op, left, right, bits, signed) {\n  const modulus = 1n << BigInt(bits);\n  let result;\n  switch (op) {\n    case \"add\": result = left + right; break;\n    case \"sub\": result = left - right; break;\n    case \"mul\": result = left * right; break;\n    case \"div\":\n      if (right === 0n) throw new RangeError(\"integer division by zero\");\n      result = left / right;\n      break;\n    case \"rem\":\n      if (right === 0n) throw new RangeError(\"integer remainder by zero\");\n      result = left % right;\n      break;\n    default: throw new Error(\"unknown TinyML integer operation\");\n  }\n  const unsigned = ((result % modulus) + modulus) % modulus;\n  if (!signed) return unsigned;\n  const sign_bit = modulus >> 1n;\n  return unsigned >= sign_bit ? unsigned - modulus : unsigned;\n}"
+    )
 }
 
 fn emit_indent(out: &mut impl fmt::Write, indent: usize) -> fmt::Result {
@@ -509,6 +549,13 @@ fn emit_string(out: &mut impl fmt::Write, value: &str) -> fmt::Result {
             '\n' => out.write_str("\\n")?,
             '\r' => out.write_str("\\r")?,
             '\t' => out.write_str("\\t")?,
+            '\0' => out.write_str("\\u0000")?,
+            '\u{0008}' => out.write_str("\\b")?,
+            '\u{000b}' => out.write_str("\\v")?,
+            '\u{000c}' => out.write_str("\\f")?,
+            '\u{2028}' => out.write_str("\\u2028")?,
+            '\u{2029}' => out.write_str("\\u2029")?,
+            ch if ch.is_control() => write!(out, "\\u{:04x}", ch as u32)?,
             _ => out.write_char(ch)?,
         }
     }

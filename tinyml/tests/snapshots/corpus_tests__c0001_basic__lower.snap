@@ -100,11 +100,16 @@ Module {
                         },
                         kind: Prim {
                             op: Mul {
-                                operand: Var(
-                                    TypeVarId(
-                                        3,
-                                    ),
-                                ),
+                                operand: Apply {
+                                    ident: Name {
+                                        name: "i32",
+                                        span: Span {
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                    },
+                                    arguments: [],
+                                },
                             },
                             args: [
                                 Expr {
@@ -351,11 +356,16 @@ Module {
                                             },
                                             kind: Prim {
                                                 op: Add {
-                                                    operand: Var(
-                                                        TypeVarId(
-                                                            5,
-                                                        ),
-                                                    ),
+                                                    operand: Apply {
+                                                        ident: Name {
+                                                            name: "i32",
+                                                            span: Span {
+                                                                start: 0,
+                                                                end: 0,
+                                                            },
+                                                        },
+                                                        arguments: [],
+                                                    },
                                                 },
                                                 args: [
                                                     Expr {

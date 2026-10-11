@@ -39,20 +39,14 @@ recursive data, split code across modules, and produce source or native output.
 It does not require Stage 0 Rust to compile TinyML directly to native code, nor
 does it require TinyML to become a complete application language.
 
-The repository now has a parser, a Hindley–Milner-style checker, Lambda IR,
-and a JavaScript backend. Integration tests execute JavaScript output for
-functions, recursion, closures, matches, records, strings, and module-interface
-imports. The Stage 0 trim has removed the incomplete Rust AArch64 backend,
-placeholder native runtime, LSP, and pending WASM snapshots. This leaves a
-smaller working host path, but it does not yet prove that TinyML can implement
-the native Riot compiler.
-
-There are still frontend gaps behind the passing tests. For example, checking
-a match over a self-recursive `Expr` variant currently reports type mismatches.
-The standard-library sources have been moved under `tinyml/lib/std/`, but are
-not yet a coherently loaded, fully supported library. The implementation must
-close these gaps before using TinyML to implement a compiler with recursive ASTs
-and multiple modules.
+The repository has a parser, a Hindley–Milner-style checker, Lambda IR, source
+module loading, and a JavaScript backend. Stage 0 now executes integration
+tests for functions, recursion, closures, recursive ADTs, records, tuples,
+patterns, fixed-width integers, strings, and the Node host boundary. Its
+compiler-focused standard library is loaded from source and bundled into the
+compiler. These are prerequisites for the bootstrap, not proof that TinyML can
+already implement the native Riot compiler: that compiler and its native
+self-compilation test remain the central work of this RFD.
 
 The bootstrap has two compilers and two backend roles:
 
@@ -88,11 +82,9 @@ let evaluate = fn (expr: Expr) -> match expr {
 }
 ```
 
-The exact annotation syntax is illustrative. This describes the desired
-subset; the current checker does not yet accept this self-recursive variant
-example. What matters is that Stage 0 can typecheck algebraic data types,
-recursive functions, local names, and pattern matching, rather than merely
-parsing them.
+The example illustrates the supported recursive-data style. Stage 0 checks
+and executes recursive ADT matches, so the RiotML compiler can represent its
+own syntax and types rather than merely parsing them.
 
 A compiler will also need to divide its implementation into files. It should be
 possible to build a module that defines an AST and then bring its types and

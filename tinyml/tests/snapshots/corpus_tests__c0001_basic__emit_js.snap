@@ -1,16 +1,18 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0001_basic.ml\")"
 ---
-function double(x: unknown): number {
-  return (x * 2);
+function double(x: unknown): bigint {
+  return $tinyml_integer("mul", x, BigInt("2"), 32, true);
 }
 
 function main(x: unknown): unknown {
-  const y = (x + 1);
+  const y = $tinyml_integer("add", x, BigInt("1"), 32, true);
   return double(y);
 }
 
 export { double, main };
 
 export type Option<a> = variant;
+
+declare function $tinyml_integer(op: "add" | "sub" | "mul" | "div" | "rem", left: bigint, right: bigint, bits: number, signed: boolean): bigint;

@@ -35,6 +35,8 @@ pub enum Item {
     },
     /// `export { name, ... };`
     Export { names: Vec<String> },
+    /// Runtime support for exact fixed-width integer arithmetic.
+    IntegerRuntime,
     /// `export declare const name: type;`
     TypeValue {
         name: String,
@@ -100,8 +102,10 @@ pub struct SwitchCase {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    /// Numeric literal, emitted exactly as stored.
+    /// JavaScript number literal, emitted exactly as stored.
     Number(String),
+    /// Exact integer literal emitted as a JavaScript `bigint`.
+    BigInt(String),
     /// JavaScript string literal.
     String(String),
     /// `true` or `false`.
@@ -125,6 +129,14 @@ pub enum Expr {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    /// Width-aware fixed integer arithmetic.
+    IntegerOp {
+        op: IntegerOp,
+        bits: u8,
+        signed: bool,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
     /// Array literal: `[item, ...]`.
     Array(Vec<Expr>),
     /// Object literal: `{ key: value, ... }`.
@@ -139,6 +151,15 @@ pub struct Property {
     pub name: String,
     /// Object property value expression.
     pub value: Expr,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegerOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -165,12 +186,16 @@ pub enum BinaryOp {
     Gt,
     /// `>=`
     Gte,
+    /// `&&`
+    And,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TsType {
     /// `number`.
     Number,
+    /// `bigint`.
+    BigInt,
     /// `boolean`.
     Boolean,
     /// `string`.

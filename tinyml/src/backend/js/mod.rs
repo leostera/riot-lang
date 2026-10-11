@@ -21,7 +21,19 @@ pub fn lower_with_imports(
     lambda: &crate::lambda::Lambda,
     imports: &[crate::parser::ast::UseDecl],
 ) -> Js {
-    lower::Lowerer::new(interface).lower_module_with_imports(lambda, imports)
+    lower_with_imports_and_constructors(interface, lambda, imports, &[])
+}
+
+/// Lower a source module with imported constructor metadata for representation
+/// decisions that depend on the full variant declaration.
+pub fn lower_with_imports_and_constructors(
+    interface: &crate::checker::ModuleInterface,
+    lambda: &crate::lambda::Lambda,
+    imports: &[crate::parser::ast::UseDecl],
+    imported_constructors: &[crate::checker::interface::ConstructorDescription],
+) -> Js {
+    lower::Lowerer::with_imported_constructors(interface, imported_constructors)
+        .lower_module_with_imports(lambda, imports)
 }
 
 /// Emit JS backend IR as TypeScript source.

@@ -18,19 +18,45 @@ use super::ir;
 pub struct Lowerer<'a> {
     interface: &'a ModuleInterface,
     exported: HashSet<String>,
+    variant_type_names: HashSet<String>,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(interface: &'a ModuleInterface) -> Self {
+        Self::with_imported_constructors(interface, &[])
+    }
+
+    pub fn with_imported_constructors(
+        interface: &'a ModuleInterface,
+        imported_constructors: &[crate::checker::interface::ConstructorDescription],
+    ) -> Self {
         let exported = interface
             .values
             .iter()
             .map(|value| js_name(&value.name))
             .collect();
+        let mut constructor_counts = HashMap::new();
+        for constructor in interface.constructors.iter().chain(imported_constructors) {
+            if let Some(owner) = constructor.owner.as_name() {
+                *constructor_counts.entry(owner.to_string()).or_insert(0) += 1;
+            }
+        }
+        let variant_type_names = constructor_counts
+            .into_iter()
+            .filter_map(|(owner, count)| (count > 1).then_some(owner))
+            .collect();
         Self {
             interface,
             exported,
+            variant_type_names,
         }
+    }
+
+    fn is_variant_record_constructor(&self, name: &Ident, ty: &Type) -> bool {
+        let Some(owner) = crate::checker::builtin::type_name(ty) else {
+            return false;
+        };
+        name.as_name() != Some(owner) || self.variant_type_names.contains(owner)
     }
 
     pub fn lower_module(&self, module: &lambda::Module) -> ir::Module {
@@ -92,6 +118,7 @@ impl<'a> Lowerer<'a> {
         }
 
         items.extend(self.lower_interface_types());
+        items.push(ir::Item::IntegerRuntime);
         ir::Module { items }
     }
 
@@ -135,23 +162,31 @@ impl<'a> Lowerer<'a> {
                     .collect(),
             },
             lambda::ExprKind::Prim { op, args } => self.lower_primitive(op, args, env),
-            lambda::ExprKind::Tuple(items) => {
-                ir::Expr::Array(items.iter().map(|item| self.lower_expr(item)).collect())
-            }
-            lambda::ExprKind::Record { fields, .. } => ir::Expr::Object(
-                fields
+            lambda::ExprKind::Tuple(items) => ir::Expr::Array(
+                items
                     .iter()
-                    .map(|(name, value)| ir::Property {
-                        name: js_name(name),
-                        value: self.lower_expr_with_env(value, env),
-                    })
+                    .map(|item| self.lower_expr_with_env(item, env))
                     .collect(),
             ),
+            lambda::ExprKind::Record { name, fields } => {
+                let mut properties = Vec::with_capacity(fields.len() + 1);
+                if self.is_variant_record_constructor(name, &expr.ty) {
+                    properties.push(ir::Property {
+                        name: "type".into(),
+                        value: ir::Expr::String(name_string(name)),
+                    });
+                }
+                properties.extend(fields.iter().map(|(name, value)| ir::Property {
+                    name: js_property_name(name),
+                    value: self.lower_expr_with_env(value, env),
+                }));
+                ir::Expr::Object(properties)
+            }
             lambda::ExprKind::Field { base, field, .. } => ir::Expr::Member {
                 object: Box::new(self.lower_expr_with_env(base, env)),
-                property: js_name(field),
+                property: js_property_name(field),
             },
-            lambda::ExprKind::Block(exprs) => self.lower_block_expr(exprs),
+            lambda::ExprKind::Block(exprs) => self.lower_block_expr_with_env(exprs, env),
             lambda::ExprKind::Match { scrutinee, arms } => {
                 self.lower_match_expr(scrutinee, arms, env)
             }
@@ -181,15 +216,8 @@ impl<'a> Lowerer<'a> {
     ) -> Vec<ir::Stmt> {
         match &body.kind {
             lambda::ExprKind::Block(exprs) => self.lower_block_returning_with_env(exprs, env),
-            lambda::ExprKind::Match { scrutinee, arms } => {
-                vec![self.lower_match_stmt(scrutinee, arms, env)]
-            }
             _ => vec![ir::Stmt::Return(self.lower_expr_with_env(body, env))],
         }
-    }
-
-    fn lower_block_returning(&self, exprs: &[lambda::Expr]) -> Vec<ir::Stmt> {
-        self.lower_block_returning_with_env(exprs, &HashMap::new())
     }
 
     fn lower_block_returning_with_env(
@@ -203,7 +231,7 @@ impl<'a> Lowerer<'a> {
             match &expr.kind {
                 lambda::ExprKind::Let { bind, body, .. } => {
                     let value = self.lower_expr_with_env(body, &env);
-                    let name = pattern_param_name((0, bind));
+                    let name = pattern_param_name((index, bind));
                     stmts.push(ir::Stmt::Const {
                         name: name.clone(),
                         value: value.clone(),
@@ -224,11 +252,15 @@ impl<'a> Lowerer<'a> {
         stmts
     }
 
-    fn lower_block_expr(&self, exprs: &[lambda::Expr]) -> ir::Expr {
+    fn lower_block_expr_with_env(
+        &self,
+        exprs: &[lambda::Expr],
+        env: &HashMap<String, ir::Expr>,
+    ) -> ir::Expr {
         ir::Expr::Call {
             callee: Box::new(ir::Expr::Function {
                 params: Vec::new(),
-                body: self.lower_block_returning(exprs),
+                body: self.lower_block_returning_with_env(exprs, env),
             }),
             args: Vec::new(),
         }
@@ -284,36 +316,75 @@ impl<'a> Lowerer<'a> {
         args: &[lambda::Expr],
         env: &HashMap<String, ir::Expr>,
     ) -> ir::Expr {
-        let bin = match op {
-            lambda::Primitive::Add { .. } => Some(ir::BinaryOp::Add),
-            lambda::Primitive::Sub { .. } => Some(ir::BinaryOp::Sub),
-            lambda::Primitive::Mul { .. } => Some(ir::BinaryOp::Mul),
-            lambda::Primitive::Div { .. } => Some(ir::BinaryOp::Div),
-            lambda::Primitive::Rem { .. } => Some(ir::BinaryOp::Rem),
+        let operand_type = match op {
+            lambda::Primitive::Add { operand }
+            | lambda::Primitive::Sub { operand }
+            | lambda::Primitive::Mul { operand }
+            | lambda::Primitive::Div { operand }
+            | lambda::Primitive::Rem { operand }
+            | lambda::Primitive::Eq { operand }
+            | lambda::Primitive::Ne { operand }
+            | lambda::Primitive::Lt { operand }
+            | lambda::Primitive::Lte { operand }
+            | lambda::Primitive::Gt { operand }
+            | lambda::Primitive::Gte { operand } => Some(operand),
+            lambda::Primitive::Named(_) => None,
+        };
+        let [left, right] = args else {
+            return ir::Expr::Call {
+                callee: Box::new(ir::Expr::Var("__tinyml_primitive".into())),
+                args: args
+                    .iter()
+                    .map(|arg| self.lower_expr_with_env(arg, env))
+                    .collect(),
+            };
+        };
+        let left = Box::new(self.lower_expr_with_env(left, env));
+        let right = Box::new(self.lower_expr_with_env(right, env));
+
+        if let Some(operand_type) = operand_type
+            && let Some((bits, signed)) = integer_width(operand_type)
+            && let Some(op) = match op {
+                lambda::Primitive::Add { .. } => Some(ir::IntegerOp::Add),
+                lambda::Primitive::Sub { .. } => Some(ir::IntegerOp::Sub),
+                lambda::Primitive::Mul { .. } => Some(ir::IntegerOp::Mul),
+                lambda::Primitive::Div { .. } => Some(ir::IntegerOp::Div),
+                lambda::Primitive::Rem { .. } => Some(ir::IntegerOp::Rem),
+                _ => None,
+            }
+        {
+            return ir::Expr::IntegerOp {
+                op,
+                bits,
+                signed,
+                left,
+                right,
+            };
+        }
+
+        let binary = match op {
+            lambda::Primitive::Add { operand }
+                if crate::checker::builtin::type_name(operand) == Some("string") =>
+            {
+                Some(ir::BinaryOp::Add)
+            }
             lambda::Primitive::Eq { .. } => Some(ir::BinaryOp::Eq),
             lambda::Primitive::Ne { .. } => Some(ir::BinaryOp::Ne),
             lambda::Primitive::Lt { .. } => Some(ir::BinaryOp::Lt),
             lambda::Primitive::Lte { .. } => Some(ir::BinaryOp::Lte),
             lambda::Primitive::Gt { .. } => Some(ir::BinaryOp::Gt),
             lambda::Primitive::Gte { .. } => Some(ir::BinaryOp::Gte),
-            lambda::Primitive::Named(_) => None,
+            _ => None,
         };
-        if let (Some(op), [left, right]) = (bin, args) {
-            ir::Expr::Binary {
-                op,
-                left: Box::new(self.lower_expr_with_env(left, env)),
-                right: Box::new(self.lower_expr_with_env(right, env)),
-            }
+        if let Some(op) = binary {
+            ir::Expr::Binary { op, left, right }
         } else {
             ir::Expr::Call {
                 callee: Box::new(ir::Expr::Var(match op {
                     lambda::Primitive::Named(name) => js_name(name),
                     _ => "__tinyml_primitive".into(),
                 })),
-                args: args
-                    .iter()
-                    .map(|arg| self.lower_expr_with_env(arg, env))
-                    .collect(),
+                args: vec![*left, *right],
             }
         }
     }
@@ -324,37 +395,41 @@ impl<'a> Lowerer<'a> {
         arms: &[lambda::MatchArm],
         env: &HashMap<String, ir::Expr>,
     ) -> ir::Expr {
+        let value_name = "$tinyml_match";
         ir::Expr::Call {
             callee: Box::new(ir::Expr::Function {
-                params: Vec::new(),
-                body: vec![self.lower_match_stmt(scrutinee, arms, env)],
+                params: vec![value_name.into()],
+                body: vec![self.lower_match_stmt(
+                    ir::Expr::Var(value_name.into()),
+                    &scrutinee.ty,
+                    arms,
+                    env,
+                )],
             }),
-            args: Vec::new(),
+            args: vec![self.lower_expr_with_env(scrutinee, env)],
         }
     }
 
     fn lower_match_stmt(
         &self,
-        scrutinee: &lambda::Expr,
+        scrutinee: ir::Expr,
+        scrutinee_type: &Type,
         arms: &[lambda::MatchArm],
         env: &HashMap<String, ir::Expr>,
     ) -> ir::Stmt {
-        if let Some(option_match) = self.lower_option_match(scrutinee, arms, env) {
-            return option_match;
-        }
-        if let Some(switch) = self.lower_switch_match(scrutinee, arms, env) {
+        if let Some(switch) = self.lower_switch_match(&scrutinee, scrutinee_type, arms, env) {
             return switch;
         }
 
-        let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
+        let scrutinee_expr = scrutinee;
         let mut current_else = Vec::new();
         for arm in arms.iter().rev() {
-            let branch = self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr);
+            let branch = self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr, env);
             if matches!(arm.pattern.kind, lambda::PatternKind::Wildcard) {
                 current_else = branch;
             } else {
                 current_else = vec![ir::Stmt::If {
-                    condition: pattern_test_expr(&arm.pattern, scrutinee_expr.clone()),
+                    condition: pattern_test_expr(self, &arm.pattern, scrutinee_expr.clone()),
                     then_branch: branch,
                     else_branch: current_else,
                 }];
@@ -363,86 +438,21 @@ impl<'a> Lowerer<'a> {
         ir::Stmt::Block(current_else)
     }
 
-    fn lower_option_match(
-        &self,
-        scrutinee: &lambda::Expr,
-        arms: &[lambda::MatchArm],
-        env: &HashMap<String, ir::Expr>,
-    ) -> Option<ir::Stmt> {
-        if !is_std_option_type(&scrutinee.ty) {
-            return None;
-        }
-        let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
-        let mut none_branch = None;
-        let mut some_branch = None;
-        let mut default_branch = Vec::new();
-
-        for arm in arms {
-            match &arm.pattern.kind {
-                lambda::PatternKind::Construct { name, args, .. }
-                    if name.as_name() == Some("None") && args.is_empty() =>
-                {
-                    none_branch = Some(self.lower_option_match_branch(
-                        &arm.pattern,
-                        &arm.body,
-                        &scrutinee_expr,
-                    ));
-                }
-                lambda::PatternKind::Construct { name, args, .. }
-                    if name.as_name() == Some("Some") && args.len() == 1 =>
-                {
-                    some_branch = Some(self.lower_option_match_branch(
-                        &arm.pattern,
-                        &arm.body,
-                        &scrutinee_expr,
-                    ));
-                }
-                lambda::PatternKind::Wildcard => {
-                    default_branch =
-                        self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr);
-                }
-                _ => return None,
-            }
-        }
-
-        Some(ir::Stmt::If {
-            condition: ir::Expr::Binary {
-                op: ir::BinaryOp::Eq,
-                left: Box::new(scrutinee_expr),
-                right: Box::new(ir::Expr::Null),
-            },
-            then_branch: none_branch.unwrap_or_else(|| default_branch.clone()),
-            else_branch: some_branch.unwrap_or(default_branch),
-        })
-    }
-
-    fn lower_option_match_branch(
-        &self,
-        pattern: &lambda::Pattern,
-        body: &lambda::Expr,
-        scrutinee: &ir::Expr,
-    ) -> Vec<ir::Stmt> {
-        let mut env = HashMap::new();
-        if let lambda::PatternKind::Construct { name, args, .. } = &pattern.kind
-            && name.as_name() == Some("Some")
-            && let [arg] = args.as_slice()
-        {
-            self.bind_pattern_env(&mut env, arg, scrutinee.clone());
-        }
-        vec![ir::Stmt::Return(self.lower_expr_with_env(body, &env))]
-    }
-
     fn lower_switch_match(
         &self,
-        scrutinee: &lambda::Expr,
+        scrutinee: &ir::Expr,
+        scrutinee_type: &Type,
         arms: &[lambda::MatchArm],
         env: &HashMap<String, ir::Expr>,
     ) -> Option<ir::Stmt> {
+        if is_std_option_type(scrutinee_type) {
+            return None;
+        }
         let mut constructor_match = false;
         let mut literal_match = false;
         let mut cases = Vec::new();
         let mut default = Vec::new();
-        let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
+        let scrutinee_expr = scrutinee.clone();
 
         for arm in arms {
             match &arm.pattern.kind {
@@ -450,18 +460,32 @@ impl<'a> Lowerer<'a> {
                     literal_match = true;
                     cases.push(ir::SwitchCase {
                         test: lower_constant(constant),
-                        body: self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr),
+                        body: self.lower_match_branch(
+                            &arm.pattern,
+                            &arm.body,
+                            &scrutinee_expr,
+                            env,
+                        ),
                     });
                 }
-                lambda::PatternKind::Construct { name, .. } => {
+                lambda::PatternKind::Construct { name, args, .. }
+                    if args.iter().all(is_irrefutable) =>
+                {
                     constructor_match = true;
                     cases.push(ir::SwitchCase {
                         test: ir::Expr::String(name_string(name)),
-                        body: self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr),
+                        body: self.lower_match_branch(
+                            &arm.pattern,
+                            &arm.body,
+                            &scrutinee_expr,
+                            env,
+                        ),
                     });
                 }
-                lambda::PatternKind::Wildcard => {
-                    default = self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr);
+                lambda::PatternKind::Construct { .. } => return None,
+                lambda::PatternKind::Wildcard | lambda::PatternKind::Var { .. } => {
+                    default =
+                        self.lower_match_branch(&arm.pattern, &arm.body, &scrutinee_expr, env);
                 }
                 _ => return None,
             }
@@ -490,8 +514,9 @@ impl<'a> Lowerer<'a> {
         pattern: &lambda::Pattern,
         body: &lambda::Expr,
         scrutinee: &ir::Expr,
+        outer_env: &HashMap<String, ir::Expr>,
     ) -> Vec<ir::Stmt> {
-        let mut env = HashMap::new();
+        let mut env = outer_env.clone();
         self.bind_pattern_env(&mut env, pattern, scrutinee.clone());
         vec![ir::Stmt::Return(self.lower_expr_with_env(body, &env))]
     }
@@ -513,7 +538,7 @@ impl<'a> Lowerer<'a> {
                         pattern,
                         ir::Expr::Member {
                             object: Box::new(value.clone()),
-                            property: js_name(field),
+                            property: js_property_name(field),
                         },
                     );
                 }
@@ -530,11 +555,20 @@ impl<'a> Lowerer<'a> {
                     );
                 }
             }
+            lambda::PatternKind::Construct { name, args, .. }
+                if is_std_option_type(&pattern.ty) =>
+            {
+                if name.as_name() == Some("Some")
+                    && let [arg] = args.as_slice()
+                {
+                    self.bind_pattern_env(env, arg, value);
+                }
+            }
             lambda::PatternKind::Construct { args, .. } => {
-                if args.len() == 1 {
+                if let [arg] = args.as_slice() {
                     self.bind_pattern_env(
                         env,
-                        &args[0],
+                        arg,
                         ir::Expr::Member {
                             object: Box::new(value),
                             property: "value".into(),
@@ -596,10 +630,10 @@ impl<'a> Lowerer<'a> {
             ),
             Type::Arrow { .. } => self.lower_function_type(ty),
             Type::Apply { ident, arguments } => match crate::checker::builtin::type_name(ty) {
-                Some(
-                    "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" | "f8" | "f16"
-                    | "f32" | "f64",
-                ) => ir::TsType::Number,
+                Some("u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64") => {
+                    ir::TsType::BigInt
+                }
+                Some("f8" | "f16" | "f32" | "f64") => ir::TsType::Number,
                 Some("bool") => ir::TsType::Boolean,
                 Some("string") => ir::TsType::String,
                 Some("unit") => ir::TsType::Undefined,
@@ -644,33 +678,248 @@ fn is_std_option_type(ty: &Type) -> bool {
 fn lower_constant(constant: &lambda::Constant) -> ir::Expr {
     match constant {
         lambda::Constant::Unit => ir::Expr::Undefined,
-        lambda::Constant::Literal(Literal::Int(value) | Literal::Float(value)) => {
-            ir::Expr::Number(value.clone())
+        lambda::Constant::Literal(Literal::Int(value)) => {
+            ir::Expr::BigInt(integer_literal_as_decimal(value))
         }
+        lambda::Constant::Literal(Literal::Float(value)) => ir::Expr::Number(value.clone()),
         lambda::Constant::Literal(Literal::String(value)) => {
-            ir::Expr::String(value.trim_matches('"').to_string())
+            ir::Expr::String(decode_string_literal(value))
         }
         lambda::Constant::Literal(Literal::Bool(value)) => ir::Expr::Bool(*value),
     }
 }
 
-fn pattern_test_expr(pattern: &lambda::Pattern, scrutinee: ir::Expr) -> ir::Expr {
+fn integer_literal_as_decimal(value: &str) -> String {
+    let (negative, magnitude) = value
+        .strip_prefix('-')
+        .map_or((false, value), |magnitude| (true, magnitude));
+    let (radix, digits) = if let Some(digits) = magnitude.strip_prefix("0x") {
+        (16, digits)
+    } else if let Some(digits) = magnitude.strip_prefix("0o") {
+        (8, digits)
+    } else if let Some(digits) = magnitude.strip_prefix("0b") {
+        (2, digits)
+    } else {
+        (10, magnitude)
+    };
+    let magnitude = u128::from_str_radix(digits, radix)
+        .expect("the checker validates integer literal syntax and range before lowering");
+    if negative {
+        format!("-{magnitude}")
+    } else {
+        magnitude.to_string()
+    }
+}
+
+fn decode_string_literal(value: &str) -> String {
+    let body = value
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(value);
+    let mut decoded = String::with_capacity(body.len());
+    let mut chars = body.chars();
+    while let Some(character) = chars.next() {
+        if character != '\\' {
+            decoded.push(character);
+            continue;
+        }
+        match chars.next() {
+            Some('n') => decoded.push('\n'),
+            Some('r') => decoded.push('\r'),
+            Some('t') => decoded.push('\t'),
+            Some('0') => decoded.push('\0'),
+            Some('\\') => decoded.push('\\'),
+            Some('"') => decoded.push('"'),
+            Some('b') => decoded.push('\u{0008}'),
+            Some('f') => decoded.push('\u{000c}'),
+            Some('v') => decoded.push('\u{000b}'),
+            Some(other) => {
+                decoded.push('\\');
+                decoded.push(other);
+            }
+            None => decoded.push('\\'),
+        }
+    }
+    decoded
+}
+
+fn integer_width(ty: &Type) -> Option<(u8, bool)> {
+    match crate::checker::builtin::type_name(ty)? {
+        "i8" => Some((8, true)),
+        "i16" => Some((16, true)),
+        "i32" => Some((32, true)),
+        "i64" => Some((64, true)),
+        "u8" => Some((8, false)),
+        "u16" => Some((16, false)),
+        "u32" => Some((32, false)),
+        "u64" => Some((64, false)),
+        _ => None,
+    }
+}
+
+fn pattern_test_expr(
+    lowerer: &Lowerer<'_>,
+    pattern: &lambda::Pattern,
+    scrutinee: ir::Expr,
+) -> ir::Expr {
     match &pattern.kind {
         lambda::PatternKind::Constant(constant) => ir::Expr::Binary {
             op: ir::BinaryOp::Eq,
             left: Box::new(scrutinee),
             right: Box::new(lower_constant(constant)),
         },
-        lambda::PatternKind::Construct { name, .. } => ir::Expr::Binary {
-            op: ir::BinaryOp::Eq,
-            left: Box::new(ir::Expr::Member {
-                object: Box::new(scrutinee),
-                property: "type".into(),
-            }),
-            right: Box::new(ir::Expr::String(name_string(name))),
-        },
+        lambda::PatternKind::Construct { name, args, .. } if is_std_option_type(&pattern.ty) => {
+            match (name.as_name(), args.as_slice()) {
+                (Some("None"), []) => ir::Expr::Binary {
+                    op: ir::BinaryOp::Eq,
+                    left: Box::new(scrutinee),
+                    right: Box::new(ir::Expr::Null),
+                },
+                (Some("Some"), [arg]) => and_all([
+                    ir::Expr::Binary {
+                        op: ir::BinaryOp::Ne,
+                        left: Box::new(scrutinee.clone()),
+                        right: Box::new(ir::Expr::Null),
+                    },
+                    pattern_test_expr(lowerer, arg, scrutinee),
+                ]),
+                _ => ir::Expr::Bool(false),
+            }
+        }
+        lambda::PatternKind::Construct { name, args, .. } => {
+            let tag_test = ir::Expr::Binary {
+                op: ir::BinaryOp::Eq,
+                left: Box::new(ir::Expr::Member {
+                    object: Box::new(scrutinee.clone()),
+                    property: "type".into(),
+                }),
+                right: Box::new(ir::Expr::String(name_string(name))),
+            };
+            let non_null = and_all([
+                ir::Expr::Binary {
+                    op: ir::BinaryOp::Ne,
+                    left: Box::new(scrutinee.clone()),
+                    right: Box::new(ir::Expr::Null),
+                },
+                ir::Expr::Binary {
+                    op: ir::BinaryOp::Ne,
+                    left: Box::new(scrutinee.clone()),
+                    right: Box::new(ir::Expr::Undefined),
+                },
+            ]);
+            let payload_tests = args.iter().enumerate().map(|(index, arg)| {
+                let payload = if args.len() == 1 {
+                    ir::Expr::Member {
+                        object: Box::new(scrutinee.clone()),
+                        property: "value".into(),
+                    }
+                } else {
+                    ir::Expr::Member {
+                        object: Box::new(ir::Expr::Member {
+                            object: Box::new(scrutinee.clone()),
+                            property: "value".into(),
+                        }),
+                        property: index.to_string(),
+                    }
+                };
+                pattern_test_expr(lowerer, arg, payload)
+            });
+            and_all(
+                std::iter::once(non_null)
+                    .chain(std::iter::once(tag_test))
+                    .chain(payload_tests),
+            )
+        }
+        lambda::PatternKind::Tuple(items) => {
+            let is_array = ir::Expr::Call {
+                callee: Box::new(ir::Expr::Member {
+                    object: Box::new(ir::Expr::Var("Array".into())),
+                    property: "isArray".into(),
+                }),
+                args: vec![scrutinee.clone()],
+            };
+            let has_expected_length = ir::Expr::Binary {
+                op: ir::BinaryOp::Eq,
+                left: Box::new(ir::Expr::Member {
+                    object: Box::new(scrutinee.clone()),
+                    property: "length".into(),
+                }),
+                right: Box::new(ir::Expr::Number(items.len().to_string())),
+            };
+            and_all([is_array, has_expected_length].into_iter().chain(
+                items.iter().enumerate().map(|(index, item)| {
+                    pattern_test_expr(
+                        lowerer,
+                        item,
+                        ir::Expr::Member {
+                            object: Box::new(scrutinee.clone()),
+                            property: index.to_string(),
+                        },
+                    )
+                }),
+            ))
+        }
+        lambda::PatternKind::Record { name, fields } => {
+            let non_null = and_all([
+                ir::Expr::Binary {
+                    op: ir::BinaryOp::Ne,
+                    left: Box::new(scrutinee.clone()),
+                    right: Box::new(ir::Expr::Null),
+                },
+                ir::Expr::Binary {
+                    op: ir::BinaryOp::Ne,
+                    left: Box::new(scrutinee.clone()),
+                    right: Box::new(ir::Expr::Undefined),
+                },
+            ]);
+            let variant_tag = lowerer
+                .is_variant_record_constructor(name, &pattern.ty)
+                .then(|| ir::Expr::Binary {
+                    op: ir::BinaryOp::Eq,
+                    left: Box::new(ir::Expr::Member {
+                        object: Box::new(scrutinee.clone()),
+                        property: "type".into(),
+                    }),
+                    right: Box::new(ir::Expr::String(name_string(name))),
+                });
+            and_all(
+                std::iter::once(non_null)
+                    .chain(variant_tag)
+                    .chain(fields.iter().map(|(field, pattern)| {
+                        pattern_test_expr(
+                            lowerer,
+                            pattern,
+                            ir::Expr::Member {
+                                object: Box::new(scrutinee.clone()),
+                                property: js_property_name(field),
+                            },
+                        )
+                    })),
+            )
+        }
         lambda::PatternKind::Wildcard | lambda::PatternKind::Var { .. } => ir::Expr::Bool(true),
-        _ => ir::Expr::Bool(false),
+    }
+}
+
+fn and_all(expressions: impl IntoIterator<Item = ir::Expr>) -> ir::Expr {
+    expressions
+        .into_iter()
+        .reduce(|left, right| ir::Expr::Binary {
+            op: ir::BinaryOp::And,
+            left: Box::new(left),
+            right: Box::new(right),
+        })
+        .unwrap_or(ir::Expr::Bool(true))
+}
+
+fn is_irrefutable(pattern: &lambda::Pattern) -> bool {
+    match &pattern.kind {
+        lambda::PatternKind::Wildcard | lambda::PatternKind::Var { .. } => true,
+        lambda::PatternKind::Tuple(items) => items.iter().all(is_irrefutable),
+        lambda::PatternKind::Record { fields, .. } => {
+            fields.iter().all(|(_, pattern)| is_irrefutable(pattern))
+        }
+        lambda::PatternKind::Constant(_) | lambda::PatternKind::Construct { .. } => false,
     }
 }
 
@@ -685,18 +934,18 @@ fn pattern_param_name((index, pattern): (usize, &lambda::Pattern)) -> String {
 fn js_name(ident: &Ident) -> String {
     let name = name_string(ident);
     if is_valid_js_ident(&name) && !is_reserved(&name) {
-        name
-    } else {
-        name.chars()
-            .map(|ch| {
-                if ch == '_' || ch == '$' || ch.is_ascii_alphanumeric() {
-                    ch
-                } else {
-                    '_'
-                }
-            })
-            .collect()
+        return name;
     }
+
+    let mut encoded = String::from("$tinyml$");
+    for character in name.chars() {
+        encoded.push_str(&format!("{:x}$", character as u32));
+    }
+    encoded
+}
+
+fn js_property_name(ident: &Ident) -> String {
+    name_string(ident)
 }
 
 fn lower_imports(imports: &[crate::parser::ast::UseDecl]) -> Vec<ir::Item> {
@@ -709,7 +958,7 @@ fn lower_imports(imports: &[crate::parser::ast::UseDecl]) -> Vec<ir::Item> {
                 names: members
                     .iter()
                     .map(|member| ir::ImportName {
-                        imported: name_string(member),
+                        imported: js_name(member),
                         local: js_name(member),
                     })
                     .collect(),
@@ -741,7 +990,9 @@ fn is_valid_js_ident(name: &str) -> bool {
 fn is_reserved(name: &str) -> bool {
     matches!(
         name,
-        "break"
+        "arguments"
+            | "await"
+            | "break"
             | "case"
             | "catch"
             | "class"
@@ -752,6 +1003,8 @@ fn is_reserved(name: &str) -> bool {
             | "delete"
             | "do"
             | "else"
+            | "enum"
+            | "eval"
             | "export"
             | "extends"
             | "finally"
@@ -759,6 +1012,15 @@ fn is_reserved(name: &str) -> bool {
             | "function"
             | "if"
             | "import"
+            | "implements"
+            | "interface"
+            | "let"
+            | "null"
+            | "package"
+            | "private"
+            | "protected"
+            | "public"
+            | "static"
             | "in"
             | "instanceof"
             | "new"
@@ -774,6 +1036,10 @@ fn is_reserved(name: &str) -> bool {
             | "while"
             | "with"
             | "yield"
+            | "true"
+            | "false"
+            | "of"
+            | "async"
     )
 }
 
@@ -844,7 +1110,16 @@ mod tests {
     #[test]
     fn preserves_valid_js_names() {
         assert_eq!(js_name(&ident("answer")), "answer");
-        assert_eq!(js_name(&ident("with-hyphen")), "with_hyphen");
+        assert_eq!(
+            js_name(&ident("with-hyphen")),
+            "$tinyml$77$69$74$68$2d$68$79$70$68$65$6e$"
+        );
+        assert_eq!(
+            js_name(&ident("arguments")),
+            "$tinyml$61$72$67$75$6d$65$6e$74$73$"
+        );
+        assert_ne!(js_name(&ident("default")), js_name(&ident("_default")));
+        assert_ne!(js_name(&ident("foo'")), js_name(&ident("foo_")));
     }
 
     #[test]
@@ -872,7 +1147,10 @@ mod tests {
         let module = module_with_value(
             "point",
             lambda::Expr {
-                ty: unit_type(),
+                ty: Type::Apply {
+                    ident: ident("Point"),
+                    arguments: Vec::new(),
+                },
                 kind: lambda::ExprKind::Record {
                     name: ident("Point"),
                     fields: vec![(ident("x"), int_expr("1")), (ident("y"), int_expr("2"))],
@@ -1023,7 +1301,7 @@ mod tests {
         assert!(matches!(
             lowerer.lower_type(&std_option, false),
             ir::TsType::Union(items)
-                if matches!(items.as_slice(), [ir::TsType::Number, ir::TsType::Null])
+                if matches!(items.as_slice(), [ir::TsType::BigInt, ir::TsType::Null])
         ));
         assert!(matches!(
             lowerer.lower_type(&user_option, false),

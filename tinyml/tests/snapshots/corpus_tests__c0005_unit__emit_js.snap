@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
 const unit: undefined = undefined;
@@ -8,11 +8,13 @@ function id_unit($x: undefined): undefined {
   return undefined;
 }
 
-const value: unknown = (() => {
-  switch (undefined) {
+const value: unknown = (($tinyml_match) => {
+  switch ($tinyml_match) {
     case undefined:
       return undefined;
   }
-})();
+})(undefined);
 
 export { unit, id_unit, value };
+
+declare function $tinyml_integer(op: "add" | "sub" | "mul" | "div" | "rem", left: bigint, right: bigint, bits: number, signed: boolean): bigint;

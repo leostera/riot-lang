@@ -108,10 +108,19 @@ impl Lowerer {
                 args: args.iter().map(|arg| self.lower_expr(arg)).collect(),
             },
             tir::ExprKind::BinaryOp { ident, left, right } => {
+                let operand_type = if crate::checker::builtin::is_integer_type(&left.ty) {
+                    left.ty.clone()
+                } else if crate::checker::builtin::is_integer_type(&right.ty) {
+                    right.ty.clone()
+                } else if crate::checker::builtin::is_unqualified_type(&left.ty, "string") {
+                    left.ty.clone()
+                } else {
+                    expr.ty.clone()
+                };
                 let left = self.lower_expr(left);
                 let right = self.lower_expr(right);
                 ir::ExprKind::Prim {
-                    op: ir::Primitive::from_ident(ident, left.ty.clone()),
+                    op: ir::Primitive::from_ident(ident, operand_type),
                     args: vec![left, right],
                 }
             }

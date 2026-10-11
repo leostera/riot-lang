@@ -2,13 +2,15 @@
 source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0008_pattern_hints.ml\")"
 ---
-function foo($x: readonly [number, number]): number {
-  return ($x["0"] * 2);
+function foo($x: readonly [bigint, bigint]): bigint {
+  return $tinyml_integer("mul", $x["0"], BigInt("2"), 8, false);
 }
 
-const block: number = (() => {
-  const x = 1;
+const block: bigint = (() => {
+  const x = BigInt("1");
   return x;
 })();
 
 export { foo, block };
+
+declare function $tinyml_integer(op: "add" | "sub" | "mul" | "div" | "rem", left: bigint, right: bigint, bits: number, signed: boolean): bigint;

@@ -99,7 +99,7 @@ fn emit_javascript_produces_executable_module() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ add }} from {:?}; if (add(41) !== 42) process.exit(1)",
+            "import {{ add }} from {:?}; if (add(41n) !== 42n) process.exit(1)",
             module.to_str().unwrap()
         ))
         .output()
@@ -140,7 +140,7 @@ fn emitted_match_module_executes() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ get, unwrap }} from {:?}; if (get({{type: 'Some', value: 41}}) !== 41 || get({{type: 'None'}}) !== 0 || unwrap({{type: 'Some', value: 9}}) !== 9) process.exit(1)",
+            "import {{ get, unwrap }} from {:?}; if (get({{type: 'Some', value: 41n}}) !== 41n || get({{type: 'None'}}) !== 0n || unwrap({{type: 'Some', value: 9n}}) !== 9n) process.exit(1)",
             module.to_str().unwrap()
         ))
         .output()
@@ -180,7 +180,7 @@ fn emitted_recursive_functions_execute() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ fact }} from {:?}; if (fact(6) !== 720) process.exit(1)",
+            "import {{ fact }} from {:?}; if (fact(6n) !== 720n) process.exit(1)",
             dir.join("fact.mjs").to_str().unwrap()
         ))
         .output()
@@ -216,7 +216,7 @@ fn emitted_closures_capture_values() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ make_adder }} from {:?}; if (make_adder(2)(40) !== 42) process.exit(1)",
+            "import {{ make_adder }} from {:?}; if (make_adder(2n)(40n) !== 42n) process.exit(1)",
             dir.join("closure.mjs").to_str().unwrap()
         ))
         .output()
@@ -256,7 +256,7 @@ fn emitted_comparisons_execute() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ less, same }} from {:?}; if (!less(2) || less(3) || !same(3) || same(2)) process.exit(1)",
+            "import {{ less, same }} from {:?}; if (!less(2n) || less(3n) || !same(3n) || same(2n)) process.exit(1)",
             dir.join("comparisons.mjs").to_str().unwrap()
         ))
         .output()
@@ -296,9 +296,157 @@ fn emitted_tuple_and_record_patterns_execute() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ first, get_name }} from {:?}; if (first([7, 8]) !== 7 || get_name({{name: 'Ada', age: 42}}) !== 'Ada') process.exit(1)",
+            "import {{ first, get_name }} from {:?}; if (first([7n, 8n]) !== 7n || get_name({{name: 'Ada', age: 42n}}) !== 'Ada') process.exit(1)",
             dir.join("patterns.mjs").to_str().unwrap()
         ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn emitted_multiple_tuple_lets_use_distinct_bindings() {
+    let dir = temp_dir("emit-js-multiple-tuple-lets");
+    let file = dir.join("tuple_lets.ml");
+    fs::write(
+        &file,
+        "let result = { let (first, _) = (1, 2); let (second, _) = (3, 4); first + second }",
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("compile")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ result }} from {:?}; if (result !== 4n) process.exit(1)",
+            dir.join("tuple_lets.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn emitted_fixed_width_integer_operations_are_exact() {
+    let dir = temp_dir("emit-js-integers");
+    let file = dir.join("integers.ml");
+    fs::write(
+        &file,
+        r#"
+        let add_i8 = fn (value: i8) -> value + 1
+        let add_i16 = fn (value: i16) -> value + 1
+        let add_i32 = fn (value: i32) -> value + 1
+        let add_i64 = fn (value: i64) -> value + 1
+        let add_u8 = fn (value: u8) -> value + 1
+        let add_u16 = fn (value: u16) -> value + 1
+        let add_u32 = fn (value: u32) -> value + 1
+        let add_u64 = fn (value: u64) -> value + 1
+        let subtract_i8 = fn (value: i8) -> value - 1
+        let multiply_u8 = fn (value: u8) -> value * 2
+        let unsigned_divide = fn (left: u8) -> fn (right: u8) -> left / right
+        let unsigned_remainder = fn (left: u8) -> fn (right: u8) -> left % right
+        let signed_divide = fn (left: i32) -> fn (right: i32) -> left / right
+        let signed_remainder = fn (left: i32) -> fn (right: i32) -> left % right
+        let exact_u64 = (18446744073709551615: u64)
+        let radix_i8 = (-0x80: i8)
+        "#,
+    )
+    .unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("compile")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import * as m from {:?}; let trapped = false; try {{ m.signed_divide(1n)(0n) }} catch (error) {{ trapped = error instanceof RangeError }}; if (m.add_i8(127n) !== -128n || m.add_i16(32767n) !== -32768n || m.add_i32(2147483647n) !== -2147483648n || m.add_i64(9223372036854775807n) !== -9223372036854775808n || m.add_u8(255n) !== 0n || m.add_u16(65535n) !== 0n || m.add_u32(4294967295n) !== 0n || m.add_u64(18446744073709551615n) !== 0n || m.subtract_i8(-128n) !== 127n || m.multiply_u8(200n) !== 144n || m.unsigned_divide(255n)(10n) !== 25n || m.unsigned_remainder(255n)(10n) !== 5n || m.signed_divide(-7n)(2n) !== -3n || m.signed_remainder(-7n)(2n) !== -1n || m.exact_u64 !== 18446744073709551615n || m.radix_i8 !== -128n || !trapped) process.exit(1)",
+            dir.join("integers.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn emitted_string_literals_decode_escapes() {
+    let dir = temp_dir("emit-js-string-escapes");
+    let file = dir.join("strings.ml");
+    let escape = char::from(92);
+    let quote = char::from(34);
+    let source = format!(
+        "let escaped = {quote}line{escape}nquote: {escape}{quote}yes{escape}{quote} slash: {escape}{escape}{quote}\nlet unknown = {quote}unknown{escape}q{quote}\n"
+    );
+    fs::write(&file, source).unwrap();
+
+    let output = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("compile")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let expected = format!(
+        "line{}quote: {quote}yes{quote} slash: {escape}",
+        char::from(10)
+    );
+    let codepoints = expected
+        .chars()
+        .map(|character| (character as u32).to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let unknown = format!("unknown{escape}q");
+    let unknown_codepoints = unknown
+        .chars()
+        .map(|character| (character as u32).to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let node_source = format!(
+        "import {{ escaped, unknown }} from {:?}; const expected = String.fromCharCode({codepoints}); const expectedUnknown = String.fromCharCode({unknown_codepoints}); if (escaped !== expected || unknown !== expectedUnknown) process.exit(1)",
+        dir.join("strings.mjs").to_str().unwrap()
+    );
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(node_source)
         .output()
         .unwrap();
     assert!(
@@ -403,7 +551,49 @@ fn compile_js_resolves_dependency_source_modules() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ result }} from {:?}; if (result !== 42) process.exit(1)",
+            "import {{ result }} from {:?}; if (result !== 42n) process.exit(1)",
+            dir.join("Main.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn compiled_reserved_identifiers_import_with_collision_free_js_names() {
+    let dir = temp_dir("reserved-js-imports");
+    let prelude = dir.join("prelude.ml");
+    let main = dir.join("Main.ml");
+    fs::write(&prelude, "let default = 40\nlet _default = 2\n").unwrap();
+    fs::write(
+        &main,
+        "use Prelude.{default, _default}\nlet result = default + _default\n",
+    )
+    .unwrap();
+
+    for (source, output) in [(&prelude, "Prelude.mjs"), (&main, "Main.mjs")] {
+        let mut command = Command::new(tinyml());
+        command.arg("compile").arg("-o").arg(dir.join(output));
+        if source == &main {
+            command.arg("-I").arg(&dir);
+        }
+        let result = command.arg(source).output().unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ result }} from {:?}; if (result !== 42n) process.exit(1)",
             dir.join("Main.mjs").to_str().unwrap()
         ))
         .output()
@@ -490,7 +680,7 @@ fn compile_resolves_source_modules_and_preserves_imported_types() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ polymorphic }} from {:?}; if (polymorphic[0] !== 41 || polymorphic[1] !== true) process.exit(1)",
+            "import {{ polymorphic }} from {:?}; if (polymorphic[0] !== 41n || polymorphic[1] !== true) process.exit(1)",
             output.to_str().unwrap()
         ))
         .output()
@@ -500,6 +690,93 @@ fn compile_resolves_source_modules_and_preserves_imported_types() {
         "{}",
         String::from_utf8_lossy(&node.stderr)
     );
+}
+
+#[test]
+fn compiled_modules_run_with_adt_tuple_and_record_patterns() {
+    let dir = temp_dir("module-runtime-patterns");
+    let invocation_dir = temp_dir("module-runtime-patterns-cwd");
+    fs::write(
+        dir.join("syntax.ml"),
+        r#"
+        type Tree<'value> = | Leaf('value) | Fork(Tree<'value>, Tree<'value>)
+        type Message =
+          | Message { marker: i32 }
+          | User { name: string, value: i32 }
+          | Done
+        let identity = fn value -> value
+        "#,
+    )
+    .unwrap();
+    let source = dir.join("main.ml");
+    fs::write(
+        &source,
+        r#"
+        use Syntax.{Tree, Leaf, Fork, identity}
+        use Syntax.{Message, User, Done}
+        type Person = Person { name: string, age: i32 }
+
+        let depth = fn tree -> match tree {
+          | Leaf(_) -> 1
+          | Fork(left, right) -> depth left + depth right
+        }
+        let tuple_value = fn pair -> match pair {
+          | (0, value) -> value
+          | (_, value) -> value + 1
+        }
+        let classify_message = fn message -> match message {
+          | Message { marker } -> marker
+          | User { name: "Ada", value } -> value
+          | Done -> 0
+          | _ -> -1
+        }
+        let get_age = fn user -> match user {
+          | Person { name: "Ada", age } -> age
+          | _ -> 0
+        }
+        let result = (
+          identity (depth (Fork(Leaf(1), Fork(Leaf(2), Leaf(3))))),
+          tuple_value((0, 41)),
+          get_age(Person { name: "Ada", age: 41 }),
+          tuple_value((1, 41)),
+          classify_message(User { name: "Ada", value: 43 }),
+          classify_message(Message { marker: 44 })
+        )
+        "#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .current_dir(&invocation_dir)
+        .arg("compile")
+        .arg("-o")
+        .arg(dir.join("main.mjs"))
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ result }} from {:?}; if (result[0] !== 3n || result[1] !== 41n || result[2] !== 41n || result[3] !== 42n || result[4] !== 43n || result[5] !== 44n) process.exit(1)",
+            dir.join("main.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+    let generated = fs::read_to_string(dir.join("main.mjs")).unwrap();
+    assert!(generated.contains("import { identity } from \"./Syntax.mjs\";"));
+    assert!(!generated.contains("import { Tree"));
 }
 
 #[test]
@@ -632,6 +909,135 @@ fn compile_rejects_type_errors_before_writing_artifacts() {
     assert!(
         !output_path.exists(),
         "type errors must be rejected before JS emission"
+    );
+}
+
+#[test]
+fn host_intrinsics_run_in_node_and_roundtrip_arguments_files_and_processes() {
+    let dir = temp_dir("host-intrinsics");
+    let invocation_dir = temp_dir("host-intrinsics-cwd");
+    let input = dir.join("input.txt");
+    let output = dir.join("output.txt");
+    fs::write(&input, "hello from Host\\n").unwrap();
+    let source = dir.join("host_client.ml");
+    fs::write(
+        &source,
+        r#"
+        use Host.{args, read_file, write_file, write_stdout, write_stderr, run_process}
+        use Prelude.{List, Nil, Cons, Result, Ok, Err}
+
+        let first = fn values -> match values { | Nil -> "" | Cons(value, _) -> value }
+        let second = fn values -> match values { | Cons(_, Cons(value, _)) -> value | _ -> "" }
+        let third = fn values -> match values { | Cons(_, Cons(_, Cons(value, _))) -> value | _ -> "" }
+        let arguments = args ()
+        let input_path = first arguments
+        let output_path = second arguments
+        let counter_path = third arguments
+        let contents = match (read_file input_path) {
+          | Ok(text) -> text
+          | Err(_) -> "read failed"
+        }
+        let write_result = write_file output_path contents
+        let child_result = run_process "node" (Cons("-e", Cons("process.exit(7)", Nil)))
+        let child_status = match child_result { | Ok(status) -> status | Err(_) -> -1 }
+        let counted = match (run_process "node" (Cons("-e", Cons("const fs = require('node:fs'); const path = process.argv[1]; if (fs.existsSync(path)) process.exit(2); fs.writeFileSync(path, '1'); process.exit(1)", Cons(counter_path, Nil))))) {
+          | Ok(1) -> 1
+          | Ok(2) -> 2
+          | Ok(_) -> 3
+          | Err(_) -> 4
+        }
+        let wrote_ok = match write_result { | Ok(_) -> true | Err(_) -> false }
+        let child_report = match (child_status == 7) { | true -> "child-ok;" | false -> "child-bad;" }
+        let count_report = match (counted == 1) { | true -> "once;" | false -> "multiple;" }
+        let write_report = match wrote_ok { | true -> "write-ok" | false -> "write-bad" }
+        let output = write_stdout (contents + child_report + count_report + write_report)
+        let diagnostic = write_stderr "host diagnostic\\n"
+        "#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .current_dir(&invocation_dir)
+        .arg("compile")
+        .arg("-o")
+        .arg(dir.join("host_client.mjs"))
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let execution = Command::new("node")
+        .arg(dir.join("host_client.mjs"))
+        .arg(&input)
+        .arg(&output)
+        .arg(dir.join("counter.txt"))
+        .output()
+        .unwrap();
+    assert!(
+        execution.status.success(),
+        "{}",
+        String::from_utf8_lossy(&execution.stderr)
+    );
+    assert_eq!(fs::read_to_string(output).unwrap(), "hello from Host\\n");
+    assert_eq!(
+        String::from_utf8_lossy(&execution.stdout),
+        "hello from Host\\nchild-ok;once;write-ok"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&execution.stderr),
+        "host diagnostic\\n"
+    );
+    assert!(dir.join("Host.mjs").exists());
+    assert_eq!(fs::read_to_string(dir.join("counter.txt")).unwrap(), "1");
+}
+
+#[test]
+fn host_io_and_process_failures_return_errors() {
+    let dir = temp_dir("host-errors");
+    let source = dir.join("host_errors.ml");
+    fs::write(
+        &source,
+        r#"
+        use Host.{read_file, write_file, run_process}
+        use Prelude.{List, Nil, Result, Ok, Err}
+
+        let missing = read_file "missing-tinyml-host-file"
+        let invalid_write = write_file "" "contents"
+        let missing_process = run_process "tinyml-command-does-not-exist" Nil
+        "#,
+    )
+    .unwrap();
+    let output = dir.join("host_errors.mjs");
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-o")
+        .arg(&output)
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ missing, invalid_write, missing_process }} from {:?}; if (missing.type !== 'Err' || invalid_write.type !== 'Err' || missing_process.type !== 'Err') process.exit(1)",
+            output.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
     );
 }
 

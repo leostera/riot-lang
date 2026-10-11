@@ -300,10 +300,31 @@ fn emit_graph_javascript(pipeline: &CheckedPipeline, root_output: &Path) -> Resu
         } else {
             module_output_path(module, output_dir)?
         };
-        let imports = source_imports(&module.source.ast);
-        let lambda = lambda::translate(&module.summary.tir);
-        let js = backend::js::lower_with_imports(&module.summary.interface, &lambda, &imports);
-        let javascript = backend::js::emit_js_string(&js);
+        let javascript = match module.source.kind {
+            tinyml::modules::ModuleKind::Intrinsic(tinyml::modules::IntrinsicModule::Host) => {
+                include_str!("../backend/js/host.mjs").to_string()
+            }
+            tinyml::modules::ModuleKind::Source => {
+                let imports = runtime_imports(module, &pipeline.modules);
+                let imported_constructors = module
+                    .source
+                    .dependencies
+                    .iter()
+                    .filter_map(|index| pipeline.modules.get(*index))
+                    .flat_map(|dependency| {
+                        dependency.summary.interface.constructors.iter().cloned()
+                    })
+                    .collect::<Vec<_>>();
+                let lambda = lambda::translate(&module.summary.tir);
+                let js = backend::js::lower_with_imports_and_constructors(
+                    &module.summary.interface,
+                    &lambda,
+                    &imports,
+                    &imported_constructors,
+                );
+                backend::js::emit_js_string(&js)
+            }
+        };
         artifacts.push((output, javascript));
     }
 
@@ -323,15 +344,70 @@ fn module_output_path(module: &CheckedModule, output_dir: &Path) -> Result<PathB
     Ok(output_dir.join(format!("{}.mjs", js_module_name(&name.to_ident()))))
 }
 
-fn source_imports(module: &parser::Ast) -> Vec<parser::ast::UseDecl> {
-    module
+fn runtime_imports(
+    module: &CheckedModule,
+    checked_modules: &[CheckedModule],
+) -> Vec<parser::ast::UseDecl> {
+    let mut imports = Vec::new();
+    for import in module
+        .source
+        .ast
         .items
         .iter()
         .filter_map(|item| match item {
-            parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
+            parser::ast::ModuleItem::UseDecl(import) => Some(import),
             _ => None,
         })
-        .collect()
+    {
+        let (module_name, selected, span) = match import {
+            parser::ast::UseDecl::Concrete {
+                module,
+                members,
+                span,
+            } => (module, Some(members.as_slice()), *span),
+            parser::ast::UseDecl::Wildcard { module, span } => (module, None, *span),
+        };
+        let dependency = module
+            .source
+            .dependencies
+            .iter()
+            .filter_map(|index| checked_modules.get(*index))
+            .find(|dependency| {
+                dependency
+                    .source
+                    .name
+                    .as_ref()
+                    .is_some_and(|name| name.to_ident().same_path(module_name))
+            })
+            .expect("every checked import has a resolved direct dependency");
+        let exported_values = dependency
+            .summary
+            .interface
+            .values
+            .iter()
+            .map(|value| value.name.clone())
+            .collect::<Vec<_>>();
+        let names = match selected {
+            Some(selected) => selected
+                .iter()
+                .filter(|name| {
+                    exported_values
+                        .iter()
+                        .any(|exported| exported.same_path(name))
+                })
+                .cloned()
+                .collect(),
+            None => exported_values,
+        };
+        if !names.is_empty() {
+            imports.push(parser::ast::UseDecl::Concrete {
+                module: module_name.clone(),
+                members: names,
+                span,
+            });
+        }
+    }
+    imports
 }
 
 fn js_module_name(ident: &parser::ident::Ident) -> String {
