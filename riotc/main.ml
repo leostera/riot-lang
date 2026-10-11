@@ -13,8 +13,11 @@ use Check.Typer.{
 }
 use Lambda.Lower.{lower_program}
 use Codegen.C.Emit.{emit_program, emit_module_program}
-use Modules.{load_source_units, module_path_relative, directory_of, join_path}
-use String.{equal, length, slice}
+use Modules.{
+  LoadedModule, load_source_graph, module_source_pairs, module_path_relative,
+  directory_of, join_path
+}
+use String.{equal}
 
 type SourcePath = SourcePath(string)
 type ExecutablePath = ExecutablePath(string)
@@ -25,7 +28,7 @@ type NativeCompileRequest = NativeCompileRequest {
 }
 
 type CheckedModule = CheckedModule {
-  source_unit: (string, SourceModule),
+  loaded_module: LoadedModule,
   value_bindings: List<ValueBinding>
 }
 
@@ -121,34 +124,33 @@ let selected_import_value_bindings = fn (declarations: List<Declaration>) ->
       }
   }
 
-let path_ends_with = fn path -> fn suffix ->
-  match (length path < length suffix) {
-    | true -> false
-    | false -> equal (slice path (length path - length suffix) (length path)) suffix
-  }
-
-let source_path_matches_module = fn source_path -> fn (module_path: ModulePath) -> {
-  let relative_path = module_path_relative module_path;
-  match (equal source_path relative_path) {
-    | true -> true
-    | false -> path_ends_with source_path ("/" + relative_path)
-  }
-}
-
 let find_checked_module = fn (wanted_path: ModulePath) ->
   fn (checked_modules: List<CheckedModule>) ->
   match checked_modules {
     | Nil -> None
     | Cons(CheckedModule {
-        source_unit: (source_path, source_module),
+        loaded_module: LoadedModule {
+          module_path: Some(module_path), source_path, source_module
+        },
         value_bindings
-      }, remaining) -> match (source_path_matches_module source_path wanted_path) {
+      }, remaining) -> match (equal
+        (module_path_relative wanted_path) (module_path_relative module_path)) {
       | true -> Some(CheckedModule {
-        source_unit: (source_path, source_module),
+        loaded_module: LoadedModule {
+          module_path: Some(module_path),
+          source_path: source_path,
+          source_module: source_module
+        },
         value_bindings: value_bindings
       })
       | false -> find_checked_module wanted_path remaining
     }
+    | Cons(CheckedModule {
+        loaded_module: LoadedModule {
+          module_path: None, source_path: _, source_module: _
+        },
+        value_bindings: _
+      }, remaining) -> find_checked_module wanted_path remaining
   }
 
 let imported_bindings_for_imports = fn (imports: List<Import>) ->
@@ -159,7 +161,10 @@ let imported_bindings_for_imports = fn (imports: List<Import>) ->
       let imported = match (find_checked_module module_path checked_modules) {
         | None -> Nil
         | Some(CheckedModule {
-            source_unit: (_, SourceModule { imports: _, declarations }),
+            loaded_module: LoadedModule {
+              module_path: _, source_path: _,
+              source_module: SourceModule { imports: _, declarations }
+            },
             value_bindings
           }) -> selected_import_value_bindings declarations value_bindings selected_names
       };
@@ -168,21 +173,27 @@ let imported_bindings_for_imports = fn (imports: List<Import>) ->
     }
   }
 
-let imported_bindings_for_module = fn (SourceModule { imports, declarations: _ }) ->
-  fn (checked_modules: List<CheckedModule>) ->
+let imported_bindings_for_module = fn (LoadedModule {
+  module_path: _, source_path: _, source_module: SourceModule { imports, declarations: _ }
+}) -> fn (checked_modules: List<CheckedModule>) ->
   imported_bindings_for_imports imports checked_modules
 
-let check_loaded_modules = fn (modules: List<(string, SourceModule)>) ->
+let check_loaded_modules = fn (modules: List<LoadedModule>) ->
   fn (checked_modules: List<CheckedModule>) ->
   match modules {
     | Nil -> Ok(checked_modules)
-    | Cons((source_path, source_module), remaining) -> {
-      let imported_bindings = imported_bindings_for_module source_module checked_modules;
+    | Cons(LoadedModule { module_path, source_path, source_module }, remaining) -> {
+      let loaded_module = LoadedModule {
+        module_path: module_path,
+        source_path: source_path,
+        source_module: source_module
+      };
+      let imported_bindings = imported_bindings_for_module loaded_module checked_modules;
       match (check_source_module_with_bindings source_module imported_bindings) {
         | Err(message) -> Err("type error in " + source_path + ": " + message)
         | Ok(value_bindings) -> check_loaded_modules remaining
           (Cons(CheckedModule {
-            source_unit: (source_path, source_module),
+            loaded_module: loaded_module,
             value_bindings: value_bindings
           }, checked_modules))
       }
@@ -194,11 +205,17 @@ let find_root_checked_module = fn (root_path: string) ->
   match checked_modules {
     | Nil -> None
     | Cons(CheckedModule {
-        source_unit: (source_path, source_module),
+        loaded_module: LoadedModule {
+          module_path: _, source_path, source_module
+        },
         value_bindings
       }, remaining) -> match (equal root_path source_path) {
       | true -> Some(CheckedModule {
-        source_unit: (source_path, source_module),
+        loaded_module: LoadedModule {
+          module_path: None,
+          source_path: source_path,
+          source_module: source_module
+        },
         value_bindings: value_bindings
       })
       | false -> find_root_checked_module root_path remaining
@@ -206,7 +223,7 @@ let find_root_checked_module = fn (root_path: string) ->
   }
 
 let compile_module_graph_unchecked = fn (source_file: string) ->
-  match (load_source_units source_file
+  match (load_source_graph source_file
     (Cons(directory_of source_file, Nil): List<string>)) {
     | Err(message) -> Err(compile_error (SourceParsing) message None)
     | Ok(modules) -> match (check_loaded_modules modules Nil) {
@@ -215,12 +232,15 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
         | None -> Err(compile_error (SourceParsing)
           "source graph has no entry module" None)
         | Some(CheckedModule {
-            source_unit: (_, source_module), value_bindings: _
+            loaded_module: LoadedModule { source_module, source_path: _, module_path: _ },
+            value_bindings: _
           }) -> {
-          let imported_bindings = imported_bindings_for_module source_module checked_modules;
+          let imported_bindings = imported_bindings_for_module
+            (LoadedModule { module_path: None, source_path: source_file, source_module: source_module })
+            checked_modules;
           match (validate_native_entry_module_with_bindings source_module imported_bindings) {
             | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-            | Ok(_) -> Ok(emit_module_program source_file modules)
+            | Ok(_) -> Ok(emit_module_program source_file (module_source_pairs modules))
           }
         }
       }
