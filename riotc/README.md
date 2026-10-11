@@ -25,18 +25,32 @@ node build/run-compiler.mjs compile path/to/Smoke.ml -o build/smoke
 
 ## Source organization
 
-- `syntax/lexer.ml`: source tokenization.
-- `syntax/parser.ml`: parser for the current `main : unit -> i32` slice.
-- `syntax/ast.ml`: source AST.
-- `check/typer.ml`: expression type checking and entry-point validation.
+- `syntax/lexer.ml`: source tokenization and source spans.
+- `syntax/ast.ml`: domain-specific names, types, patterns, expressions, and
+  module declarations.
+- `syntax/parser.ml`: validates the initial top-level `main : unit -> i32`
+  form and delegates expression parsing to the parser components below.
+- `syntax/parser/common.ml`: token-stream results, delimiter helpers, and
+  source-aware lexer error mapping.
+- `syntax/parser/types.ml`: named, generic, tuple, type-variable, and arrow
+  type expressions.
+- `syntax/parser/patterns.ml` and `pattern_parts.ml`: patterns and pattern
+  lists.
+- `syntax/parser/expressions.ml`, `expression_parts.ml`, and `literals.ml`:
+  expression precedence, nested expressions, record/list productions, and
+  string literal decoding.
+- `check/typer.ml`: type checking and native entry-point validation.
 - `lambda/ir.ml`, `lambda/lower.ml`: checked AST to Lambda IR.
-- `codegen/c/emit.ml`: C emission for the current subset.
+- `codegen/c/emit.ml`: C emission for the native slice.
 - `runtime.h`, `runtime.c`: native value and host runtime linked by Clang.
 - `main.ml`: compiler pipeline and CLI.
 
-The native compiler is intentionally incomplete: it currently supports integer
-literals, parentheses, unary minus, `+`, `-`, `*`, and `/` in the entry
-expression. It does not yet parse or compile its own source tree, resolve
-RiotML modules, or support the full documented language subset. The required
-JS-to-native self-compilation gate and the existing RFD0050 completion criteria
-remain open; this slice is not a substitute for them.
+The native compiler remains intentionally incomplete. The current entry
+expression subset includes `i32` literals, parentheses, unary minus, arithmetic
+and comparisons, plus exhaustive boolean `match` expressions. The expression
+and pattern components are being built as reusable frontend modules, but the
+public parser still accepts only the single `main` entry declaration: it does
+not yet parse a complete module, resolve RiotML imports, or compile the
+compiler's own source tree. The required JS-to-native self-compilation gate and
+the RFD0050 completion criteria remain open; this slice is not a substitute for
+them.

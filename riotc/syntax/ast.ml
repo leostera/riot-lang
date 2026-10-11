@@ -5,16 +5,14 @@ type ValueName = ValueName(string)
 type TypeName = TypeName(string)
 type ConstructorName = ConstructorName(string)
 type ModuleName = ModuleName(string)
+type MemberName = MemberName(string)
 type TypeVariableName = TypeVariableName(string)
 type IntegerLiteral = IntegerLiteral(string)
 type TextLiteral = TextLiteral(string)
 
 type ModulePath = ModulePath(List<ModuleName>)
 
-type ImportedName =
-  | ImportedValue(ValueName)
-  | ImportedType(TypeName)
-  | ImportedConstructor(ConstructorName)
+type ImportedName = ImportedName(MemberName)
 
 type Import = Import {
   module_path: ModulePath,
@@ -71,6 +69,7 @@ type TypeDeclarationData = TypeDeclarationData {
 
 type Pattern =
   | Variable(ValueName)
+  | PatternUnit
   | Wildcard
   | PatternInteger(IntegerLiteral)
   | PatternBoolean(bool)
