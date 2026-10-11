@@ -98,6 +98,22 @@ fn recursively_defined_variant_can_be_matched() {
 }
 
 #[test]
+fn recursive_expr_with_ill_typed_branch_is_rejected() {
+    assert_has_type_mismatch(
+        r#"
+        type Expr =
+          | Int(i32)
+          | Add(Expr, Expr)
+
+        let evaluate = fn (expr: Expr) -> match expr {
+          | Int(value) -> value
+          | Add(left, right) -> evaluate left + true
+        }
+        "#,
+    );
+}
+
+#[test]
 fn annotations_constrain_expression_and_parameter_types() {
     assert_valid(
         r#"

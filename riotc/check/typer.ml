@@ -857,10 +857,6 @@ let selected_member_bindings = fn selected_names ->
       }, selected_member_bindings remaining)
   }
 
-let module_value_bindings = fn imports -> fn declarations ->
-  append_value_bindings (declared_value_bindings declarations)
-    (imported_value_bindings imports)
-
 let replace_value_binding = fn name -> fn new_value_type -> fn bindings ->
   match bindings {
     | Nil -> Cons(ValueBinding { name: name, value_type: new_value_type }, Nil)
@@ -900,13 +896,15 @@ let check_source_declarations = fn declarations -> fn bindings ->
     | Cons(TypeDeclaration(_), remaining) -> check_source_declarations remaining bindings
   }
 
-let check_source_module_bindings = fn (SourceModule { imports, declarations }) ->
+let check_source_module_with_bindings = fn (SourceModule { imports, declarations }) ->
+  fn imported_bindings ->
   match (check_source_module_names (SourceModule {
     imports: imports,
     declarations: declarations
   })) {
     | "" -> {
-      let initial_bindings = module_value_bindings imports declarations;
+      let initial_bindings = append_value_bindings
+        (declared_value_bindings declarations) imported_bindings;
       match (infer_source_declaration_bindings declarations initial_bindings) {
         | Err(message) -> Err(message)
         | Ok(inferred_bindings) -> match (check_source_declarations declarations inferred_bindings) {
@@ -917,6 +915,11 @@ let check_source_module_bindings = fn (SourceModule { imports, declarations }) -
     }
     | message -> Err(message)
   }
+
+let check_source_module_bindings = fn (SourceModule { imports, declarations }) -> {
+  let source_module = SourceModule { imports: imports, declarations: declarations };
+  check_source_module_with_bindings source_module (imported_value_bindings imports)
+}
 
 let check_source_module = fn source_module ->
   match (check_source_module_bindings source_module) {
@@ -936,14 +939,15 @@ let find_native_entry = fn declarations ->
     | Cons(TypeDeclaration(_), remaining) -> find_native_entry remaining
   }
 
-let validate_native_entry_module = fn (SourceModule { imports, declarations }) -> {
+let validate_native_entry_module_with_bindings = fn (SourceModule { imports, declarations }) ->
+  fn imported_bindings -> {
   let source_module = SourceModule {
     imports: imports,
     declarations: declarations
   };
   match (find_native_entry declarations) {
     | Err(message) -> Err(message)
-    | Ok(body) -> match (check_source_module_bindings source_module) {
+    | Ok(body) -> match (check_source_module_with_bindings source_module imported_bindings) {
       | Err(message) -> Err(message)
       | Ok(bindings) -> match (check_expression_in body bindings) {
         | Err(message) -> Err(message)
@@ -955,6 +959,11 @@ let validate_native_entry_module = fn (SourceModule { imports, declarations }) -
       }
     }
   }
+}
+
+let validate_native_entry_module = fn (SourceModule { imports, declarations }) -> {
+  let source_module = SourceModule { imports: imports, declarations: declarations };
+  validate_native_entry_module_with_bindings source_module (imported_value_bindings imports)
 }
 
 let check_program = fn program ->

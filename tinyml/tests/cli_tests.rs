@@ -945,6 +945,37 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     );
     assert!(!native_wrong_top_level_argument_output.exists());
 
+    fs::write(
+        dir.join("helper.ml"),
+        "let increment = fn value -> value + 1\n",
+    )
+    .unwrap();
+    let native_wrong_imported_argument_source =
+        dir.join("native_compiler_wrong_imported_argument.ml");
+    fs::write(
+        &native_wrong_imported_argument_source,
+        "use Helper.{increment}\nlet main = fn () -> increment true\n",
+    )
+    .unwrap();
+    let native_wrong_imported_argument_output =
+        dir.join("native_compiler_wrong_imported_argument.native");
+    let native_wrong_imported_argument = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_wrong_imported_argument_source)
+        .arg("-o")
+        .arg(&native_wrong_imported_argument_output)
+        .output()
+        .unwrap();
+    assert!(!native_wrong_imported_argument.status.success());
+    assert!(
+        String::from_utf8_lossy(&native_wrong_imported_argument.stderr)
+            .contains("function argument has an incompatible type"),
+        "unexpected imported-call diagnostic: {}",
+        String::from_utf8_lossy(&native_wrong_imported_argument.stderr)
+    );
+    assert!(!native_wrong_imported_argument_output.exists());
+
     let native_unknown_type_source = dir.join("native_compiler_unknown_type.ml");
     fs::write(
         &native_unknown_type_source,
@@ -1100,6 +1131,10 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     );
 
     let dynamic_cases = [
+        (
+            "imported_helper",
+            "use Helper.{increment}\nlet main = fn () -> increment 41\n",
+        ),
         (
             "top_level_helper",
             "let increment = fn value -> value + 1\nlet main = fn () -> increment 41\n",
