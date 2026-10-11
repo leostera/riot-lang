@@ -13,7 +13,7 @@
 static int rt_argc;
 static char **rt_argv;
 
-static void rt_fail(const char *message) {
+_Noreturn static void rt_fail(const char *message) {
   fprintf(stderr, "riotml runtime: %s\n", message);
   abort();
 }
@@ -48,7 +48,17 @@ RtValue rt_string(const char *string) {
 
 RtValue rt_unit(void) { return rt_value(RT_UNIT); }
 
+static char *rt_copy_string(const char *source) {
+  size_t length = strlen(source);
+  char *copy = malloc(length + 1);
+  if (copy == NULL) rt_fail("out of memory");
+  memcpy(copy, source, length + 1);
+  return copy;
+}
+
 static RtValue rt_boxed(int value_tag, int constructor_tag, size_t count,
+                        const char *constructor_name,
+                        const char *const *field_names,
                         const RtValue *fields) {
   RtValue value = rt_value(value_tag);
   RtBox *box = malloc(sizeof(*box));
@@ -56,18 +66,41 @@ static RtValue rt_boxed(int value_tag, int constructor_tag, size_t count,
   box->tag = constructor_tag;
   box->count = count;
   box->fields = count == 0 ? NULL : malloc(count * sizeof(*box->fields));
+  box->constructor_name = constructor_name == NULL
+                              ? NULL
+                              : rt_copy_string(constructor_name);
+  box->field_names = count == 0 || field_names == NULL
+                         ? NULL
+                         : malloc(count * sizeof(*box->field_names));
   if (count != 0 && box->fields == NULL) rt_fail("out of memory");
+  if (count != 0 && field_names != NULL && box->field_names == NULL)
+    rt_fail("out of memory");
   if (count != 0) memcpy(box->fields, fields, count * sizeof(*fields));
+  if (box->field_names != NULL) {
+    for (size_t index = 0; index < count; index += 1)
+      box->field_names[index] = rt_copy_string(field_names[index]);
+  }
   value.as.box = box;
   return value;
 }
 
 RtValue rt_tuple(size_t count, const RtValue *fields) {
-  return rt_boxed(RT_TUPLE, 0, count, fields);
+  return rt_boxed(RT_TUPLE, 0, count, NULL, NULL, fields);
 }
 
 RtValue rt_variant(int tag, size_t count, const RtValue *fields) {
-  return rt_boxed(RT_VARIANT, tag, count, fields);
+  return rt_boxed(RT_VARIANT, tag, count, NULL, NULL, fields);
+}
+
+RtValue rt_variant_named(const char *name, size_t count,
+                         const RtValue *fields) {
+  return rt_boxed(RT_VARIANT, 0, count, name, NULL, fields);
+}
+
+RtValue rt_record_named(const char *constructor_name, size_t count,
+                        const char *const *field_names,
+                        const RtValue *fields) {
+  return rt_boxed(RT_VARIANT, 0, count, constructor_name, field_names, fields);
 }
 
 RtValue rt_field(RtValue value, size_t index) {
@@ -79,8 +112,113 @@ RtValue rt_field(RtValue value, size_t index) {
 }
 
 int rt_has_tag(RtValue value, int tag) {
-  return value.tag == RT_VARIANT && value.as.box->tag == tag;
+  const char *name = NULL;
+  switch (tag) {
+  case RT_NIL: name = "Nil"; break;
+  case RT_CONS: name = "Cons"; break;
+  case RT_NONE: name = "None"; break;
+  case RT_SOME: name = "Some"; break;
+  case RT_OK: name = "Ok"; break;
+  case RT_ERR: name = "Err"; break;
+  default: return 0;
+  }
+  return value.tag == RT_VARIANT && value.as.box->constructor_name != NULL &&
+         strcmp(value.as.box->constructor_name, name) == 0;
 }
+
+int rt_has_variant_name(RtValue value, const char *name) {
+  return value.tag == RT_VARIANT && value.as.box->constructor_name != NULL &&
+         strcmp(value.as.box->constructor_name, name) == 0;
+}
+
+int rt_has_variant_count(RtValue value, size_t count) {
+  return value.tag == RT_VARIANT && value.as.box->count == count;
+}
+
+int rt_has_tuple_count(RtValue value, size_t count) {
+  return value.tag == RT_TUPLE && value.as.box->count == count;
+}
+
+int rt_has_named_field(RtValue value, const char *field_name) {
+  if (value.tag != RT_VARIANT || value.as.box->field_names == NULL) return 0;
+  for (size_t index = 0; index < value.as.box->count; index += 1) {
+    if (strcmp(value.as.box->field_names[index], field_name) == 0) return 1;
+  }
+  return 0;
+}
+
+RtValue rt_field_named(RtValue value, const char *field_name) {
+  if (value.tag != RT_VARIANT || value.as.box->field_names == NULL)
+    rt_fail("record field access on a non-record value");
+  for (size_t index = 0; index < value.as.box->count; index += 1) {
+    if (strcmp(value.as.box->field_names[index], field_name) == 0)
+      return value.as.box->fields[index];
+  }
+  rt_fail("record field does not exist");
+}
+
+int rt_is_int(RtValue value) { return value.tag == RT_INT; }
+int rt_is_bool(RtValue value) { return value.tag == RT_BOOL; }
+int rt_is_string(RtValue value) { return value.tag == RT_STRING; }
+int rt_is_unit(RtValue value) { return value.tag == RT_UNIT; }
+
+RtValue rt_environment_root(void) {
+  RtValue value = rt_value(RT_ENVIRONMENT);
+  RtEnvironment *environment = calloc(1, sizeof(*environment));
+  if (environment == NULL) rt_fail("out of memory");
+  value.as.environment = environment;
+  return value;
+}
+
+RtValue rt_environment_child(RtValue parent) {
+  if (parent.tag != RT_ENVIRONMENT)
+    rt_fail("closure environment is not an environment");
+  RtValue value = rt_value(RT_ENVIRONMENT);
+  RtEnvironment *environment = calloc(1, sizeof(*environment));
+  if (environment == NULL) rt_fail("out of memory");
+  environment->parent = parent.as.environment;
+  value.as.environment = environment;
+  return value;
+}
+
+void rt_environment_bind(RtValue value, const char *name, RtValue bound_value) {
+  if (value.tag != RT_ENVIRONMENT)
+    rt_fail("cannot bind a name outside an environment");
+  RtEnvironment *environment = value.as.environment;
+  for (size_t index = 0; index < environment->count; index += 1) {
+    if (strcmp(environment->bindings[index].name, name) == 0) {
+      environment->bindings[index].value = bound_value;
+      return;
+    }
+  }
+  RtBinding *bindings = realloc(environment->bindings,
+                                (environment->count + 1) * sizeof(*bindings));
+  if (bindings == NULL) rt_fail("out of memory");
+  environment->bindings = bindings;
+  environment->bindings[environment->count].name = rt_copy_string(name);
+  environment->bindings[environment->count].value = bound_value;
+  environment->count += 1;
+}
+
+RtValue rt_environment_get(RtValue value, const char *name) {
+  if (value.tag != RT_ENVIRONMENT)
+    rt_fail("cannot resolve a name outside an environment");
+  for (RtEnvironment *environment = value.as.environment; environment != NULL;
+       environment = environment->parent) {
+    for (size_t index = environment->count; index > 0; index -= 1) {
+      RtBinding binding = environment->bindings[index - 1];
+      if (strcmp(binding.name, name) == 0) return binding.value;
+    }
+  }
+  fprintf(stderr, "riotml runtime: unbound RiotML value name `%s`\n", name);
+  abort();
+}
+
+RtValue rt_string_equal_to(RtValue value, const char *expected) {
+  return rt_bool(strcmp(rt_as_string(value), expected) == 0);
+}
+
+void rt_pattern_fail(void) { rt_fail("RiotML pattern match failed"); }
 
 RtValue rt_function(RtFunction function, RtValue environment) {
   RtValue value = rt_value(RT_FUNCTION);
@@ -116,7 +254,8 @@ char *rt_as_string(RtValue value) {
 RtValue rt_add(RtValue left, RtValue right) {
   if (left.tag == RT_STRING && right.tag == RT_STRING)
     return rt_concat(left, right);
-  return rt_int(rt_as_int(left) + rt_as_int(right));
+  uint32_t result = (uint32_t)rt_as_int(left) + (uint32_t)rt_as_int(right);
+  return rt_int((int32_t)result);
 }
 
 RtValue rt_i32_add(RtValue left, RtValue right) {
@@ -181,27 +320,29 @@ RtValue rt_i32_neg(RtValue value) {
 }
 
 RtValue rt_sub(RtValue left, RtValue right) {
-  return rt_int(rt_as_int(left) - rt_as_int(right));
+  uint32_t result = (uint32_t)rt_as_int(left) - (uint32_t)rt_as_int(right);
+  return rt_int((int32_t)result);
 }
 
 RtValue rt_mul(RtValue left, RtValue right) {
-  return rt_int(rt_as_int(left) * rt_as_int(right));
+  uint32_t result = (uint32_t)rt_as_int(left) * (uint32_t)rt_as_int(right);
+  return rt_int((int32_t)result);
 }
 
 RtValue rt_div(RtValue left, RtValue right) {
-  int64_t numerator = rt_as_int(left);
-  int64_t denominator = rt_as_int(right);
+  int32_t numerator = (int32_t)rt_as_int(left);
+  int32_t denominator = (int32_t)rt_as_int(right);
   if (denominator == 0) rt_fail("division by zero");
-  if (numerator == INT64_MIN && denominator == -1)
-    return rt_int(INT64_MIN);
+  if (numerator == INT32_MIN && denominator == -1)
+    return rt_int(INT32_MIN);
   return rt_int(numerator / denominator);
 }
 
 RtValue rt_rem(RtValue left, RtValue right) {
-  int64_t numerator = rt_as_int(left);
-  int64_t denominator = rt_as_int(right);
+  int32_t numerator = (int32_t)rt_as_int(left);
+  int32_t denominator = (int32_t)rt_as_int(right);
   if (denominator == 0) rt_fail("remainder by zero");
-  if (numerator == INT64_MIN && denominator == -1) return rt_int(0);
+  if (numerator == INT32_MIN && denominator == -1) return rt_int(0);
   return rt_int(numerator % denominator);
 }
 
@@ -240,10 +381,10 @@ RtValue rt_concat(RtValue left, RtValue right) {
   return result;
 }
 
-static RtValue rt_nil(void) { return rt_variant(RT_NIL, 0, NULL); }
+static RtValue rt_nil(void) { return rt_variant_named("Nil", 0, NULL); }
 static RtValue rt_cons_tail(RtValue head, RtValue tail) {
   RtValue fields[] = {head, tail};
-  return rt_variant(RT_CONS, 2, fields);
+  return rt_variant_named("Cons", 2, fields);
 }
 static RtValue rt_cons_first(RtValue ignored, RtValue head) {
   (void)ignored;
@@ -254,18 +395,18 @@ static RtValue rt_cons(RtValue ignored, RtValue unit) {
   (void)unit;
   return rt_function(rt_cons_first, rt_unit());
 }
-static RtValue rt_none(void) { return rt_variant(RT_NONE, 0, NULL); }
+static RtValue rt_none(void) { return rt_variant_named("None", 0, NULL); }
 static RtValue rt_some(RtValue ignored, RtValue value) {
   (void)ignored;
-  return rt_variant(RT_SOME, 1, &value);
+  return rt_variant_named("Some", 1, &value);
 }
 static RtValue rt_ok(RtValue ignored, RtValue value) {
   (void)ignored;
-  return rt_variant(RT_OK, 1, &value);
+  return rt_variant_named("Ok", 1, &value);
 }
 static RtValue rt_err(RtValue ignored, RtValue value) {
   (void)ignored;
-  return rt_variant(RT_ERR, 1, &value);
+  return rt_variant_named("Err", 1, &value);
 }
 
 void rt_set_args(int argc, char **argv) {
@@ -280,6 +421,12 @@ RtValue rt_args(void) {
     values = rt_cons_tail(text, values);
   }
   return values;
+}
+
+RtValue rt_host_args(RtValue ignored, RtValue unit) {
+  (void)ignored;
+  (void)unit;
+  return rt_args();
 }
 
 int rt_utf8_valid(const char *bytes, size_t length) {

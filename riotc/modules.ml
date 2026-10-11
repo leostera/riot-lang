@@ -1,6 +1,12 @@
 // Load a deterministic, dependency-first graph of RiotML source modules.
-use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
-use Syntax.Ast.{SourceModule, ModulePath, ModuleName, Import}
+use Prelude.{List, Nil, Cons, Option, Some, None, Ok, Err}
+use Syntax.Ast.{
+  SourceModule, ModulePath, ModuleName, Import, ImportedName, MemberName,
+  ValueDeclaration, ValueDeclarationData, TypeDeclaration,
+  TypeDeclarationData, TypeAlias, TypeRecord, TypeVariants,
+  RecordTypeField, TupleVariant, TupleVariantData,
+  RecordVariant, RecordVariantData, ValueName, TypeName, ConstructorName
+}
 use Syntax.Parser.SourceModule.{parse_source_module}
 use Host.{read_file}
 use String.{length, get, slice, equal}
@@ -195,6 +201,132 @@ let source_module_imports = fn (SourceModule {
   declarations: _
 }) -> imports
 
+let append_names = fn first -> fn second ->
+  match first {
+    | Nil -> second
+    | Cons(name, remaining) -> Cons(name, append_names remaining second)
+  }
+
+let record_type_field_names = fn fields ->
+  match fields {
+    | Nil -> Nil
+    | Cons(RecordTypeField { name: ValueName(name), field_type: _ }, remaining) ->
+      Cons(name, record_type_field_names remaining)
+  }
+
+let variant_export_names = fn variants ->
+  match variants {
+    | Nil -> Nil
+    | Cons(TupleVariant(TupleVariantData {
+        constructor_name: ConstructorName(name),
+        fields: _
+      }), remaining) -> Cons(name, variant_export_names remaining)
+    | Cons(RecordVariant(RecordVariantData {
+        constructor_name: ConstructorName(name),
+        fields
+      }), remaining) -> append_names (Cons(name, record_type_field_names fields))
+        (variant_export_names remaining)
+  }
+
+let declaration_export_names = fn declarations ->
+  match declarations {
+    | Nil -> Nil
+    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body: _ }), remaining) ->
+      Cons(name, declaration_export_names remaining)
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: TypeName(name),
+        parameters: _,
+        definition: TypeAlias(_)
+      }), remaining) -> Cons(name, declaration_export_names remaining)
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: TypeName(name),
+        parameters: _,
+        definition: TypeRecord(fields)
+      }), remaining) -> append_names (Cons(name, record_type_field_names fields))
+        (Cons(name, declaration_export_names remaining))
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: TypeName(name),
+        parameters: _,
+        definition: TypeVariants(variants)
+      }), remaining) -> append_names (Cons(name, variant_export_names variants))
+        (Cons(name, declaration_export_names remaining))
+  }
+
+let contains_export_name = fn wanted -> fn names ->
+  match names {
+    | Nil -> false
+    | Cons(name, remaining) -> match (equal wanted name) {
+      | true -> true
+      | false -> contains_export_name wanted remaining
+    }
+  }
+
+let find_imported_module = fn wanted_path -> fn modules ->
+  match modules {
+    | Nil -> None
+    | Cons(LoadedModule {
+        module_path: Some(module_path),
+        source_path,
+        source_module
+      }, remaining) -> match (equal
+        (module_path_display module_path) (module_path_display wanted_path)) {
+      | true -> Some(LoadedModule {
+        module_path: Some(module_path),
+        source_path: source_path,
+        source_module: source_module
+      })
+      | false -> find_imported_module wanted_path remaining
+    }
+    | Cons(LoadedModule { module_path: None, source_path: _, source_module: _ }, remaining) ->
+      find_imported_module wanted_path remaining
+  }
+
+let validate_selected_members = fn module_name -> fn exported_names -> fn selected_names ->
+  match selected_names {
+    | Nil -> Ok(())
+    | Cons(ImportedName(MemberName(member_name)), remaining) ->
+      match (contains_export_name member_name exported_names) {
+        | true -> validate_selected_members module_name exported_names remaining
+        | false -> Err("module `" + module_name + "` does not export `" + member_name + "`")
+      }
+  }
+
+let validate_one_import = fn modules -> fn (Import {
+  module_path,
+  selected_names
+}) -> {
+  let module_name = module_path_display module_path;
+  match (find_imported_module module_path modules) {
+    | None -> Err("module `" + module_name + "` is not in the loaded source graph")
+    | Some(LoadedModule { module_path: _, source_path: _, source_module }) ->
+      validate_selected_members module_name
+        (declaration_export_names (source_module_declarations source_module)) selected_names
+  }
+}
+
+let source_module_declarations = fn (SourceModule { imports: _, declarations }) -> declarations
+
+let validate_import_list = fn modules -> fn imports ->
+  match imports {
+    | Nil -> Ok(())
+    | Cons(import, remaining) -> match (validate_one_import modules import) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_import_list modules remaining
+    }
+  }
+
+let validate_module_imports = fn modules -> fn loaded_modules ->
+  match loaded_modules {
+    | Nil -> Ok(())
+    | Cons(LoadedModule { module_path: _, source_path: _, source_module }, remaining) ->
+      match (validate_import_list modules (source_module_imports source_module)) {
+        | Err(message) -> Err(message)
+        | Ok(_) -> validate_module_imports modules remaining
+      }
+  }
+
+let validate_import_members = fn modules -> validate_module_imports modules modules
+
 let visit_module_imports = fn source_module -> fn source_path -> fn include_roots -> fn (ModuleGraphState {
   completed_paths: completed_paths_before,
   active_paths,
@@ -252,7 +384,13 @@ let load_source_graph = fn source_path -> fn include_roots -> {
         completed_paths: _,
         active_paths: _,
         reversed_modules
-      }) -> Ok(reverse_modules reversed_modules Nil)
+      }) -> {
+        let modules = reverse_modules reversed_modules Nil;
+        match (validate_import_members modules) {
+          | Err(message) -> Err(message)
+          | Ok(_) -> Ok(modules)
+        }
+      }
     }
   }
 }

@@ -7,6 +7,7 @@
 typedef struct RtValue RtValue;
 typedef struct RtBox RtBox;
 typedef struct RtClosure RtClosure;
+typedef struct RtEnvironment RtEnvironment;
 typedef RtValue (*RtFunction)(RtValue environment, RtValue argument);
 
 struct RtValue {
@@ -16,6 +17,7 @@ struct RtValue {
     char *string;
     RtBox *box;
     RtClosure *closure;
+    RtEnvironment *environment;
   } as;
 };
 
@@ -23,11 +25,24 @@ struct RtBox {
   int tag;
   size_t count;
   RtValue *fields;
+  char *constructor_name;
+  char **field_names;
 };
 
 struct RtClosure {
   RtFunction function;
   RtValue environment;
+};
+
+typedef struct RtBinding {
+  char *name;
+  RtValue value;
+} RtBinding;
+
+struct RtEnvironment {
+  RtEnvironment *parent;
+  size_t count;
+  RtBinding *bindings;
 };
 
 enum {
@@ -37,7 +52,8 @@ enum {
   RT_UNIT,
   RT_TUPLE,
   RT_VARIANT,
-  RT_FUNCTION
+  RT_FUNCTION,
+  RT_ENVIRONMENT
 };
 
 enum {
@@ -55,8 +71,26 @@ RtValue rt_string(const char *value);
 RtValue rt_unit(void);
 RtValue rt_tuple(size_t count, const RtValue *fields);
 RtValue rt_variant(int tag, size_t count, const RtValue *fields);
+RtValue rt_variant_named(const char *name, size_t count, const RtValue *fields);
+RtValue rt_record_named(const char *constructor_name, size_t count,
+                        const char *const *field_names, const RtValue *fields);
 RtValue rt_field(RtValue value, size_t index);
+RtValue rt_field_named(RtValue value, const char *field_name);
 int rt_has_tag(RtValue value, int tag);
+int rt_has_variant_name(RtValue value, const char *name);
+int rt_has_variant_count(RtValue value, size_t count);
+int rt_has_tuple_count(RtValue value, size_t count);
+int rt_has_named_field(RtValue value, const char *field_name);
+int rt_is_int(RtValue value);
+int rt_is_bool(RtValue value);
+int rt_is_string(RtValue value);
+int rt_is_unit(RtValue value);
+RtValue rt_environment_root(void);
+RtValue rt_environment_child(RtValue parent);
+void rt_environment_bind(RtValue environment, const char *name, RtValue value);
+RtValue rt_environment_get(RtValue environment, const char *name);
+RtValue rt_string_equal_to(RtValue value, const char *expected);
+void rt_pattern_fail(void);
 RtValue rt_function(RtFunction function, RtValue environment);
 RtValue rt_apply(RtValue function, RtValue argument);
 int64_t rt_as_int(RtValue value);
@@ -86,6 +120,7 @@ RtValue rt_greater(RtValue left, RtValue right);
 RtValue rt_concat(RtValue left, RtValue right);
 
 RtValue rt_args(void);
+RtValue rt_host_args(RtValue ignored, RtValue unit);
 RtValue rt_read_file(RtValue ignored, RtValue path);
 RtValue rt_write_file(RtValue environment, RtValue path);
 RtValue rt_write_stdout(RtValue ignored, RtValue message);

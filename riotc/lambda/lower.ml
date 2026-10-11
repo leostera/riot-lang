@@ -1,18 +1,17 @@
 // Lower the checker's restricted native core into Lambda IR.
 use Check.Typer.{
-  NativeExpr, NativeOperator, NativeBinaryExpression,
-  NativeConditionalExpression, CheckedProgram, NativeInteger,
-  NativeBoolean, NativeBinary, NativeConditional, NativeNegation,
+  NativeExpr, NativeOperator, NativeBinaryExpression, CheckedProgram,
+  NativeInteger, NativeBoolean, NativeBinary, NativeNegation,
   NativeAddition, NativeSubtraction, NativeMultiplication, NativeDivision,
-  NativeRemainder, NativeEqual, NativeNotEqual, NativeLessThan,
+  NativeRemainder, NativeEqual, NativeNotEqual, NativeLessThan, NativeSource,
   NativeLessThanOrEqual, NativeGreaterThan, NativeGreaterThanOrEqual
 }
 use Lambda.Ir.{
-  IntegerOperator, LambdaBinaryExpression, LambdaConditionalExpression,
-  LambdaInteger, LambdaBoolean, LambdaBinary, LambdaConditional,
+  IntegerOperator, LambdaBinaryExpression, LambdaInteger, LambdaBoolean,
+  LambdaBinary,
   LambdaNegation, AddI32, SubtractI32, MultiplyI32, DivideI32,
   RemainderI32, EqualI32, NotEqualI32, LessThanI32, LessThanOrEqualI32,
-  GreaterThanI32, GreaterThanOrEqualI32, Entry
+  GreaterThanI32, GreaterThanOrEqualI32, Entry, LambdaSource
 }
 
 let lower_operator = fn operator ->
@@ -41,24 +40,13 @@ let lower_binary = fn lower_child -> fn (NativeBinaryExpression {
     right: lower_child right
   })
 
-let lower_conditional = fn lower_child -> fn (NativeConditionalExpression {
-  condition,
-  when_true,
-  when_false
-}) ->
-  LambdaConditional(LambdaConditionalExpression {
-    condition: lower_child condition,
-    when_true: lower_child when_true,
-    when_false: lower_child when_false
-  })
-
 let lower_expression = fn expression ->
   match expression {
     | NativeInteger(value) -> LambdaInteger(value)
     | NativeBoolean(value) -> LambdaBoolean(value)
     | NativeBinary(binary) -> lower_binary lower_expression binary
-    | NativeConditional(conditional) -> lower_conditional lower_expression conditional
     | NativeNegation(operand) -> LambdaNegation(lower_expression operand)
+    | NativeSource(expression) -> LambdaSource(expression)
   }
 
 let lower_program = fn checked_program ->

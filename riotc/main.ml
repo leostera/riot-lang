@@ -2,10 +2,13 @@
 use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
 use Host.{args, read_file, write_file, write_stderr, run_process}
 use Syntax.Parser.{parse_program, parse_error_message, parse_error_span}
-use Syntax.Lexer.{SourceSpan}
-use Check.Typer.{check_program}
+use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
+use Syntax.Ast.{SourceModule}
+use Check.Typer.{check_program, check_source_module, validate_native_entry_module}
 use Lambda.Lower.{lower_program}
-use Codegen.C.Emit.{emit_program}
+use Codegen.C.Emit.{emit_program, emit_module_program}
+use Modules.{load_source_units, directory_of, join_path}
+use String.{equal}
 
 type SourcePath = SourcePath(string)
 type ExecutablePath = ExecutablePath(string)
@@ -46,17 +49,17 @@ let compile_source = fn source ->
     }
   }
 
-let clang_arguments = fn c_file -> fn executable ->
+let clang_arguments = fn runtime_directory -> fn c_file -> fn executable ->
   Cons("-std=gnu11", Cons(
-    "-I", Cons("riotc", Cons(
-      c_file, Cons("riotc/runtime.c", Cons(
+    "-I", Cons(runtime_directory, Cons(
+      c_file, Cons(join_path runtime_directory "runtime.c", Cons(
         "-o", Cons(executable, Nil)
       ))
     ))
   ))
 
-let run_clang = fn c_file -> fn executable ->
-  match (run_process "clang" (clang_arguments c_file executable)) {
+let run_clang = fn runtime_directory -> fn c_file -> fn executable ->
+  match (run_process "clang" (clang_arguments runtime_directory c_file executable)) {
     | Err(message) -> Err(compile_error (ClangLaunch)
       ("cannot run Clang: " + message) None)
     | Ok(0) -> Ok(0)
@@ -64,22 +67,72 @@ let run_clang = fn c_file -> fn executable ->
       "Clang failed with a non-zero exit status" None)
   }
 
+let check_loaded_modules = fn modules ->
+  match modules {
+    | Nil -> Ok(())
+    | Cons((source_path, source_module), remaining) -> match (check_source_module source_module) {
+      | Err(message) -> Err("type error in " + source_path + ": " + message)
+      | Ok(_) -> check_loaded_modules remaining
+    }
+  }
+
+let find_root_source_module = fn root_path -> fn modules ->
+  match modules {
+    | Nil -> None
+    | Cons((source_path, source_module), remaining) -> match (equal root_path source_path) {
+      | true -> Some(source_module)
+      | false -> find_root_source_module root_path remaining
+    }
+  }
+
+let compile_module_graph_unchecked = fn (source_file: string) ->
+  match (load_source_units source_file
+    (Cons(directory_of source_file, Nil): List<string>)) {
+    | Err(message) -> Err(compile_error (SourceParsing) message None)
+    | Ok(modules) -> match (check_loaded_modules modules) {
+      | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+      | Ok(_) -> match (find_root_source_module source_file modules) {
+        | None -> Err(compile_error (SourceParsing)
+          "source graph has no entry module" None)
+        | Some(source_module) -> match (validate_native_entry_module source_module) {
+          | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+          | Ok(_) -> Ok(emit_module_program source_file modules)
+        }
+      }
+    }
+  }
+
+let compile_module_graph = fn (source_file: string) ->
+  match (read_file source_file) {
+    | Err(message) -> Err(compile_error (SourceRead)
+      ("cannot read " + source_file + ": " + message) None)
+    | Ok(source) -> match (lex source) {
+      | Err(UnterminatedString(span)) -> Err(compile_error (SourceParsing)
+        "unterminated string literal" (Some(span)))
+      | Err(UnterminatedEscape(span)) -> Err(compile_error (SourceParsing)
+        "unterminated escape in string literal" (Some(span)))
+      | Ok(_) -> compile_module_graph_unchecked source_file
+    }
+  }
+
+let runtime_include_directory = fn source_file ->
+  match (read_file (join_path (directory_of source_file) "runtime.c")) {
+    | Ok(_) -> directory_of source_file
+    | Err(_) -> "riotc"
+  }
+
 let compile_file = fn (NativeCompileRequest {
   source_path: SourcePath(source_file),
   output_path: ExecutablePath(executable)
 }) ->
-  match (read_file source_file) {
-    | Err(message) -> Err(compile_error (SourceRead)
-      ("cannot read " + source_file + ": " + message) None)
-    | Ok(source) -> match (compile_source source) {
-      | Err(error) -> Err(error)
-      | Ok(c_source) -> {
-        let c_file = executable + ".c";
-        match (write_file c_file c_source) {
-          | Err(message) -> Err(compile_error (COutputWrite)
-            ("cannot write C output: " + message) None)
-          | Ok(_) -> run_clang c_file executable
-        }
+  match (compile_module_graph source_file) {
+    | Err(error) -> Err(error)
+    | Ok(c_source) -> {
+      let c_file = executable + ".c";
+      match (write_file c_file c_source) {
+        | Err(message) -> Err(compile_error (COutputWrite)
+          ("cannot write C output: " + message) None)
+        | Ok(_) -> run_clang (runtime_include_directory source_file) c_file executable
       }
     }
   }
@@ -137,7 +190,7 @@ let parse_compile_request = fn arguments ->
     | _ -> Err("usage: riotml compile SOURCE -o OUTPUT")
   }
 
-let main = fn _ ->
+let main = fn () ->
   match (parse_compile_request (args ())) {
     | Err(message) -> {
       write_stderr ("riotml: " + message + "\n");

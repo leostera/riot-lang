@@ -1,5 +1,5 @@
 // Typed Lambda IR for the native C backend.
-use Syntax.Ast.{IntegerLiteral}
+use Syntax.Ast.{IntegerLiteral, Expr}
 
 type IntegerOperator =
   | AddI32
@@ -20,18 +20,12 @@ type LambdaBinaryExpression = LambdaBinaryExpression {
   right: LambdaExpr
 }
 
-type LambdaConditionalExpression = LambdaConditionalExpression {
-  condition: LambdaExpr,
-  when_true: LambdaExpr,
-  when_false: LambdaExpr
-}
-
 type LambdaExpr =
   | LambdaInteger(IntegerLiteral)
   | LambdaBoolean(bool)
   | LambdaBinary(LambdaBinaryExpression)
-  | LambdaConditional(LambdaConditionalExpression)
   | LambdaNegation(LambdaExpr)
+  | LambdaSource(Expr)
 
 type LambdaModule =
   | Entry(LambdaExpr)

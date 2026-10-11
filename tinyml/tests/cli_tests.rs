@@ -696,6 +696,12 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
     )
     .unwrap();
     fs::write(valid_dir.join("helper.ml"), "let value = 42\n").unwrap();
+    let missing_member_root = valid_dir.join("missing_member.ml");
+    fs::write(
+        &missing_member_root,
+        "use Helper.{missing_value}\nlet main = fn () -> 0\n",
+    )
+    .unwrap();
 
     let missing_root = dir.join("missing.ml");
     fs::write(
@@ -718,7 +724,7 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
         import { readFileSync } from 'node:fs';
         const { parse_source_module } = await import(process.argv[1]);
         const { load_source_units } = await import(process.argv[2]);
-        const [compilerRoot, compilerInclude, validRoot, missingRoot, cycleRoot, ...sources] = process.argv.slice(3);
+        const [compilerRoot, compilerInclude, validRoot, missingRoot, cycleRoot, missingMemberRoot, ...sources] = process.argv.slice(3);
 
         for (const path of sources) {
             const result = parse_source_module(readFileSync(path, 'utf8'));
@@ -764,8 +770,10 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
             process.exit(7);
         }
         if (load_source_units(missingRoot)(nil).type !== 'Err') process.exit(8);
+        const missingMember = load_source_units(missingMemberRoot)(nil);
+        if (missingMember.type !== 'Err' || !missingMember.value.includes('does not export')) process.exit(9);
         const cycle = load_source_units(cycleRoot)(nil);
-        if (cycle.type !== 'Err' || !cycle.value.includes('cycle')) process.exit(9);
+        if (cycle.type !== 'Err' || !cycle.value.includes('cycle')) process.exit(10);
     "#;
     let mut node_command = Command::new("node");
     node_command
@@ -779,7 +787,8 @@ fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarat
         .arg(&include_root)
         .arg(&valid_root)
         .arg(&missing_root)
-        .arg(&cycle_root);
+        .arg(&cycle_root)
+        .arg(&missing_member_root);
     for path in source_paths {
         node_command.arg(path);
     }
@@ -823,6 +832,183 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
         ),
     )
     .unwrap();
+    let native_compiler_source = dir.join("riotml-compiler.native");
+    let self_compile = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&compiler_source)
+        .arg("-o")
+        .arg(&native_compiler_source)
+        .output()
+        .unwrap();
+    assert!(
+        self_compile.status.success(),
+        "JS-hosted self-compilation failed: {}",
+        String::from_utf8_lossy(&self_compile.stderr)
+    );
+
+    let native_smoke_source = dir.join("native_compiler_smoke.ml");
+    fs::write(&native_smoke_source, "let main = fn () -> 42\n").unwrap();
+    let native_smoke_output = dir.join("native_compiler_smoke.native");
+    let native_compile = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_smoke_source)
+        .arg("-o")
+        .arg(&native_smoke_output)
+        .output()
+        .unwrap();
+    assert!(
+        native_compile.status.success(),
+        "native compiler failed: {}",
+        String::from_utf8_lossy(&native_compile.stderr)
+    );
+    assert_eq!(
+        Command::new(&native_smoke_output).status().unwrap().code(),
+        Some(42)
+    );
+
+    let native_invalid_source = dir.join("native_compiler_invalid.ml");
+    fs::write(&native_invalid_source, "let main = fn () -> 1 + true\n").unwrap();
+    let native_invalid_output = dir.join("native_compiler_invalid.native");
+    let native_rejected = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_invalid_source)
+        .arg("-o")
+        .arg(&native_invalid_output)
+        .output()
+        .unwrap();
+    assert!(!native_rejected.status.success());
+    assert!(String::from_utf8_lossy(&native_rejected.stderr).contains("two i32 operands"));
+    assert!(!native_invalid_output.exists());
+
+    let native_unknown_source = dir.join("native_compiler_unknown_name.ml");
+    fs::write(&native_unknown_source, "let main = fn () -> missing_name\n").unwrap();
+    let native_unknown_output = dir.join("native_compiler_unknown_name.native");
+    let native_unknown = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_unknown_source)
+        .arg("-o")
+        .arg(&native_unknown_output)
+        .output()
+        .unwrap();
+    assert!(!native_unknown.status.success());
+    assert!(String::from_utf8_lossy(&native_unknown.stderr).contains("unbound value name"));
+    assert!(!native_unknown_output.exists());
+
+    let native_wrong_argument_source = dir.join("native_compiler_wrong_argument.ml");
+    fs::write(
+        &native_wrong_argument_source,
+        "let main = fn () -> let increment = fn value -> let next = value + 1; next; increment true\n",
+    )
+    .unwrap();
+    let native_wrong_argument_output = dir.join("native_compiler_wrong_argument.native");
+    let native_wrong_argument = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_wrong_argument_source)
+        .arg("-o")
+        .arg(&native_wrong_argument_output)
+        .output()
+        .unwrap();
+    assert!(!native_wrong_argument.status.success());
+    assert!(
+        String::from_utf8_lossy(&native_wrong_argument.stderr)
+            .contains("function argument has an incompatible type")
+    );
+    assert!(!native_wrong_argument_output.exists());
+
+    let native_wrong_top_level_argument_source =
+        dir.join("native_compiler_wrong_top_level_argument.ml");
+    fs::write(
+        &native_wrong_top_level_argument_source,
+        "let increment = fn value -> value + 1\nlet main = fn () -> increment true\n",
+    )
+    .unwrap();
+    let native_wrong_top_level_argument_output =
+        dir.join("native_compiler_wrong_top_level_argument.native");
+    let native_wrong_top_level_argument = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_wrong_top_level_argument_source)
+        .arg("-o")
+        .arg(&native_wrong_top_level_argument_output)
+        .output()
+        .unwrap();
+    assert!(!native_wrong_top_level_argument.status.success());
+    assert!(
+        String::from_utf8_lossy(&native_wrong_top_level_argument.stderr)
+            .contains("function argument has an incompatible type")
+    );
+    assert!(!native_wrong_top_level_argument_output.exists());
+
+    let native_unknown_type_source = dir.join("native_compiler_unknown_type.ml");
+    fs::write(
+        &native_unknown_type_source,
+        "type Broken = MissingType\nlet main = fn () -> 0\n",
+    )
+    .unwrap();
+    let native_unknown_type_output = dir.join("native_compiler_unknown_type.native");
+    let native_unknown_type = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_unknown_type_source)
+        .arg("-o")
+        .arg(&native_unknown_type_output)
+        .output()
+        .unwrap();
+    assert!(!native_unknown_type.status.success());
+    assert!(String::from_utf8_lossy(&native_unknown_type.stderr).contains("unbound type name"));
+    assert!(!native_unknown_type_output.exists());
+
+    let native_unbound_type_variable_source = dir.join("native_compiler_unbound_type_variable.ml");
+    fs::write(
+        &native_unbound_type_variable_source,
+        "type Broken = 'missing\nlet main = fn () -> 0\n",
+    )
+    .unwrap();
+    let native_unbound_type_variable_output =
+        dir.join("native_compiler_unbound_type_variable.native");
+    let native_unbound_type_variable = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_unbound_type_variable_source)
+        .arg("-o")
+        .arg(&native_unbound_type_variable_output)
+        .output()
+        .unwrap();
+    assert!(!native_unbound_type_variable.status.success());
+    assert!(
+        String::from_utf8_lossy(&native_unbound_type_variable.stderr)
+            .contains("unbound type variable")
+    );
+    assert!(!native_unbound_type_variable_output.exists());
+
+    let native_mismatched_pattern_source = dir.join("native_compiler_mismatched_pattern.ml");
+    fs::write(
+        &native_mismatched_pattern_source,
+        "let main = fn () -> match 1 { | true -> 42 | false -> 0 }\n",
+    )
+    .unwrap();
+    let native_mismatched_pattern_output = dir.join("native_compiler_mismatched_pattern.native");
+    let native_mismatched_pattern = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&native_mismatched_pattern_source)
+        .arg("-o")
+        .arg(&native_mismatched_pattern_output)
+        .output()
+        .unwrap();
+    assert!(!native_mismatched_pattern.status.success());
+    assert!(
+        String::from_utf8_lossy(&native_mismatched_pattern.stderr)
+            .contains("match pattern does not match the scrutinee type")
+    );
+    assert!(!native_mismatched_pattern_output.exists());
+
     let valid_source = dir.join("smoke.ml");
     fs::write(&valid_source, "let main = fn () -> 42\n").unwrap();
     let native_compiler = dir.join("riotml-compiler.native");
@@ -913,6 +1099,53 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
         Some(42)
     );
 
+    let dynamic_cases = [
+        (
+            "top_level_helper",
+            "let increment = fn value -> value + 1\nlet main = fn () -> increment 41\n",
+        ),
+        (
+            "closure_and_let",
+            "let main = fn () -> let increment = fn value -> let next = value + 1; next; let result = increment 41; result\n",
+        ),
+        (
+            "tuple_match",
+            "let main = fn () -> match (40, 2) { | (left, right) -> left + right }\n",
+        ),
+        (
+            "constructor_match",
+            "type Option<'a> = | None | Some('a)\nlet main = fn () -> match Some(42) { | Some(value) -> value | None -> 0 }\n",
+        ),
+        (
+            "record_match",
+            "type Pair = Pair { left: i32, right: i32 }\nlet main = fn () -> match Pair { left: 40, right: 2 } { | Pair { left, right: _ } -> left + 2 }\n",
+        ),
+    ];
+    for (name, source) in dynamic_cases {
+        let source_path = dir.join(format!("{name}.ml"));
+        let output_path = dir.join(format!("{name}.native"));
+        fs::write(&source_path, source).unwrap();
+        let compile = Command::new("node")
+            .current_dir(&repository_root)
+            .arg(&runner)
+            .arg("compile")
+            .arg(&source_path)
+            .arg("-o")
+            .arg(&output_path)
+            .output()
+            .unwrap();
+        assert!(
+            compile.status.success(),
+            "{name}: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        assert_eq!(
+            Command::new(&output_path).status().unwrap().code(),
+            Some(42),
+            "{name}"
+        );
+    }
+
     let non_exhaustive_source = dir.join("non_exhaustive_match.ml");
     fs::write(
         &non_exhaustive_source,
@@ -948,6 +1181,26 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     assert!(!rejected.status.success());
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("two i32 operands"));
     assert!(!invalid_output.exists());
+
+    let dynamic_invalid_source = dir.join("dynamic_ill_typed.ml");
+    fs::write(
+        &dynamic_invalid_source,
+        "let main = fn () -> let broken = fn value -> value + true; 0\n",
+    )
+    .unwrap();
+    let dynamic_invalid_output = dir.join("dynamic_must_not_exist.native");
+    let dynamic_rejected = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&dynamic_invalid_source)
+        .arg("-o")
+        .arg(&dynamic_invalid_output)
+        .output()
+        .unwrap();
+    assert!(!dynamic_rejected.status.success());
+    assert!(String::from_utf8_lossy(&dynamic_rejected.stderr).contains("addition requires"));
+    assert!(!dynamic_invalid_output.exists());
 
     let out_of_range_source = dir.join("out_of_range.ml");
     fs::write(&out_of_range_source, "let main = fn () -> 2147483648\n").unwrap();

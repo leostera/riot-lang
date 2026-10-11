@@ -28,6 +28,11 @@ type Token =
   | TextToken(TokenInfo)
   | SymbolToken(TokenInfo)
 
+type ScanTokens = ScanTokens {
+  active_reversed: List<Token>,
+  completed_chunks: List<List<Token>>
+}
+
 type ScanCursor = ScanCursor {
   source: string,
   offset: i32
@@ -35,7 +40,7 @@ type ScanCursor = ScanCursor {
 
 type ScanState = ScanState {
   cursor: ScanCursor,
-  reversed_tokens: List<Token>
+  reversed_tokens: ScanTokens
 }
 
 type ChunkRequest = ChunkRequest {
@@ -46,7 +51,7 @@ type ChunkRequest = ChunkRequest {
 type ScanCharacter = ScanCharacter {
   source: string,
   offset: i32,
-  reversed_tokens: List<Token>,
+  reversed_tokens: ScanTokens,
   character_budget: i32,
   codepoint: i32
 }
@@ -54,7 +59,7 @@ type ScanCharacter = ScanCharacter {
 type ScanAdvance = ScanAdvance {
   source: string,
   offset: i32,
-  reversed_tokens: List<Token>,
+  reversed_tokens: ScanTokens,
   character_budget: i32
 }
 
@@ -193,6 +198,37 @@ let reverse_token_accumulator = fn remaining -> fn reversed ->
 
 let reverse_tokens = fn tokens -> reverse_token_accumulator tokens Nil
 
+let add_scan_token = fn (ScanTokens { active_reversed, completed_chunks }) -> fn token ->
+  ScanTokens {
+    active_reversed: Cons(token, active_reversed),
+    completed_chunks: completed_chunks
+  }
+
+let flush_scan_tokens = fn (ScanTokens { active_reversed, completed_chunks }) ->
+  match active_reversed {
+    | Nil -> ScanTokens { active_reversed: Nil, completed_chunks: completed_chunks }
+    | _ -> ScanTokens {
+      active_reversed: Nil,
+      completed_chunks: Cons(reverse_tokens active_reversed, completed_chunks)
+    }
+  }
+
+let prepend_token_chunk = fn chunk -> fn output ->
+  match chunk {
+    | Nil -> output
+    | Cons(token, remaining) -> Cons(token, prepend_token_chunk remaining output)
+  }
+
+let flatten_token_chunks = fn chunks -> fn output ->
+  match chunks {
+    | Nil -> output
+    | Cons(chunk, remaining) -> flatten_token_chunks remaining
+      (prepend_token_chunk chunk output)
+  }
+
+let finish_scan_tokens = fn (ScanTokens { active_reversed, completed_chunks }) ->
+  flatten_token_chunks completed_chunks (reverse_tokens active_reversed)
+
 let scan_chunk = fn (ChunkRequest {
   state: ScanState {
     cursor: ScanCursor { source, offset },
@@ -203,10 +239,10 @@ let scan_chunk = fn (ChunkRequest {
   match (character_budget <= 0) {
     | true -> Continue(ScanState {
       cursor: ScanCursor { source: source, offset: offset },
-      reversed_tokens: reversed_tokens
+      reversed_tokens: flush_scan_tokens reversed_tokens
     })
     | false -> match (get source offset) {
-      | None -> Complete(reverse_tokens reversed_tokens)
+      | None -> Complete(finish_scan_tokens reversed_tokens)
       | Some(codepoint) -> scan_character (ScanCharacter {
         source: source,
         offset: offset,
@@ -299,7 +335,7 @@ let scan_text_token = fn (ScanCharacter {
       advance_scan (ScanAdvance {
         source: source,
         offset: end_offset,
-        reversed_tokens: Cons(token, reversed_tokens),
+        reversed_tokens: add_scan_token reversed_tokens token,
         character_budget: character_budget
       })
     }
@@ -317,7 +353,7 @@ let scan_integer_token = fn (ScanCharacter {
   advance_scan (ScanAdvance {
     source: source,
     offset: end_offset,
-    reversed_tokens: Cons(token, reversed_tokens),
+    reversed_tokens: add_scan_token reversed_tokens token,
     character_budget: character_budget
   })
 }
@@ -334,7 +370,7 @@ let scan_identifier_token = fn (ScanCharacter {
   advance_scan (ScanAdvance {
     source: source,
     offset: end_offset,
-    reversed_tokens: Cons(token, reversed_tokens),
+    reversed_tokens: add_scan_token reversed_tokens token,
     character_budget: character_budget
   })
 }
@@ -409,13 +445,13 @@ let append_symbol = fn (ScanCharacter {
   advance_scan (ScanAdvance {
     source: source,
     offset: next_offset,
-    reversed_tokens: Cons(token, reversed_tokens),
+    reversed_tokens: add_scan_token reversed_tokens token,
     character_budget: character_budget
   })
 }
 
 let scan_all = fn state ->
-  match (scan_chunk (ChunkRequest { state: state, character_budget: 24 })) {
+  match (scan_chunk (ChunkRequest { state: state, character_budget: 256 })) {
     | Complete(tokens) -> Ok(tokens)
     | Continue(next_state) -> scan_all next_state
     | Failed(error) -> Err(error)
@@ -424,5 +460,8 @@ let scan_all = fn state ->
 let lex = fn source ->
   scan_all (ScanState {
     cursor: ScanCursor { source: source, offset: 0 },
-    reversed_tokens: Nil
+    reversed_tokens: ScanTokens {
+      active_reversed: Nil,
+      completed_chunks: Nil
+    }
   })

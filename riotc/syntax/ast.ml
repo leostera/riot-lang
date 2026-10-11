@@ -203,3 +203,12 @@ type Program =
 type ValueType =
   | I32
   | BoolType
+  | StringType
+  | UnitType
+  | DynamicType
+  | FunctionType(ValueFunctionType)
+
+type ValueFunctionType = ValueFunctionType {
+  argument: ValueType,
+  result: ValueType
+}

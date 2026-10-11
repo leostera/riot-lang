@@ -12,7 +12,7 @@ type StringDecodeState = StringDecodeState {
 let join_string_pieces = fn (reversed_pieces: List<string>) -> fn (accumulated: string) ->
   match reversed_pieces {
     | Nil -> accumulated
-    | Cons(piece, remaining) -> join_string_pieces remaining (accumulated + piece)
+    | Cons(piece, remaining) -> join_string_pieces remaining (piece + accumulated)
   }
 
 let decode_string = fn (StringDecodeState {
