@@ -4,7 +4,10 @@
 //! values and checker-provided type information into JS-backend IR. It does not
 //! infer new types.
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    cell::Cell,
+    collections::{HashMap, HashSet},
+};
 
 use crate::{
     checker::{interface::ModuleInterface, scheme::Scheme, tir::Type},
@@ -19,6 +22,7 @@ pub struct Lowerer<'a> {
     interface: &'a ModuleInterface,
     exported: HashSet<String>,
     variant_type_names: HashSet<String>,
+    match_counter: Cell<usize>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -49,6 +53,7 @@ impl<'a> Lowerer<'a> {
             interface,
             exported,
             variant_type_names,
+            match_counter: Cell::new(0),
         }
     }
 
@@ -68,6 +73,7 @@ impl<'a> Lowerer<'a> {
         module: &lambda::Module,
         imports: &[crate::parser::ast::UseDecl],
     ) -> ir::Module {
+        self.match_counter.set(0);
         let mut items = lower_imports(imports);
 
         let mut exports = Vec::new();
@@ -416,12 +422,18 @@ impl<'a> Lowerer<'a> {
         arms: &[lambda::MatchArm],
         env: &HashMap<String, ir::Expr>,
     ) -> ir::Expr {
-        let value_name = "$tinyml_match";
+        let match_id = self.match_counter.get();
+        self.match_counter.set(match_id + 1);
+        let value_name = if match_id == 0 {
+            "$tinyml_match".to_string()
+        } else {
+            format!("$tinyml_match_{match_id}")
+        };
         ir::Expr::Call {
             callee: Box::new(ir::Expr::Function {
-                params: vec![value_name.into()],
+                params: vec![value_name.clone()],
                 body: vec![self.lower_match_stmt(
-                    ir::Expr::Var(value_name.into()),
+                    ir::Expr::Var(value_name),
                     &scrutinee.ty,
                     arms,
                     env,

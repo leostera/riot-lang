@@ -1,4 +1,8 @@
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 fn tinyml() -> &'static str {
     env!("CARGO_BIN_EXE_tinyml")
@@ -593,6 +597,42 @@ fn emitted_string_concatenation_executes() {
         .arg(format!(
             "import {{ greeting }} from {:?}; if (greeting !== 'hello, world') process.exit(1)",
             dir.join("strings.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn bundled_riotml_compiler_source_executes_nested_match_lexer() {
+    let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let compiler_source = repository_root.join("tinyml/riotml/compiler.ml");
+    let dir = temp_dir("riotml-compiler-lexer");
+    let output = dir.join("compiler.mjs");
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-o")
+        .arg(&output)
+        .arg(&compiler_source)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ lex }} from {:?}; import {{ readFileSync }} from 'node:fs'; let source = readFileSync({:?}, 'utf8'); let tokens = lex(source); let count = 0; while (tokens.type === 'Cons') {{ count += 1; tokens = tokens.value[1]; }} if (count < 100 || tokens.type !== 'Nil') process.exit(1)",
+            output.to_str().unwrap(),
+            compiler_source.to_str().unwrap()
         ))
         .output()
         .unwrap();
