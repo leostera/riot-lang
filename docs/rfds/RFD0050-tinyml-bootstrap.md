@@ -44,9 +44,11 @@ module loading, and a JavaScript backend. Stage 0 now executes integration
 tests for functions, recursion, closures, recursive ADTs, records, tuples,
 patterns, fixed-width integers, strings, and the Node host boundary. Its
 compiler-focused standard library is loaded from source and bundled into the
-compiler. These are prerequisites for the bootstrap, not proof that TinyML can
-already implement the native Riot compiler: that compiler and its native
-self-compilation test remain the central work of this RFD.
+compiler. These prerequisites have now supported the first end-to-end bootstrap
+proof: Stage 0 produces the JS compiler, that compiler produces a native
+compiler, and the native compiler builds and runs a fixture. The native
+checker still has incomplete HM inference, so full compiler typechecking and
+the release gate remain work in progress.
 
 The bootstrap has two compilers and two backend roles:
 
@@ -55,8 +57,8 @@ The bootstrap has two compilers and two backend roles:
 2. **RiotML compiler implemented in TinyML:** the compiler source is written in
    that shared subset, so Stage 0 can compile it to JavaScript. Its frontend
    accepts the same compiler source as RiotML, and its native backend builds a
-   native executable (C plus Clang is the default candidate, pending
-   implementation validation).
+   native executable (C plus Clang is the current default candidate and has
+   passed the end-to-end acceptance test).
 
 The JS-hosted RiotML compiler must compile its own source into a native
 RiotML compiler executable. That native executable must then compile a RiotML
@@ -112,7 +114,7 @@ RiotML compiler implementation source (written in bootstrap TinyML subset)
         │
         └── Node runs riotml-compiler.js on that same compiler source
                     │
-                    ├── uses native backend (C plus Clang is the candidate)
+                    ├── uses native backend (C plus Clang)
                     └── produces riotml-compiler.native
                               │
                               └── compiles a RiotML fixture to native code
@@ -236,10 +238,10 @@ spawn failures are `Error`. The JS target implements these operations with
 Node APIs, including strict UTF-8 file decoding and `child_process` without
 shell interpolation. The RiotML
 native compiler links a host implementation of the same contract;
-`run_process` lets it invoke the selected native toolchain (Clang is the default
-candidate). Failures return `Result` or cause a non-zero compiler exit, never a
-placeholder success. No general-purpose FFI syntax or actor/runtime API is
-needed.
+`run_process` lets it invoke the selected native toolchain (Clang in the
+current C-plus-Clang implementation). Failures return `Result` or cause a
+non-zero compiler exit, never a placeholder success. No general-purpose FFI
+syntax or actor/runtime API is needed.
 
 ### 4. Backend strategy
 
@@ -250,11 +252,11 @@ bootstrap artifact, not the Riot compiler's final output.
 
 The Stage 0 Rust compiler emits JavaScript modules only. The native code
 backend is implemented as part of the RiotML compiler written in TinyML. The
-default native-route candidate is C plus Clang: emit C for the bootstrap
-compiler source, invoke Clang through `Host.run_process` to create
+current default candidate is C plus Clang: emit C for the bootstrap compiler
+source, invoke Clang through `Host.run_process` to create
 `riotml-compiler.native`, then use that executable to compile a smoke-test
-RiotML program and invoke Clang again. This choice is provisional until a small
-implementation validates that it is the simplest correct route; changing the
+RiotML program and invoke Clang again. The end-to-end acceptance test validates
+this route; it remains provisional through the release gate. Changing the
 bootstrap architecture requires user approval.
 
 The native backend must support every source construct used by the compiler
@@ -281,12 +283,26 @@ let main = fn () -> 42
 ```
 
 The compiler treats `main : unit -> i32` as the native entry point. Under the
-provisional C-plus-Clang route it emits C and invokes Clang; running the result
+current C-plus-Clang route it emits C and invokes Clang; running the result
 must exit with status 42. An ill-typed fixture (for example,
 `let main = fn () -> 1 + true`) must be rejected before native code generation.
 The native backend still supports all constructs used by the compiler
 implementation, even if this smoke program uses only a small part of the
 language.
+
+**Current implementation status:** the end-to-end test now compiles the
+TinyML-written compiler to JavaScript, runs that JavaScript to compile the same
+compiler source into a native executable, then uses the native executable to
+build and run the status-42 fixture and reject `1 + true`. This validates the
+C-plus-Clang route and the required acceptance chain. The native checker now
+validates import members and value/type/constructor name existence, and rejects
+statically visible primitive mismatches, including calls to explicitly
+annotated functions and primitive-operator constraints on inferred parameters.
+Its `DynamicType` fallback still does not
+propagate types through every binding, so this is not full HM inference and
+dynamic calls can evade some mismatch checks. The language/typechecking
+requirement above remains in force; the implementation is not complete until
+that boundary is strengthened.
 
 ### 6. Validation-focused CLI
 
@@ -323,29 +339,31 @@ TinyML Stage 0 is complete when all of the following hold:
    tests execute the result and check its observable behavior.
 5. The RiotML compiler implementation is written only in the documented
    TinyML/RiotML bootstrap-compatible subset and compiled by Stage 0 to JS.
-6. Running that JS compiler on the same compiler source uses the selected
-   native route and produces a native RiotML compiler executable (C plus Clang
-   is the default candidate, pending validation).
+6. Running that JS compiler on the same compiler source uses the current
+   C-plus-Clang default candidate and produces a native RiotML compiler
+   executable.
 7. Running the native compiler on a RiotML smoke-test fixture emits a native
    program that compiles and exits with the expected status (42); invalid
    source produces a non-zero result and useful diagnostics.
 8. The documented test command passes on the supported development host, and
    the known unsupported subset is stated plainly.
 
-### 8. Migration from the current implementation
+### 8. Current progress and remaining work
 
-For the remaining implementation work:
+The Stage 0 language, module loader, compiler-focused library, and Node Host
+contracts have positive and negative test coverage. The JS-to-native-to-smoke
+program chain is exercised by
+`riotml_compiler_emits_native_smoke_program_and_rejects_bad_types`. Remaining
+work is on the native compiler's typechecking boundary and release portability:
 
-- Keep the parser/checker features that meet the language contract; add tests
-  before treating existing syntax as supported.
-- Complete module loading and imported-type/value checking, rather than counting
-  `use` parsing or interface serialization as module support.
-- Retain and extend the JavaScript backend only as needed for the compiler's
-  Host API and language semantics.
-- The LSP, pending WASM output, Rust AArch64 backend, and placeholder runtime
-  have already been removed from Stage 0.
-- Replace unsupported standard-library sketches with the small bundled library
-  and explicit host functions above.
+- The source graph loader validates missing modules, cycles, and selected
+  import members. The native checker resolves value/type/constructor names and
+  catches several concrete type mismatches, but its dynamic fallback does not
+  yet implement the full rank-1 HM contract across bindings and modules.
+- Make runtime discovery independent of the repository working directory, then
+  run the bootstrap flow from a clean checkout without generated artifacts.
+- Keep the already removed LSP, pending WASM output, Rust AArch64 backend, and
+  placeholder runtime out of Stage 0.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -370,21 +388,20 @@ For the remaining implementation work:
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-### Recommended: JavaScript as Stage 0; C plus Clang candidate for RiotML
+### Authoritative chain: JavaScript Stage 0; C plus Clang default candidate
 
 This reuses the backend with the strongest existing evidence: generated modules
 are executed by Node tests. TinyML can serve as the compiler implementation
 language without requiring a native TinyML runtime. The RiotML compiler owns
-native code generation; C plus Clang is the default candidate, to be validated
-before implementation treats it as final.
+native code generation; C plus Clang is the current default candidate, and the
+JS-to-native-self-compile acceptance test validates that it can complete the
+required chain. This native route remains provisional through the release gate.
 
-### Alternative: C as the Stage 0 host target
+### Rejected alternative: C as the Stage 0 host target
 
-C plus Clang can yield a native Stage 0 compiler and has a simple deployment
-story. It is a reasonable fallback if Node-hosted file I/O or integer
-representation becomes a blocker. It still requires a C emitter, a runtime
-contract, and end-to-end tests, and therefore is not automatically less work
-than using the tested JS backend.
+Stage 0 must emit JavaScript and run under Node for this bootstrap. Making C the
+Stage 0 host target would change the required architecture rather than simplify
+this implementation, and is therefore not a fallback within this RFD.
 
 ### Rejected alternative: make Stage 0 itself produce native code
 
@@ -436,9 +453,10 @@ TinyML can implement the Riot compiler.
 
 - Stage 0 emits JavaScript and runs under Node; it does not compile TinyML to
   native code.
-- The RiotML compiler's native backend uses C plus Clang as the default
-  candidate, pending validation. Its compiler implementation is restricted to
-  the shared TinyML/RiotML bootstrap subset so it can compile its own source.
+- The RiotML compiler's native backend currently uses C plus Clang as its
+  default candidate. Its compiler implementation is restricted to the shared
+  TinyML/RiotML bootstrap subset so it can compile its own source; the
+  end-to-end self-compilation acceptance test verifies this route.
 - Stage 0 supports all fixed-width signed and unsigned integers from 8 to 64
   bits, exact contextual integer literals (default `i32`), width-wrapping
   arithmetic, truncating division, and no floats or implicit conversions.
@@ -454,12 +472,15 @@ TinyML can implement the Riot compiler.
 
 ### Remaining implementation-time details
 
-- Record declaration and field-access surface forms, beyond the annotation
-  syntax fixed in the language contract.
-- The minimal List/String/Byte operations needed by the compiler source, beyond
-  the Host API and exact integer contract above.
-- The C data representation and native host implementation behind the
-  bootstrap compiler's ABI.
+- Complete HM inference and type propagation through local and imported
+  bindings in the native RiotML checker; the current dynamic fallback is
+  explicitly insufficient for the full language/typechecking contract.
+- Make native runtime discovery independent of the repository working
+  directory, then exercise the bootstrap from a clean checkout.
+- Record/variant emission, the tagged C value representation, and the required
+  List/String/Host operations now support the compiler-source acceptance path.
+  Keep these surfaces constrained to RFD0050's shared subset and expand them
+  only when a failing contract test requires it.
 
 ### Out of scope
 
