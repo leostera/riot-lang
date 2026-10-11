@@ -633,7 +633,7 @@ fn bundled_riotml_compiler_source_executes_nested_match_lexer() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ lex }} from {:?}; import {{ readFileSync }} from 'node:fs'; let source = readFileSync({:?}, 'utf8'); let tokens = lex(source); let count = 0; while (tokens.type === 'Cons') {{ count += 1; tokens = tokens.value[1]; }} if (count < 100 || tokens.type !== 'Nil') process.exit(1)",
+            "import {{ lex }} from {:?}; import {{ readFileSync }} from 'node:fs'; let source = readFileSync({:?}, 'utf8'); let result = lex(source); if (result.type !== 'Ok') process.exit(1); let tokens = result.value; let count = 0; while (tokens.type === 'Cons') {{ count += 1; tokens = tokens.value[1]; }} if (count < 100 || tokens.type !== 'Nil' || lex('let x = \"unterminated').type !== 'Err') process.exit(1)",
             dir.join("Syntax_Lexer.mjs").to_str().unwrap(),
             compiler_source.to_str().unwrap()
         ))
@@ -741,6 +741,52 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
         Some(253)
     );
 
+    let match_source = dir.join("boolean_match.ml");
+    fs::write(
+        &match_source,
+        "let main = fn () -> match (3 < 4) { | true -> 42 | false -> 1 }\n",
+    )
+    .unwrap();
+    let match_output = dir.join("boolean_match.native");
+    let match_compile = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&match_source)
+        .arg("-o")
+        .arg(&match_output)
+        .output()
+        .unwrap();
+    assert!(
+        match_compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&match_compile.stderr)
+    );
+    assert_eq!(
+        Command::new(&match_output).status().unwrap().code(),
+        Some(42)
+    );
+
+    let non_exhaustive_source = dir.join("non_exhaustive_match.ml");
+    fs::write(
+        &non_exhaustive_source,
+        "let main = fn () -> match true { | true -> 42 }\n",
+    )
+    .unwrap();
+    let non_exhaustive_output = dir.join("non_exhaustive.native");
+    let non_exhaustive = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&non_exhaustive_source)
+        .arg("-o")
+        .arg(&non_exhaustive_output)
+        .output()
+        .unwrap();
+    assert!(!non_exhaustive.status.success());
+    assert!(String::from_utf8_lossy(&non_exhaustive.stderr).contains("missing a `false` arm"));
+    assert!(!non_exhaustive_output.exists());
+
     let invalid_source = dir.join("ill_typed.ml");
     fs::write(&invalid_source, "let main = fn () -> 1 + true\n").unwrap();
     let invalid_output = dir.join("must_not_exist.native");
@@ -772,6 +818,24 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     assert!(!out_of_range.status.success());
     assert!(String::from_utf8_lossy(&out_of_range.stderr).contains("outside i32 range"));
     assert!(!out_of_range_output.exists());
+
+    let malformed_source = dir.join("unterminated_string.ml");
+    fs::write(&malformed_source, "let main = fn () -> \"unterminated\n").unwrap();
+    let malformed_output = dir.join("malformed.native");
+    let malformed = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&malformed_source)
+        .arg("-o")
+        .arg(&malformed_output)
+        .output()
+        .unwrap();
+    assert!(!malformed.status.success());
+    let diagnostic = String::from_utf8_lossy(&malformed.stderr);
+    assert!(diagnostic.contains("unterminated string literal"));
+    assert!(diagnostic.contains("codepoints"));
+    assert!(!malformed_output.exists());
 }
 
 #[test]

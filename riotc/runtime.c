@@ -143,6 +143,38 @@ RtValue rt_i32_div(RtValue left, RtValue right) {
   return rt_int(numerator / denominator);
 }
 
+RtValue rt_i32_rem(RtValue left, RtValue right) {
+  int32_t numerator = (int32_t)rt_as_int(left);
+  int32_t denominator = (int32_t)rt_as_int(right);
+  if (denominator == 0) rt_fail("i32 remainder by zero");
+  if (numerator == INT32_MIN && denominator == -1) return rt_int(0);
+  return rt_int(numerator % denominator);
+}
+
+RtValue rt_i32_equal(RtValue left, RtValue right) {
+  return rt_bool((int32_t)rt_as_int(left) == (int32_t)rt_as_int(right));
+}
+
+RtValue rt_i32_not_equal(RtValue left, RtValue right) {
+  return rt_bool((int32_t)rt_as_int(left) != (int32_t)rt_as_int(right));
+}
+
+RtValue rt_i32_less(RtValue left, RtValue right) {
+  return rt_bool((int32_t)rt_as_int(left) < (int32_t)rt_as_int(right));
+}
+
+RtValue rt_i32_less_equal(RtValue left, RtValue right) {
+  return rt_bool((int32_t)rt_as_int(left) <= (int32_t)rt_as_int(right));
+}
+
+RtValue rt_i32_greater(RtValue left, RtValue right) {
+  return rt_bool((int32_t)rt_as_int(left) > (int32_t)rt_as_int(right));
+}
+
+RtValue rt_i32_greater_equal(RtValue left, RtValue right) {
+  return rt_bool((int32_t)rt_as_int(left) >= (int32_t)rt_as_int(right));
+}
+
 RtValue rt_i32_neg(RtValue value) {
   uint32_t result = 0u - (uint32_t)rt_as_int(value);
   return rt_int((int32_t)result);
