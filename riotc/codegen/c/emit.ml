@@ -1,11 +1,5 @@
 // Emit checked RiotML expressions as C over the small RtValue runtime.
 use Prelude.{List, Nil, Cons, Option, Some, None}
-use Lambda.Ir.{
-  LambdaExpr, LambdaInteger, LambdaBoolean, LambdaBinary, LambdaNegation,
-  LambdaSource, LambdaBinaryExpression, AddI32, SubtractI32, MultiplyI32,
-  DivideI32, RemainderI32, EqualI32, NotEqualI32, LessThanI32,
-  LessThanOrEqualI32, GreaterThanI32, GreaterThanOrEqualI32, Entry
-}
 use Syntax.Ast.{
   Expr, IntegerLiteral, TextLiteral, ValueName, ConstructorName,
   Integer, Boolean, StringLiteral, Unit, VariableExpr, TupleExpr,
@@ -58,28 +52,6 @@ let generated_record_names = fn (GeneratedRecordFields { names_initializer, valu
 let generated_record_values = fn (GeneratedRecordFields { names_initializer: _, values_initializer, count: _, functions: _ }) -> values_initializer
 let generated_record_count = fn (GeneratedRecordFields { names_initializer: _, values_initializer: _, count, functions: _ }) -> count
 let generated_record_functions = fn (GeneratedRecordFields { names_initializer: _, values_initializer: _, count: _, functions }) -> functions
-
-let c_integer_operation = fn operator ->
-  match operator {
-    | AddI32 -> "rt_i32_add"
-    | SubtractI32 -> "rt_i32_sub"
-    | MultiplyI32 -> "rt_i32_mul"
-    | DivideI32 -> "rt_i32_div"
-    | RemainderI32 -> "rt_i32_rem"
-    | EqualI32 -> "rt_i32_equal"
-    | NotEqualI32 -> "rt_i32_not_equal"
-    | LessThanI32 -> "rt_i32_less"
-    | LessThanOrEqualI32 -> "rt_i32_less_equal"
-    | GreaterThanI32 -> "rt_i32_greater"
-    | GreaterThanOrEqualI32 -> "rt_i32_greater_equal"
-  }
-
-let emit_binary = fn emit_child -> fn (LambdaBinaryExpression {
-  operator,
-  left,
-  right
-}) ->
-  c_integer_operation operator + "(" + emit_child left + "," + emit_child right + ")"
 
 let c_escape_character = fn codepoint ->
   match codepoint {
@@ -451,55 +423,13 @@ let emit_block_items = fn path -> fn environment -> fn items -> fn index ->
     }
   }
 
-let emit_expression = fn path -> fn environment -> fn expression ->
-  match expression {
-    | LambdaInteger(IntegerLiteral(value)) -> GeneratedCode {
-      expression: "rt_int(" + value + ")",
-      functions: ""
-    }
-    | LambdaBoolean(true) -> GeneratedCode { expression: "rt_bool(1)", functions: "" }
-    | LambdaBoolean(false) -> GeneratedCode { expression: "rt_bool(0)", functions: "" }
-    | LambdaBinary(LambdaBinaryExpression { operator, left, right }) -> {
-      let left_code = emit_expression (path + "_left") environment left;
-      let right_code = emit_expression (path + "_right") environment right;
-      GeneratedCode {
-        expression: c_integer_operation operator + "("
-          + generated_expression left_code + "," + generated_expression right_code + ")",
-        functions: generated_functions left_code + generated_functions right_code
-      }
-    }
-    | LambdaNegation(operand) -> {
-      let emitted = emit_expression (path + "_negation") environment operand;
-      GeneratedCode {
-        expression: "rt_i32_neg(" + generated_expression emitted + ")",
-        functions: generated_functions emitted
-      }
-    }
-    | LambdaSource(source) -> emit_source_expression path environment source
-  }
-
-let emit_entry_function = fn (GeneratedCode { expression, functions }) ->
-  "#include \"runtime.h\"\n" + functions
-  + "RtValue rt_riotml_entry(RtValue environment, RtValue argument) {\n"
-  + "  (void)argument;\n  return " + expression + ";\n}\n"
-
-let emit_process_entry = fn () ->
-  "int main(int argc, char **argv) {\n"
-  + "  rt_set_args(argc, argv);\n"
-  + "  RtValue environment = rt_environment_root();\n"
-  + "  RtValue entry = rt_function(rt_riotml_entry, environment);\n"
-  + "  return (int)rt_as_int(rt_apply(entry, rt_unit()));\n}\n"
-
-let emit_program = fn (Entry(expression)) ->
-  emit_entry_function (emit_expression "r" "environment" expression) + emit_process_entry ()
-
-let path_ends_with = fn path -> fn suffix ->
+let path_ends_with = fn (path: string) -> fn (suffix: string) ->
   match (length path < length suffix) {
     | true -> false
     | false -> equal (slice path (length path - length suffix) (length path)) suffix
   }
 
-let source_path_matches_import = fn source_path -> fn module_path -> {
+let source_path_matches_import = fn (source_path: string) -> fn (module_path: ModulePath) -> {
   let relative_path = module_path_relative module_path;
   match (equal source_path relative_path) {
     | true -> true
@@ -578,6 +508,8 @@ let emit_module_imports = fn modules -> fn target_environment -> fn imports ->
 
 let emit_host_bindings = fn environment ->
   "rt_environment_bind(" + environment + ",\"args\",rt_function(rt_host_args,rt_unit()));\n"
+  + "rt_environment_bind(" + environment + ",\"current_directory\",rt_function(rt_host_current_directory,rt_unit()));\n"
+  + "rt_environment_bind(" + environment + ",\"runtime_directory\",rt_function(rt_host_runtime_directory,rt_unit()));\n"
   + "rt_environment_bind(" + environment + ",\"read_file\",rt_function(rt_read_file,rt_unit()));\n"
   + "rt_environment_bind(" + environment + ",\"write_file\",rt_function(rt_write_file,rt_unit()));\n"
   + "rt_environment_bind(" + environment + ",\"write_stdout\",rt_function(rt_write_stdout,rt_unit()));\n"
@@ -680,7 +612,7 @@ let emit_module_initializations = fn all_modules -> fn remaining_modules -> fn i
     }
   }
 
-let emit_module_program = fn root_path -> fn modules -> {
+let emit_module_program = fn root_path -> fn runtime_directory -> fn modules -> {
   let root_index = find_root_module_index root_path modules 0;
   let generated_initializations = emit_module_initializations modules modules 0;
   let root_environment = "module_environment_" + decimal_text root_index;
@@ -689,6 +621,7 @@ let emit_module_program = fn root_path -> fn modules -> {
   + generated_initialization_functions generated_initializations
   + "int main(int argc, char **argv) {\n"
   + "  rt_set_args(argc, argv);\n"
+  + "  rt_set_runtime_directory(" + c_string_literal runtime_directory + ");\n"
   + "  RtValue root_environment = rt_environment_root();\n"
   + emit_module_environment_setup modules 0
   + generated_initialization_statements generated_initializations

@@ -35,6 +35,8 @@ function parseStringList(list) {
 }
 
 const args = () => listFromArray(process.argv.slice(2));
+const current_directory = () => process.cwd();
+const runtime_directory = () => process.env.RIOTML_RUNTIME_DIR ?? "";
 
 function read_file(path) {
   if (typeof path !== "string") return err("Host.read_file expects a string path");
@@ -87,4 +89,13 @@ const run_process = (program) => (argumentsList) => {
   }
 };
 
-export { args, read_file, write_file, write_stdout, write_stderr, run_process };
+export {
+  args,
+  current_directory,
+  runtime_directory,
+  read_file,
+  write_file,
+  write_stdout,
+  write_stderr,
+  run_process,
+};

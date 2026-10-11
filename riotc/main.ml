@@ -1,23 +1,18 @@
 // RiotML compiler orchestration and command-line entry point.
 use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
-use Host.{args, read_file, write_file, write_stderr, run_process}
-use Syntax.Parser.{parse_program, parse_error_message, parse_error_span}
+use Host.{
+  args, current_directory, runtime_directory, read_file, write_file, write_stderr, run_process
+}
 use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
-use Syntax.Ast.{
-  SourceModule, ModulePath, Import, ImportedName, MemberName, ValueName,
-  ValueDeclaration, ValueDeclarationData, TypeDeclaration, Declaration
+use Check.Inference.{
+  CheckedModuleInterface, infer_source_module, validate_native_entry_module
 }
-use Check.Typer.{
-  ValueBinding, check_program, check_source_module_with_bindings,
-  validate_native_entry_module_with_bindings
-}
-use Lambda.Lower.{lower_program}
-use Codegen.C.Emit.{emit_program, emit_module_program}
+use Codegen.C.Emit.{emit_module_program}
 use Modules.{
-  LoadedModule, load_source_graph, module_source_pairs, module_path_relative,
+  LoadedModule, load_source_graph, module_source_pairs,
   directory_of, join_path
 }
-use String.{equal}
+use String.{equal, get}
 
 type SourcePath = SourcePath(string)
 type ExecutablePath = ExecutablePath(string)
@@ -25,11 +20,6 @@ type ExecutablePath = ExecutablePath(string)
 type NativeCompileRequest = NativeCompileRequest {
   source_path: SourcePath,
   output_path: ExecutablePath
-}
-
-type CheckedModule = CheckedModule {
-  loaded_module: LoadedModule,
-  value_bindings: List<ValueBinding>
 }
 
 type CompilationStage =
@@ -52,17 +42,6 @@ let compile_error = fn stage -> fn message -> fn source_span -> CompileError {
   source_span: source_span
 }
 
-let compile_source = fn source ->
-  match (parse_program source) {
-    | Err(error) -> Err(compile_error (SourceParsing)
-      (parse_error_message error) (parse_error_span error))
-    | Ok(parsed_program) -> match (check_program parsed_program) {
-      | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-      | Ok(checked_program) ->
-        Ok(emit_program (lower_program checked_program))
-    }
-  }
-
 let clang_arguments = fn runtime_directory -> fn c_file -> fn executable ->
   Cons("-std=gnu11", Cons(
     "-I", Cons(runtime_directory, Cons(
@@ -81,105 +60,8 @@ let run_clang = fn runtime_directory -> fn c_file -> fn executable ->
       "Clang failed with a non-zero exit status" None)
   }
 
-let append_value_bindings = fn (first: List<ValueBinding>) -> fn (second: List<ValueBinding>) ->
-  match first {
-    | Nil -> second
-    | Cons(binding, remaining) -> Cons(binding, append_value_bindings remaining second)
-  }
-
-let module_declares_value = fn (wanted_name: string) -> fn (declarations: List<Declaration>) ->
-  match declarations {
-    | Nil -> false
-    | Cons(ValueDeclaration(ValueDeclarationData {
-        name: ValueName(name), body: _
-      }), remaining) -> match (equal wanted_name name) {
-      | true -> true
-      | false -> module_declares_value wanted_name remaining
-    }
-    | Cons(TypeDeclaration(_), remaining) -> module_declares_value wanted_name remaining
-  }
-
-let find_value_binding = fn (wanted_name: string) -> fn (bindings: List<ValueBinding>) ->
-  match bindings {
-    | Nil -> None
-    | Cons(ValueBinding { name: ValueName(name), value_type }, remaining) ->
-      match (equal wanted_name name) {
-        | true -> Some(ValueBinding { name: ValueName(name), value_type: value_type })
-        | false -> find_value_binding wanted_name remaining
-      }
-  }
-
-let selected_import_value_bindings = fn (declarations: List<Declaration>) ->
-  fn (bindings: List<ValueBinding>) -> fn (names: List<ImportedName>) ->
-  match names {
-    | Nil -> Nil
-    | Cons(ImportedName(MemberName(name)), remaining) ->
-      match (module_declares_value name declarations) {
-        | false -> selected_import_value_bindings declarations bindings remaining
-        | true -> match (find_value_binding name bindings) {
-          | None -> selected_import_value_bindings declarations bindings remaining
-          | Some(binding) -> Cons(binding,
-            selected_import_value_bindings declarations bindings remaining)
-        }
-      }
-  }
-
-let find_checked_module = fn (wanted_path: ModulePath) ->
-  fn (checked_modules: List<CheckedModule>) ->
-  match checked_modules {
-    | Nil -> None
-    | Cons(CheckedModule {
-        loaded_module: LoadedModule {
-          module_path: Some(module_path), source_path, source_module
-        },
-        value_bindings
-      }, remaining) -> match (equal
-        (module_path_relative wanted_path) (module_path_relative module_path)) {
-      | true -> Some(CheckedModule {
-        loaded_module: LoadedModule {
-          module_path: Some(module_path),
-          source_path: source_path,
-          source_module: source_module
-        },
-        value_bindings: value_bindings
-      })
-      | false -> find_checked_module wanted_path remaining
-    }
-    | Cons(CheckedModule {
-        loaded_module: LoadedModule {
-          module_path: None, source_path: _, source_module: _
-        },
-        value_bindings: _
-      }, remaining) -> find_checked_module wanted_path remaining
-  }
-
-let imported_bindings_for_imports = fn (imports: List<Import>) ->
-  fn (checked_modules: List<CheckedModule>) ->
-  match imports {
-    | Nil -> Nil
-    | Cons(Import { module_path, selected_names }, remaining) -> {
-      let imported = match (find_checked_module module_path checked_modules) {
-        | None -> Nil
-        | Some(CheckedModule {
-            loaded_module: LoadedModule {
-              module_path: _, source_path: _,
-              source_module: SourceModule { imports: _, declarations }
-            },
-            value_bindings
-          }) -> selected_import_value_bindings declarations value_bindings selected_names
-      };
-      append_value_bindings imported
-        (imported_bindings_for_imports remaining checked_modules)
-    }
-  }
-
-let imported_bindings_for_module = fn (LoadedModule {
-  module_path: _, source_path: _, source_module: SourceModule { imports, declarations: _ }
-}) -> fn (checked_modules: List<CheckedModule>) ->
-  imported_bindings_for_imports imports checked_modules
-
 let check_loaded_modules = fn (modules: List<LoadedModule>) ->
-  fn (checked_modules: List<CheckedModule>) ->
+  fn (checked_modules: List<CheckedModuleInterface>) ->
   match modules {
     | Nil -> Ok(checked_modules)
     | Cons(LoadedModule { module_path, source_path, source_module }, remaining) -> {
@@ -188,35 +70,29 @@ let check_loaded_modules = fn (modules: List<LoadedModule>) ->
         source_path: source_path,
         source_module: source_module
       };
-      let imported_bindings = imported_bindings_for_module loaded_module checked_modules;
-      match (check_source_module_with_bindings source_module imported_bindings) {
+      match (infer_source_module loaded_module checked_modules) {
         | Err(message) -> Err("type error in " + source_path + ": " + message)
-        | Ok(value_bindings) -> check_loaded_modules remaining
-          (Cons(CheckedModule {
-            loaded_module: loaded_module,
-            value_bindings: value_bindings
-          }, checked_modules))
+        | Ok(checked_module) -> check_loaded_modules remaining
+          (Cons(checked_module, checked_modules))
       }
     }
   }
 
 let find_root_checked_module = fn (root_path: string) ->
-  fn (checked_modules: List<CheckedModule>) ->
+  fn (checked_modules: List<CheckedModuleInterface>) ->
   match checked_modules {
     | Nil -> None
-    | Cons(CheckedModule {
-        loaded_module: LoadedModule {
-          module_path: _, source_path, source_module
-        },
-        value_bindings
+    | Cons(CheckedModuleInterface {
+        loaded_module: LoadedModule { module_path, source_path, source_module },
+        interface
       }, remaining) -> match (equal root_path source_path) {
-      | true -> Some(CheckedModule {
+      | true -> Some(CheckedModuleInterface {
         loaded_module: LoadedModule {
-          module_path: None,
+          module_path: module_path,
           source_path: source_path,
           source_module: source_module
         },
-        value_bindings: value_bindings
+        interface: interface
       })
       | false -> find_root_checked_module root_path remaining
     }
@@ -231,17 +107,13 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
       | Ok(checked_modules) -> match (find_root_checked_module source_file checked_modules) {
         | None -> Err(compile_error (SourceParsing)
           "source graph has no entry module" None)
-        | Some(CheckedModule {
+        | Some(CheckedModuleInterface {
             loaded_module: LoadedModule { source_module, source_path: _, module_path: _ },
-            value_bindings: _
-          }) -> {
-          let imported_bindings = imported_bindings_for_module
-            (LoadedModule { module_path: None, source_path: source_file, source_module: source_module })
-            checked_modules;
-          match (validate_native_entry_module_with_bindings source_module imported_bindings) {
-            | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-            | Ok(_) -> Ok(emit_module_program source_file (module_source_pairs modules))
-          }
+            interface
+          }) -> match (validate_native_entry_module source_module interface) {
+          | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+          | Ok(_) -> Ok(emit_module_program source_file
+            (runtime_include_directory source_file) (module_source_pairs modules))
         }
       }
     }
@@ -260,11 +132,44 @@ let compile_module_graph = fn (source_file: string) ->
     }
   }
 
-let runtime_include_directory = fn source_file ->
-  match (read_file (join_path (directory_of source_file) "runtime.c")) {
-    | Ok(_) -> directory_of source_file
-    | Err(_) -> "riotc"
+let path_is_absolute = fn path ->
+  match (get path 0) {
+    | Some(47) -> true
+    | _ -> false
   }
+
+let absolute_runtime_directory = fn source_file -> {
+  let source_directory = directory_of source_file;
+  match (path_is_absolute source_directory) {
+    | true -> source_directory
+    | false -> match (equal source_directory ".") {
+      | true -> current_directory ()
+      | false -> current_directory () + "/" + source_directory
+    }
+  }
+}
+
+let runtime_directory_has_runtime = fn directory ->
+  match (read_file (join_path directory "runtime.c")) {
+    | Ok(_) -> true
+    | Err(_) -> false
+  }
+
+let runtime_include_directory = fn source_file -> {
+  let embedded_directory = runtime_directory ();
+  let current_directory_runtime = join_path (current_directory ()) "riotc";
+  let source_directory_runtime = absolute_runtime_directory source_file;
+  match (runtime_directory_has_runtime embedded_directory) {
+    | true -> embedded_directory
+    | false -> match (runtime_directory_has_runtime current_directory_runtime) {
+      | true -> current_directory_runtime
+      | false -> match (runtime_directory_has_runtime source_directory_runtime) {
+        | true -> source_directory_runtime
+        | false -> "riotc"
+      }
+    }
+  }
+}
 
 let compile_file = fn (NativeCompileRequest {
   source_path: SourcePath(source_file),

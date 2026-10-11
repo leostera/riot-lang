@@ -121,6 +121,8 @@ RtValue rt_concat(RtValue left, RtValue right);
 
 RtValue rt_args(void);
 RtValue rt_host_args(RtValue ignored, RtValue unit);
+RtValue rt_host_current_directory(RtValue ignored, RtValue unit);
+RtValue rt_host_runtime_directory(RtValue ignored, RtValue unit);
 RtValue rt_read_file(RtValue ignored, RtValue path);
 RtValue rt_write_file(RtValue environment, RtValue path);
 RtValue rt_write_stdout(RtValue ignored, RtValue message);
@@ -141,6 +143,7 @@ RtValue rt_constructor_ok(RtValue ignored, RtValue value);
 RtValue rt_constructor_err(RtValue ignored, RtValue value);
 
 void rt_set_args(int argc, char **argv);
+void rt_set_runtime_directory(const char *directory);
 int rt_utf8_valid(const char *bytes, size_t length);
 
 #endif

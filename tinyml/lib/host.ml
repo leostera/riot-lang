@@ -2,6 +2,8 @@
 use Prelude.{List, Nil, Result, Ok}
 
 let args = fn () -> (Nil: List<string>)
+let current_directory = fn () -> ""
+let runtime_directory = fn () -> ""
 let read_file = fn (path: string) -> (Ok(""): Result<string, string>)
 let write_file = fn (path: string) -> fn (contents: string) -> (Ok(()): Result<unit, string>)
 let write_stdout = fn (message: string) -> ()

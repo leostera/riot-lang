@@ -184,16 +184,24 @@ expected behavior. Verified by
 - [x] Run `cargo fmt --all -- --check` and `cargo test --workspace` from the
   repository root.
 - [x] Repeat the documented bootstrap from a clean checkout with no
-  untracked/generated prerequisites.
+  untracked/generated prerequisites at the previous release-gate baseline.
 - [x] Exercise every supported standard-library module; remove or clearly
   exclude unsupported sketches.
 - [x] Confirm there are no generated artifacts or stale snapshots and that the
   test suite is deterministic.
-- [ ] Complete native compiler rank-1 HM checking across local, imported, and
-  nominal values; the current `DynamicType` fallback is not the final boundary.
-- [ ] Make native runtime discovery independent of the repository working
-  directory.
+- [x] Implement rank-1 HM inference in the native checker, with positive and
+  negative coverage for local let-polymorphism, imported polymorphic values,
+  generic nominal constructors, mismatched nominal types, ambiguous imports,
+  duplicate bindings, and incompatible patterns. The checker no longer contains
+  or accepts the former `DynamicType` fallback.
+- [x] Embed the native runtime source directory and verify the compiled native
+  compiler works from an unrelated working directory.
+- [ ] Repeat the documented bootstrap from a fresh worktree of the updated
+  commit using an empty `CARGO_TARGET_DIR`; confirm all required artifacts are
+  produced without generated or untracked prerequisites.
+- [ ] Reconcile this checklist and RFD0050 against that fresh-worktree result.
 
-The documented JS-to-native bootstrap and release checks pass in a fresh
-worktree, but the RFD's native typechecking and portability requirements remain
-open. Do not treat the release gate as complete until they are resolved.
+The earlier release-gate checks passed on the previous baseline. The checker
+and runtime portability objections are now addressed in code and tests, but the
+release gate remains open until the updated source passes the clean-worktree
+bootstrap and the docs/status are reconciled with that evidence.

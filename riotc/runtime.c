@@ -12,6 +12,7 @@
 
 static int rt_argc;
 static char **rt_argv;
+static char *rt_runtime_directory;
 
 _Noreturn static void rt_fail(const char *message) {
   fprintf(stderr, "riotml runtime: %s\n", message);
@@ -414,6 +415,10 @@ void rt_set_args(int argc, char **argv) {
   rt_argv = argv;
 }
 
+void rt_set_runtime_directory(const char *directory) {
+  rt_runtime_directory = rt_copy_string(directory);
+}
+
 RtValue rt_args(void) {
   RtValue values = rt_nil();
   for (int index = rt_argc - 1; index >= 1; --index) {
@@ -427,6 +432,21 @@ RtValue rt_host_args(RtValue ignored, RtValue unit) {
   (void)ignored;
   (void)unit;
   return rt_args();
+}
+
+RtValue rt_host_current_directory(RtValue ignored, RtValue unit) {
+  (void)ignored;
+  (void)unit;
+  char directory[4096];
+  if (getcwd(directory, sizeof(directory)) == NULL)
+    rt_fail("cannot discover the current working directory");
+  return rt_string(directory);
+}
+
+RtValue rt_host_runtime_directory(RtValue ignored, RtValue unit) {
+  (void)ignored;
+  (void)unit;
+  return rt_string(rt_runtime_directory == NULL ? "" : rt_runtime_directory);
 }
 
 int rt_utf8_valid(const char *bytes, size_t length) {

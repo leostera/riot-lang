@@ -807,6 +807,8 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     let compiler_source = repository_root.join("riotc/main.ml");
     let include_root = repository_root.join("riotc");
     let dir = temp_dir("riotml-native-smoke");
+    let unrelated_working_directory = dir.join("unrelated-working-directory");
+    fs::create_dir_all(&unrelated_working_directory).unwrap();
     let compiler_js = dir.join("compiler.mjs");
     let stage0 = Command::new(tinyml())
         .arg("compile")
@@ -852,7 +854,7 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     fs::write(&native_smoke_source, "let main = fn () -> 42\n").unwrap();
     let native_smoke_output = dir.join("native_compiler_smoke.native");
     let native_compile = Command::new(&native_compiler_source)
-        .current_dir(&repository_root)
+        .current_dir(&unrelated_working_directory)
         .arg("compile")
         .arg(&native_smoke_source)
         .arg("-o")
@@ -947,7 +949,7 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
 
     fs::write(
         dir.join("helper.ml"),
-        "let increment = fn value -> value + 1\n",
+        "let increment = fn value -> value + 1\nlet identity = fn value -> value\ntype Maybe<'a> = | Empty | Present('a)\nlet wrap = fn value -> Present(value)\n",
     )
     .unwrap();
     let native_wrong_imported_argument_source =
@@ -975,6 +977,182 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
         String::from_utf8_lossy(&native_wrong_imported_argument.stderr)
     );
     assert!(!native_wrong_imported_argument_output.exists());
+
+    let local_polymorphic_source = dir.join("native_local_polymorphism.ml");
+    fs::write(
+        &local_polymorphic_source,
+        "let main = fn () -> let identity = fn value -> value; let number = identity 42; let truth = identity true; match truth { | true -> number | false -> 0 }\n",
+    )
+    .unwrap();
+    let local_polymorphic_output = dir.join("native_local_polymorphism.native");
+    let local_polymorphic = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&local_polymorphic_source)
+        .arg("-o")
+        .arg(&local_polymorphic_output)
+        .output()
+        .unwrap();
+    assert!(
+        local_polymorphic.status.success(),
+        "local polymorphism: {}",
+        String::from_utf8_lossy(&local_polymorphic.stderr)
+    );
+    assert_eq!(
+        Command::new(&local_polymorphic_output)
+            .status()
+            .unwrap()
+            .code(),
+        Some(42)
+    );
+
+    let imported_polymorphic_source = dir.join("native_imported_polymorphism.ml");
+    fs::write(
+        &imported_polymorphic_source,
+        "use Helper.{identity, Maybe, wrap}\nuse Helper.{Empty, Present}\nlet main = fn () -> let number = identity 42; let truth = identity true; let boxed = wrap number; match truth { | true -> match boxed { | Present(value) -> value | Empty -> 0 } | false -> 0 }\n",
+    )
+    .unwrap();
+    let imported_polymorphic_output = dir.join("native_imported_polymorphism.native");
+    let imported_polymorphic = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&imported_polymorphic_source)
+        .arg("-o")
+        .arg(&imported_polymorphic_output)
+        .output()
+        .unwrap();
+    assert!(
+        imported_polymorphic.status.success(),
+        "imported polymorphism and nominal type: {}",
+        String::from_utf8_lossy(&imported_polymorphic.stderr)
+    );
+    assert_eq!(
+        Command::new(&imported_polymorphic_output)
+            .status()
+            .unwrap()
+            .code(),
+        Some(42)
+    );
+
+    fs::write(dir.join("other.ml"), "let identity = fn value -> 0\n").unwrap();
+    let ambiguous_import_source = dir.join("native_ambiguous_import.ml");
+    fs::write(
+        &ambiguous_import_source,
+        "use Helper.{identity}\nuse Other.{identity}\nlet main = fn () -> identity 42\n",
+    )
+    .unwrap();
+    let ambiguous_import_output = dir.join("native_ambiguous_import.native");
+    let ambiguous_import = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&ambiguous_import_source)
+        .arg("-o")
+        .arg(&ambiguous_import_output)
+        .output()
+        .unwrap();
+    assert!(!ambiguous_import.status.success());
+    assert!(
+        String::from_utf8_lossy(&ambiguous_import.stderr)
+            .contains("ambiguous imported name `identity`"),
+        "unexpected ambiguous-import diagnostic: {}",
+        String::from_utf8_lossy(&ambiguous_import.stderr)
+    );
+    assert!(!ambiguous_import_output.exists());
+
+    let duplicate_pattern_source = dir.join("native_duplicate_pattern_binding.ml");
+    fs::write(
+        &duplicate_pattern_source,
+        "let main = fn () -> let (same, same) = (1, true); 0\n",
+    )
+    .unwrap();
+    let duplicate_pattern_output = dir.join("native_duplicate_pattern_binding.native");
+    let duplicate_pattern = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&duplicate_pattern_source)
+        .arg("-o")
+        .arg(&duplicate_pattern_output)
+        .output()
+        .unwrap();
+    assert!(!duplicate_pattern.status.success());
+    assert!(
+        String::from_utf8_lossy(&duplicate_pattern.stderr)
+            .contains("duplicate pattern binding `same`"),
+        "unexpected duplicate-pattern diagnostic: {}",
+        String::from_utf8_lossy(&duplicate_pattern.stderr)
+    );
+    assert!(!duplicate_pattern_output.exists());
+
+    let duplicate_value_source = dir.join("native_duplicate_value_declaration.ml");
+    fs::write(
+        &duplicate_value_source,
+        "let repeated = 1\nlet repeated = true\nlet main = fn () -> 0\n",
+    )
+    .unwrap();
+    let duplicate_value_output = dir.join("native_duplicate_value_declaration.native");
+    let duplicate_value = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&duplicate_value_source)
+        .arg("-o")
+        .arg(&duplicate_value_output)
+        .output()
+        .unwrap();
+    assert!(!duplicate_value.status.success());
+    assert!(
+        String::from_utf8_lossy(&duplicate_value.stderr)
+            .contains("duplicate value declaration `repeated`"),
+        "unexpected duplicate-value diagnostic: {}",
+        String::from_utf8_lossy(&duplicate_value.stderr)
+    );
+    assert!(!duplicate_value_output.exists());
+
+    let conflicting_constructor_source = dir.join("native_conflicting_constructor.ml");
+    fs::write(
+        &conflicting_constructor_source,
+        "use Helper.{Present}\ntype Other<'a> = | Present('a)\nlet main = fn () -> 0\n",
+    )
+    .unwrap();
+    let conflicting_constructor_output = dir.join("native_conflicting_constructor.native");
+    let conflicting_constructor = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&conflicting_constructor_source)
+        .arg("-o")
+        .arg(&conflicting_constructor_output)
+        .output()
+        .unwrap();
+    assert!(!conflicting_constructor.status.success());
+    assert!(
+        String::from_utf8_lossy(&conflicting_constructor.stderr)
+            .contains("imported name conflicts with local declaration `Present`"),
+        "unexpected constructor-conflict diagnostic: {}",
+        String::from_utf8_lossy(&conflicting_constructor.stderr)
+    );
+    assert!(!conflicting_constructor_output.exists());
+
+    let mismatched_nominal_source = dir.join("native_mismatched_nominal.ml");
+    fs::write(
+        &mismatched_nominal_source,
+        "use Helper.{Empty, Present}\ntype Other<'a> = | Other('a)\nlet consume = fn value -> match value { | Present(item) -> item | Empty -> 0 }\nlet main = fn () -> consume (Other(42))\n",
+    )
+    .unwrap();
+    let mismatched_nominal_output = dir.join("native_mismatched_nominal.native");
+    let mismatched_nominal = Command::new(&native_compiler_source)
+        .current_dir(&repository_root)
+        .arg("compile")
+        .arg(&mismatched_nominal_source)
+        .arg("-o")
+        .arg(&mismatched_nominal_output)
+        .output()
+        .unwrap();
+    assert!(!mismatched_nominal.status.success());
+    assert!(
+        String::from_utf8_lossy(&mismatched_nominal.stderr).contains("type mismatch"),
+        "unexpected nominal-type diagnostic: {}",
+        String::from_utf8_lossy(&mismatched_nominal.stderr)
+    );
+    assert!(!mismatched_nominal_output.exists());
 
     let native_unknown_type_source = dir.join("native_compiler_unknown_type.ml");
     fs::write(

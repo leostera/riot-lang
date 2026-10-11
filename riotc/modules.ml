@@ -61,9 +61,6 @@ let snake_component = fn name -> fn offset ->
     }
   }
 
-let module_path_relative = fn (ModulePath(components)) ->
-  module_path_segments components ""
-
 let module_path_segments = fn components -> fn relative_path ->
   match components {
     | Nil -> relative_path + ".ml"
@@ -72,8 +69,8 @@ let module_path_segments = fn components -> fn relative_path ->
       module_path_segments rest (relative_path + snake_component name 0 + "/")
   }
 
-let module_path_display = fn (ModulePath(components)) ->
-  module_path_display_segments components ""
+let module_path_relative = fn (ModulePath(components)) ->
+  (module_path_segments components "": string)
 
 let module_path_display_segments = fn components -> fn display ->
   match components {
@@ -82,6 +79,9 @@ let module_path_display_segments = fn components -> fn display ->
     | Cons(ModuleName(name), rest) ->
       module_path_display_segments rest (display + name + ".")
   }
+
+let module_path_display = fn (ModulePath(components)) ->
+  (module_path_display_segments components "": string)
 
 let path_directory = fn path -> fn offset -> fn last_separator ->
   match (offset == length path) {

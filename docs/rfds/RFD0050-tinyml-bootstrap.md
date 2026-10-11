@@ -39,16 +39,18 @@ recursive data, split code across modules, and produce source or native output.
 It does not require Stage 0 Rust to compile TinyML directly to native code, nor
 does it require TinyML to become a complete application language.
 
-The repository has a parser, a Hindley–Milner-style checker, Lambda IR, source
-module loading, and a JavaScript backend. Stage 0 now executes integration
-tests for functions, recursion, closures, recursive ADTs, records, tuples,
-patterns, fixed-width integers, strings, and the Node host boundary. Its
+The repository has a parser, a Hindley–Milner-style checker, source-module
+loading, and a JavaScript backend. Stage 0 now executes integration tests for
+functions, recursion, closures, recursive ADTs, records, tuples, patterns,
+fixed-width integers, strings, and the Node host boundary. Its
 compiler-focused standard library is loaded from source and bundled into the
-compiler. These prerequisites have now supported the first end-to-end bootstrap
-proof: Stage 0 produces the JS compiler, that compiler produces a native
-compiler, and the native compiler builds and runs a fixture. The native
-checker still has incomplete HM inference, so full compiler typechecking and
-the release gate remain work in progress.
+compiler. These prerequisites support an end-to-end bootstrap proof: Stage 0
+produces the JS compiler, that compiler produces a native compiler, and the
+native compiler builds and runs a fixture. The native checker performs rank-1
+HM inference for its supported subset, with tests for local and imported
+polymorphism and nominal type mismatches. Runtime discovery is exercised from
+outside the repository working directory; clean-checkout validation and final
+documentation reconciliation remain part of the release gate.
 
 The bootstrap has two compilers and two backend roles:
 
@@ -222,7 +224,10 @@ abstraction is deferred unless the compiler implementation demonstrates a need
 for it.
 
 The bundled `Host` module is an intrinsic, not a general FFI declaration
-system. `Host.args` excludes the executable name. Its initial contract is:
+system. `Host.args` excludes the executable name. The compiler also uses
+internal `current_directory` and `runtime_directory` intrinsics to locate its
+native runtime; these do not provide general filesystem access. The public
+initial contract is:
 
 ```text
 Host.args         : unit -> List<string>
@@ -290,18 +295,21 @@ The native backend still supports all constructs used by the compiler
 implementation, even if this smoke program uses only a small part of the
 language.
 
-**Current implementation status:** the end-to-end test now compiles the
+**Current implementation status:** the end-to-end test compiles the
 TinyML-written compiler to JavaScript, runs that JavaScript to compile the same
 compiler source into a native executable, then uses the native executable to
-build and run the status-42 fixture and reject `1 + true`. This validates the
-C-plus-Clang route and the required acceptance chain. The native checker now validates import members and value/type/constructor
-name existence, rejects statically visible primitive mismatches, and propagates
-inferred primitive function types through selected imports. These checks cover
-annotated calls and primitive-operator constraints on inferred parameters.
-Generic and nominal types still use the `DynamicType` fallback, so this is not
-full HM inference and some dynamic calls can evade mismatch checks. The
-language/typechecking requirement above remains in force; this boundary still
-needs strengthening.
+build and run the status-42 fixture and reject ill-typed input. This validates
+the C-plus-Clang route and the required acceptance chain. `Check.Inference`
+checks the complete source-module graph with rank-1 HM inference, independently
+instantiates local `let` and imported value schemes, and preserves nominal
+type/constructor identities and payload constraints across modules. The native
+checker has no dynamic-type escape hatch. The acceptance test covers local and
+imported polymorphic identity, a generic imported nominal variant, nominal
+mismatch rejection, invalid primitive operations, bad calls, unknown names and
+types, and incompatible patterns; rejected input fails before output
+executable creation. Runtime-source discovery is tested from an unrelated
+working directory. The native backend remains narrower than the full Stage 0
+TinyML language contract; its current primitive numeric lowering is `i32`.
 
 ### 6. Validation-focused CLI
 
@@ -351,19 +359,14 @@ TinyML Stage 0 is complete when all of the following hold:
 
 The Stage 0 language, module loader, compiler-focused library, and Node Host
 contracts have positive and negative test coverage. The JS-to-native-to-smoke
-program chain is exercised by
-`riotml_compiler_emits_native_smoke_program_and_rejects_bad_types`. Remaining
-work is on the native compiler's typechecking boundary and release portability:
-
-- The source graph loader validates missing modules, cycles, and selected
-  import members. The native checker resolves value/type/constructor names and
-  propagates inferred primitive function types through imports, but its dynamic
-  fallback does not yet implement the full rank-1 HM contract for generic and
-  nominal bindings.
-- Make runtime discovery independent of the repository working directory, then
-  run the bootstrap flow from a clean checkout without generated artifacts.
-- Keep the already removed LSP, pending WASM output, Rust AArch64 backend, and
-  placeholder runtime out of Stage 0.
+program chain and native checker cases are exercised by
+`riotml_compiler_emits_native_smoke_program_and_rejects_bad_types`. The native
+compiler embeds its runtime source directory, and the integration test compiles
+and runs it from an unrelated working directory. The remaining release task is
+to repeat the documented bootstrap from a clean checkout and reconcile the
+final status in this RFD and its implementation checklist. Keep the already
+removed LSP, pending WASM output, Rust AArch64 backend, and placeholder runtime
+out of Stage 0.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -472,15 +475,15 @@ TinyML can implement the Riot compiler.
 
 ### Remaining implementation-time details
 
-- Complete HM inference and type propagation through local and imported
-  bindings in the native RiotML checker; the current dynamic fallback is
-  explicitly insufficient for the full language/typechecking contract.
-- Make native runtime discovery independent of the repository working
-  directory, then exercise the bootstrap from a clean checkout.
+- Rank-1 HM inference, polymorphic local/imported values, and nominal type
+  checking are implemented and covered by native self-compilation tests.
+- Runtime discovery from an unrelated working directory is implemented and
+  covered. Repeat the end-to-end bootstrap from a clean checkout before
+  closing the release gate.
 - Record/variant emission, the tagged C value representation, and the required
-  List/String/Host operations now support the compiler-source acceptance path.
-  Keep these surfaces constrained to RFD0050's shared subset and expand them
-  only when a failing contract test requires it.
+  List/String/Host operations support the compiler-source acceptance path. Keep
+  these surfaces constrained to RFD0050's shared subset and expand them only
+  when a failing contract test requires it.
 
 ### Out of scope
 

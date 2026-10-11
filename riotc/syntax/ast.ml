@@ -196,19 +196,3 @@ type SourceModule = SourceModule {
   imports: List<Import>,
   declarations: List<Declaration>
 }
-
-type Program =
-  | Main(Expr)
-
-type ValueType =
-  | I32
-  | BoolType
-  | StringType
-  | UnitType
-  | DynamicType
-  | FunctionType(ValueFunctionType)
-
-type ValueFunctionType = ValueFunctionType {
-  argument: ValueType,
-  result: ValueType
-}

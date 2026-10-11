@@ -74,6 +74,31 @@ let declared_type_names = fn declarations ->
         (declared_type_names remaining)
   }
 
+let declared_type_declaration_names = fn declarations ->
+  match declarations {
+    | Nil -> Nil
+    | Cons(ValueDeclaration(_), remaining) -> declared_type_declaration_names remaining
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: TypeName(name), parameters: _, definition: _
+      }), remaining) -> Cons(name, declared_type_declaration_names remaining)
+  }
+
+let declared_constructor_names = fn declarations ->
+  match declarations {
+    | Nil -> Nil
+    | Cons(ValueDeclaration(_), remaining) -> declared_constructor_names remaining
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: TypeName(name), parameters: _, definition: TypeAlias(_)
+      }), remaining) -> declared_constructor_names remaining
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: TypeName(name), parameters: _, definition: TypeRecord(_)
+      }), remaining) -> Cons(name, declared_constructor_names remaining)
+    | Cons(TypeDeclaration(TypeDeclarationData {
+        name: _, parameters: _, definition: TypeVariants(variants)
+      }), remaining) -> append_names (declared_variant_names variants)
+        (declared_constructor_names remaining)
+  }
+
 let contains_name = fn wanted -> fn names ->
   match names {
     | Nil -> false
@@ -81,6 +106,30 @@ let contains_name = fn wanted -> fn names ->
       | true -> true
       | false -> contains_name wanted remaining
     }
+  }
+
+let find_duplicate_name = fn names ->
+  match names {
+    | Nil -> None
+    | Cons(name, remaining) -> match (contains_name name remaining) {
+      | true -> Some(name)
+      | false -> find_duplicate_name remaining
+    }
+  }
+
+let find_common_name = fn first -> fn second ->
+  match first {
+    | Nil -> None
+    | Cons(name, remaining) -> match (contains_name name second) {
+      | true -> Some(name)
+      | false -> find_common_name remaining second
+    }
+  }
+
+let validate_unique_names = fn names -> fn description ->
+  match (find_duplicate_name names) {
+    | None -> Ok(())
+    | Some(name) -> Err(description + " `" + name + "`")
   }
 
 let builtin_type_name = fn name ->
@@ -117,14 +166,25 @@ let validate_type_list = fn types -> fn visible_names -> fn type_variables ->
     }
   }
 
-let validate_record_field_types = fn fields -> fn visible_names -> fn type_variables ->
+let record_type_field_names = fn fields ->
   match fields {
-    | Nil -> Ok(())
-    | Cons(RecordTypeField { name: _, field_type }, remaining) ->
-      match (validate_type field_type visible_names type_variables) {
-        | Err(message) -> Err(message)
-        | Ok(_) -> validate_record_field_types remaining visible_names type_variables
-      }
+    | Nil -> Nil
+    | Cons(RecordTypeField { name: ValueName(name), field_type: _ }, remaining) ->
+      Cons(name, record_type_field_names remaining)
+  }
+
+let validate_record_field_types = fn fields -> fn visible_names -> fn type_variables ->
+  match (validate_unique_names (record_type_field_names fields)
+      "duplicate record field") {
+    | Err(message) -> Err(message)
+    | Ok(_) -> match fields {
+      | Nil -> Ok(())
+      | Cons(RecordTypeField { name: _, field_type }, remaining) ->
+        match (validate_type field_type visible_names type_variables) {
+          | Err(message) -> Err(message)
+          | Ok(_) -> validate_record_field_types remaining visible_names type_variables
+        }
+    }
   }
 
 let validate_variant_types = fn variants -> fn visible_names -> fn type_variables ->
@@ -177,10 +237,14 @@ let validate_declaration_types = fn declarations -> fn visible_names ->
       validate_declaration_types remaining visible_names
     | Cons(TypeDeclaration(TypeDeclarationData {
         name: _, parameters, definition
-      }), remaining) -> match (validate_type_definition definition visible_names
-          (type_parameter_names parameters)) {
+      }), remaining) -> match (validate_unique_names
+          (type_parameter_names parameters) "duplicate type parameter") {
       | Err(message) -> Err(message)
-      | Ok(_) -> validate_declaration_types remaining visible_names
+      | Ok(_) -> match (validate_type_definition definition visible_names
+          (type_parameter_names parameters)) {
+        | Err(message) -> Err(message)
+        | Ok(_) -> validate_declaration_types remaining visible_names
+      }
     }
   }
 
@@ -213,6 +277,12 @@ let bound_record_pattern_names = fn fields ->
     | Nil -> Nil
     | Cons(RecordPatternField { name: _, pattern }, remaining) -> append_names
       (bound_pattern_names pattern) (bound_record_pattern_names remaining)
+  }
+
+let validate_unique_pattern_bindings = fn pattern ->
+  match (find_duplicate_name (bound_pattern_names pattern)) {
+    | None -> Ok(())
+    | Some(name) -> Err("duplicate pattern binding `" + name + "`")
   }
 
 let validate_value_name = fn name -> fn local_names -> fn module_names ->
@@ -260,18 +330,27 @@ let validate_pattern = fn pattern -> fn module_names ->
     | PatternInteger(_) -> Ok(())
     | PatternBoolean(_) -> Ok(())
     | PatternString(_) -> Ok(())
-    | TuplePattern(patterns) -> validate_pattern_list patterns module_names
+    | TuplePattern(patterns) -> match (validate_pattern_list patterns module_names) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_unique_pattern_bindings pattern
+    }
     | ConstructorPattern(ConstructorPatternData {
         constructor_name: ConstructorName(name), arguments
       }) -> match (validate_constructor_pattern name module_names) {
       | Err(message) -> Err(message)
-      | Ok(_) -> validate_pattern_list arguments module_names
+      | Ok(_) -> match (validate_pattern_list arguments module_names) {
+        | Err(message) -> Err(message)
+        | Ok(_) -> validate_unique_pattern_bindings pattern
+      }
     }
     | RecordPattern(RecordPatternData {
         constructor_name: ConstructorName(name), fields
       }) -> match (validate_constructor_pattern name module_names) {
       | Err(message) -> Err(message)
-      | Ok(_) -> validate_record_pattern_fields fields module_names
+      | Ok(_) -> match (validate_record_pattern_fields fields module_names) {
+        | Err(message) -> Err(message)
+        | Ok(_) -> validate_unique_pattern_bindings pattern
+      }
     }
     | AscribedPattern(AscribedPatternData { pattern: inner, annotation }) ->
       match (validate_type annotation module_names Nil) {
@@ -388,12 +467,36 @@ let validate_declaration_values = fn declarations -> fn module_names ->
       validate_declaration_values remaining module_names
   }
 
-let validate_source_module = fn (SourceModule { imports, declarations }) -> {
-  let module_names = append_names (declared_value_names declarations)
-    (append_names (declared_type_names declarations) (selected_import_names imports));
-  match (validate_declaration_types declarations module_names) {
+let validate_unique_declarations = fn declarations ->
+  match (validate_unique_names (declared_value_names declarations)
+      "duplicate value declaration") {
     | Err(message) -> Err(message)
-    | Ok(_) -> validate_declaration_values declarations module_names
+    | Ok(_) -> match (validate_unique_names
+        (declared_type_declaration_names declarations) "duplicate type declaration") {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_unique_names (declared_constructor_names declarations)
+        "duplicate constructor name"
+    }
+  }
+
+let validate_source_module = fn (SourceModule { imports, declarations }) -> {
+  let imported_names = selected_import_names imports;
+  let local_names = append_names (declared_value_names declarations)
+    (declared_type_names declarations);
+  let module_names = append_names local_names imported_names;
+  match (validate_unique_declarations declarations) {
+    | Err(message) -> Err(message)
+    | Ok(_) -> match (validate_unique_names imported_names
+        "ambiguous imported name") {
+      | Err(message) -> Err(message)
+      | Ok(_) -> match (find_common_name imported_names local_names) {
+        | Some(name) -> Err("imported name conflicts with local declaration `" + name + "`")
+        | None -> match (validate_declaration_types declarations module_names) {
+          | Err(message) -> Err(message)
+          | Ok(_) -> validate_declaration_values declarations module_names
+        }
+      }
+    }
   }
 }
 
