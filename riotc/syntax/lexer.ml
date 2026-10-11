@@ -1,7 +1,6 @@
-// RiotML compiler bootstrap implementation.
-use Prelude.{List, Nil, Cons, Option, None, Some, Result, Ok, Err}
-use Host.{args, read_file, write_file, write_stdout, write_stderr, run_process}
-use String.{concat, length, get, slice, equal}
+// Tokenization for the RiotML bootstrap subset.
+use Prelude.{List, Nil, Cons, Option, None, Some}
+use String.{length, get, slice}
 
 let is_space = fn code ->
   match code {
@@ -111,9 +110,10 @@ let reverse_acc = fn (remaining, reversed) ->
     | Cons(token, rest) -> reverse_acc (rest, Cons(token, reversed))
   }
 
-let reverse_tokens = fn tokens ->
-  reverse_acc (tokens, Nil)
+let reverse_tokens = fn tokens -> reverse_acc (tokens, Nil)
 
+// Keep recursion shallow on large compiler source files; no tail-call
+// optimization is assumed from the Stage 0 JavaScript host.
 let scan_chunk = fn (source, index, reversed, fuel) ->
   match (fuel <= 0) {
     | true -> (index, reversed, false)
@@ -172,5 +172,3 @@ let scan_all = fn (source, index, reversed) ->
   }
 
 let lex = fn source -> scan_all (source, 0, Nil)
-
-let main = fn _ -> 0

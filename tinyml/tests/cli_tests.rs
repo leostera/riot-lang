@@ -610,11 +610,14 @@ fn emitted_string_concatenation_executes() {
 #[test]
 fn bundled_riotml_compiler_source_executes_nested_match_lexer() {
     let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-    let compiler_source = repository_root.join("tinyml/riotml/compiler.ml");
+    let compiler_source = repository_root.join("riotc/main.ml");
+    let include_root = repository_root.join("riotc");
     let dir = temp_dir("riotml-compiler-lexer");
     let output = dir.join("compiler.mjs");
     let compile = Command::new(tinyml())
         .arg("compile")
+        .arg("-I")
+        .arg(&include_root)
         .arg("-o")
         .arg(&output)
         .arg(&compiler_source)
@@ -631,7 +634,7 @@ fn bundled_riotml_compiler_source_executes_nested_match_lexer() {
         .arg("-e")
         .arg(format!(
             "import {{ lex }} from {:?}; import {{ readFileSync }} from 'node:fs'; let source = readFileSync({:?}, 'utf8'); let tokens = lex(source); let count = 0; while (tokens.type === 'Cons') {{ count += 1; tokens = tokens.value[1]; }} if (count < 100 || tokens.type !== 'Nil') process.exit(1)",
-            output.to_str().unwrap(),
+            dir.join("Syntax_Lexer.mjs").to_str().unwrap(),
             compiler_source.to_str().unwrap()
         ))
         .output()
@@ -641,6 +644,134 @@ fn bundled_riotml_compiler_source_executes_nested_match_lexer() {
         "{}",
         String::from_utf8_lossy(&node.stderr)
     );
+}
+
+#[test]
+fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
+    let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let compiler_source = repository_root.join("riotc/main.ml");
+    let include_root = repository_root.join("riotc");
+    let dir = temp_dir("riotml-native-smoke");
+    let compiler_js = dir.join("compiler.mjs");
+    let stage0 = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_root)
+        .arg("-o")
+        .arg(&compiler_js)
+        .arg(&compiler_source)
+        .output()
+        .unwrap();
+    assert!(
+        stage0.status.success(),
+        "{}",
+        String::from_utf8_lossy(&stage0.stderr)
+    );
+
+    let runner = dir.join("run-compiler.mjs");
+    fs::write(
+        &runner,
+        format!(
+            "import {{ main }} from {:?}; process.exitCode = Number(main(undefined));\n",
+            compiler_js.to_str().unwrap()
+        ),
+    )
+    .unwrap();
+    let valid_source = dir.join("smoke.ml");
+    fs::write(&valid_source, "let main = fn () -> 42\n").unwrap();
+    let native_compiler = dir.join("riotml-compiler.native");
+    let hosted = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&valid_source)
+        .arg("-o")
+        .arg(&native_compiler)
+        .output()
+        .unwrap();
+    assert!(
+        hosted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&hosted.stderr)
+    );
+    let program = Command::new(&native_compiler).status().unwrap();
+    assert_eq!(program.code(), Some(42));
+
+    let arithmetic_source = dir.join("arithmetic.ml");
+    fs::write(&arithmetic_source, "let main = fn () -> 6 + 6 * 6\n").unwrap();
+    let arithmetic_output = dir.join("arithmetic.native");
+    let arithmetic_compile = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&arithmetic_source)
+        .arg("-o")
+        .arg(&arithmetic_output)
+        .output()
+        .unwrap();
+    assert!(
+        arithmetic_compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&arithmetic_compile.stderr)
+    );
+    assert_eq!(
+        Command::new(&arithmetic_output).status().unwrap().code(),
+        Some(42)
+    );
+
+    let division_source = dir.join("division.ml");
+    fs::write(&division_source, "let main = fn () -> -7 / 2\n").unwrap();
+    let division_output = dir.join("division.native");
+    let division_compile = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&division_source)
+        .arg("-o")
+        .arg(&division_output)
+        .output()
+        .unwrap();
+    assert!(
+        division_compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&division_compile.stderr)
+    );
+    assert_eq!(
+        Command::new(&division_output).status().unwrap().code(),
+        Some(253)
+    );
+
+    let invalid_source = dir.join("ill_typed.ml");
+    fs::write(&invalid_source, "let main = fn () -> 1 + true\n").unwrap();
+    let invalid_output = dir.join("must_not_exist.native");
+    let rejected = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&invalid_source)
+        .arg("-o")
+        .arg(&invalid_output)
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("two i32 operands"));
+    assert!(!invalid_output.exists());
+
+    let out_of_range_source = dir.join("out_of_range.ml");
+    fs::write(&out_of_range_source, "let main = fn () -> 2147483648\n").unwrap();
+    let out_of_range_output = dir.join("out_of_range.native");
+    let out_of_range = Command::new("node")
+        .current_dir(&repository_root)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&out_of_range_source)
+        .arg("-o")
+        .arg(&out_of_range_output)
+        .output()
+        .unwrap();
+    assert!(!out_of_range.status.success());
+    assert!(String::from_utf8_lossy(&out_of_range.stderr).contains("outside i32 range"));
+    assert!(!out_of_range_output.exists());
 }
 
 #[test]
