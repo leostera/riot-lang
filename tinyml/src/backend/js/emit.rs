@@ -111,10 +111,14 @@ fn emit_ts_runtime_item(
 
 fn emit_js_decl(out: &mut impl fmt::Write, decl: &ir::Item) -> fmt::Result {
     match decl {
-        ir::Item::Function { name, params, body, .. } => {
+        ir::Item::Function {
+            name, params, body, ..
+        } => {
             write!(out, "function {name}(")?;
             for (index, param) in params.iter().enumerate() {
-                if index > 0 { out.write_str(", ")?; }
+                if index > 0 {
+                    out.write_str(", ")?;
+                }
                 out.write_str(&param.name)?;
             }
             out.write_str(") {")?;

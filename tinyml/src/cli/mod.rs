@@ -6,7 +6,6 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::Command as ProcessCommand,
 };
 
 use clap::{Parser as ClapParser, Subcommand, ValueEnum};
@@ -14,8 +13,7 @@ use miette::{Diagnostic, IntoDiagnostic, LabeledSpan, NamedSource, Result, Sourc
 use thiserror::Error;
 
 use tinyml::{
-    backend::{self, native},
-    checker, lambda,
+    backend, checker, lambda,
     parser::{self, lexer::Lexer, parse::Parser},
 };
 
@@ -40,17 +38,15 @@ enum Command {
         /// Pipeline stage to emit. Can be passed multiple times.
         #[arg(long = "stage", value_enum)]
         stages: Vec<EmitStage>,
-        /// Native target artifact to emit. Can be passed multiple times.
+        /// Output target. Stage 0 currently emits JavaScript.
         #[arg(long = "target", value_enum)]
         targets: Vec<EmitTarget>,
         file: PathBuf,
     },
-    /// Run the TinyML language server over stdio.
-    Lsp,
-    /// Compile and link a TinyML file.
+    /// Compile a TinyML file to the Stage 0 JavaScript target.
     Compile {
-        /// Compilation target triple. Only aarch64-apple-darwin is supported for now.
-        #[arg(long, default_value = "aarch64-apple-darwin")]
+        /// Compilation target. Only `js` is supported by Stage 0.
+        #[arg(long, default_value = "js")]
         target: String,
         /// Output path. JavaScript defaults to a `.mjs` module.
         #[arg(short, long)]
@@ -67,12 +63,10 @@ enum EmitStage {
     Ast,
     Tir,
     Lambda,
-    Nir,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum EmitTarget {
-    Aarch64,
     Js,
 }
 
@@ -91,10 +85,9 @@ struct CliCheckDiagnostic {
     labels: Vec<LabeledSpan>,
 }
 
-struct NativePipeline {
+struct EmitPipeline {
     checked: CheckedPipeline,
     lambda: lambda::Lambda,
-    ssa: native::ssa::SsaProgram,
 }
 
 pub fn run() -> Result<()> {
@@ -109,7 +102,6 @@ pub fn run() -> Result<()> {
             targets,
             file,
         } => emit_command(&file, &stages, &targets),
-        Command::Lsp => tinyml::lsp::run_stdio(),
         Command::Compile {
             target,
             output,
@@ -146,11 +138,11 @@ fn check_command(file: &Path) -> Result<()> {
 fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Result<()> {
     if stages.is_empty() && targets.is_empty() {
         return Err(miette!(
-            "emit requires at least one --stage <ast|tir|lambda|nir> or --target <aarch64>"
+            "emit requires at least one --stage <ast|tir|lambda> or --target js"
         ));
     }
 
-    let pipeline = native_pipeline_allow_diagnostics(file)?;
+    let pipeline = emit_pipeline(file)?;
 
     for stage in stages {
         match stage {
@@ -163,37 +155,26 @@ fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Re
             EmitStage::Lambda => {
                 write_artifact(file, "lambda", format!("{:#?}", pipeline.lambda))?;
             }
-            EmitStage::Nir => {
-                write_artifact(file, "nml", pipeline.ssa.to_string())?;
-            }
         }
     }
 
-    for target in targets {
-        match target {
-            EmitTarget::Aarch64 => {
-                let mir = native::aarch64::select(&pipeline.ssa);
-                write_artifact(file, "S", mir.to_asm_string())?;
-            }
-            EmitTarget::Js => {
-                let imports = pipeline
-                    .checked
-                    .ast
-                    .items
-                    .iter()
-                    .filter_map(|item| match item {
-                        parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-                let js = backend::js::lower_with_imports(
-                    &pipeline.checked.summary.interface,
-                    &pipeline.lambda,
-                    &imports,
-                );
-                write_artifact(file, "mjs", backend::js::emit_js_string(&js))?;
-            }
-        }
+    if !targets.is_empty() {
+        let imports = pipeline
+            .checked
+            .ast
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let js = backend::js::lower_with_imports(
+            &pipeline.checked.summary.interface,
+            &pipeline.lambda,
+            &imports,
+        );
+        write_artifact(file, "mjs", backend::js::emit_js_string(&js))?;
     }
 
     Ok(())
@@ -207,59 +188,19 @@ fn compile_command(
 ) -> Result<()> {
     for dir in include_dirs {
         if !dir.is_dir() {
-            return Err(miette!("include directory does not exist: {}", dir.display()));
+            return Err(miette!(
+                "include directory does not exist: {}",
+                dir.display()
+            ));
         }
     }
 
-    if target == "js" {
-        return compile_js(file, output, include_dirs);
-    }
-
-    if target != "aarch64-apple-darwin" {
+    if target != "js" {
         return Err(miette!(
-            "unsupported compile target `{target}`; only aarch64-apple-darwin is supported"
+            "unsupported compile target `{target}`; only `js` is supported"
         ));
     }
-
-    let pipeline = native_pipeline(file)?;
-    let mir = native::aarch64::select(&pipeline.ssa);
-    let output = output
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| default_compile_output(file));
-
-    let temp_dir = std::env::temp_dir();
-    let unique = format!(
-        "tinyml-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0)
-    );
-    let asm_path = temp_dir.join(format!("{unique}.S"));
-    let runtime_path = temp_dir.join(format!("{unique}_rt.c"));
-
-    fs::write(&asm_path, mir.to_asm_string()).into_diagnostic()?;
-    fs::write(&runtime_path, runtime_source()).into_diagnostic()?;
-
-    let status = ProcessCommand::new("cc")
-        .arg("-target")
-        .arg("aarch64-apple-darwin")
-        .arg(&asm_path)
-        .arg(&runtime_path)
-        .arg("-o")
-        .arg(&output)
-        .status()
-        .into_diagnostic()?;
-
-    let _ = fs::remove_file(&asm_path);
-    let _ = fs::remove_file(&runtime_path);
-
-    if !status.success() {
-        return Err(miette!("linker failed with status {status}"));
-    }
-
-    Ok(())
+    compile_js(file, output, include_dirs)
 }
 
 struct ParsedSource {
@@ -306,14 +247,10 @@ fn checked_pipeline(file: &Path) -> Result<CheckedPipeline> {
     checked_pipeline_with_imports(file, &[])
 }
 
-fn checked_pipeline_with_imports(
-    file: &Path,
-    include_dirs: &[PathBuf],
-) -> Result<CheckedPipeline> {
+fn checked_pipeline_with_imports(file: &Path, include_dirs: &[PathBuf]) -> Result<CheckedPipeline> {
     let parsed = parse_source_file(file)?;
     let imported = load_interfaces(&parsed.ast, include_dirs)?;
-    let summary = checker::Checker::new()
-        .check_module_with_interface(&parsed.ast, &imported);
+    let summary = checker::Checker::new().check_module_with_interface(&parsed.ast, &imported);
     if !summary.diagnostics.is_empty() {
         print_check_diagnostics(&parsed.source_name, &parsed.source, &summary.diagnostics);
         return Err(miette!("typecheck failed"));
@@ -336,11 +273,7 @@ fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> R
         })
         .collect::<Vec<_>>();
     let lambda = lambda::translate(&checked.summary.tir);
-    let js = tinyml::backend::js::lower_with_imports(
-        &checked.summary.interface,
-        &lambda,
-        &imports,
-    );
+    let js = tinyml::backend::js::lower_with_imports(&checked.summary.interface, &lambda, &imports);
     let output = output
         .map(Path::to_path_buf)
         .unwrap_or_else(|| default_compile_output(file).with_extension("mjs"));
@@ -377,7 +310,11 @@ fn load_interfaces(
             let path = entry.into_diagnostic()?.path();
             if path.extension().and_then(|ext| ext.to_str()) != Some("tmi")
                 || !modules.contains(
-                    &path.file_stem().and_then(|stem| stem.to_str()).unwrap_or_default().to_string(),
+                    &path
+                        .file_stem()
+                        .and_then(|stem| stem.to_str())
+                        .unwrap_or_default()
+                        .to_string(),
                 )
             {
                 continue;
@@ -414,29 +351,15 @@ fn write_interface_artifact(
     fs::write(artifact, contents).into_diagnostic()
 }
 
-
-fn native_pipeline(file: &Path) -> Result<NativePipeline> {
-    let checked = checked_pipeline(file)?;
-    native_pipeline_from_checked(checked)
-}
-
-fn native_pipeline_allow_diagnostics(file: &Path) -> Result<NativePipeline> {
+fn emit_pipeline(file: &Path) -> Result<EmitPipeline> {
     let parsed = parse_source_file(file)?;
     let summary = checker::check_module(&parsed.ast);
-    native_pipeline_from_checked(CheckedPipeline {
+    let checked = CheckedPipeline {
         ast: parsed.ast,
         summary,
-    })
-}
-
-fn native_pipeline_from_checked(checked: CheckedPipeline) -> Result<NativePipeline> {
+    };
     let lambda = lambda::translate(&checked.summary.tir);
-    let ssa = native::lower(&lambda).optimize();
-    Ok(NativePipeline {
-        checked,
-        lambda,
-        ssa,
-    })
+    Ok(EmitPipeline { checked, lambda })
 }
 
 fn write_artifact(file: &Path, extension: &str, contents: String) -> Result<PathBuf> {
@@ -460,40 +383,6 @@ fn invocation_root_path(file: &Path, extension: &str) -> Result<PathBuf> {
     Ok(output)
 }
 
-fn runtime_source() -> &'static str {
-    r#"
-#include <stdint.h>
-
-uintptr_t tinyml_rt_block_new(uintptr_t tag, uintptr_t arity, ...) {
-  (void)tag;
-  (void)arity;
-  return 0;
-}
-
-uintptr_t tinyml_rt_block_get(uintptr_t block, uintptr_t index) {
-  (void)block;
-  (void)index;
-  return 0;
-}
-
-uintptr_t tinyml_rt_block_tag(uintptr_t block) {
-  (void)block;
-  return 0;
-}
-
-uintptr_t tinyml_rt_string_new(void) { return 0; }
-uintptr_t tinyml_rt_float_new(void) { return 0; }
-uintptr_t tinyml_rt_match_failure(uintptr_t scrutinee) {
-  (void)scrutinee;
-  return 0;
-}
-uintptr_t tinyml_rt_closure_new(void) { return 0; }
-uintptr_t tinyml_rt_closure_call(void) { return 0; }
-
-__attribute__((weak)) int main(void) { return 0; }
-"#
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,8 +398,8 @@ mod tests {
     #[test]
     fn artifact_paths_use_invocation_root() {
         assert_eq!(
-            invocation_root_path(Path::new("fixtures/hello.ml"), "nml").unwrap(),
-            std::env::current_dir().unwrap().join("hello.nml")
+            invocation_root_path(Path::new("fixtures/hello.ml"), "lambda").unwrap(),
+            std::env::current_dir().unwrap().join("hello.lambda")
         );
     }
 }

@@ -1,6 +1,6 @@
 # tinyml.nvim
 
-Repository-local Neovim integration for TinyML.
+Repository-local Neovim syntax support for TinyML.
 
 ## Setup
 
@@ -8,27 +8,14 @@ Repository-local Neovim integration for TinyML.
 require("tinyml").setup()
 ```
 
-By default the plugin:
-
-- detects `*.ml` files as `tinyml` when opened inside this repository;
-- provides Vim syntax highlighting for TinyML keywords, constructors, primitive types, literals, comments, and operators;
-- sets `commentstring` to `// %s`;
-- starts the language server with:
-
-```sh
-cargo run -q -p tinyml -- lsp
-```
-
-You can override the command:
+By default the plugin detects `*.ml` files as `tinyml` when opened inside this
+repository. Set `detect_all_ml = true` to detect the filetype for ML files
+outside the repository:
 
 ```lua
-require("tinyml").setup({
-  cmd = { "tinyml", "lsp" },
-})
+require("tinyml").setup({ detect_all_ml = true })
 ```
 
-## LSP features
-
-- diagnostics
-- inlay type hints
-- hover type information
+The plugin provides syntax highlighting for TinyML keywords, constructors,
+primitive types, literals, comments, and operators, and sets `commentstring` to
+`// %s`.

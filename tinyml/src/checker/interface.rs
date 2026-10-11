@@ -73,32 +73,54 @@ pub fn encode_interface_with_imports(
 ) -> Result<Vec<u8>, String> {
     let artifact = InterfaceArtifact {
         version: 1,
-        values: interface.values.iter().filter_map(|value| {
-            value.name.as_name().map(|name| ArtifactValue {
-                name: name.to_string(),
-                scheme: artifact_scheme(&value.scheme),
+        values: interface
+            .values
+            .iter()
+            .filter_map(|value| {
+                value.name.as_name().map(|name| ArtifactValue {
+                    name: name.to_string(),
+                    scheme: artifact_scheme(&value.scheme),
+                })
             })
-        }).collect(),
+            .collect(),
         imports: imports.to_vec(),
-        types: interface.types.iter().filter_map(|ty| ty.name.as_name().map(|name| ArtifactTypeDecl {
-            name: name.to_string(),
-            params: ty.params.iter().map(|param| param.name.clone()).collect(),
-            body: artifact_type(&ty.body),
-        })).collect(),
-        constructors: interface.constructors.iter().filter_map(|constructor| constructor.name.as_name().map(|name| ArtifactConstructor {
-            name: name.to_string(),
-            owner: ident_path(&constructor.owner),
-            scheme: artifact_scheme(&constructor.scheme),
-            tag: constructor.tag,
-            result: artifact_type(&constructor.result),
-            arguments: constructor.arguments.iter().map(artifact_type).collect(),
-        })).collect(),
-        record_fields: interface.record_fields.iter().filter_map(|field| field.name.as_name().map(|name| ArtifactRecordField {
-            name: name.to_string(),
-            owner: artifact_type(&field.owner),
-            field: artifact_type(&field.field),
-            index: field.index,
-        })).collect(),
+        types: interface
+            .types
+            .iter()
+            .filter_map(|ty| {
+                ty.name.as_name().map(|name| ArtifactTypeDecl {
+                    name: name.to_string(),
+                    params: ty.params.iter().map(|param| param.name.clone()).collect(),
+                    body: artifact_type(&ty.body),
+                })
+            })
+            .collect(),
+        constructors: interface
+            .constructors
+            .iter()
+            .filter_map(|constructor| {
+                constructor.name.as_name().map(|name| ArtifactConstructor {
+                    name: name.to_string(),
+                    owner: ident_path(&constructor.owner),
+                    scheme: artifact_scheme(&constructor.scheme),
+                    tag: constructor.tag,
+                    result: artifact_type(&constructor.result),
+                    arguments: constructor.arguments.iter().map(artifact_type).collect(),
+                })
+            })
+            .collect(),
+        record_fields: interface
+            .record_fields
+            .iter()
+            .filter_map(|field| {
+                field.name.as_name().map(|name| ArtifactRecordField {
+                    name: name.to_string(),
+                    owner: artifact_type(&field.owner),
+                    field: artifact_type(&field.field),
+                    index: field.index,
+                })
+            })
+            .collect(),
     };
     bincode::serialize(&artifact).map_err(|error| error.to_string())
 }
@@ -111,32 +133,81 @@ pub fn decode_interface(bytes: &[u8]) -> Result<ModuleInterface, String> {
 pub fn decode_interface_with_imports(
     bytes: &[u8],
 ) -> Result<(ModuleInterface, Vec<String>), String> {
-    let artifact: InterfaceArtifact = bincode::deserialize(bytes).map_err(|error| error.to_string())?;
-    if artifact.version != 1 { return Err("unsupported interface version".into()); }
-    Ok((ModuleInterface {
-        values: artifact.values.into_iter().map(|value| ValueDescription { name: Ident::from_string(value.name), scheme: tir_scheme(value.scheme) }).collect(),
-        types: artifact.types.into_iter().map(|ty| TypeDescription {
-            name: Ident::from_string(ty.name),
-            params: ty.params.into_iter().map(|name| ast::TypeVar { name, span: crate::parser::lexer::Span::new(0, 0) }).collect(),
-            body: tir_type(ty.body),
-        }).collect(),
-        constructors: artifact.constructors.into_iter().map(|constructor| ConstructorDescription {
-            name: Ident::from_string(constructor.name), owner: ident_from_path(&constructor.owner), scheme: tir_scheme(constructor.scheme), tag: constructor.tag,
-            result: tir_type(constructor.result), arguments: constructor.arguments.into_iter().map(tir_type).collect(),
-        }).collect(),
-        record_fields: artifact.record_fields.into_iter().map(|field| RecordFieldDescription {
-            name: Ident::from_string(field.name), owner: tir_type(field.owner), field: tir_type(field.field), index: field.index,
-        }).collect(),
-        modules: Vec::new(),
-    }, artifact.imports))
+    let artifact: InterfaceArtifact =
+        bincode::deserialize(bytes).map_err(|error| error.to_string())?;
+    if artifact.version != 1 {
+        return Err("unsupported interface version".into());
+    }
+    Ok((
+        ModuleInterface {
+            values: artifact
+                .values
+                .into_iter()
+                .map(|value| ValueDescription {
+                    name: Ident::from_string(value.name),
+                    scheme: tir_scheme(value.scheme),
+                })
+                .collect(),
+            types: artifact
+                .types
+                .into_iter()
+                .map(|ty| TypeDescription {
+                    name: Ident::from_string(ty.name),
+                    params: ty
+                        .params
+                        .into_iter()
+                        .map(|name| ast::TypeVar {
+                            name,
+                            span: crate::parser::lexer::Span::new(0, 0),
+                        })
+                        .collect(),
+                    body: tir_type(ty.body),
+                })
+                .collect(),
+            constructors: artifact
+                .constructors
+                .into_iter()
+                .map(|constructor| ConstructorDescription {
+                    name: Ident::from_string(constructor.name),
+                    owner: ident_from_path(&constructor.owner),
+                    scheme: tir_scheme(constructor.scheme),
+                    tag: constructor.tag,
+                    result: tir_type(constructor.result),
+                    arguments: constructor.arguments.into_iter().map(tir_type).collect(),
+                })
+                .collect(),
+            record_fields: artifact
+                .record_fields
+                .into_iter()
+                .map(|field| RecordFieldDescription {
+                    name: Ident::from_string(field.name),
+                    owner: tir_type(field.owner),
+                    field: tir_type(field.field),
+                    index: field.index,
+                })
+                .collect(),
+            modules: Vec::new(),
+        },
+        artifact.imports,
+    ))
 }
 
 fn artifact_scheme(scheme: &Scheme) -> ArtifactScheme {
-    ArtifactScheme { quantifier: scheme.quantifier.iter().map(|id| id.index()).collect(), body: artifact_type(&scheme.body) }
+    ArtifactScheme {
+        quantifier: scheme.quantifier.iter().map(|id| id.index()).collect(),
+        body: artifact_type(&scheme.body),
+    }
 }
 
 fn tir_scheme(scheme: ArtifactScheme) -> Scheme {
-    Scheme { quantifier: scheme.quantifier.into_iter().map(TypeVarId::from_index).collect(), body: tir_type(scheme.body) }
+    Scheme {
+        quantifier: scheme
+            .quantifier
+            .into_iter()
+            .map(TypeVarId::from_index)
+            .collect(),
+        body: tir_type(scheme.body),
+    }
 }
 
 fn artifact_type(ty: &Type) -> ArtifactType {
@@ -144,8 +215,14 @@ fn artifact_type(ty: &Type) -> ArtifactType {
         Type::Var(id) => ArtifactType::Var(id.index()),
         Type::Generic(id) => ArtifactType::Generic(id.index()),
         Type::Tuple(items) => ArtifactType::Tuple(items.iter().map(artifact_type).collect()),
-        Type::Arrow { parameter, result } => ArtifactType::Arrow(Box::new(artifact_type(parameter)), Box::new(artifact_type(result))),
-        Type::Apply { ident, arguments } => ArtifactType::Apply(ident_path(ident), arguments.iter().map(artifact_type).collect()),
+        Type::Arrow { parameter, result } => ArtifactType::Arrow(
+            Box::new(artifact_type(parameter)),
+            Box::new(artifact_type(result)),
+        ),
+        Type::Apply { ident, arguments } => ArtifactType::Apply(
+            ident_path(ident),
+            arguments.iter().map(artifact_type).collect(),
+        ),
     }
 }
 
@@ -174,12 +251,21 @@ fn tir_type(ty: ArtifactType) -> Type {
         ArtifactType::Var(id) => Type::Var(TypeVarId::from_index(id)),
         ArtifactType::Generic(id) => Type::Generic(TypeVarId::from_index(id)),
         ArtifactType::Tuple(items) => Type::Tuple(items.into_iter().map(tir_type).collect()),
-        ArtifactType::Arrow(parameter, result) => Type::Arrow { parameter: Box::new(tir_type(*parameter)), result: Box::new(tir_type(*result)) },
-        ArtifactType::Apply(name, arguments) => Type::Apply { ident: ident_from_path(&name), arguments: arguments.into_iter().map(tir_type).collect() },
+        ArtifactType::Arrow(parameter, result) => Type::Arrow {
+            parameter: Box::new(tir_type(*parameter)),
+            result: Box::new(tir_type(*result)),
+        },
+        ArtifactType::Apply(name, arguments) => Type::Apply {
+            ident: ident_from_path(&name),
+            arguments: arguments.into_iter().map(tir_type).collect(),
+        },
     }
 }
 
-use super::{scheme::Scheme, tir::{Type, TypeVarId}};
+use super::{
+    scheme::Scheme,
+    tir::{Type, TypeVarId},
+};
 
 /// Encode a type scheme in the stable, dependency-free `.tmi` format.
 pub fn encode_scheme(scheme: &Scheme) -> String {
@@ -196,13 +282,25 @@ fn encode_type(ty: &Type) -> String {
     match ty {
         Type::Var(id) => format!("v{}", id.index()),
         Type::Generic(id) => format!("g{}", id.index()),
-        Type::Tuple(items) => format!("t[{}]", items.iter().map(encode_type).collect::<Vec<_>>().join(",")),
+        Type::Tuple(items) => format!(
+            "t[{}]",
+            items.iter().map(encode_type).collect::<Vec<_>>().join(",")
+        ),
         Type::Arrow { parameter, result } => {
             format!("f[{},{}]", encode_type(parameter), encode_type(result))
         }
         Type::Apply { ident, arguments } => {
             let name = ident.as_name().unwrap_or("_");
-            format!("a{}:{}[{}]", name.len(), name, arguments.iter().map(encode_type).collect::<Vec<_>>().join(","))
+            format!(
+                "a{}:{}[{}]",
+                name.len(),
+                name,
+                arguments
+                    .iter()
+                    .map(encode_type)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
         }
     }
 }
@@ -215,42 +313,72 @@ pub fn decode_scheme(encoded: &str) -> Result<Scheme, String> {
     } else {
         quantifiers
             .split(',')
-            .map(|value| value.parse::<usize>().map(TypeVarId::from_index).map_err(|_| "invalid quantifier".to_string()))
+            .map(|value| {
+                value
+                    .parse::<usize>()
+                    .map(TypeVarId::from_index)
+                    .map_err(|_| "invalid quantifier".to_string())
+            })
             .collect::<Result<Vec<_>, _>>()?
     };
-    Ok(Scheme { quantifier, body: decode_type(body)? })
+    Ok(Scheme {
+        quantifier,
+        body: decode_type(body)?,
+    })
 }
 
 fn decode_type(encoded: &str) -> Result<Type, String> {
     let tag = encoded.chars().next().ok_or("empty type")?;
     match tag {
         'v' | 'g' => {
-            let id = encoded[1..].parse::<usize>().map_err(|_| "invalid type variable".to_string())?;
-            Ok(if tag == 'v' { Type::Var(TypeVarId::from_index(id)) } else { Type::Generic(TypeVarId::from_index(id)) })
+            let id = encoded[1..]
+                .parse::<usize>()
+                .map_err(|_| "invalid type variable".to_string())?;
+            Ok(if tag == 'v' {
+                Type::Var(TypeVarId::from_index(id))
+            } else {
+                Type::Generic(TypeVarId::from_index(id))
+            })
         }
         'a' => {
             let colon = encoded.find(':').ok_or("invalid application")?;
-            let len = encoded[1..colon].parse::<usize>().map_err(|_| "invalid name length".to_string())?;
+            let len = encoded[1..colon]
+                .parse::<usize>()
+                .map_err(|_| "invalid name length".to_string())?;
             let name_start = colon + 1;
             let name_end = name_start + len;
             let name = encoded.get(name_start..name_end).ok_or("truncated name")?;
             let args = decode_list(encoded.get(name_end..).ok_or("missing arguments")?)?;
-            Ok(Type::Apply { ident: Ident::from_string(name), arguments: args })
+            Ok(Type::Apply {
+                ident: Ident::from_string(name),
+                arguments: args,
+            })
         }
         't' | 'f' => {
             let items = decode_list(encoded.get(1..).ok_or("missing type list")?)?;
-            if tag == 't' { Ok(Type::Tuple(items)) }
-            else if items.len() == 2 { Ok(Type::Arrow { parameter: Box::new(items[0].clone()), result: Box::new(items[1].clone()) }) }
-            else { Err("function type must have two elements".into()) }
+            if tag == 't' {
+                Ok(Type::Tuple(items))
+            } else if items.len() == 2 {
+                Ok(Type::Arrow {
+                    parameter: Box::new(items[0].clone()),
+                    result: Box::new(items[1].clone()),
+                })
+            } else {
+                Err("function type must have two elements".into())
+            }
         }
         _ => Err("unknown type tag".into()),
     }
 }
 
 fn decode_list(encoded: &str) -> Result<Vec<Type>, String> {
-    if !encoded.starts_with('[') || !encoded.ends_with(']') { return Err("invalid type list".into()); }
+    if !encoded.starts_with('[') || !encoded.ends_with(']') {
+        return Err("invalid type list".into());
+    }
     let inner = &encoded[1..encoded.len() - 1];
-    if inner.is_empty() { return Ok(Vec::new()); }
+    if inner.is_empty() {
+        return Ok(Vec::new());
+    }
     let mut parts = Vec::new();
     let mut start = 0;
     let mut depth = 0;

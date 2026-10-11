@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use tinyml::{
     backend::js,
-    backend::native,
     checker, lambda,
     parser::{self, lexer::Lexer},
 };
@@ -47,37 +46,6 @@ fn emit_js_snapshot(path: &str) -> String {
     js::emit_ts_string(&js)
 }
 
-fn nir_snapshot(path: &str) -> String {
-    let module = parse_module(path);
-    let summary = checker::check_module(&module);
-    let lambda = lambda::translate(&summary.tir);
-    let nir = native::lower(&lambda).optimize();
-    nir.to_string()
-}
-
-fn assert_no_native_unsupported(text: &str) {
-    assert!(
-        !text.to_ascii_lowercase().contains("unsupported"),
-        "native output should not contain unsupported placeholders:\n{text}"
-    );
-}
-
-fn emit_aarch64_snapshot(path: &str) -> String {
-    let module = parse_module(path);
-    let summary = checker::check_module(&module);
-    let lambda = lambda::translate(&summary.tir);
-    let nir = native::lower(&lambda).optimize();
-    let aarch64 = native::aarch64::select(&nir);
-    aarch64.to_asm_string()
-}
-
-fn emit_wasm_snapshot(path: &str) -> String {
-    let module = parse_module(path);
-    let summary = checker::check_module(&module);
-    let lambda = lambda::translate(&summary.tir);
-    format!("emit pending\n{lambda:#?}")
-}
-
 macro_rules! assert_corpus_snapshot {
     ($value:expr) => {{
         let mut settings = insta::Settings::clone_current();
@@ -118,24 +86,6 @@ macro_rules! corpus_tests {
                     assert_corpus_snapshot!(emit_js_snapshot($path));
                 }
 
-                #[test]
-                fn nir() {
-                    let snapshot = nir_snapshot($path);
-                    assert_no_native_unsupported(&snapshot);
-                    assert_corpus_snapshot!(snapshot);
-                }
-
-                #[test]
-                fn emit_aarch64() {
-                    let snapshot = emit_aarch64_snapshot($path);
-                    assert_no_native_unsupported(&snapshot);
-                    assert_corpus_snapshot!(snapshot);
-                }
-
-                #[test]
-                fn emit_wasm() {
-                    assert_corpus_snapshot!(emit_wasm_snapshot($path));
-                }
             }
         )+
     };

@@ -1,9 +1,0 @@
----
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
-expression: snapshot
----
-fn get_or_zero(%x0: ptr) -> ptr {
-block0(%x0: ptr):
-  %v1: ptr = match_runtime(%x0, arms = 2);
-  return %v1;
-}

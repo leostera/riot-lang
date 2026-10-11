@@ -36,7 +36,9 @@ impl Checker {
         imported: &ModuleInterface,
     ) -> ModuleSummary {
         for value in &imported.values {
-            if let Some(name) = value.name.as_name() && !self.state.has_value(name) {
+            if let Some(name) = value.name.as_name()
+                && !self.state.has_value(name)
+            {
                 let _ = self.state.add_value(name, value.scheme.clone());
             }
         }
@@ -44,7 +46,9 @@ impl Checker {
             if let Some(name) = ty.name.as_name() {
                 self.state.env_mut().add_type(
                     name.to_string(),
-                    TypeBinding { arity: ty.params.len() },
+                    TypeBinding {
+                        arity: ty.params.len(),
+                    },
                 );
             }
         }
@@ -64,7 +68,9 @@ impl Checker {
             if let Some(name) = field.name.as_name() {
                 self.state.env_mut().add_record_field(
                     name.to_string(),
-                    RecordFieldBinding { description: field.clone() },
+                    RecordFieldBinding {
+                        description: field.clone(),
+                    },
                 );
             }
         }

@@ -43,7 +43,7 @@ impl<'a> Lowerer<'a> {
         imports: &[crate::parser::ast::UseDecl],
     ) -> ir::Module {
         let mut items = lower_imports(imports);
-        
+
         let mut exports = Vec::new();
 
         for value in &module.values {
@@ -152,7 +152,9 @@ impl<'a> Lowerer<'a> {
                 property: js_name(field),
             },
             lambda::ExprKind::Block(exprs) => self.lower_block_expr(exprs),
-            lambda::ExprKind::Match { scrutinee, arms } => self.lower_match_expr(scrutinee, arms, env),
+            lambda::ExprKind::Match { scrutinee, arms } => {
+                self.lower_match_expr(scrutinee, arms, env)
+            }
         }
     }
 
@@ -309,9 +311,9 @@ impl<'a> Lowerer<'a> {
                     _ => "__tinyml_primitive".into(),
                 })),
                 args: args
-                        .iter()
-                        .map(|arg| self.lower_expr_with_env(arg, env))
-                        .collect(),
+                    .iter()
+                    .map(|arg| self.lower_expr_with_env(arg, env))
+                    .collect(),
             }
         }
     }
@@ -441,7 +443,7 @@ impl<'a> Lowerer<'a> {
         let mut cases = Vec::new();
         let mut default = Vec::new();
         let scrutinee_expr = self.lower_expr_with_env(scrutinee, env);
-        
+
         for arm in arms {
             match &arm.pattern.kind {
                 lambda::PatternKind::Constant(constant) => {
@@ -701,7 +703,9 @@ fn lower_imports(imports: &[crate::parser::ast::UseDecl]) -> Vec<ir::Item> {
     imports
         .iter()
         .map(|import| match import {
-            crate::parser::ast::UseDecl::Concrete { module, members, .. } => ir::Item::Import {
+            crate::parser::ast::UseDecl::Concrete {
+                module, members, ..
+            } => ir::Item::Import {
                 names: members
                     .iter()
                     .map(|member| ir::ImportName {

@@ -56,10 +56,8 @@ fn emit_writes_selected_artifacts() {
         .arg("tir")
         .arg("--stage")
         .arg("lambda")
-        .arg("--stage")
-        .arg("nir")
         .arg("--target")
-        .arg("aarch64")
+        .arg("js")
         .arg(&file)
         .output()
         .unwrap();
@@ -69,7 +67,7 @@ fn emit_writes_selected_artifacts() {
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    for extension in ["ast", "tir", "lambda", "nml", "S"] {
+    for extension in ["ast", "tir", "lambda", "mjs"] {
         let artifact = dir.join(format!("hello.{extension}"));
         assert!(artifact.exists(), "missing artifact {}", artifact.display());
     }
@@ -131,7 +129,11 @@ fn emitted_match_module_executes() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let module = dir.join("match.mjs");
     let node = Command::new("node")
@@ -143,7 +145,11 @@ fn emitted_match_module_executes() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]
@@ -164,7 +170,11 @@ fn emitted_recursive_functions_execute() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let node = Command::new("node")
         .arg("--input-type=module")
@@ -175,7 +185,11 @@ fn emitted_recursive_functions_execute() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]
@@ -192,7 +206,11 @@ fn emitted_closures_capture_values() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let node = Command::new("node")
         .arg("--input-type=module")
@@ -203,7 +221,11 @@ fn emitted_closures_capture_values() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]
@@ -224,7 +246,11 @@ fn emitted_comparisons_execute() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let node = Command::new("node")
         .arg("--input-type=module")
@@ -235,7 +261,11 @@ fn emitted_comparisons_execute() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]
@@ -256,7 +286,11 @@ fn emitted_tuple_and_record_patterns_execute() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let node = Command::new("node")
         .arg("--input-type=module")
@@ -267,7 +301,11 @@ fn emitted_tuple_and_record_patterns_execute() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]
@@ -284,7 +322,11 @@ fn emitted_string_concatenation_executes() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let node = Command::new("node")
         .arg("--input-type=module")
@@ -295,7 +337,11 @@ fn emitted_string_concatenation_executes() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]
@@ -313,7 +359,11 @@ fn compile_js_writes_module_and_interface_artifacts() {
         .arg(&file)
         .output()
         .unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(dir.join("prelude.mjs").exists());
     let interface = fs::read(dir.join("prelude.tmi")).unwrap();
     assert!(!interface.is_empty());
@@ -343,7 +393,11 @@ fn compile_js_consumes_interface_artifacts() {
             command.arg("-I").arg(&dir);
         }
         let result = command.arg(source).output().unwrap();
-        assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
     }
 
     let node = Command::new("node")
@@ -355,7 +409,11 @@ fn compile_js_consumes_interface_artifacts() {
         ))
         .output()
         .unwrap();
-    assert!(node.status.success(), "{}", String::from_utf8_lossy(&node.stderr));
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
 }
 
 #[test]

@@ -17,28 +17,12 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  local filetypes = opts.filetypes or { "tinyml" }
-  local cmd = opts.cmd or { "cargo", "run", "-q", "-p", "tinyml", "--", "lsp" }
-
   vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
     pattern = "*.ml",
     callback = function(args)
       if opts.detect_all_ml or looks_like_tinyml_repo(args.file) then
         vim.bo[args.buf].filetype = "tinyml"
       end
-    end,
-  })
-
-  vim.api.nvim_create_autocmd("FileType", {
-    pattern = filetypes,
-    callback = function(args)
-      local root = opts.root_dir or find_root(vim.api.nvim_buf_get_name(args.buf))
-      vim.lsp.start({
-        name = "tinyml",
-        cmd = cmd,
-        root_dir = root,
-        capabilities = opts.capabilities,
-      }, { bufnr = args.buf })
     end,
   })
 end
