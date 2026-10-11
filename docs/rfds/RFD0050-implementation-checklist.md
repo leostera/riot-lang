@@ -196,12 +196,15 @@ expected behavior. Verified by
   or accepts the former `DynamicType` fallback.
 - [x] Embed the native runtime source directory and verify the compiled native
   compiler works from an unrelated working directory.
-- [ ] Repeat the documented bootstrap from a fresh worktree of the updated
-  commit using an empty `CARGO_TARGET_DIR`; confirm all required artifacts are
-  produced without generated or untracked prerequisites.
-- [ ] Reconcile this checklist and RFD0050 against that fresh-worktree result.
+- [x] From a fresh worktree at commit `9b9fd93e5` and an initially empty
+  `CARGO_TARGET_DIR`, pass `cargo fmt --all -- --check` and
+  `cargo test --workspace`; the suite includes the complete JS-to-native
+  bootstrap acceptance test.
+- [x] Run the documented README bootstrap commands in that fresh worktree; the
+  native smoke executable exits 42.
+- [x] Reconcile this checklist and RFD0050 against that fresh-worktree result.
+- [ ] Request a fresh independent completion audit after these changes.
 
-The earlier release-gate checks passed on the previous baseline. The checker
-and runtime portability objections are now addressed in code and tests, but the
-release gate remains open until the updated source passes the clean-worktree
-bootstrap and the docs/status are reconciled with that evidence.
+The checker and runtime-portability objections are addressed and validated in a
+clean worktree. The release gate remains open only until the fresh independent
+audit approves completion.

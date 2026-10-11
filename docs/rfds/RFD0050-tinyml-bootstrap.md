@@ -362,11 +362,13 @@ contracts have positive and negative test coverage. The JS-to-native-to-smoke
 program chain and native checker cases are exercised by
 `riotml_compiler_emits_native_smoke_program_and_rejects_bad_types`. The native
 compiler embeds its runtime source directory, and the integration test compiles
-and runs it from an unrelated working directory. The remaining release task is
-to repeat the documented bootstrap from a clean checkout and reconcile the
-final status in this RFD and its implementation checklist. Keep the already
-removed LSP, pending WASM output, Rust AArch64 backend, and placeholder runtime
-out of Stage 0.
+and runs it from an unrelated working directory. At commit `9b9fd93e5`, a fresh
+worktree with an initially empty `CARGO_TARGET_DIR` passed formatting and the
+full workspace suite, including the JS-to-native acceptance test. Running the
+README commands in that worktree produced a native smoke program that exited
+42. The checker and runtime-portability requirements have no remaining
+implementation blockers. Keep the already removed LSP, pending WASM output,
+Rust AArch64 backend, and placeholder runtime out of Stage 0.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -478,12 +480,13 @@ TinyML can implement the Riot compiler.
 - Rank-1 HM inference, polymorphic local/imported values, and nominal type
   checking are implemented and covered by native self-compilation tests.
 - Runtime discovery from an unrelated working directory is implemented and
-  covered. Repeat the end-to-end bootstrap from a clean checkout before
-  closing the release gate.
+  covered. The updated bootstrap and test suite also pass from a clean worktree
+  with an empty `CARGO_TARGET_DIR`.
 - Record/variant emission, the tagged C value representation, and the required
   List/String/Host operations support the compiler-source acceptance path. Keep
   these surfaces constrained to RFD0050's shared subset and expand them only
-  when a failing contract test requires it.
+  when a failing contract test requires it. The C-plus-Clang candidate remains
+  provisional until the release gate is formally closed.
 
 ### Out of scope
 

@@ -49,9 +49,9 @@ polymorphic identity at distinct types; imported polymorphic identity and a
 generic nominal variant; mismatches between a nominal variant and a different
 variant; ambiguous imports and local/imported name conflicts; duplicate value
 and pattern bindings; bad primitive operators and function arguments; unknown
-names/types; and incompatible match patterns. A rejected source fails before C generation,
-returns a non-zero status, and leaves no plausible executable. The checker does
-not use an unknown/dynamic-type escape hatch.
+names/types; and incompatible match patterns. A rejected source fails before C
+generation, returns a non-zero status, and leaves no plausible executable. The
+checker does not use an unknown/dynamic-type escape hatch.
 
 The RiotML native slice supports the constructs needed by the compiler source:
 functions and closures, local bindings, applications, `i32`, booleans, strings,
