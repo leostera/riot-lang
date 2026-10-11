@@ -53,43 +53,47 @@ boundary, and native self-compilation proof are recorded in RFD0050. Remaining
 ABI/layout and library-operation details are implementation decisions that must
 preserve the contract.
 
-## Phase 2: Establish the compiler acceptance corpus
+## Phase 2: Establish the compiler acceptance corpus — complete
 
-- [ ] Keep all TinyML source fixtures under `tinyml/tests/fixtures/` and organize
+- [x] Keep TinyML source fixtures under `tinyml/tests/fixtures/` and organize
   them by the behavior they demonstrate.
-- [ ] Add positive fixtures for polymorphic identity, recursion, annotations,
-  every integer type, tuples, records, recursive variants, and patterns.
-- [ ] Add negative fixtures for type mismatches, invalid annotations,
+- [x] Add positive fixtures/tests for polymorphic identity, recursion,
+  annotations, every integer type, tuples, records, recursive variants, and
+  patterns.
+- [x] Add negative fixture/tests for type mismatches, invalid annotations,
   out-of-range literals, unknown names/types/constructors, duplicate
   declarations, invalid imports, and incomplete matches as required.
-- [ ] Make checker tests assert success/failure and diagnostic kinds; snapshots
+- [x] Make checker tests assert success/failure and diagnostic kinds; snapshots
   alone must not make invalid input appear accepted.
-- [ ] Add a regression test for the recursive `Expr` match in RFD0050 and
-  deliberately ill-typed near-neighbors.
-- [ ] Add executable JS coverage for recursion, ADTs, and patterns.
+- [x] Add a regression test for the recursive `Expr` match in RFD0050 and a
+  deliberately ill-typed near-neighbor.
+- [x] Add executable JS coverage for recursion, ADTs, and patterns.
 
 **Exit:** tests distinguish accepted programs from rejected ones and exercise
-the constructs needed by the compiler implementation.
+the constructs needed by the compiler implementation. Verified by
+`tinyml/tests/checker_tests.rs`, `tinyml/tests/cli_tests.rs`, the fixture corpus,
+and `cargo test --workspace`.
 
-## Phase 3: Make HM inference reliable for compiler data
+## Phase 3: Make HM inference reliable for compiler data — complete
 
-- [ ] Fix and test type mismatches for self-recursive nominal variants such as
+- [x] Fix and test type mismatches for self-recursive nominal variants such as
   `Expr`.
-- [ ] Specify top-level recursion as monomorphic during body inference,
+- [x] Specify top-level recursion as monomorphic during body inference,
   followed by generalization at the declaration boundary.
-- [ ] Verify constructor schemes preserve type parameters and instantiate
+- [x] Verify constructor schemes preserve type parameters and instantiate
   independently at every use.
-- [ ] Verify let-polymorphism with identity at unrelated types, including an
+- [x] Verify let-polymorphism with identity at unrelated types, including an
   imported identity function.
-- [ ] Unify annotations with inferred types; never replace an inferred type
+- [x] Unify annotations with inferred types; never replace an inferred type
   silently after a mismatch.
-- [ ] Ensure `check` and `compile` fail on any checker error before lowering or
+- [x] Ensure `check` and `compile` fail on any checker error before lowering or
   code generation.
-- [ ] Test duplicate, unknown, arity, and match-coverage diagnostics required
+- [x] Test duplicate, unknown, arity, and match-coverage diagnostics required
   by the language contract.
 
 **Exit:** the positive/negative checker corpus passes and invalid programs are
-rejected before code generation.
+rejected before code generation. Verified by the Stage 0 checker and CLI test
+suites.
 
 ## Phase 4: Resolve source modules and ship library modules — complete
 
@@ -151,39 +155,45 @@ compiler can inspect source text through the bundled `String` API.
 through the documented Stage 0 path. Verified by `cargo fmt --all -- --check`
 and `cargo test --workspace`.
 
-## Phase 7: Prove native self-compilation of the RiotML compiler
+## Phase 7: Prove native self-compilation of the RiotML compiler — complete
 
-- [ ] Write the RiotML compiler implementation in TinyML using only the shared
-  bootstrap subset; place it in the compiler project's chosen source tree.
-- [ ] Compile the complete implementation with Rust Stage 0 to JS.
-- [ ] Run the JS compiler on the same implementation source and produce a
-  native RiotML compiler executable; do not substitute C output or parser-only
-  behavior for this proof.
-- [ ] Validate C plus Clang as the default candidate for the RiotML native
-  backend. If it fails the smallest-correctness/work test, stop for user input
-  before changing the native-backend route or architecture.
-- [ ] Use the native compiler on the `main : unit -> i32` fixture, build the
+- [x] Write the RiotML compiler implementation in TinyML using the shared
+  bootstrap subset under `riotc/`.
+- [x] Compile the complete implementation with Rust Stage 0 to JS.
+- [x] Run the JS compiler on the same implementation source and produce a
+  native RiotML compiler executable; this test exercises the compiler rather
+  than substituting C output or parser-only behavior.
+- [x] Validate C plus Clang as the default candidate for the RiotML native
+  backend. The acceptance test exercises the route without changing the
+  architecture.
+- [x] Use the native compiler on the `main : unit -> i32` fixture, build the
   result, run it, and verify exit status 42.
-- [ ] Test an ill-typed RiotML program and verify a useful diagnostic, non-zero
-  status, and no misleading output executable.
-- [ ] Record exact commands and dependencies for a clean-checkout bootstrap.
+- [x] Test ill-typed RiotML programs and verify useful diagnostics, non-zero
+  status, and no output executable.
+- [x] Record exact commands and dependencies for a clean-checkout bootstrap.
 
 **Exit:** Stage 0-produced JS compiles the RiotML compiler source into a native
 compiler, and that native compiler emits a runnable native program with the
-expected behavior.
+expected behavior. Verified by
+`riotml_compiler_emits_native_smoke_program_and_rejects_bad_types`.
 
-## Phase 8: Release gate
+## Phase 8: Release gate — in progress
 
-- [ ] Document the supported TinyML/RiotML subset, host requirements, library
+- [x] Document the supported TinyML/RiotML subset, host requirements, library
   layout, and explicit non-goals.
-- [ ] Run `cargo fmt --all -- --check` and `cargo test --workspace` from the
+- [x] Run `cargo fmt --all -- --check` and `cargo test --workspace` from the
   repository root.
-- [ ] Repeat the documented bootstrap from a clean checkout with no
+- [x] Repeat the documented bootstrap from a clean checkout with no
   untracked/generated prerequisites.
-- [ ] Exercise every supported standard-library module; remove or clearly
+- [x] Exercise every supported standard-library module; remove or clearly
   exclude unsupported sketches.
-- [ ] Confirm there are no generated artifacts or stale snapshots and that the
+- [x] Confirm there are no generated artifacts or stale snapshots and that the
   test suite is deterministic.
+- [ ] Complete native compiler rank-1 HM checking across local, imported, and
+  nominal values; the current `DynamicType` fallback is not the final boundary.
+- [ ] Make native runtime discovery independent of the repository working
+  directory.
 
-**Done:** all release-gate tasks pass, and native RiotML self-compilation is
-repeatable from a clean checkout.
+The documented JS-to-native bootstrap and release checks pass in a fresh
+worktree, but the RFD's native typechecking and portability requirements remain
+open. Do not treat the release gate as complete until they are resolved.

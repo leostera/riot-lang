@@ -48,11 +48,11 @@ existence, and its current value-type model includes i32, bool, string, unit,
 functions, and a dynamic fallback for compiler-source constructs. It rejects
 statically evident errors such as `1 + true`, unbound names, and mismatched
 calls when a function parameter is annotated or its primitive uses in the
-function body constrain the argument type. Type information is not yet
-propagated through every imported or nominal binding, so dynamic calls can
-still evade static mismatch checks. Do not
-treat the current native checker as a
-general-purpose validation boundary. The separate Rust Stage 0 TinyML checker
+function body constrain the argument type. Inferred primitive function types
+are propagated through selected imports, but generic and nominal types still
+use the dynamic fallback; some dynamic calls can evade static mismatch checks.
+Do not treat the current native checker as a general-purpose validation
+boundary. The separate Rust Stage 0 TinyML checker
 continues to provide the tested HM, module, primitive, and host contracts
 documented in RFD0050.
 

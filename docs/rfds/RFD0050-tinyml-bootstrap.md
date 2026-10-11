@@ -294,15 +294,14 @@ language.
 TinyML-written compiler to JavaScript, runs that JavaScript to compile the same
 compiler source into a native executable, then uses the native executable to
 build and run the status-42 fixture and reject `1 + true`. This validates the
-C-plus-Clang route and the required acceptance chain. The native checker now
-validates import members and value/type/constructor name existence, and rejects
-statically visible primitive mismatches, including calls to explicitly
-annotated functions and primitive-operator constraints on inferred parameters.
-Its `DynamicType` fallback still does not
-propagate types through every binding, so this is not full HM inference and
-dynamic calls can evade some mismatch checks. The language/typechecking
-requirement above remains in force; the implementation is not complete until
-that boundary is strengthened.
+C-plus-Clang route and the required acceptance chain. The native checker now validates import members and value/type/constructor
+name existence, rejects statically visible primitive mismatches, and propagates
+inferred primitive function types through selected imports. These checks cover
+annotated calls and primitive-operator constraints on inferred parameters.
+Generic and nominal types still use the `DynamicType` fallback, so this is not
+full HM inference and some dynamic calls can evade mismatch checks. The
+language/typechecking requirement above remains in force; this boundary still
+needs strengthening.
 
 ### 6. Validation-focused CLI
 
@@ -358,8 +357,9 @@ work is on the native compiler's typechecking boundary and release portability:
 
 - The source graph loader validates missing modules, cycles, and selected
   import members. The native checker resolves value/type/constructor names and
-  catches several concrete type mismatches, but its dynamic fallback does not
-  yet implement the full rank-1 HM contract across bindings and modules.
+  propagates inferred primitive function types through imports, but its dynamic
+  fallback does not yet implement the full rank-1 HM contract for generic and
+  nominal bindings.
 - Make runtime discovery independent of the repository working directory, then
   run the bootstrap flow from a clean checkout without generated artifacts.
 - Keep the already removed LSP, pending WASM output, Rust AArch64 backend, and
