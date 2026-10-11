@@ -29,7 +29,9 @@ node build/run-compiler.mjs compile path/to/Smoke.ml -o build/smoke
 - `syntax/ast.ml`: domain-specific names, types, patterns, expressions, and
   module declarations.
 - `syntax/parser.ml`: validates the initial top-level `main : unit -> i32`
-  form and delegates expression parsing to the parser components below.
+  entry contract after parsing the source module.
+- `syntax/parser/source_module.ml`: parses imports, type declarations, and
+  top-level value declarations into `SourceModule`.
 - `syntax/parser/common.ml`: token-stream results, delimiter helpers, and
   source-aware lexer error mapping.
 - `syntax/parser/types.ml`: named, generic, tuple, type-variable, and arrow

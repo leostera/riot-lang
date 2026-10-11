@@ -1,11 +1,12 @@
 // Entry-point parsing for the native compiler's initial `main` contract.
 use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
 use Syntax.Ast.{
-  Expr, Program, Main, Function, FunctionExpression, PatternUnit
+  Expr, Program, SourceModule, ValueDeclaration, ValueDeclarationData,
+  ValueName, Main, Function, FunctionExpression, PatternUnit
 }
 use Syntax.Lexer.{SourceSpan, UnterminatedString, UnterminatedEscape, lex}
-use Syntax.Parser.Common.{ParseStep, take_identifier, take_symbol}
-use Syntax.Parser.Expressions.{parse_expression}
+use Syntax.Parser.Common.{ParseStep}
+use Syntax.Parser.SourceModule.{parse_source_module_tokens}
 
 type ParserError = ParserError {
   message: string,
@@ -29,23 +30,16 @@ let finish_main_expression = fn expression -> fn remaining_tokens ->
     | _ -> Err(parser_error "expected `main` to be a function from unit")
   }
 
-let parse_main_expression = fn tokens ->
-  match (parse_expression tokens) {
-    | Err(message) -> Err(parser_error message)
-    | Ok(ParseStep { value: expression, remaining_tokens }) ->
-      finish_main_expression expression remaining_tokens
-  }
-
-let parse_main_binding = fn tokens ->
-  match (take_identifier "let" tokens) {
-    | Err(message) -> Err(parser_error message)
-    | Ok(name_tokens) -> match (take_identifier "main" name_tokens) {
-      | Err(message) -> Err(parser_error message)
-      | Ok(after_name) -> match (take_symbol "=" after_name) {
-        | Err(message) -> Err(parser_error message)
-        | Ok(expression_tokens) -> parse_main_expression expression_tokens
-      }
-    }
+let finish_main_declaration = fn source_module ->
+  match source_module {
+    | SourceModule {
+        imports: Nil,
+        declarations: Cons(ValueDeclaration(ValueDeclarationData {
+          name: ValueName("main"),
+          body
+        }), Nil)
+      } -> finish_main_expression body Nil
+    | _ -> Err(parser_error "expected a module containing only `let main`")
   }
 
 let parse_program = fn source ->
@@ -60,7 +54,10 @@ let parse_program = fn source ->
         source_span: Some(span)
       })
     }
-    | Ok(tokens) -> parse_main_binding tokens
+    | Ok(tokens) -> match (parse_source_module_tokens tokens) {
+      | Err(message) -> Err(parser_error message)
+      | Ok(source_module) -> finish_main_declaration source_module
+    }
   }
 
 let parse_error_message = fn (ParserError { message, source_span: _ }) -> message

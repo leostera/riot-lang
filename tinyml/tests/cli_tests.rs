@@ -27,6 +27,20 @@ fn write_valid_source(dir: &Path) -> std::path::PathBuf {
     dst
 }
 
+fn riotml_sources(directory: &Path) -> Vec<PathBuf> {
+    let mut sources = Vec::new();
+    for entry in fs::read_dir(directory).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            sources.extend(riotml_sources(&path));
+        } else if path.extension().is_some_and(|extension| extension == "ml") {
+            sources.push(path);
+        }
+    }
+    sources.sort();
+    sources
+}
+
 #[test]
 fn check_prints_ok() {
     let dir = temp_dir("check");
@@ -639,6 +653,72 @@ fn bundled_riotml_compiler_source_executes_nested_match_lexer() {
         ))
         .output()
         .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn riotml_source_module_parser_accepts_compiler_sources_and_rejects_bad_declarations() {
+    let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let include_root = repository_root.join("riotc");
+    let dir = temp_dir("riotml-source-parser");
+    let client_source = dir.join("parser_client.ml");
+    fs::write(
+        &client_source,
+        "use Syntax.Parser.SourceModule.{parse_source_module}\nlet main = fn () -> 0\n",
+    )
+    .unwrap();
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_root)
+        .arg("-o")
+        .arg(dir.join("parser_client.mjs"))
+        .arg(&client_source)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let source_paths = riotml_sources(&include_root);
+    let node_script = r#"
+        import { readFileSync } from 'node:fs';
+        const { parse_source_module } = await import(process.argv[1]);
+        for (const path of process.argv.slice(2)) {
+            const result = parse_source_module(readFileSync(path, 'utf8'));
+            if (result.type !== 'Ok') {
+                console.error(path + ': ' + result.value);
+                process.exit(1);
+            }
+        }
+
+        const valid = parse_source_module(`use Demo.Core.{make_value, Value}
+          type Option<'a> = | None | Some('a)
+          type User = User { name: string, id: i32 }
+          let increment x = x + 1
+          let main = fn () -> 42
+        `);
+        if (valid.type !== 'Ok' || valid.value.imports.type !== 'Cons') process.exit(2);
+
+        const invalid = parse_source_module('type Broken = { field i32 }');
+        if (invalid.type !== 'Err') process.exit(3);
+    "#;
+    let mut node_command = Command::new("node");
+    node_command
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(node_script)
+        .arg(dir.join("Syntax_Parser_SourceModule.mjs"));
+    for path in source_paths {
+        node_command.arg(path);
+    }
+    let node = node_command.output().unwrap();
     assert!(
         node.status.success(),
         "{}",

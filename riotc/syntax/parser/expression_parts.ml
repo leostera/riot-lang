@@ -54,7 +54,7 @@ let parse_record_expression_fields = fn parse_expression -> fn
         reversed_fields: reversed_fields
       }) remaining
     | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
-      match (take_symbol "=" remaining) {
+      match (take_symbol ":" remaining) {
         | Ok(value_tokens) -> match (parse_expression value_tokens) {
           | Err(message) -> Err(message)
           | Ok(ParseStep { value, remaining_tokens }) -> {

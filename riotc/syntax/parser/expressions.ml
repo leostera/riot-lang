@@ -331,6 +331,7 @@ let starts_expression = fn tokens ->
     | Cons(IdentifierToken(TokenInfo { lexeme: "let", span: _ }), _) -> false
     | Cons(IdentifierToken(TokenInfo { lexeme: "match", span: _ }), _) -> false
     | Cons(IdentifierToken(TokenInfo { lexeme: "use", span: _ }), _) -> false
+    | Cons(IdentifierToken(TokenInfo { lexeme: "type", span: _ }), _) -> false
     | Cons(IdentifierToken(_), _) -> true
     | Cons(SymbolToken(TokenInfo { lexeme: "(", span: _ }), _) -> true
     | Cons(SymbolToken(TokenInfo { lexeme: "{", span: _ }), _) -> false
