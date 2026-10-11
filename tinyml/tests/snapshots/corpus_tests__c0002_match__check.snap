@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "check_snapshot(\"tests/fixtures/0002_match.ml\")"
 ---
 ModuleSummary {
@@ -209,16 +209,11 @@ ModuleSummary {
                                                 },
                                             },
                                             body: Expr {
-                                                ty: Apply {
-                                                    ident: Name {
-                                                        name: "i32",
-                                                        span: Span {
-                                                            start: 0,
-                                                            end: 0,
-                                                        },
-                                                    },
-                                                    arguments: [],
-                                                },
+                                                ty: Var(
+                                                    TypeVarId(
+                                                        2,
+                                                    ),
+                                                ),
                                                 kind: Literal {
                                                     value: Int(
                                                         "0",
@@ -247,7 +242,7 @@ ModuleSummary {
                                                     arguments: [
                                                         Var(
                                                             TypeVarId(
-                                                                5,
+                                                                4,
                                                             ),
                                                         ),
                                                     ],
@@ -278,7 +273,7 @@ ModuleSummary {
                                                         Pattern {
                                                             ty: Var(
                                                                 TypeVarId(
-                                                                    5,
+                                                                    4,
                                                                 ),
                                                             ),
                                                             kind: Var {
@@ -313,11 +308,16 @@ ModuleSummary {
                                                 },
                                             },
                                             body: Expr {
-                                                ty: Var(
-                                                    TypeVarId(
-                                                        5,
-                                                    ),
-                                                ),
+                                                ty: Apply {
+                                                    ident: Name {
+                                                        name: "i32",
+                                                        span: Span {
+                                                            start: 0,
+                                                            end: 0,
+                                                        },
+                                                    },
+                                                    arguments: [],
+                                                },
                                                 kind: Var {
                                                     name: Name {
                                                         name: "value",

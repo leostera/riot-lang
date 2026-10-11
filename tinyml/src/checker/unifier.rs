@@ -271,7 +271,9 @@ impl<'state> Unifier<'state> {
         actual_ident: &crate::parser::ident::Ident,
         actual_arguments: &[Type],
     ) -> Result<(), UnifyError> {
-        if expected_ident == actual_ident && expected_arguments.len() == actual_arguments.len() {
+        if expected_ident.same_path(actual_ident)
+            && expected_arguments.len() == actual_arguments.len()
+        {
             self.unify_many(expected_arguments, actual_arguments)
         } else {
             Err(UnifyError::TypeMismatch {

@@ -40,9 +40,34 @@ pub enum CheckDiagnostic {
     #[diagnostic(code(tinyml::checker::unknown_constructor))]
     UnknownConstructor { name: String, span: Span },
 
+    #[error("constructor `{name}` expects {expected} argument(s), got {actual}")]
+    #[diagnostic(code(tinyml::checker::constructor_arity_mismatch))]
+    ConstructorArityMismatch {
+        name: String,
+        expected: usize,
+        actual: usize,
+        span: Span,
+    },
+
     #[error("unknown type `{name}`")]
     #[diagnostic(code(tinyml::checker::unknown_type))]
     UnknownType { name: String, span: Span },
+
+    #[error("type `{name}` is not supported by Stage 0")]
+    #[diagnostic(code(tinyml::checker::unsupported_type))]
+    UnsupportedType { name: String, span: Span },
+
+    #[error("floating-point literals are not supported by Stage 0")]
+    #[diagnostic(code(tinyml::checker::unsupported_float_literal))]
+    UnsupportedFloatLiteral { span: Span },
+
+    #[error("integer literal `{value}` is out of range for `{type_name}`")]
+    #[diagnostic(code(tinyml::checker::integer_literal_out_of_range))]
+    IntegerLiteralOutOfRange {
+        value: String,
+        type_name: String,
+        span: Span,
+    },
 
     #[error("unknown field `{name}`")]
     #[diagnostic(code(tinyml::checker::unknown_field))]
@@ -112,7 +137,11 @@ impl CheckDiagnostic {
             | CheckDiagnostic::DuplicateTypeParameter { span, .. }
             | CheckDiagnostic::UnknownValue { span, .. }
             | CheckDiagnostic::UnknownConstructor { span, .. }
+            | CheckDiagnostic::ConstructorArityMismatch { span, .. }
             | CheckDiagnostic::UnknownType { span, .. }
+            | CheckDiagnostic::UnsupportedType { span, .. }
+            | CheckDiagnostic::UnsupportedFloatLiteral { span }
+            | CheckDiagnostic::IntegerLiteralOutOfRange { span, .. }
             | CheckDiagnostic::UnknownField { span, .. }
             | CheckDiagnostic::MissingField { span, .. }
             | CheckDiagnostic::TypeArityMismatch { span, .. }
@@ -137,7 +166,13 @@ impl CheckDiagnostic {
             CheckDiagnostic::DuplicateTypeParameter { .. } => "duplicate type parameter",
             CheckDiagnostic::UnknownValue { .. } => "unknown value",
             CheckDiagnostic::UnknownConstructor { .. } => "unknown constructor",
+            CheckDiagnostic::ConstructorArityMismatch { .. } => {
+                "wrong number of constructor arguments"
+            }
             CheckDiagnostic::UnknownType { .. } => "unknown type",
+            CheckDiagnostic::UnsupportedType { .. } => "unsupported type",
+            CheckDiagnostic::UnsupportedFloatLiteral { .. } => "unsupported floating-point literal",
+            CheckDiagnostic::IntegerLiteralOutOfRange { .. } => "integer literal out of range",
             CheckDiagnostic::UnknownField { .. } => "unknown field",
             CheckDiagnostic::MissingField { .. } => "missing field",
             CheckDiagnostic::TypeArityMismatch { .. } => "wrong number of type arguments",

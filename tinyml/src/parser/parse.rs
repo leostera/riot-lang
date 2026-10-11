@@ -328,6 +328,32 @@ impl<'a> Parser<'a> {
                     span,
                 })
             }
+            TokenKind::Minus => {
+                let minus = self.lexer.bump().span;
+                if let TokenKind::Int(value) = self.lexer.peek() {
+                    let value = format!("-{value}");
+                    let span = minus.join(self.lexer.bump().span);
+                    Ok(Expr::Literal {
+                        value: Literal::Int(value),
+                        span,
+                    })
+                } else {
+                    let value = self.parse_expr_bp(14)?;
+                    let span = minus.join(value.span());
+                    Ok(Expr::BinaryOp {
+                        ident: Ident::Name {
+                            name: "-".into(),
+                            span: minus,
+                        },
+                        left: Box::new(Expr::Literal {
+                            value: Literal::Int("0".into()),
+                            span: minus,
+                        }),
+                        right: Box::new(value),
+                        span,
+                    })
+                }
+            }
             TokenKind::Float(n) => {
                 let n = n.to_string();
                 let span = self.lexer.bump().span;

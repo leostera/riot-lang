@@ -417,6 +417,29 @@ fn compile_js_consumes_interface_artifacts() {
 }
 
 #[test]
+fn compile_rejects_type_errors_before_writing_artifacts() {
+    let dir = temp_dir("compile-type-error");
+    let file = dir.join("invalid.ml");
+    let output_path = dir.join("invalid.mjs");
+    fs::write(&file, "let invalid = (true: i32)\n").unwrap();
+
+    let output = Command::new(tinyml())
+        .arg("compile")
+        .arg("-o")
+        .arg(&output_path)
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("typecheck failed"));
+    assert!(
+        !output_path.exists(),
+        "type errors must be rejected before JS emission"
+    );
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);

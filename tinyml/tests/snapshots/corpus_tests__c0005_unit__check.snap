@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "check_snapshot(\"tests/fixtures/0005_unit.ml\")"
 ---
 ModuleSummary {
@@ -399,16 +399,11 @@ ModuleSummary {
                                         },
                                     },
                                     body: Expr {
-                                        ty: Apply {
-                                            ident: Name {
-                                                name: "unit",
-                                                span: Span {
-                                                    start: 0,
-                                                    end: 0,
-                                                },
-                                            },
-                                            arguments: [],
-                                        },
+                                        ty: Var(
+                                            TypeVarId(
+                                                3,
+                                            ),
+                                        ),
                                         kind: Constructor {
                                             name: Name {
                                                 name: "()",

@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
 ---
 const _value: number = 1;
@@ -8,7 +8,7 @@ function make_user(name: string): User {
   return { name: name, _id: 1, active: true };
 }
 
-function read_id($x: User): unknown {
+function read_id($x: User): number {
   return $x._id;
 }
 

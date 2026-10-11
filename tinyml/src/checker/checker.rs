@@ -117,7 +117,6 @@ mod tests {
         let module = parse_module(
             r#"
 let answer = 42
-let pi = 3.14
 let enabled = true
 let name = "Tiny"
 let nothing = ()
@@ -125,8 +124,8 @@ let nothing = ()
         );
         let summary = Checker::new().check_module(&module);
         assert!(summary.diagnostics.is_empty());
-        assert_eq!(summary.tir.items.len(), 5);
-        assert_eq!(summary.interface.values.len(), 5);
+        assert_eq!(summary.tir.items.len(), 4);
+        assert_eq!(summary.interface.values.len(), 4);
     }
 
     #[test]

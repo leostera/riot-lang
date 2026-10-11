@@ -22,7 +22,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::parser::{ast, ident::Ident};
+use crate::parser::{ast, ident::Ident, lexer::Span};
 
 use super::{
     builtin,
@@ -177,6 +177,12 @@ impl<'state> Typer<'state> {
                                 });
                         }
                         Some(_) => {}
+                        None if is_float_type_name(name_text) => {
+                            self.state.add_diagnostic(CheckDiagnostic::UnsupportedType {
+                                name: name_text.to_string(),
+                                span: *span,
+                            });
+                        }
                         None => self.state.add_diagnostic(CheckDiagnostic::UnknownType {
                             name: name_text.to_string(),
                             span: *span,
@@ -377,7 +383,7 @@ impl<'state> Typer<'state> {
                     .iter()
                     .find_map(|variant| match variant {
                         ast::Variant::RecordConstructor { ident, fields, .. }
-                            if ident == &constructor.name =>
+                            if ident.same_path(&constructor.name) =>
                         {
                             Some(fields.iter().map(|(name, _)| name.clone()).collect())
                         }
@@ -601,14 +607,40 @@ impl<'state> Typer<'state> {
     /// records diagnostics but usually still returns a best-effort expression so
     /// later compiler stages and snapshots can continue to run.
     pub fn infer_expression(&mut self, expr: &ast::Expr) -> Expr {
-        match expr {
-            ast::Expr::Literal { value, span } => Expr {
-                kind: ExprKind::Literal {
-                    value: value.clone(),
-                },
-                ty: literal_type(value),
-                span: *span,
-            },
+        self.infer_expression_with_expected(expr, None)
+    }
+
+    fn infer_expression_with_expected(
+        &mut self,
+        expr: &ast::Expr,
+        expected: Option<&Type>,
+    ) -> Expr {
+        let mut expected_checked_by_branch = false;
+        let mut expression = match expr {
+            ast::Expr::Literal { value, span } => {
+                if matches!(value, ast::Literal::Float(_)) {
+                    self.state
+                        .add_diagnostic(CheckDiagnostic::UnsupportedFloatLiteral { span: *span });
+                }
+                let ty = if matches!(value, ast::Literal::Int(_)) {
+                    expected
+                        .map(|expected| self.resolve_type(expected))
+                        .filter(builtin::is_integer_type)
+                        .unwrap_or_else(builtin::i32)
+                } else {
+                    literal_type(value)
+                };
+                if let ast::Literal::Int(value) = value {
+                    self.validate_integer_literal(value, &ty, *span);
+                }
+                Expr {
+                    kind: ExprKind::Literal {
+                        value: value.clone(),
+                    },
+                    ty,
+                    span: *span,
+                }
+            }
             ast::Expr::Constructor { name, args, span } if is_unit_constructor(name, args) => {
                 Expr {
                     kind: ExprKind::Constructor {
@@ -621,28 +653,41 @@ impl<'state> Typer<'state> {
                 }
             }
             ast::Expr::Constructor { name, args, span } => {
-                let args = args
-                    .iter()
-                    .map(|arg| self.infer_expression(arg))
-                    .collect::<Vec<_>>();
                 let info = name
                     .as_name()
                     .and_then(|name| self.state.env().constructor(name).cloned());
-                let ty = if let Some(info) = &info {
+                let (args, ty) = if let Some(info) = &info {
                     let (expected_args, result) = self.instantiate_constructor(info);
-                    for (arg, expected) in args.iter().zip(&expected_args) {
+                    if let Some(expected) = expected {
+                        expected_checked_by_branch = true;
                         let unify_result = {
                             let mut unifier = Unifier::new(self.state);
-                            unifier.unify(&arg.ty, expected)
+                            unifier.unify(expected, &result)
                         };
                         if let Err(error) = unify_result {
                             self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
                                 error,
-                                span: arg.span,
+                                span: *span,
                             });
                         }
                     }
-                    result
+                    if expected_args.len() != args.len() {
+                        self.state
+                            .add_diagnostic(CheckDiagnostic::ConstructorArityMismatch {
+                                name: name.as_name().unwrap_or("<qualified>").to_string(),
+                                expected: expected_args.len(),
+                                actual: args.len(),
+                                span: *span,
+                            });
+                    }
+                    let args = args
+                        .iter()
+                        .enumerate()
+                        .map(|(index, arg)| {
+                            self.infer_expression_with_expected(arg, expected_args.get(index))
+                        })
+                        .collect::<Vec<_>>();
+                    (args, result)
                 } else {
                     if let Some(name) = name.as_name() {
                         self.state
@@ -651,7 +696,10 @@ impl<'state> Typer<'state> {
                                 span: *span,
                             });
                     }
-                    self.state.fresh_var()
+                    (
+                        args.iter().map(|arg| self.infer_expression(arg)).collect(),
+                        self.state.fresh_var(),
+                    )
                 };
                 Expr {
                     ty,
@@ -702,12 +750,58 @@ impl<'state> Typer<'state> {
                 }
             }
             ast::Expr::Fn { params, body, span } => {
+                let mut expected_param_types = Vec::new();
+                let mut expected_body_type = expected.map(|ty| self.resolve_type(ty));
+                for _ in params {
+                    let Some(current) = expected_body_type.take() else {
+                        break;
+                    };
+                    match current {
+                        Type::Arrow { parameter, result } => {
+                            expected_param_types.push(*parameter);
+                            expected_body_type = Some(*result);
+                        }
+                        Type::Var(_) => {
+                            let parameter = self.state.fresh_var();
+                            let result = self.state.fresh_var();
+                            let arrow = Type::Arrow {
+                                parameter: Box::new(parameter.clone()),
+                                result: Box::new(result.clone()),
+                            };
+                            let unify_result = {
+                                let mut unifier = Unifier::new(self.state);
+                                unifier.unify(&current, &arrow)
+                            };
+                            if let Err(error) = unify_result {
+                                self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                                    error,
+                                    span: *span,
+                                });
+                            }
+                            expected_param_types.push(parameter);
+                            expected_body_type = Some(result);
+                        }
+                        _ => {
+                            expected_body_type = Some(current);
+                            break;
+                        }
+                    }
+                }
+
                 self.state.push_scope();
                 let params = params
                     .iter()
-                    .map(|param| self.infer_pattern_and_bind(param))
+                    .enumerate()
+                    .map(|(index, param)| {
+                        self.infer_pattern_and_bind_with_expected(
+                            param,
+                            expected_param_types.get(index),
+                        )
+                    })
                     .collect::<Vec<_>>();
-                let body = Box::new(self.infer_expression(body));
+                let body = Box::new(
+                    self.infer_expression_with_expected(body, expected_body_type.as_ref()),
+                );
                 self.state
                     .pop_scope()
                     .expect("function expression scope pop");
@@ -728,31 +822,40 @@ impl<'state> Typer<'state> {
                 span,
             } => {
                 let base_level = self.state.current_level();
-                let value = self.infer_expression(body);
                 let mut bind = self.infer_pattern(bind);
                 let hint_ty = hint
                     .as_ref()
                     .map(|annotation| self.lower_type_expr_checked(annotation));
                 if let Some(hint) = &hint_ty {
-                    bind.ty = hint.clone();
                     let unify_result = {
                         let mut unifier = Unifier::new(self.state);
-                        unifier.unify(&bind.ty, &value.ty)
+                        unifier.unify(hint, &bind.ty)
                     };
                     if let Err(error) = unify_result {
                         self.state
                             .add_diagnostic(CheckDiagnostic::TypeMismatch { error, span: *span });
                     }
-                } else if matches!(bind.kind, PatternKind::Var { .. }) {
-                    bind.ty = value.ty.clone();
-                } else {
-                    let unify_result = {
-                        let mut unifier = Unifier::new(self.state);
-                        unifier.unify(&bind.ty, &value.ty)
-                    };
-                    if let Err(error) = unify_result {
-                        self.state
-                            .add_diagnostic(CheckDiagnostic::TypeMismatch { error, span: *span });
+                    bind.ty = hint.clone();
+                }
+                let expected_value_ty = hint_ty.clone().or_else(|| {
+                    let binding_ty = self.resolve_type(&bind.ty);
+                    (!contains_inference_var(&binding_ty)).then_some(binding_ty)
+                });
+                let value = self.infer_expression_with_expected(body, expected_value_ty.as_ref());
+                if hint_ty.is_none() {
+                    if matches!(bind.kind, PatternKind::Var { .. }) {
+                        bind.ty = value.ty.clone();
+                    } else {
+                        let unify_result = {
+                            let mut unifier = Unifier::new(self.state);
+                            unifier.unify(&bind.ty, &value.ty)
+                        };
+                        if let Err(error) = unify_result {
+                            self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                                error,
+                                span: *span,
+                            });
+                        }
                     }
                 }
                 if let PatternKind::Var { name, binding } = &mut bind.kind {
@@ -777,13 +880,16 @@ impl<'state> Typer<'state> {
             }
             ast::Expr::Apply { callee, args, span } => {
                 let callee = Box::new(self.infer_expression(callee));
-                let args = args
-                    .iter()
-                    .map(|arg| self.infer_expression(arg))
-                    .collect::<Vec<_>>();
                 let mut callee_ty = callee.ty.clone();
+                let mut typed_args = Vec::with_capacity(args.len());
                 let mut result_ty = self.state.fresh_var();
-                for arg in &args {
+                for arg in args {
+                    let resolved_callee = self.resolve_type(&callee_ty);
+                    let parameter_ty = match resolved_callee {
+                        Type::Arrow { parameter, .. } => Some(*parameter),
+                        _ => None,
+                    };
+                    let arg = self.infer_expression_with_expected(arg, parameter_ty.as_ref());
                     result_ty = self.state.fresh_var();
                     let expected = Type::Arrow {
                         parameter: Box::new(arg.ty.clone()),
@@ -798,10 +904,14 @@ impl<'state> Typer<'state> {
                             .add_diagnostic(CheckDiagnostic::TypeMismatch { error, span: *span });
                     }
                     callee_ty = result_ty.clone();
+                    typed_args.push(arg);
                 }
                 Expr {
                     ty: result_ty,
-                    kind: ExprKind::Apply { callee, args },
+                    kind: ExprKind::Apply {
+                        callee,
+                        args: typed_args,
+                    },
                     span: *span,
                 }
             }
@@ -811,54 +921,88 @@ impl<'state> Typer<'state> {
                 right,
                 span,
             } => {
-                let left = Box::new(self.infer_expression(left));
-                let right = Box::new(self.infer_expression(right));
-                let string_addition = ident.as_name() == Some("+")
-                    && left.ty == builtin::string()
-                    && right.ty == builtin::string();
-                let operand_ty = if string_addition {
-                    builtin::string()
+                let is_comparison =
+                    matches!(ident.as_name(), Some("==" | "!=" | "<" | "<=" | ">" | ">="));
+                let expected_result =
+                    expected.filter(|ty| !is_comparison && builtin::is_integer_type(ty));
+                let left_is_integer_literal = is_integer_literal(left);
+                let right_is_integer_literal = is_integer_literal(right);
+                let (left, right) = if left_is_integer_literal && !right_is_integer_literal {
+                    let right = self.infer_expression_with_expected(right, expected_result);
+                    let right_ty = self.resolve_type(&right.ty);
+                    let left_expected = builtin::is_integer_type(&right_ty)
+                        .then_some(&right.ty)
+                        .or(expected_result);
+                    let left = self.infer_expression_with_expected(left, left_expected);
+                    (left, right)
                 } else {
-                    builtin::i32()
+                    let left = self.infer_expression_with_expected(left, expected_result);
+                    let left_ty = self.resolve_type(&left.ty);
+                    let right_expected = if builtin::is_integer_type(&left_ty) {
+                        Some(&left.ty)
+                    } else {
+                        expected_result
+                    };
+                    let right = self.infer_expression_with_expected(right, right_expected);
+                    (left, right)
                 };
-                for operand in [&left.ty, &right.ty] {
+                let operand_types_match = {
+                    let mut unifier = Unifier::new(self.state);
+                    match unifier.unify(&left.ty, &right.ty) {
+                        Ok(()) => true,
+                        Err(error) => {
+                            self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                                error,
+                                span: *span,
+                            });
+                            false
+                        }
+                    }
+                };
+                let left_ty = self.resolve_type(&left.ty);
+                let right_ty = self.resolve_type(&right.ty);
+                let string_addition = ident.as_name() == Some("+")
+                    && builtin::is_unqualified_type(&left_ty, "string")
+                    && builtin::is_unqualified_type(&right_ty, "string");
+                let is_integer_operation =
+                    builtin::is_integer_type(&left_ty) && builtin::is_integer_type(&right_ty);
+
+                if !string_addition && !is_integer_operation && operand_types_match {
                     let unify_result = {
                         let mut unifier = Unifier::new(self.state);
-                        unifier.unify(operand, &operand_ty)
+                        unifier.unify(&left_ty, &builtin::i32())
                     };
                     if let Err(error) = unify_result {
                         self.state
                             .add_diagnostic(CheckDiagnostic::TypeMismatch { error, span: *span });
                     }
                 }
-                let result_ty = match ident.as_name() {
-                    Some("==" | "!=" | "<" | "<=" | ">" | ">=") => builtin::bool(),
-                    _ if string_addition => builtin::string(),
-                    _ => builtin::i32(),
+
+                let operand_ty = if is_integer_operation {
+                    left_ty
+                } else if string_addition {
+                    builtin::string()
+                } else {
+                    builtin::i32()
+                };
+                let result_ty = if is_comparison {
+                    builtin::bool()
+                } else {
+                    operand_ty
                 };
                 Expr {
                     ty: result_ty,
                     kind: ExprKind::BinaryOp {
                         ident: ident.clone(),
-                        left,
-                        right,
+                        left: Box::new(left),
+                        right: Box::new(right),
                     },
                     span: *span,
                 }
             }
             ast::Expr::TypeHint { expr, hint, span } => {
-                let expr = Box::new(self.infer_expression(expr));
                 let hint = self.lower_type_expr_checked(hint);
-                let unify_result = {
-                    let mut unifier = Unifier::new(self.state);
-                    unifier.unify(&hint, &expr.ty)
-                };
-                if let Err(error) = unify_result {
-                    self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
-                        error,
-                        span: expr.span,
-                    });
-                }
+                let expr = Box::new(self.infer_expression_with_expected(expr, Some(&hint)));
                 Expr {
                     ty: hint.clone(),
                     kind: ExprKind::TypeHint { expr, hint },
@@ -866,9 +1010,22 @@ impl<'state> Typer<'state> {
                 }
             }
             ast::Expr::Tuple { items, span } => {
+                let expected_items =
+                    expected
+                        .map(|ty| self.resolve_type(ty))
+                        .and_then(|ty| match ty {
+                            Type::Tuple(items) => Some(items),
+                            _ => None,
+                        });
                 let items = items
                     .iter()
-                    .map(|item| self.infer_expression(item))
+                    .enumerate()
+                    .map(|(index, item)| {
+                        self.infer_expression_with_expected(
+                            item,
+                            expected_items.as_ref().and_then(|items| items.get(index)),
+                        )
+                    })
                     .collect::<Vec<_>>();
                 let ty = Type::Tuple(items.iter().map(|item| item.ty.clone()).collect());
                 Expr {
@@ -878,15 +1035,57 @@ impl<'state> Typer<'state> {
                 }
             }
             ast::Expr::Record { name, fields, span } => {
-                let fields = fields
-                    .iter()
-                    .map(|(name, expr)| (name.clone(), self.infer_expression(expr)))
-                    .collect::<Vec<_>>();
                 let info = name
                     .as_name()
                     .and_then(|name| self.state.env().constructor(name).cloned());
-                let ty = if let Some(info) = &info {
+                let (fields, ty) = if let Some(info) = &info {
                     let (expected_args, result) = self.instantiate_constructor(info);
+                    if let Some(expected) = expected {
+                        expected_checked_by_branch = true;
+                        let unify_result = {
+                            let mut unifier = Unifier::new(self.state);
+                            unifier.unify(expected, &result)
+                        };
+                        if let Err(error) = unify_result {
+                            self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                                error,
+                                span: *span,
+                            });
+                        }
+                    }
+                    let mut seen = HashSet::new();
+                    let fields = fields
+                        .iter()
+                        .map(|(field_name, expr)| {
+                            if let Some(name) = field_name.as_name()
+                                && !seen.insert(name.to_string())
+                            {
+                                self.state
+                                    .add_diagnostic(CheckDiagnostic::DuplicateRecordField {
+                                        name: name.to_string(),
+                                        span: field_name.span(),
+                                    });
+                            }
+                            let expected_index = info
+                                .field_names
+                                .iter()
+                                .position(|item| item.same_path(field_name));
+                            if expected_index.is_none() {
+                                if let Some(name) = field_name.as_name() {
+                                    self.state.add_diagnostic(CheckDiagnostic::UnknownField {
+                                        name: name.to_string(),
+                                        span: field_name.span(),
+                                    });
+                                }
+                            }
+                            let expected =
+                                expected_index.and_then(|index| expected_args.get(index));
+                            (
+                                field_name.clone(),
+                                self.infer_expression_with_expected(expr, expected),
+                            )
+                        })
+                        .collect::<Vec<_>>();
                     let provided = fields
                         .iter()
                         .filter_map(|(field_name, _)| field_name.as_name().map(str::to_string))
@@ -901,35 +1100,20 @@ impl<'state> Typer<'state> {
                             });
                         }
                     }
-                    for (field_name, expr) in &fields {
-                        if let Some(index) =
-                            info.field_names.iter().position(|item| item == field_name)
-                        {
-                            if let Some(expected) = expected_args.get(index) {
-                                let unify_result = {
-                                    let mut unifier = Unifier::new(self.state);
-                                    unifier.unify(&expr.ty, expected)
-                                };
-                                if let Err(error) = unify_result {
-                                    self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
-                                        error,
-                                        span: expr.span,
-                                    });
-                                }
-                            }
-                        } else if let Some(name) = field_name.as_name() {
-                            self.state.add_diagnostic(CheckDiagnostic::UnknownField {
-                                name: name.to_string(),
-                                span: field_name.span(),
-                            });
-                        }
-                    }
-                    result
+                    (fields, result)
                 } else {
-                    Type::Apply {
-                        ident: name.clone(),
-                        arguments: Vec::new(),
-                    }
+                    self.state
+                        .add_diagnostic(CheckDiagnostic::UnknownConstructor {
+                            name: name.as_name().unwrap_or("<qualified>").to_string(),
+                            span: name.span(),
+                        });
+                    (
+                        fields
+                            .iter()
+                            .map(|(name, expr)| (name.clone(), self.infer_expression(expr)))
+                            .collect(),
+                        self.state.fresh_var(),
+                    )
                 };
                 Expr {
                     ty,
@@ -942,9 +1126,17 @@ impl<'state> Typer<'state> {
             }
             ast::Expr::Block { exprs, span } => {
                 self.state.push_scope();
+                let last_index = exprs.len().checked_sub(1);
                 let exprs = exprs
                     .iter()
-                    .map(|expr| self.infer_expression(expr))
+                    .enumerate()
+                    .map(|(index, expr)| {
+                        if Some(index) == last_index {
+                            self.infer_expression_with_expected(expr, expected)
+                        } else {
+                            self.infer_expression(expr)
+                        }
+                    })
                     .collect::<Vec<_>>();
                 self.state.pop_scope().expect("block scope pop");
                 let ty = exprs
@@ -963,7 +1155,7 @@ impl<'state> Typer<'state> {
                 span,
             } => {
                 let scrutinee = Box::new(self.infer_expression(scrutinee));
-                let result_ty = self.state.fresh_var();
+                let result_ty = expected.cloned().unwrap_or_else(|| self.state.fresh_var());
                 let mut seen_arms = HashSet::new();
                 let arms: Vec<MatchArm> = arms
                     .iter()
@@ -977,28 +1169,11 @@ impl<'state> Typer<'state> {
                                 });
                         }
                         self.state.push_scope();
-                        let pattern = self.infer_pattern_and_bind(&arm.pattern);
-                        let unify_result = {
-                            let mut unifier = Unifier::new(self.state);
-                            unifier.unify(&pattern.ty, &scrutinee.ty)
-                        };
-                        if let Err(error) = unify_result {
-                            self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
-                                error,
-                                span: arm.pattern.span(),
-                            });
-                        }
-                        let body = self.infer_expression(&arm.body);
-                        let unify_result = {
-                            let mut unifier = Unifier::new(self.state);
-                            unifier.unify(&result_ty, &body.ty)
-                        };
-                        if let Err(error) = unify_result {
-                            self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
-                                error,
-                                span: arm.body.span(),
-                            });
-                        }
+                        let pattern = self.infer_pattern_and_bind_with_expected(
+                            &arm.pattern,
+                            Some(&scrutinee.ty),
+                        );
+                        let body = self.infer_expression_with_expected(&arm.body, Some(&result_ty));
                         self.state.pop_scope().expect("match arm scope pop");
                         MatchArm {
                             pattern,
@@ -1051,6 +1226,41 @@ impl<'state> Typer<'state> {
                     span: *span,
                 }
             }
+        };
+
+        if let Some(expected) = expected.filter(|_| !expected_checked_by_branch) {
+            let expected = self.resolve_type(expected);
+            let unify_result = {
+                let mut unifier = Unifier::new(self.state);
+                unifier.unify(&expected, &expression.ty)
+            };
+            if let Err(error) = unify_result {
+                self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                    error,
+                    span: expr.span(),
+                });
+            } else {
+                expression.ty = expected;
+            }
+        }
+
+        expression
+    }
+
+    /// Resolve substitutions in a type while preserving it if state is invalid.
+    fn resolve_type(&mut self, ty: &Type) -> Type {
+        let mut unifier = Unifier::new(self.state);
+        unifier.resolve(ty).unwrap_or_else(|_| ty.clone())
+    }
+
+    fn validate_integer_literal(&mut self, value: &str, ty: &Type, span: Span) {
+        if builtin::is_integer_type(ty) && !integer_literal_fits(value, ty) {
+            self.state
+                .add_diagnostic(CheckDiagnostic::IntegerLiteralOutOfRange {
+                    value: value.to_string(),
+                    type_name: builtin::type_name(ty).unwrap_or("integer").to_string(),
+                    span,
+                });
         }
     }
 
@@ -1059,7 +1269,15 @@ impl<'state> Typer<'state> {
     /// This helper is used in scopes where the pattern should make names visible
     /// to a following expression, such as function parameters and match arms.
     fn infer_pattern_and_bind(&mut self, pattern: &ast::Pattern) -> Pattern {
-        let mut pattern = self.infer_pattern(pattern);
+        self.infer_pattern_and_bind_with_expected(pattern, None)
+    }
+
+    fn infer_pattern_and_bind_with_expected(
+        &mut self,
+        pattern: &ast::Pattern,
+        expected: Option<&Type>,
+    ) -> Pattern {
+        let mut pattern = self.infer_pattern_with_expected(pattern, expected);
         self.bind_tir_pattern(&mut pattern);
         pattern
     }
@@ -1100,7 +1318,16 @@ impl<'state> Typer<'state> {
     /// available.  Variable patterns allocate fresh types here; `bind_tir_pattern`
     /// later publishes those variables to the value environment.
     fn infer_pattern(&mut self, pattern: &ast::Pattern) -> Pattern {
-        match pattern {
+        self.infer_pattern_with_expected(pattern, None)
+    }
+
+    fn infer_pattern_with_expected(
+        &mut self,
+        pattern: &ast::Pattern,
+        expected: Option<&Type>,
+    ) -> Pattern {
+        let mut expected_checked_by_branch = false;
+        let mut inferred = match pattern {
             ast::Pattern::Wildcard { span } => Pattern {
                 ty: self.state.fresh_var(),
                 kind: PatternKind::Wildcard,
@@ -1114,13 +1341,30 @@ impl<'state> Typer<'state> {
                 },
                 span: *span,
             },
-            ast::Pattern::Literal { value, span } => Pattern {
-                ty: literal_type(value),
-                kind: PatternKind::Literal {
-                    value: value.clone(),
-                },
-                span: *span,
-            },
+            ast::Pattern::Literal { value, span } => {
+                if matches!(value, ast::Literal::Float(_)) {
+                    self.state
+                        .add_diagnostic(CheckDiagnostic::UnsupportedFloatLiteral { span: *span });
+                }
+                let ty = if matches!(value, ast::Literal::Int(_)) {
+                    expected
+                        .map(|expected| self.resolve_type(expected))
+                        .filter(builtin::is_integer_type)
+                        .unwrap_or_else(builtin::i32)
+                } else {
+                    literal_type(value)
+                };
+                if let ast::Literal::Int(value) = value {
+                    self.validate_integer_literal(value, &ty, *span);
+                }
+                Pattern {
+                    ty,
+                    kind: PatternKind::Literal {
+                        value: value.clone(),
+                    },
+                    span: *span,
+                }
+            }
             ast::Pattern::Constructor { name, args, span }
                 if args.is_empty() && matches!(name.as_name(), Some(builtin::UNIT_CONSTRUCTOR)) =>
             {
@@ -1135,29 +1379,41 @@ impl<'state> Typer<'state> {
                 }
             }
             ast::Pattern::Constructor { name, args, span } => {
-                let mut args = args
-                    .iter()
-                    .map(|arg| self.infer_pattern(arg))
-                    .collect::<Vec<_>>();
                 let info = name
                     .as_name()
                     .and_then(|name| self.state.env().constructor(name).cloned());
-                let ty = if let Some(info) = &info {
+                let (args, ty) = if let Some(info) = &info {
                     let (expected_args, result) = self.instantiate_constructor(info);
-                    for (arg, expected) in args.iter_mut().zip(&expected_args) {
+                    if let Some(expected) = expected {
+                        expected_checked_by_branch = true;
                         let unify_result = {
                             let mut unifier = Unifier::new(self.state);
-                            unifier.unify(&arg.ty, expected)
+                            unifier.unify(expected, &result)
                         };
                         if let Err(error) = unify_result {
                             self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
                                 error,
-                                span: arg.span,
+                                span: *span,
                             });
                         }
-                        arg.ty = expected.clone();
                     }
-                    result
+                    if expected_args.len() != args.len() {
+                        self.state
+                            .add_diagnostic(CheckDiagnostic::ConstructorArityMismatch {
+                                name: name.as_name().unwrap_or("<qualified>").to_string(),
+                                expected: expected_args.len(),
+                                actual: args.len(),
+                                span: *span,
+                            });
+                    }
+                    let args = args
+                        .iter()
+                        .enumerate()
+                        .map(|(index, arg)| {
+                            self.infer_pattern_with_expected(arg, expected_args.get(index))
+                        })
+                        .collect::<Vec<_>>();
+                    (args, result)
                 } else {
                     if let Some(name) = name.as_name() {
                         self.state
@@ -1166,7 +1422,10 @@ impl<'state> Typer<'state> {
                                 span: *span,
                             });
                     }
-                    self.state.fresh_var()
+                    (
+                        args.iter().map(|arg| self.infer_pattern(arg)).collect(),
+                        self.state.fresh_var(),
+                    )
                 };
                 Pattern {
                     ty,
@@ -1179,9 +1438,22 @@ impl<'state> Typer<'state> {
                 }
             }
             ast::Pattern::Tuple { items, span } => {
+                let expected_items =
+                    expected
+                        .map(|ty| self.resolve_type(ty))
+                        .and_then(|ty| match ty {
+                            Type::Tuple(items) => Some(items),
+                            _ => None,
+                        });
                 let items = items
                     .iter()
-                    .map(|item| self.infer_pattern(item))
+                    .enumerate()
+                    .map(|(index, item)| {
+                        self.infer_pattern_with_expected(
+                            item,
+                            expected_items.as_ref().and_then(|items| items.get(index)),
+                        )
+                    })
                     .collect::<Vec<_>>();
                 Pattern {
                     ty: Type::Tuple(items.iter().map(|item| item.ty.clone()).collect()),
@@ -1194,68 +1466,85 @@ impl<'state> Typer<'state> {
                 hint,
                 span,
             } => {
-                let pattern = Box::new(self.infer_pattern(pattern));
                 let hint = self.lower_type_expr_checked(hint);
+                let mut pattern = self.infer_pattern_with_expected(pattern, Some(&hint));
+                pattern.ty = hint.clone();
                 Pattern {
                     ty: hint.clone(),
-                    kind: PatternKind::TypeHint { pattern, hint },
+                    kind: PatternKind::TypeHint {
+                        pattern: Box::new(pattern),
+                        hint,
+                    },
                     span: *span,
                 }
             }
             ast::Pattern::Record { name, fields, span } => {
-                let mut fields = fields
-                    .iter()
-                    .map(|(name, pattern)| (name.clone(), self.infer_pattern(pattern)))
-                    .collect::<Vec<_>>();
                 let info = name
                     .as_name()
                     .and_then(|name| self.state.env().constructor(name).cloned());
-                let ty = if let Some(info) = &info {
+                let (fields, ty) = if let Some(info) = &info {
                     let (expected_args, result) = self.instantiate_constructor(info);
-                    let provided = fields
-                        .iter()
-                        .filter_map(|(field_name, _)| field_name.as_name().map(str::to_string))
-                        .collect::<HashSet<_>>();
-                    for expected_name in &info.field_names {
-                        if let Some(name) = expected_name.as_name()
-                            && !provided.contains(name)
-                        {
-                            self.state.add_diagnostic(CheckDiagnostic::MissingField {
-                                name: name.to_string(),
+                    if let Some(expected) = expected {
+                        expected_checked_by_branch = true;
+                        let unify_result = {
+                            let mut unifier = Unifier::new(self.state);
+                            unifier.unify(expected, &result)
+                        };
+                        if let Err(error) = unify_result {
+                            self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                                error,
                                 span: *span,
                             });
                         }
                     }
-                    for (field_name, pattern) in &mut fields {
-                        if let Some(index) =
-                            info.field_names.iter().position(|item| item == field_name)
-                        {
-                            if let Some(expected) = expected_args.get(index) {
-                                let unify_result = {
-                                    let mut unifier = Unifier::new(self.state);
-                                    unifier.unify(&pattern.ty, expected)
-                                };
-                                if let Err(error) = unify_result {
-                                    self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
-                                        error,
-                                        span: pattern.span,
+                    let mut seen = HashSet::new();
+                    let fields = fields
+                        .iter()
+                        .map(|(field_name, pattern)| {
+                            if let Some(name) = field_name.as_name()
+                                && !seen.insert(name.to_string())
+                            {
+                                self.state
+                                    .add_diagnostic(CheckDiagnostic::DuplicateRecordField {
+                                        name: name.to_string(),
+                                        span: field_name.span(),
+                                    });
+                            }
+                            if let Some(index) = info
+                                .field_names
+                                .iter()
+                                .position(|item| item.same_path(field_name))
+                            {
+                                let expected = expected_args.get(index);
+                                (
+                                    field_name.clone(),
+                                    self.infer_pattern_with_expected(pattern, expected),
+                                )
+                            } else {
+                                if let Some(name) = field_name.as_name() {
+                                    self.state.add_diagnostic(CheckDiagnostic::UnknownField {
+                                        name: name.to_string(),
+                                        span: field_name.span(),
                                     });
                                 }
-                                pattern.ty = expected.clone();
+                                (field_name.clone(), self.infer_pattern(pattern))
                             }
-                        } else if let Some(name) = field_name.as_name() {
-                            self.state.add_diagnostic(CheckDiagnostic::UnknownField {
-                                name: name.to_string(),
-                                span: field_name.span(),
-                            });
-                        }
-                    }
-                    result
+                        })
+                        .collect::<Vec<_>>();
+                    (fields, result)
                 } else {
-                    Type::Apply {
-                        ident: name.clone(),
-                        arguments: Vec::new(),
-                    }
+                    self.state
+                        .add_diagnostic(CheckDiagnostic::UnknownConstructor {
+                            name: name.as_name().unwrap_or("<qualified>").to_string(),
+                            span: name.span(),
+                        });
+                    (
+                        fields
+                            .iter()
+                            .map(|(name, pattern)| (name.clone(), self.infer_pattern(pattern)))
+                            .collect(),
+                        self.state.fresh_var(),
+                    )
                 };
                 Pattern {
                     ty,
@@ -1266,7 +1555,25 @@ impl<'state> Typer<'state> {
                     span: *span,
                 }
             }
+        };
+
+        if let Some(expected) = expected.filter(|_| !expected_checked_by_branch) {
+            let expected = self.resolve_type(expected);
+            let unify_result = {
+                let mut unifier = Unifier::new(self.state);
+                unifier.unify(&expected, &inferred.ty)
+            };
+            if let Err(error) = unify_result {
+                self.state.add_diagnostic(CheckDiagnostic::TypeMismatch {
+                    error,
+                    span: pattern.span(),
+                });
+            } else {
+                inferred.ty = expected;
+            }
         }
+
+        inferred
     }
 }
 
@@ -1326,6 +1633,76 @@ fn arrow_type(params: Vec<Type>, result: Type) -> Type {
             parameter: Box::new(parameter),
             result: Box::new(result),
         })
+}
+
+fn contains_inference_var(ty: &Type) -> bool {
+    match ty {
+        Type::Var(_) => true,
+        Type::Generic(_) => false,
+        Type::Tuple(items) => items.iter().any(contains_inference_var),
+        Type::Arrow { parameter, result } => {
+            contains_inference_var(parameter) || contains_inference_var(result)
+        }
+        Type::Apply { arguments, .. } => arguments.iter().any(contains_inference_var),
+    }
+}
+
+fn integer_literal_fits(value: &str, ty: &Type) -> bool {
+    let Some(name) = builtin::type_name(ty) else {
+        return false;
+    };
+    let signed_bounds = match name {
+        "i8" => Some((i8::MIN as i128, i8::MAX as i128)),
+        "i16" => Some((i16::MIN as i128, i16::MAX as i128)),
+        "i32" => Some((i32::MIN as i128, i32::MAX as i128)),
+        "i64" => Some((i64::MIN as i128, i64::MAX as i128)),
+        _ => None,
+    };
+    let is_negative = value.starts_with('-');
+    let digits = value.strip_prefix('-').unwrap_or(value);
+    let (digits, radix) = if let Some(digits) = digits.strip_prefix("0x") {
+        (digits, 16)
+    } else if let Some(digits) = digits.strip_prefix("0b") {
+        (digits, 2)
+    } else if let Some(digits) = digits.strip_prefix("0o") {
+        (digits, 8)
+    } else {
+        (digits, 10)
+    };
+    let Ok(magnitude) = u128::from_str_radix(digits, radix) else {
+        return false;
+    };
+
+    if let Some((minimum, maximum)) = signed_bounds {
+        if is_negative {
+            magnitude <= minimum.unsigned_abs()
+        } else {
+            magnitude <= maximum as u128
+        }
+    } else {
+        let maximum = match name {
+            "u8" => u8::MAX as u128,
+            "u16" => u16::MAX as u128,
+            "u32" => u32::MAX as u128,
+            "u64" => u64::MAX as u128,
+            _ => return false,
+        };
+        !is_negative && magnitude <= maximum
+    }
+}
+
+fn is_integer_literal(expr: &ast::Expr) -> bool {
+    matches!(
+        expr,
+        ast::Expr::Literal {
+            value: ast::Literal::Int(_),
+            ..
+        }
+    )
+}
+
+fn is_float_type_name(name: &str) -> bool {
+    matches!(name, "f8" | "f16" | "f32" | "f64")
 }
 
 fn literal_type(value: &ast::Literal) -> tir::Type {

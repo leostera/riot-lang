@@ -176,8 +176,10 @@ definitions, `use` imports, and a documented module-to-source-file mapping.
   Values are represented exactly in the JavaScript backend, using `BigInt` and
   width-aware lowering rather than lossy `Number` arithmetic.
 - **Operators:** arithmetic and comparisons require operands of the same exact
-  integer type; there are no implicit signed/unsigned conversions. String and
-  byte operations are standard-library functions, not overloaded arithmetic.
+  integer type; there are no implicit signed/unsigned conversions. For
+  compatibility with the execution-tested Stage 0 backend, `string + string`
+  remains string concatenation. Other string and byte operations are
+  standard-library functions, not overloaded arithmetic.
 
 The implementation must not accept an expression after recording a type error
 and then silently treat its output as valid. Internal APIs may retain

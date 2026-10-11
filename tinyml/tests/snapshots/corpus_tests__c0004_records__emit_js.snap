@@ -1,10 +1,10 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "emit_js_snapshot(\"tests/fixtures/0004_records.ml\")"
 ---
-const user: User = { name: "Luffy", age: 19 };
+const user: unknown = { name: "Luffy", age: 19 };
 
-function get_name($x: User): unknown {
+function get_name($x: unknown): unknown {
   return $x.name;
 }
 

@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "lower_snapshot(\"tests/fixtures/0009_naming_invariants.ml\")"
 ---
 Module {
@@ -196,11 +196,16 @@ Module {
                                         },
                                     },
                                     Expr {
-                                        ty: Var(
-                                            TypeVarId(
-                                                3,
-                                            ),
-                                        ),
+                                        ty: Apply {
+                                            ident: Name {
+                                                name: "string",
+                                                span: Span {
+                                                    start: 112,
+                                                    end: 118,
+                                                },
+                                            },
+                                            arguments: [],
+                                        },
                                         kind: Var {
                                             name: Name {
                                                 name: "name",
@@ -241,10 +246,10 @@ Module {
                                     Expr {
                                         ty: Apply {
                                             ident: Name {
-                                                name: "i32",
+                                                name: "u32",
                                                 span: Span {
-                                                    start: 0,
-                                                    end: 0,
+                                                    start: 125,
+                                                    end: 128,
                                                 },
                                             },
                                             arguments: [],
@@ -275,8 +280,8 @@ Module {
                                             ident: Name {
                                                 name: "bool",
                                                 span: Span {
-                                                    start: 0,
-                                                    end: 0,
+                                                    start: 138,
+                                                    end: 142,
                                                 },
                                             },
                                             arguments: [],
@@ -378,11 +383,16 @@ Module {
                         },
                         arguments: [],
                     },
-                    result: Generic(
-                        TypeVarId(
-                            4,
-                        ),
-                    ),
+                    result: Apply {
+                        ident: Name {
+                            name: "u32",
+                            span: Span {
+                                start: 125,
+                                end: 128,
+                            },
+                        },
+                        arguments: [],
+                    },
                 },
                 kind: Function {
                     params: [
@@ -415,11 +425,16 @@ Module {
                                             },
                                         },
                                         Pattern {
-                                            ty: Var(
-                                                TypeVarId(
-                                                    4,
-                                                ),
-                                            ),
+                                            ty: Apply {
+                                                ident: Name {
+                                                    name: "u32",
+                                                    span: Span {
+                                                        start: 125,
+                                                        end: 128,
+                                                    },
+                                                },
+                                                arguments: [],
+                                            },
                                             kind: Var {
                                                 name: Name {
                                                     name: "_id",
@@ -454,11 +469,16 @@ Module {
                         },
                     ],
                     body: Expr {
-                        ty: Var(
-                            TypeVarId(
-                                4,
-                            ),
-                        ),
+                        ty: Apply {
+                            ident: Name {
+                                name: "u32",
+                                span: Span {
+                                    start: 125,
+                                    end: 128,
+                                },
+                            },
+                            arguments: [],
+                        },
                         kind: Var {
                             name: Name {
                                 name: "_id",
@@ -504,11 +524,16 @@ Module {
                     },
                     arguments: [],
                 },
-                result: Generic(
-                    TypeVarId(
-                        4,
-                    ),
-                ),
+                result: Apply {
+                    ident: Name {
+                        name: "u32",
+                        span: Span {
+                            start: 125,
+                            end: 128,
+                        },
+                    },
+                    arguments: [],
+                },
             },
             span: Span {
                 start: 236,

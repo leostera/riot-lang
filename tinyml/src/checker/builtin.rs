@@ -12,12 +12,14 @@ pub const UNIT_CONSTRUCTOR: &str = "()";
 pub const TYPE_ARITIES: &[(&str, usize)] = &[
     ("unit", 0),
     ("bool", 0),
+    ("i8", 0),
+    ("i16", 0),
     ("i32", 0),
     ("i64", 0),
     ("u8", 0),
+    ("u16", 0),
     ("u32", 0),
-    ("f32", 0),
-    ("f64", 0),
+    ("u64", 0),
     ("string", 0),
 ];
 
@@ -43,6 +45,20 @@ builtins![
 ];
 
 /// Return the unqualified name of a type application.
+/// Return whether `ty` is the unqualified, zero-argument primitive `name`.
+///
+/// Identifier spans are source metadata, so semantic primitive checks must
+/// compare the identifier text rather than derived `Type` equality.
+pub fn is_unqualified_type(ty: &Type, name: &str) -> bool {
+    matches!(ty, Type::Apply { ident, arguments } if arguments.is_empty() && ident.as_name() == Some(name))
+}
+
+pub fn is_integer_type(ty: &Type) -> bool {
+    ["i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64"]
+        .iter()
+        .any(|name| is_unqualified_type(ty, name))
+}
+
 pub fn type_name(ty: &Type) -> Option<&str> {
     fn ident_name(ident: &Ident) -> Option<&str> {
         match ident {

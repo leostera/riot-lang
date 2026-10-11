@@ -48,6 +48,30 @@ impl Ident {
         }
     }
 
+    /// Compare identifier paths while ignoring source locations.
+    ///
+    /// Spans belong to diagnostics, not semantic identity. Compiler passes must
+    /// use this instead of derived `PartialEq` when comparing names from
+    /// independently parsed or synthesized nodes.
+    pub fn same_path(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Name { name: left, .. }, Self::Name { name: right, .. }) => left == right,
+            (
+                Self::Qualified {
+                    name: left_head,
+                    rest: left_rest,
+                    ..
+                },
+                Self::Qualified {
+                    name: right_head,
+                    rest: right_rest,
+                    ..
+                },
+            ) => left_head == right_head && left_rest.same_path(right_rest),
+            _ => false,
+        }
+    }
+
     pub fn as_name(&self) -> Option<&str> {
         match self {
             Self::Name { name, .. } => Some(name),
@@ -160,6 +184,30 @@ mod tests {
             rest: Box::new(rest),
             span: Span::new(0, 10),
         }
+    }
+
+    #[test]
+    fn semantic_path_comparison_ignores_source_spans() {
+        let left = Ident::Qualified {
+            name: "Module".into(),
+            rest: Box::new(Ident::Name {
+                name: "value".into(),
+                span: Span::new(3, 8),
+            }),
+            span: Span::new(0, 8),
+        };
+        let right = Ident::Qualified {
+            name: "Module".into(),
+            rest: Box::new(Ident::Name {
+                name: "value".into(),
+                span: Span::new(30, 35),
+            }),
+            span: Span::new(27, 35),
+        };
+
+        assert_ne!(left, right, "derived equality includes source locations");
+        assert!(left.same_path(&right));
+        assert!(!left.same_path(&Ident::qualified("Other", "value")));
     }
 
     #[test]

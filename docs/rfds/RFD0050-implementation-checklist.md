@@ -33,6 +33,8 @@ native pipeline. Completed in commit `52d32dec6` (`refactor(tinyml): trim Stage
   are no implicit signedness conversions. Floats are out of scope.
 - [x] Record annotation syntax: `(expr: Type)`, `(pattern: Type)`, and
   `let pattern: Type = expr`; constrain a function result by ascribing its body.
+- [x] Preserve execution-tested `string + string` concatenation; keep other
+  string/byte operations in the standard library.
 - [x] Define dotted-module-to-snake-case `.ml` paths, search-root order,
   selected imports, and acyclic dependency graphs.
 - [x] Specify the intrinsic `Host` API for arguments, file I/O, output, and

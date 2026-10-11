@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "lower_snapshot(\"tests/fixtures/0007_annotations.ml\")"
 ---
 Module {
@@ -122,10 +122,10 @@ Module {
                         Expr {
                             ty: Apply {
                                 ident: Name {
-                                    name: "i32",
+                                    name: "u8",
                                     span: Span {
-                                        start: 0,
-                                        end: 0,
+                                        start: 48,
+                                        end: 50,
                                     },
                                 },
                                 arguments: [],
@@ -181,10 +181,10 @@ Module {
                                 body: Expr {
                                     ty: Apply {
                                         ident: Name {
-                                            name: "i32",
+                                            name: "u8",
                                             span: Span {
-                                                start: 0,
-                                                end: 0,
+                                                start: 48,
+                                                end: 50,
                                             },
                                         },
                                         arguments: [],
