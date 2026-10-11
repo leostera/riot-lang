@@ -91,24 +91,27 @@ the constructs needed by the compiler implementation.
 **Exit:** the positive/negative checker corpus passes and invalid programs are
 rejected before code generation.
 
-## Phase 4: Resolve source modules and ship library modules
+## Phase 4: Resolve source modules and ship library modules — complete
 
-- [ ] Resolve a deterministic source-module graph from the root module, `use`
+- [x] Resolve a deterministic source-module graph from the root module, `use`
   declarations, and ordered include directories.
-- [ ] Validate selected imported values, types, constructors, and fields;
+- [x] Validate selected imported values, types, constructors, and fields;
   expose only selected names and detect conflicts.
-- [ ] Preserve imported schemes and nominal constructor/record metadata.
-- [ ] Report missing modules/members and dependency cycles; compile dependencies
+- [x] Preserve imported schemes and nominal constructor/record metadata.
+- [x] Report missing modules/members and dependency cycles; compile dependencies
   in stable order.
-- [ ] Make bundled-library lookup independent of the working directory and
-  include library files in the compiler distribution.
-- [ ] Retain only `tinyml/lib/` modules that parse, typecheck, and serve the
-  compiler. Rewrite or exclude unsupported Actor, `external`, and aggregation
+- [x] Make bundled-library lookup independent of the working directory and
+  embed library source files in the compiler distribution.
+- [x] Retain only `tinyml/lib/` modules that parse, typecheck, and serve the
+  compiler. Exclude unsupported Actor, argument-parser, and aggregation
   sketches from the default library.
-- [ ] Add a multi-module integration test with a polymorphic import and an ADT.
+- [x] Add multi-module integration tests for a polymorphic import, recursive
+  ADTs, record metadata, bundled modules, and dependency JavaScript output.
 
 **Exit:** programs compile against their own modules and supported bundled
-modules without manually generated interface files.
+modules without manually generated interface files. Verified by the module
+loader tests, `tinyml/tests/module_tests.rs`, and the CLI tests that check
+source imports and execute a dependency-linked JS program.
 
 ## Phase 5: Close primitive and host boundaries
 

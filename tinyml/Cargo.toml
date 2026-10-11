@@ -9,8 +9,6 @@ clap = { version = "4", features = ["derive"] }
 logos = "0.16"
 miette = { version = "7", features = ["fancy"] }
 once_cell = "1"
-serde = { version = "1", features = ["derive"] }
-bincode = "1"
 thiserror = "2"
 
 [dev-dependencies]

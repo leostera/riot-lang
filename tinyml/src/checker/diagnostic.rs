@@ -49,6 +49,26 @@ pub enum CheckDiagnostic {
         span: Span,
     },
 
+    #[error("module `{name}` is not available to this checker")]
+    #[diagnostic(code(tinyml::checker::unknown_module))]
+    UnknownModule { name: String, span: Span },
+
+    #[error("module `{module}` does not export `{member}`")]
+    #[diagnostic(code(tinyml::checker::unknown_import_member))]
+    UnknownImportMember {
+        module: String,
+        member: String,
+        span: Span,
+    },
+
+    #[error("imported `{namespace}` name `{name}` conflicts with another declaration")]
+    #[diagnostic(code(tinyml::checker::conflicting_import))]
+    ConflictingImport {
+        namespace: String,
+        name: String,
+        span: Span,
+    },
+
     #[error("unknown type `{name}`")]
     #[diagnostic(code(tinyml::checker::unknown_type))]
     UnknownType { name: String, span: Span },
@@ -138,6 +158,9 @@ impl CheckDiagnostic {
             | CheckDiagnostic::UnknownValue { span, .. }
             | CheckDiagnostic::UnknownConstructor { span, .. }
             | CheckDiagnostic::ConstructorArityMismatch { span, .. }
+            | CheckDiagnostic::UnknownModule { span, .. }
+            | CheckDiagnostic::UnknownImportMember { span, .. }
+            | CheckDiagnostic::ConflictingImport { span, .. }
             | CheckDiagnostic::UnknownType { span, .. }
             | CheckDiagnostic::UnsupportedType { span, .. }
             | CheckDiagnostic::UnsupportedFloatLiteral { span }
@@ -169,6 +192,9 @@ impl CheckDiagnostic {
             CheckDiagnostic::ConstructorArityMismatch { .. } => {
                 "wrong number of constructor arguments"
             }
+            CheckDiagnostic::UnknownModule { .. } => "unknown module",
+            CheckDiagnostic::UnknownImportMember { .. } => "unknown imported member",
+            CheckDiagnostic::ConflictingImport { .. } => "conflicting import",
             CheckDiagnostic::UnknownType { .. } => "unknown type",
             CheckDiagnostic::UnsupportedType { .. } => "unsupported type",
             CheckDiagnostic::UnsupportedFloatLiteral { .. } => "unsupported floating-point literal",

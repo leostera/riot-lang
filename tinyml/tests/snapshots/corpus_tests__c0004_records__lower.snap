@@ -39,7 +39,7 @@ Module {
             body: Expr {
                 ty: Var(
                     TypeVarId(
-                        2,
+                        3,
                     ),
                 ),
                 kind: Record {
@@ -122,9 +122,9 @@ Module {
                     end: 42,
                 },
             },
-            ty: Var(
+            ty: Generic(
                 TypeVarId(
-                    2,
+                    3,
                 ),
             ),
             span: Span {
@@ -168,12 +168,12 @@ Module {
                 ty: Arrow {
                     parameter: Var(
                         TypeVarId(
-                            5,
+                            7,
                         ),
                     ),
                     result: Var(
                         TypeVarId(
-                            3,
+                            5,
                         ),
                     ),
                 },
@@ -182,7 +182,7 @@ Module {
                         Pattern {
                             ty: Var(
                                 TypeVarId(
-                                    5,
+                                    7,
                                 ),
                             ),
                             kind: Record {
@@ -205,7 +205,7 @@ Module {
                                         Pattern {
                                             ty: Var(
                                                 TypeVarId(
-                                                    3,
+                                                    5,
                                                 ),
                                             ),
                                             kind: Var {
@@ -244,7 +244,7 @@ Module {
                                         Pattern {
                                             ty: Var(
                                                 TypeVarId(
-                                                    4,
+                                                    6,
                                                 ),
                                             ),
                                             kind: Wildcard,
@@ -265,7 +265,7 @@ Module {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                3,
+                                5,
                             ),
                         ),
                         kind: Var {
@@ -305,12 +305,12 @@ Module {
             ty: Arrow {
                 parameter: Generic(
                     TypeVarId(
-                        5,
+                        7,
                     ),
                 ),
                 result: Generic(
                     TypeVarId(
-                        3,
+                        5,
                     ),
                 ),
             },

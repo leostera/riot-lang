@@ -31,8 +31,13 @@ enum Command {
     Lex { file: PathBuf },
     /// Parse and print the AST.
     Parse { file: PathBuf },
-    /// Parse and typecheck a file.
-    Check { file: PathBuf },
+    /// Resolve and typecheck a source module and all of its dependencies.
+    Check {
+        /// Search path for imported TinyML source modules.
+        #[arg(short = 'I', value_name = "DIR")]
+        include_dirs: Vec<PathBuf>,
+        file: PathBuf,
+    },
     /// Emit one or more compiler pipeline artifacts next to the source file.
     Emit {
         /// Pipeline stage to emit. Can be passed multiple times.
@@ -41,6 +46,9 @@ enum Command {
         /// Output target. Stage 0 currently emits JavaScript.
         #[arg(long = "target", value_enum)]
         targets: Vec<EmitTarget>,
+        /// Search path for imported TinyML source modules.
+        #[arg(short = 'I', value_name = "DIR")]
+        include_dirs: Vec<PathBuf>,
         file: PathBuf,
     },
     /// Compile a TinyML file to the Stage 0 JavaScript target.
@@ -51,7 +59,7 @@ enum Command {
         /// Output path. JavaScript defaults to a `.mjs` module.
         #[arg(short, long)]
         output: Option<PathBuf>,
-        /// Search path for compiled module interfaces.
+        /// Search path for imported TinyML source modules.
         #[arg(short = 'I', value_name = "DIR")]
         include_dirs: Vec<PathBuf>,
         file: PathBuf,
@@ -70,9 +78,20 @@ enum EmitTarget {
     Js,
 }
 
-struct CheckedPipeline {
-    ast: parser::Ast,
+struct CheckedModule {
+    source: tinyml::modules::SourceModule,
     summary: checker::ModuleSummary,
+}
+
+struct CheckedPipeline {
+    modules: Vec<CheckedModule>,
+    root: usize,
+}
+
+impl CheckedPipeline {
+    fn root(&self) -> &CheckedModule {
+        &self.modules[self.root]
+    }
 }
 
 #[derive(Debug, Error, Diagnostic)]
@@ -85,23 +104,19 @@ struct CliCheckDiagnostic {
     labels: Vec<LabeledSpan>,
 }
 
-struct EmitPipeline {
-    checked: CheckedPipeline,
-    lambda: lambda::Lambda,
-}
-
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
         Command::Lex { file } => lex_command(&file),
         Command::Parse { file } => parse_command(&file),
-        Command::Check { file } => check_command(&file),
+        Command::Check { include_dirs, file } => check_command(&file, &include_dirs),
         Command::Emit {
             stages,
             targets,
+            include_dirs,
             file,
-        } => emit_command(&file, &stages, &targets),
+        } => emit_command(&file, &stages, &targets, &include_dirs),
         Command::Compile {
             target,
             output,
@@ -129,52 +144,47 @@ fn parse_command(file: &Path) -> Result<()> {
     Ok(())
 }
 
-fn check_command(file: &Path) -> Result<()> {
-    let _pipeline = checked_pipeline(file)?;
+fn check_command(file: &Path, include_dirs: &[PathBuf]) -> Result<()> {
+    let _pipeline = checked_pipeline_with_imports(file, include_dirs)?;
     println!("ok");
     Ok(())
 }
 
-fn emit_command(file: &Path, stages: &[EmitStage], targets: &[EmitTarget]) -> Result<()> {
+fn emit_command(
+    file: &Path,
+    stages: &[EmitStage],
+    targets: &[EmitTarget],
+    include_dirs: &[PathBuf],
+) -> Result<()> {
     if stages.is_empty() && targets.is_empty() {
         return Err(miette!(
             "emit requires at least one --stage <ast|tir|lambda> or --target js"
         ));
     }
 
-    let pipeline = emit_pipeline(file)?;
+    let pipeline = checked_pipeline_with_imports(file, include_dirs)?;
+    let root = pipeline.root();
+    let lambda = lambda::translate(&root.summary.tir);
 
     for stage in stages {
         match stage {
             EmitStage::Ast => {
-                write_artifact(file, "ast", format!("{:#?}", pipeline.checked.ast))?;
+                write_artifact(file, "ast", format!("{:#?}", root.source.ast))?;
             }
             EmitStage::Tir => {
-                write_artifact(file, "tir", format!("{:#?}", pipeline.checked.summary.tir))?;
+                write_artifact(file, "tir", format!("{:#?}", root.summary.tir))?;
             }
             EmitStage::Lambda => {
-                write_artifact(file, "lambda", format!("{:#?}", pipeline.lambda))?;
+                write_artifact(file, "lambda", format!("{lambda:#?}"))?;
             }
         }
     }
 
-    if !targets.is_empty() {
-        let imports = pipeline
-            .checked
-            .ast
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        let js = backend::js::lower_with_imports(
-            &pipeline.checked.summary.interface,
-            &pipeline.lambda,
-            &imports,
-        );
-        write_artifact(file, "mjs", backend::js::emit_js_string(&js))?;
+    if targets.contains(&EmitTarget::Js) {
+        emit_graph_javascript(
+            &pipeline,
+            &default_compile_output(file).with_extension("mjs"),
+        )?;
     }
 
     Ok(())
@@ -203,25 +213,10 @@ fn compile_command(
     compile_js(file, output, include_dirs)
 }
 
-struct ParsedSource {
-    source_name: String,
-    source: String,
-    ast: parser::Ast,
-}
-
 fn parse_file(file: &Path) -> Result<parser::Ast> {
-    Ok(parse_source_file(file)?.ast)
-}
-
-fn parse_source_file(file: &Path) -> Result<ParsedSource> {
     let source = fs::read_to_string(file).into_diagnostic()?;
     let lexer = Lexer::new(&source)?;
-    let ast = Parser::new(lexer).parse_module()?;
-    Ok(ParsedSource {
-        source_name: file.display().to_string(),
-        source,
-        ast,
-    })
+    Ok(Parser::new(lexer).parse_module()?)
 }
 
 fn print_check_diagnostics(
@@ -243,92 +238,100 @@ fn print_check_diagnostics(
     }
 }
 
-fn checked_pipeline(file: &Path) -> Result<CheckedPipeline> {
-    checked_pipeline_with_imports(file, &[])
-}
-
 fn checked_pipeline_with_imports(file: &Path, include_dirs: &[PathBuf]) -> Result<CheckedPipeline> {
-    let parsed = parse_source_file(file)?;
-    let imported = load_interfaces(&parsed.ast, include_dirs)?;
-    let summary = checker::Checker::new().check_module_with_interface(&parsed.ast, &imported);
-    if !summary.diagnostics.is_empty() {
-        print_check_diagnostics(&parsed.source_name, &parsed.source, &summary.diagnostics);
-        return Err(miette!("typecheck failed"));
+    let graph = tinyml::modules::ModuleGraph::load(file, include_dirs)
+        .map_err(|error| miette!("module loading failed: {error}"))?;
+    let mut checked_modules: Vec<CheckedModule> = Vec::with_capacity(graph.modules.len());
+
+    for source in graph.modules {
+        let imported = checker::interface::ModuleInterface {
+            modules: source
+                .dependencies
+                .iter()
+                .map(|dependency| {
+                    let module = &checked_modules[*dependency];
+                    let name = module
+                        .source
+                        .name
+                        .as_ref()
+                        .expect("imported module has a resolved name")
+                        .to_ident();
+                    checker::interface::ModuleDescription {
+                        name,
+                        interface: Box::new(module.summary.interface.clone()),
+                    }
+                })
+                .collect(),
+            ..checker::interface::ModuleInterface::empty()
+        };
+        let summary = checker::Checker::new().check_module_with_interface(&source.ast, &imported);
+        if !summary.diagnostics.is_empty() {
+            print_check_diagnostics(
+                &source.path.display().to_string(),
+                &source.source,
+                &summary.diagnostics,
+            );
+            return Err(miette!("typecheck failed in {}", source.path.display()));
+        }
+        checked_modules.push(CheckedModule { source, summary });
     }
+
     Ok(CheckedPipeline {
-        ast: parsed.ast,
-        summary,
+        modules: checked_modules,
+        root: graph.root,
     })
 }
 
 fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> Result<()> {
     let checked = checked_pipeline_with_imports(file, include_dirs)?;
-    let imports = checked
-        .ast
+    let output = output
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| default_compile_output(file).with_extension("mjs"));
+    emit_graph_javascript(&checked, &output)
+}
+
+fn emit_graph_javascript(pipeline: &CheckedPipeline, root_output: &Path) -> Result<()> {
+    let output_dir = root_output.parent().unwrap_or_else(|| Path::new("."));
+    let mut artifacts = Vec::with_capacity(pipeline.modules.len());
+
+    for (index, module) in pipeline.modules.iter().enumerate() {
+        let output = if index == pipeline.root {
+            root_output.to_path_buf()
+        } else {
+            module_output_path(module, output_dir)?
+        };
+        let imports = source_imports(&module.source.ast);
+        let lambda = lambda::translate(&module.summary.tir);
+        let js = backend::js::lower_with_imports(&module.summary.interface, &lambda, &imports);
+        let javascript = backend::js::emit_js_string(&js);
+        artifacts.push((output, javascript));
+    }
+
+    for (output, javascript) in artifacts {
+        fs::write(output, javascript).into_diagnostic()?;
+    }
+    Ok(())
+}
+
+fn module_output_path(module: &CheckedModule, output_dir: &Path) -> Result<PathBuf> {
+    let name = module.source.name.as_ref().ok_or_else(|| {
+        miette!(
+            "dependency `{}` has no module name",
+            module.source.path.display()
+        )
+    })?;
+    Ok(output_dir.join(format!("{}.mjs", js_module_name(&name.to_ident()))))
+}
+
+fn source_imports(module: &parser::Ast) -> Vec<parser::ast::UseDecl> {
+    module
         .items
         .iter()
         .filter_map(|item| match item {
             parser::ast::ModuleItem::UseDecl(import) => Some(import.clone()),
             _ => None,
         })
-        .collect::<Vec<_>>();
-    let lambda = lambda::translate(&checked.summary.tir);
-    let js = tinyml::backend::js::lower_with_imports(&checked.summary.interface, &lambda, &imports);
-    let output = output
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| default_compile_output(file).with_extension("mjs"));
-    fs::write(&output, tinyml::backend::js::emit_js_string(&js)).into_diagnostic()?;
-    let import_names = imports
-        .iter()
-        .map(|import| match import {
-            parser::ast::UseDecl::Concrete { module, .. }
-            | parser::ast::UseDecl::Wildcard { module, .. } => js_module_name(module),
-        })
-        .collect::<Vec<_>>();
-    write_interface_artifact(&output, &checked.summary.interface, &import_names)?;
-    Ok(())
-}
-
-fn load_interfaces(
-    module: &parser::ast::Module,
-    include_dirs: &[PathBuf],
-) -> Result<checker::interface::ModuleInterface> {
-    let modules = module
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            parser::ast::ModuleItem::UseDecl(parser::ast::UseDecl::Concrete { module, .. })
-            | parser::ast::ModuleItem::UseDecl(parser::ast::UseDecl::Wildcard { module, .. }) => {
-                Some(js_module_name(module))
-            }
-            _ => None,
-        })
-        .collect::<std::collections::HashSet<_>>();
-    let mut imported = checker::interface::ModuleInterface::empty();
-    for dir in include_dirs {
-        for entry in fs::read_dir(dir).into_diagnostic()? {
-            let path = entry.into_diagnostic()?.path();
-            if path.extension().and_then(|ext| ext.to_str()) != Some("tmi")
-                || !modules.contains(
-                    &path
-                        .file_stem()
-                        .and_then(|stem| stem.to_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                )
-            {
-                continue;
-            }
-            let bytes = fs::read(path).into_diagnostic()?;
-            let interface = checker::interface::decode_interface(&bytes)
-                .map_err(|error| miette!("malformed interface artifact: {error}"))?;
-            imported.values.extend(interface.values);
-            imported.types.extend(interface.types);
-            imported.constructors.extend(interface.constructors);
-            imported.record_fields.extend(interface.record_fields);
-        }
-    }
-    Ok(imported)
+        .collect()
 }
 
 fn js_module_name(ident: &parser::ident::Ident) -> String {
@@ -338,28 +341,6 @@ fn js_module_name(ident: &parser::ident::Ident) -> String {
             format!("{}_{}", name, js_module_name(rest))
         }
     }
-}
-
-fn write_interface_artifact(
-    output: &Path,
-    interface: &checker::interface::ModuleInterface,
-    imports: &[String],
-) -> Result<()> {
-    let artifact = output.with_extension("tmi");
-    let contents = checker::interface::encode_interface_with_imports(interface, imports)
-        .map_err(|error| miette!("could not encode interface: {error}"))?;
-    fs::write(artifact, contents).into_diagnostic()
-}
-
-fn emit_pipeline(file: &Path) -> Result<EmitPipeline> {
-    let parsed = parse_source_file(file)?;
-    let summary = checker::check_module(&parsed.ast);
-    let checked = CheckedPipeline {
-        ast: parsed.ast,
-        summary,
-    };
-    let lambda = lambda::translate(&checked.summary.tir);
-    Ok(EmitPipeline { checked, lambda })
 }
 
 fn write_artifact(file: &Path, extension: &str, contents: String) -> Result<PathBuf> {

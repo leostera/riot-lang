@@ -773,6 +773,7 @@ ModuleSummary {
                         end: 57,
                     },
                 },
+                field_names: [],
                 tag: 0,
                 result: Apply {
                     ident: Name {
@@ -837,6 +838,7 @@ ModuleSummary {
                         end: 57,
                     },
                 },
+                field_names: [],
                 tag: 1,
                 result: Apply {
                     ident: Name {
@@ -926,6 +928,29 @@ ModuleSummary {
                         end: 96,
                     },
                 },
+                field_names: [
+                    Name {
+                        name: "name",
+                        span: Span {
+                            start: 106,
+                            end: 110,
+                        },
+                    },
+                    Name {
+                        name: "_id",
+                        span: Span {
+                            start: 120,
+                            end: 123,
+                        },
+                    },
+                    Name {
+                        name: "active",
+                        span: Span {
+                            start: 130,
+                            end: 136,
+                        },
+                    },
+                ],
                 tag: 0,
                 result: Apply {
                     ident: Name {

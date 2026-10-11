@@ -1,5 +1,3 @@
-/// Return the length of a string.
-external len : String -> i64 = "riot_rt_value_string_len"
+// TinyML's initial string helper surface. More operations use Host intrinsics.
 
-/// Concatenate two strings.
-external concat : String -> String -> String = "riot_rt_value_string_concat"
+let concat = fn (left: string) -> fn (right: string) -> left + right

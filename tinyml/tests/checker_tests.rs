@@ -31,7 +31,8 @@ fn polymorphic_identity_is_independently_instantiated() {
     assert_valid(
         r#"
         let identity = fn value -> value
-        let pair = (identity 1, identity true)
+        let alias = identity
+        let pair = (alias 1, alias true)
         "#,
     );
 }
@@ -54,6 +55,26 @@ fn top_level_recursive_functions_are_checked_monomorphically() {
           | 0 -> 1
           | _ -> n * factorial (n - 1)
         }
+        "#,
+    );
+
+    // The recursive occurrence shares one monotype during body inference;
+    // generalization happens only after the declaration is complete.
+    assert_valid(
+        r#"
+        let loop = fn value -> loop value
+        let different_uses = (loop 1, loop true)
+        "#,
+    );
+}
+
+#[test]
+fn forward_references_remain_monomorphic_until_the_target_is_checked() {
+    assert_has_type_mismatch(
+        r#"
+        let forward = fn value -> later value
+        let later = fn value -> value + 1
+        let invalid = forward true
         "#,
     );
 }

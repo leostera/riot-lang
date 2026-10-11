@@ -1,5 +1,5 @@
 ---
-source: target/debug/build/tinyml-3635f5e80bf3d5dc/out/corpus_tests_generated.rs
+source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
 expression: "check_snapshot(\"tests/fixtures/0006_variant_record.ml\")"
 ---
 ModuleSummary {
@@ -82,6 +82,7 @@ ModuleSummary {
                         end: 8,
                     },
                 },
+                field_names: [],
                 tag: 0,
                 result: Apply {
                     ident: Name {
@@ -158,6 +159,22 @@ ModuleSummary {
                         end: 8,
                     },
                 },
+                field_names: [
+                    Name {
+                        name: "name",
+                        span: Span {
+                            start: 35,
+                            end: 39,
+                        },
+                    },
+                    Name {
+                        name: "value",
+                        span: Span {
+                            start: 49,
+                            end: 54,
+                        },
+                    },
+                ],
                 tag: 1,
                 result: Apply {
                     ident: Name {

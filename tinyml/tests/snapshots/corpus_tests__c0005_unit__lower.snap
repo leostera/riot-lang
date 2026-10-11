@@ -234,7 +234,7 @@ Module {
             body: Expr {
                 ty: Var(
                     TypeVarId(
-                        3,
+                        6,
                     ),
                 ),
                 kind: Match {
@@ -281,7 +281,7 @@ Module {
                             body: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        3,
+                                        6,
                                     ),
                                 ),
                                 kind: Constant(

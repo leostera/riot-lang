@@ -42,7 +42,7 @@ ModuleSummary {
                         Pattern {
                             ty: Var(
                                 TypeVarId(
-                                    1,
+                                    2,
                                 ),
                             ),
                             kind: Var {
@@ -73,14 +73,14 @@ ModuleSummary {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                4,
+                                5,
                             ),
                         ),
                         kind: Apply {
                             callee: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        2,
+                                        3,
                                     ),
                                 ),
                                 kind: Var {
@@ -143,21 +143,21 @@ ModuleSummary {
                     scheme: Scheme {
                         quantifier: [
                             TypeVarId(
-                                1,
+                                2,
                             ),
                             TypeVarId(
-                                4,
+                                5,
                             ),
                         ],
                         body: Arrow {
                             parameter: Generic(
                                 TypeVarId(
-                                    1,
+                                    2,
                                 ),
                             ),
                             result: Generic(
                                 TypeVarId(
-                                    4,
+                                    5,
                                 ),
                             ),
                         },
@@ -183,21 +183,21 @@ ModuleSummary {
                 scheme: Scheme {
                     quantifier: [
                         TypeVarId(
-                            1,
+                            2,
                         ),
                         TypeVarId(
-                            4,
+                            5,
                         ),
                     ],
                     body: Arrow {
                         parameter: Generic(
                             TypeVarId(
-                                1,
+                                2,
                             ),
                         ),
                         result: Generic(
                             TypeVarId(
-                                4,
+                                5,
                             ),
                         ),
                     },

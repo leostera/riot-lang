@@ -358,12 +358,18 @@ impl Env {
         binding: ConstructorBinding,
     ) -> Option<ConstructorBinding> {
         let name = name.into();
+        self.add_constructor_coverage(&name, &binding.result_type);
+        self.module.constructors.insert(name, binding)
+    }
+
+    /// Record a constructor for exhaustiveness checks without making it visible
+    /// as an imported term-level constructor.
+    pub fn add_constructor_coverage(&mut self, name: &str, result_type: &str) {
         self.module
             .constructors_by_result
-            .entry(binding.result_type.clone())
+            .entry(result_type.to_string())
             .or_default()
-            .insert(name.clone());
-        self.module.constructors.insert(name, binding)
+            .insert(name.to_string());
     }
 
     /// Look up a constructor visible in this module.

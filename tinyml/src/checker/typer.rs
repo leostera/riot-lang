@@ -27,7 +27,7 @@ use crate::parser::{ast, ident::Ident, lexer::Span};
 use super::{
     builtin,
     diagnostic::CheckDiagnostic,
-    env::{ConstructorBinding, EnvError, RecordFieldBinding, TypeBinding},
+    env::{ConstructorBinding, EnvError, RecordFieldBinding, TypeBinding, ValueSymbol},
     interface::{
         ConstructorDescription, ModuleInterface, RecordFieldDescription, TypeDescription,
         ValueDescription,
@@ -61,6 +61,10 @@ pub struct ModuleSummary {
 /// same-module symbol tables for values, types, constructors, and record fields.
 pub struct Typer<'state> {
     state: &'state mut State,
+    top_level_symbols: HashMap<String, ValueSymbol>,
+    pending_top_level: HashSet<EntityId>,
+    forward_references: HashSet<EntityId>,
+    current_top_level: Option<EntityId>,
 }
 
 impl<'state> Typer<'state> {
@@ -69,7 +73,13 @@ impl<'state> Typer<'state> {
         for &(name, arity) in builtin::TYPE_ARITIES {
             state.env_mut().add_type(name, TypeBinding { arity });
         }
-        Self { state }
+        Self {
+            state,
+            top_level_symbols: HashMap::new(),
+            pending_top_level: HashSet::new(),
+            forward_references: HashSet::new(),
+            current_top_level: None,
+        }
     }
 
     /// Typecheck a parsed module into TIR and a public interface.
@@ -314,6 +324,7 @@ impl<'state> Typer<'state> {
                                     name: ident.clone(),
                                     scheme,
                                     owner: type_decl.name.clone(),
+                                    field_names: Vec::new(),
                                     tag: tag as u32,
                                     result: result.clone(),
                                     arguments,
@@ -357,15 +368,11 @@ impl<'state> Typer<'state> {
                                     name: ident.clone(),
                                     scheme,
                                     owner: type_decl.name.clone(),
+                                    field_names,
                                     tag: tag as u32,
                                     result: result.clone(),
                                     arguments,
                                 });
-                                if let Some(name) = ident.as_name() {
-                                    // Keep record constructor field order for record expressions/patterns.
-                                    // Constructor metadata is inserted after this closure returns.
-                                    let _ = (name, field_names);
-                                }
                             }
                         }
                     }
@@ -378,20 +385,7 @@ impl<'state> Typer<'state> {
         // durable public summary, while these maps are a local checker acceleration used
         // to type constructor occurrences encountered later in the same module.
         for constructor in &constructors {
-            let field_names = match &type_decl.body {
-                ast::TypeExpr::Variant { variants, .. } => variants
-                    .iter()
-                    .find_map(|variant| match variant {
-                        ast::Variant::RecordConstructor { ident, fields, .. }
-                            if ident.same_path(&constructor.name) =>
-                        {
-                            Some(fields.iter().map(|(name, _)| name.clone()).collect())
-                        }
-                        _ => None,
-                    })
-                    .unwrap_or_default(),
-                _ => Vec::new(),
-            };
+            let field_names = constructor.field_names.clone();
             if let Some(name) = constructor.name.as_name() {
                 if self.state.env().constructor(name).is_some() {
                     self.state
@@ -468,20 +462,74 @@ impl<'state> Typer<'state> {
                     continue;
                 };
                 let placeholder = Scheme::monomorphic(self.state.fresh_var());
-                if let Err(err) = self.state.add_value(name_text, placeholder) {
-                    match err {
-                        EnvError::DuplicateValue { name } => {
-                            self.state
-                                .add_diagnostic(CheckDiagnostic::DuplicateTopLevelValue {
-                                    name,
-                                    span: let_decl_span(let_decl),
-                                })
-                        }
-                        EnvError::CannotPopRootScope => unreachable!("registration does not pop"),
+                match self.state.add_value(name_text, placeholder) {
+                    Ok(symbol) => {
+                        self.pending_top_level.insert(symbol.entity.clone());
+                        self.top_level_symbols.insert(name_text.to_string(), symbol);
+                    }
+                    Err(EnvError::DuplicateValue { name }) => {
+                        self.state
+                            .add_diagnostic(CheckDiagnostic::DuplicateTopLevelValue {
+                                name,
+                                span: let_decl_span(let_decl),
+                            });
+                    }
+                    Err(EnvError::CannotPopRootScope) => {
+                        unreachable!("registration does not pop")
                     }
                 }
             }
         }
+    }
+
+    fn begin_top_level_value(&mut self, symbol: &ValueSymbol) -> Type {
+        self.current_top_level = Some(symbol.entity.clone());
+        let Type::Var(placeholder_id) = &symbol.scheme.body else {
+            return symbol.scheme.body.clone();
+        };
+        let is_unconstrained = self
+            .state
+            .type_var(*placeholder_id)
+            .is_some_and(|slot| slot.link.is_none());
+        if self.forward_references.contains(&symbol.entity) || !is_unconstrained {
+            return symbol.scheme.body.clone();
+        }
+
+        // Give the current declaration's own recursive placeholder a local
+        // level so its inferred type may be generalized after checking. Any
+        // earlier forward reference keeps the original root-level placeholder
+        // monomorphic, preventing a later declaration from invalidating an
+        // already-generalized scheme.
+        self.state.push_scope();
+        let placeholder = self.state.fresh_var();
+        self.state.pop_scope().expect("placeholder scope pop");
+        self.state.update_value_scheme(
+            symbol.entity.clone(),
+            Scheme::monomorphic(placeholder.clone()),
+        );
+        placeholder
+    }
+
+    fn unify_top_level_type(&mut self, placeholder: &Type, inferred: &Type, span: Span) -> Type {
+        let result = {
+            let mut unifier = Unifier::new(self.state);
+            unifier.unify(placeholder, inferred)
+        };
+        if let Err(error) = result {
+            self.state
+                .add_diagnostic(CheckDiagnostic::TypeMismatch { error, span });
+        }
+        let mut unifier = Unifier::new(self.state);
+        unifier
+            .resolve(placeholder)
+            .unwrap_or_else(|_| inferred.clone())
+    }
+
+    fn finish_top_level_value(&mut self, symbol: &ValueSymbol, scheme: Scheme) {
+        self.state
+            .update_value_scheme(symbol.entity.clone(), scheme);
+        self.pending_top_level.remove(&symbol.entity);
+        self.current_top_level = None;
     }
 
     fn instantiate_constructor(&mut self, info: &ConstructorBinding) -> (Vec<Type>, Type) {
@@ -513,20 +561,19 @@ impl<'state> Typer<'state> {
                 if !checked_values.insert(name_text.to_string()) {
                     return None;
                 }
-                let Some(symbol) = self.state.get_value(name_text).cloned() else {
+                let Some(symbol) = self.top_level_symbols.get(name_text).cloned() else {
                     return None;
                 };
                 let base_level = self.state.current_level();
+                let placeholder = self.begin_top_level_value(&symbol);
+                self.state.push_scope();
                 let value = self.infer_expression(body);
-                let resolved = {
-                    let mut unifier = Unifier::new(self.state);
-                    unifier
-                        .resolve(&value.ty)
-                        .unwrap_or_else(|_| value.ty.clone())
-                };
-                let scheme = self.state.generalize(resolved, base_level);
                 self.state
-                    .update_value_scheme(symbol.entity.clone(), scheme.clone());
+                    .pop_scope()
+                    .expect("constant inference scope pop");
+                let resolved = self.unify_top_level_type(&placeholder, &value.ty, *span);
+                let scheme = self.state.generalize(resolved, base_level);
+                self.finish_top_level_value(&symbol, scheme.clone());
                 Some((
                     LetDecl::Const {
                         binding: symbol.binding.clone(),
@@ -558,10 +605,11 @@ impl<'state> Typer<'state> {
                 if !checked_values.insert(name_text.to_string()) {
                     return None;
                 }
-                let Some(symbol) = self.state.get_value(name_text).cloned() else {
+                let Some(symbol) = self.top_level_symbols.get(name_text).cloned() else {
                     return None;
                 };
                 let base_level = self.state.current_level();
+                let placeholder = self.begin_top_level_value(&symbol);
                 self.state.push_scope();
                 let params = args
                     .iter()
@@ -573,13 +621,9 @@ impl<'state> Typer<'state> {
                     params.iter().map(|param| param.ty.clone()).collect(),
                     body.ty.clone(),
                 );
-                let resolved = {
-                    let mut unifier = Unifier::new(self.state);
-                    unifier.resolve(&fn_ty).unwrap_or(fn_ty)
-                };
+                let resolved = self.unify_top_level_type(&placeholder, &fn_ty, *span);
                 let scheme = self.state.generalize(resolved, base_level);
-                self.state
-                    .update_value_scheme(symbol.entity.clone(), scheme.clone());
+                self.finish_top_level_value(&symbol, scheme.clone());
                 Some((
                     LetDecl::Fn {
                         binding: symbol.binding.clone(),
@@ -740,6 +784,11 @@ impl<'state> Typer<'state> {
                         span: *span,
                     };
                 };
+                if self.pending_top_level.contains(&symbol.entity)
+                    && self.current_top_level.as_ref() != Some(&symbol.entity)
+                {
+                    self.forward_references.insert(symbol.entity.clone());
+                }
                 Expr {
                     ty: self.state.instantiate(&symbol.scheme),
                     kind: ExprKind::Var {

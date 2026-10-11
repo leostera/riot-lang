@@ -274,7 +274,7 @@ fn emitted_tuple_and_record_patterns_execute() {
     let file = dir.join("patterns.ml");
     fs::write(
         &file,
-        "let first = fn (a, b) -> a\nlet get_name = fn (User { name, age: _ }) -> name\n",
+        "type User = User { name: string, age: i32 }\nlet first = fn (a, b) -> a\nlet get_name = fn (User { name, age: _ }) -> name\n",
     )
     .unwrap();
 
@@ -345,7 +345,7 @@ fn emitted_string_concatenation_executes() {
 }
 
 #[test]
-fn compile_js_writes_module_and_interface_artifacts() {
+fn compile_js_writes_module_artifact() {
     let dir = temp_dir("compile-js");
     let file = dir.join("prelude.ml");
     fs::write(&file, "let answer = 42\n").unwrap();
@@ -365,14 +365,13 @@ fn compile_js_writes_module_and_interface_artifacts() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(dir.join("prelude.mjs").exists());
-    let interface = fs::read(dir.join("prelude.tmi")).unwrap();
-    assert!(!interface.is_empty());
+    assert!(!dir.join("prelude.tmi").exists());
 }
 
 #[test]
-fn compile_js_consumes_interface_artifacts() {
+fn compile_js_resolves_dependency_source_modules() {
     let dir = temp_dir("compile-js-import");
-    let prelude = dir.join("Prelude.ml");
+    let prelude = dir.join("prelude.ml");
     let main = dir.join("Main.ml");
     fs::write(&prelude, "let answer = 41\nlet identity = fn x -> x\n").unwrap();
     fs::write(
@@ -413,6 +412,203 @@ fn compile_js_consumes_interface_artifacts() {
         node.status.success(),
         "{}",
         String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn compile_resolves_source_modules_and_preserves_imported_types() {
+    let dir = temp_dir("source-modules");
+    let invocation_dir = temp_dir("source-modules-cwd");
+    fs::write(
+        dir.join("syntax.ml"),
+        r#"
+        type Tree<'a> =
+          | Leaf('a)
+          | Branch(Tree<'a>, Tree<'a>)
+
+        let identity = fn value -> value
+        "#,
+    )
+    .unwrap();
+    fs::write(
+        dir.join("types.ml"),
+        "type User = User { name: string, age: i32 }\n",
+    )
+    .unwrap();
+    let main = dir.join("main.ml");
+    fs::write(
+        &main,
+        r#"
+        use Syntax.{Tree, Leaf, Branch, identity}
+        use Types.{User}
+
+        let polymorphic = (identity 41, identity true)
+        let leaf_count = fn (tree: Tree<i32>) -> match tree {
+          | Leaf(_) -> 1
+          | Branch(left, right) -> leaf_count left + leaf_count right
+        }
+        let get_name = fn (User { name, age: _ }) -> name
+        "#,
+    )
+    .unwrap();
+
+    let check = Command::new(tinyml())
+        .current_dir(&invocation_dir)
+        .arg("check")
+        .arg(&main)
+        .output()
+        .unwrap();
+    assert!(
+        check.status.success(),
+        "{}",
+        String::from_utf8_lossy(&check.stderr)
+    );
+
+    let run_source = dir.join("run.ml");
+    fs::write(
+        &run_source,
+        "use Syntax.{identity}\nlet polymorphic = (identity 41, identity true)\n",
+    )
+    .unwrap();
+    let output = dir.join("run.mjs");
+    let result = Command::new(tinyml())
+        .current_dir(&invocation_dir)
+        .arg("compile")
+        .arg("-o")
+        .arg(&output)
+        .arg(&run_source)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(dir.join("Syntax.mjs").exists());
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ polymorphic }} from {:?}; if (polymorphic[0] !== 41 || polymorphic[1] !== true) process.exit(1)",
+            output.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
+fn bundled_source_library_resolves_outside_the_repository() {
+    let dir = temp_dir("bundled-library-source");
+    let unrelated_cwd = temp_dir("bundled-library-cwd");
+    let source = dir.join("library_client.ml");
+    fs::write(
+        &source,
+        r#"
+        use Prelude.{List, Nil, Cons, Option, Some, Result, Ok}
+        use List.{length}
+        use Option.{map}
+        use Result.{unwrap_or}
+        use String.{concat}
+
+        let size = length (Cons(1, Cons(2, Nil)))
+        let mapped = map (fn value -> value + 1) (Some(41))
+        let unwrapped = unwrap_or 0 (Ok(42))
+        let message = concat "hello" " world"
+        "#,
+    )
+    .unwrap();
+
+    let result = Command::new(tinyml())
+        .current_dir(unrelated_cwd)
+        .arg("check")
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&result.stdout), "ok\n");
+}
+
+#[test]
+fn only_selected_imports_are_available_and_missing_members_fail() {
+    let dir = temp_dir("selected-imports");
+    fs::write(
+        dir.join("values.ml"),
+        "let visible = 1\nlet hidden = true\n",
+    )
+    .unwrap();
+    let client = dir.join("client.ml");
+    fs::write(
+        &client,
+        "use Values.{visible}\nlet result = (visible, hidden)\n",
+    )
+    .unwrap();
+
+    let result = Command::new(tinyml())
+        .arg("check")
+        .arg(&client)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("unknown value `hidden`"));
+
+    fs::write(&client, "use Values.{missing}\nlet result = 1\n").unwrap();
+    let result = Command::new(tinyml())
+        .arg("check")
+        .arg(&client)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("does not export `missing`"));
+
+    fs::write(dir.join("left.ml"), "let shared = 1\n").unwrap();
+    fs::write(dir.join("right.ml"), "let shared = 2\n").unwrap();
+    fs::write(
+        &client,
+        "use Left.{shared}\nuse Right.{shared}\nlet result = shared\n",
+    )
+    .unwrap();
+    let result = Command::new(tinyml())
+        .arg("check")
+        .arg(&client)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("conflicts with another declaration"));
+}
+
+#[test]
+fn imported_type_metadata_tracks_unselected_variant_constructors() {
+    let dir = temp_dir("imported-type-metadata");
+    fs::write(
+        dir.join("shape.ml"),
+        "type Shape = | Circle(i32) | Square(i32)\n",
+    )
+    .unwrap();
+    let client = dir.join("client.ml");
+    fs::write(
+        &client,
+        "use Shape.{Shape, Circle}\nlet classify = fn (shape: Shape) -> match shape { | Circle(_) -> 1 }\n",
+    )
+    .unwrap();
+
+    let result = Command::new(tinyml())
+        .arg("check")
+        .arg(&client)
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8_lossy(&result.stderr).contains("match is missing constructor `Square`")
     );
 }
 

@@ -108,7 +108,7 @@ ModuleSummary {
                         ty: Arrow {
                             parameter: Var(
                                 TypeVarId(
-                                    2,
+                                    3,
                                 ),
                             ),
                             result: Apply {
@@ -127,7 +127,7 @@ ModuleSummary {
                                 Pattern {
                                     ty: Var(
                                         TypeVarId(
-                                            2,
+                                            3,
                                         ),
                                     ),
                                     kind: Var {
@@ -177,7 +177,7 @@ ModuleSummary {
                                     left: Expr {
                                         ty: Var(
                                             TypeVarId(
-                                                2,
+                                                3,
                                             ),
                                         ),
                                         kind: Var {
@@ -310,12 +310,12 @@ ModuleSummary {
                         ty: Arrow {
                             parameter: Var(
                                 TypeVarId(
-                                    3,
+                                    5,
                                 ),
                             ),
                             result: Var(
                                 TypeVarId(
-                                    6,
+                                    8,
                                 ),
                             ),
                         },
@@ -324,7 +324,7 @@ ModuleSummary {
                                 Pattern {
                                     ty: Var(
                                         TypeVarId(
-                                            3,
+                                            5,
                                         ),
                                     ),
                                     kind: Var {
@@ -355,7 +355,7 @@ ModuleSummary {
                             body: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        6,
+                                        8,
                                     ),
                                 ),
                                 kind: Block {
@@ -430,7 +430,7 @@ ModuleSummary {
                                                         left: Expr {
                                                             ty: Var(
                                                                 TypeVarId(
-                                                                    3,
+                                                                    5,
                                                                 ),
                                                             ),
                                                             kind: Var {
@@ -497,7 +497,7 @@ ModuleSummary {
                                         Expr {
                                             ty: Var(
                                                 TypeVarId(
-                                                    6,
+                                                    8,
                                                 ),
                                             ),
                                             kind: Apply {
@@ -755,6 +755,7 @@ ModuleSummary {
                         end: 33,
                     },
                 },
+                field_names: [],
                 tag: 0,
                 result: Apply {
                     ident: Name {
@@ -819,6 +820,7 @@ ModuleSummary {
                         end: 33,
                     },
                 },
+                field_names: [],
                 tag: 1,
                 result: Apply {
                     ident: Name {

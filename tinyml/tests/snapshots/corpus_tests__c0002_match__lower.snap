@@ -40,12 +40,12 @@ Module {
                 ty: Arrow {
                     parameter: Var(
                         TypeVarId(
-                            1,
+                            2,
                         ),
                     ),
                     result: Var(
                         TypeVarId(
-                            2,
+                            3,
                         ),
                     ),
                 },
@@ -54,7 +54,7 @@ Module {
                         Pattern {
                             ty: Var(
                                 TypeVarId(
-                                    1,
+                                    2,
                                 ),
                             ),
                             kind: Var {
@@ -85,14 +85,14 @@ Module {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                2,
+                                3,
                             ),
                         ),
                         kind: Match {
                             scrutinee: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        1,
+                                        2,
                                     ),
                                 ),
                                 kind: Var {
@@ -137,7 +137,7 @@ Module {
                                             arguments: [
                                                 Var(
                                                     TypeVarId(
-                                                        3,
+                                                        4,
                                                     ),
                                                 ),
                                             ],
@@ -174,7 +174,7 @@ Module {
                                     body: Expr {
                                         ty: Var(
                                             TypeVarId(
-                                                2,
+                                                3,
                                             ),
                                         ),
                                         kind: Constant(
@@ -207,7 +207,7 @@ Module {
                                             arguments: [
                                                 Var(
                                                     TypeVarId(
-                                                        4,
+                                                        5,
                                                     ),
                                                 ),
                                             ],
@@ -238,7 +238,7 @@ Module {
                                                 Pattern {
                                                     ty: Var(
                                                         TypeVarId(
-                                                            4,
+                                                            5,
                                                         ),
                                                     ),
                                                     kind: Var {

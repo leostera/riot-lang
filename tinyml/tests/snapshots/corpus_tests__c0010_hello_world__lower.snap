@@ -40,12 +40,12 @@ Module {
                 ty: Arrow {
                     parameter: Generic(
                         TypeVarId(
-                            1,
+                            2,
                         ),
                     ),
                     result: Generic(
                         TypeVarId(
-                            4,
+                            5,
                         ),
                     ),
                 },
@@ -54,7 +54,7 @@ Module {
                         Pattern {
                             ty: Var(
                                 TypeVarId(
-                                    1,
+                                    2,
                                 ),
                             ),
                             kind: Var {
@@ -85,14 +85,14 @@ Module {
                     body: Expr {
                         ty: Var(
                             TypeVarId(
-                                4,
+                                5,
                             ),
                         ),
                         kind: Apply {
                             callee: Expr {
                                 ty: Var(
                                     TypeVarId(
-                                        2,
+                                        3,
                                     ),
                                 ),
                                 kind: Var {
@@ -163,12 +163,12 @@ Module {
             ty: Arrow {
                 parameter: Generic(
                     TypeVarId(
-                        1,
+                        2,
                     ),
                 ),
                 result: Generic(
                     TypeVarId(
-                        4,
+                        5,
                     ),
                 ),
             },
