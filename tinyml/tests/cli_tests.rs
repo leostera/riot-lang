@@ -229,6 +229,45 @@ fn emitted_closures_capture_values() {
 }
 
 #[test]
+fn emitted_multi_parameter_functions_use_curried_calls() {
+    let dir = temp_dir("emit-js-curried-functions");
+    let file = dir.join("curried.ml");
+    fs::write(
+        &file,
+        r#"let add left right = left + right
+let result = add 20 22
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .current_dir(&dir)
+        .arg("compile")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ add, result }} from {:?}; if (add(20n)(22n) !== 42n || result !== 42n) process.exit(1)",
+            dir.join("curried.mjs").to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
 fn emitted_comparisons_execute() {
     let dir = temp_dir("emit-js-comparisons");
     let file = dir.join("comparisons.ml");
@@ -454,6 +493,78 @@ fn emitted_string_literals_decode_escapes() {
         "{}",
         String::from_utf8_lossy(&node.stderr)
     );
+}
+
+#[test]
+fn bundled_string_intrinsics_cover_unicode_indexing_and_reject_bad_types() {
+    let dir = temp_dir("string-intrinsics");
+    let source = dir.join("strings.ml");
+    fs::write(
+        &source,
+        r#"
+        use String.{concat, length, get, slice, equal}
+        use Prelude.{Option, None, Some}
+        let text = "A😀B"
+        let result = (
+          length text,
+          get text 1,
+          get text 4,
+          slice text 1 2,
+          equal text "A😀B",
+          equal text "AB",
+          concat text "!"
+        )
+        "#,
+    )
+    .unwrap();
+    let output = dir.join("strings.mjs");
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-o")
+        .arg(&output)
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ result }} from {:?}; if (result[0] !== 3n || result[1].type !== 'Some' || result[1].value !== 128512n || result[2].type !== 'None' || result[3] !== '😀' || result[4] !== true || result[5] !== false || result[6] !== 'A😀B!') process.exit(1)",
+            output.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "{}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+    assert!(dir.join("String.mjs").exists());
+
+    let invalid = dir.join("invalid_string_call.ml");
+    fs::write(
+        &invalid,
+        r#"use String.{get}
+let invalid = get "text" true
+"#,
+    )
+    .unwrap();
+    let invalid_output = dir.join("invalid.mjs");
+    let failed = Command::new(tinyml())
+        .arg("compile")
+        .arg("-o")
+        .arg(&invalid_output)
+        .arg(&invalid)
+        .output()
+        .unwrap();
+    assert!(!failed.status.success());
+    assert!(!invalid_output.exists());
 }
 
 #[test]
@@ -999,16 +1110,22 @@ fn host_intrinsics_run_in_node_and_roundtrip_arguments_files_and_processes() {
 fn host_io_and_process_failures_return_errors() {
     let dir = temp_dir("host-errors");
     let source = dir.join("host_errors.ml");
+    let invalid_utf8_path = dir.join("invalid-utf8.txt");
+    fs::write(&invalid_utf8_path, [0xff, 0xfe]).unwrap();
     fs::write(
         &source,
-        r#"
-        use Host.{read_file, write_file, run_process}
-        use Prelude.{List, Nil, Result, Ok, Err}
+        format!(
+            r#"
+        use Host.{{read_file, write_file, run_process}}
+        use Prelude.{{List, Nil, Result, Ok, Err}}
 
         let missing = read_file "missing-tinyml-host-file"
+        let invalid_utf8 = read_file {:?}
         let invalid_write = write_file "" "contents"
         let missing_process = run_process "tinyml-command-does-not-exist" Nil
         "#,
+            invalid_utf8_path.to_str().unwrap()
+        ),
     )
     .unwrap();
     let output = dir.join("host_errors.mjs");
@@ -1029,7 +1146,7 @@ fn host_io_and_process_failures_return_errors() {
         .arg("--input-type=module")
         .arg("-e")
         .arg(format!(
-            "import {{ missing, invalid_write, missing_process }} from {:?}; if (missing.type !== 'Err' || invalid_write.type !== 'Err' || missing_process.type !== 'Err') process.exit(1)",
+            "import {{ missing, invalid_utf8, invalid_write, missing_process }} from {:?}; if (missing.type !== 'Err' || invalid_utf8.type !== 'Err' || invalid_write.type !== 'Err' || missing_process.type !== 'Err') process.exit(1)",
             output.to_str().unwrap()
         ))
         .output()

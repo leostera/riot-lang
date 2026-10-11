@@ -122,17 +122,16 @@ source imports and execute a dependency-linked JS program.
 - [x] Implement literal range checks, contextual typing/defaulting, arithmetic
   wrap behavior, division, and comparison semantics.
 - [x] Reject floating-point types consistently.
-- [ ] Specify the byte/string representation and add further compiler-needed
-  string/byte operations with positive and negative tests. Stage 0 currently
-  supports UTF-8 host file I/O, escaped strings, and `string + string`; richer
-  lexer-oriented operations remain to be determined before the RiotML compiler
-  implementation depends on them.
+- [x] Specify text strings as Unicode text with strict UTF-8 host file I/O;
+  implement escaped literals, concatenation, Unicode-scalar `length`/`get`/
+  `slice`, and exact `equal` in the bundled `String` module with positive and
+  negative tests. No separate byte-string type is needed by the current subset.
 - [x] Implement and test the `Host` contract for arguments, file reads/writes,
   stdout/stderr, and safe process execution in the JS target.
 - [x] Test host failures as `Result` errors rather than placeholder values.
 
-**Exit:** the agreed integer and host boundaries work. String/byte helpers needed
-by the TinyML-written compiler remain an explicit implementation decision.
+**Exit:** exact integer, text, and host boundaries work. The TinyML-written
+compiler can inspect source text through the bundled `String` API.
 
 ## Phase 6: Complete the Stage 0 JavaScript path — complete
 

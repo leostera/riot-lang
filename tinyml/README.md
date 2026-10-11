@@ -56,9 +56,13 @@ safe process invocation (argument vectors, no shell interpolation).
 
 The Stage 0 subset includes HM inference, top-level recursive functions,
 annotations, selected source imports, tuples, records, recursive variants,
-pattern matching, `unit`, `bool`, strings, and exact `i8/i16/i32/i64` and
-`u8/u16/u32/u64` arithmetic. Integer arithmetic wraps at the annotated width;
-JavaScript lowering uses `BigInt`. `string + string` concatenates. Floating
-point, general FFI, actors, distribution, package management, WASM, and native
-code generation by Stage 0 are unsupported. Unsupported or ill-typed input
-must be rejected rather than treated as successful output.
+pattern matching, `unit`, `bool`, Unicode text strings, and exact
+`i8/i16/i32/i64` and `u8/u16/u32/u64` arithmetic. Integer arithmetic wraps at
+the annotated width; JavaScript lowering uses `BigInt`. `string + string`
+concatenates. The bundled `String` module also provides `concat`, `length`,
+`get`, `slice`, and `equal`; indices count Unicode scalar values, and `get`
+returns `Option<i32>` containing a code point. Host text-file I/O uses strict
+UTF-8 decoding and encoding. Floating point, general FFI, actors, distribution,
+package management, WASM, and native code generation by Stage 0 are
+unsupported. Unsupported or ill-typed input must be rejected rather than
+treated as successful output.

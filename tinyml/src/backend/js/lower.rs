@@ -84,25 +84,35 @@ impl<'a> Lowerer<'a> {
                         .enumerate()
                         .map(pattern_param_name)
                         .collect::<Vec<_>>();
+                    let ir::Expr::Function {
+                        params: outer_params,
+                        body: outer_body,
+                    } = self.lower_curried_function(params, &param_names, body, &HashMap::new())
+                    else {
+                        unreachable!("a function value lowers to a JavaScript function")
+                    };
+                    let result_type = if params.len() == 1 {
+                        &body.ty
+                    } else {
+                        match &value.body.ty {
+                            Type::Arrow { result, .. } => result.as_ref(),
+                            _ => &body.ty,
+                        }
+                    };
+                    let outer_param = params
+                        .first()
+                        .expect("function declarations have at least one parameter");
                     items.push(ir::Item::Function {
                         name,
-                        params: param_names
-                            .iter()
-                            .cloned()
-                            .zip(
-                                params
-                                    .iter()
-                                    .map(|param| Some(self.lower_type(&param.ty, false))),
-                            )
-                            .map(|(name, ty)| ir::Param { name, ty })
+                        params: outer_params
+                            .into_iter()
+                            .map(|name| ir::Param {
+                                name,
+                                ty: Some(self.lower_type(&outer_param.ty, false)),
+                            })
                             .collect(),
-                        return_type: Some(self.lower_type(&body.ty, true)),
-                        body: self.lower_function_body_with_params(
-                            params,
-                            &param_names,
-                            body,
-                            &HashMap::new(),
-                        ),
+                        return_type: Some(self.lower_type(result_type, true)),
+                        body: outer_body,
                     })
                 }
                 _ => items.push(ir::Item::Const {
@@ -146,21 +156,20 @@ impl<'a> Lowerer<'a> {
                     .enumerate()
                     .map(pattern_param_name)
                     .collect::<Vec<_>>();
-                ir::Expr::Function {
-                    params: param_names.clone(),
-                    body: self.lower_function_body_with_params(params, &param_names, body, env),
-                }
+                self.lower_curried_function(params, &param_names, body, env)
             }
             // A standalone let expression carries its value in TIR; block
             // lowering handles the binding and extends the environment.
             lambda::ExprKind::Let { body, .. } => self.lower_expr_with_env(body, env),
-            lambda::ExprKind::Apply { callee, args } => ir::Expr::Call {
-                callee: Box::new(self.lower_expr_with_env(callee, env)),
-                args: args
-                    .iter()
-                    .map(|arg| self.lower_expr_with_env(arg, env))
-                    .collect(),
-            },
+            lambda::ExprKind::Apply { callee, args } => {
+                args.iter()
+                    .fold(self.lower_expr_with_env(callee, env), |callee, arg| {
+                        ir::Expr::Call {
+                            callee: Box::new(callee),
+                            args: vec![self.lower_expr_with_env(arg, env)],
+                        }
+                    })
+            }
             lambda::ExprKind::Prim { op, args } => self.lower_primitive(op, args, env),
             lambda::ExprKind::Tuple(items) => ir::Expr::Array(
                 items
@@ -193,20 +202,32 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn lower_function_body_with_params(
+    fn lower_curried_function(
         &self,
         params: &[lambda::Pattern],
         param_names: &[String],
         body: &lambda::Expr,
         outer_env: &HashMap<String, ir::Expr>,
-    ) -> Vec<ir::Stmt> {
-        let mut stmts = Vec::new();
+    ) -> ir::Expr {
+        let (Some(pattern), Some(name)) = (params.first(), param_names.first()) else {
+            return self.lower_expr_with_env(body, outer_env);
+        };
         let mut env = outer_env.clone();
-        for (pattern, name) in params.iter().zip(param_names) {
-            self.bind_pattern_env(&mut env, pattern, ir::Expr::Var(name.clone()));
+        self.bind_pattern_env(&mut env, pattern, ir::Expr::Var(name.clone()));
+        let function_body = if params.len() == 1 {
+            self.lower_function_body_with_env(body, &env)
+        } else {
+            vec![ir::Stmt::Return(self.lower_curried_function(
+                &params[1..],
+                &param_names[1..],
+                body,
+                &env,
+            ))]
+        };
+        ir::Expr::Function {
+            params: vec![name.clone()],
+            body: function_body,
         }
-        stmts.extend(self.lower_function_body_with_env(body, &env));
-        stmts
     }
 
     fn lower_function_body_with_env(
@@ -1196,7 +1217,7 @@ mod tests {
     }
 
     #[test]
-    fn lowers_function_arity_and_export_declaration() {
+    fn lowers_functions_as_curried_unary_calls_and_exports() {
         let body = lambda::Expr {
             ty: unit_type(),
             kind: lambda::ExprKind::Function {
@@ -1226,8 +1247,10 @@ mod tests {
             .lower_module(&module_with_value("add", body));
         assert!(matches!(
             &js.items[0],
-            ir::Item::Function { params, .. }
-                if params.iter().map(|param| param.name.as_str()).collect::<Vec<_>>() == ["left", "right"]
+            ir::Item::Function { params, body, .. }
+                if params.iter().map(|param| param.name.as_str()).collect::<Vec<_>>() == ["left"]
+                    && matches!(body.as_slice(), [ir::Stmt::Return(ir::Expr::Function { params, .. })]
+                        if params == &["right"])
         ));
         assert!(matches!(
             &js.items[1],

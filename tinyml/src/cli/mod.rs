@@ -304,6 +304,9 @@ fn emit_graph_javascript(pipeline: &CheckedPipeline, root_output: &Path) -> Resu
             tinyml::modules::ModuleKind::Intrinsic(tinyml::modules::IntrinsicModule::Host) => {
                 include_str!("../backend/js/host.mjs").to_string()
             }
+            tinyml::modules::ModuleKind::Intrinsic(tinyml::modules::IntrinsicModule::String) => {
+                include_str!("../backend/js/string.mjs").to_string()
+            }
             tinyml::modules::ModuleKind::Source => {
                 let imports = runtime_imports(module, &pipeline.modules);
                 let imported_constructors = module

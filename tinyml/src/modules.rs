@@ -21,7 +21,9 @@ use crate::parser::{
 const BUNDLED_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib");
 const BUNDLED_STANDARD_LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib/std");
 const BUNDLED_HOST_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib/host.ml");
+const BUNDLED_STRING_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/lib/std/string.ml");
 const HOST_SOURCE: &str = include_str!("../lib/host.ml");
+const STRING_SOURCE: &str = include_str!("../lib/std/string.ml");
 
 const BUNDLED_SOURCES: &[(&str, &str)] = &[
     ("std/prelude.ml", include_str!("../lib/std/prelude.ml")),
@@ -89,6 +91,7 @@ pub enum ModuleKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntrinsicModule {
     Host,
+    String,
 }
 
 /// One parsed module in a dependency-first source graph.
@@ -356,6 +359,13 @@ impl Builder {
                 path: PathBuf::from(BUNDLED_HOST_PATH),
                 kind: ModuleKind::Intrinsic(IntrinsicModule::Host),
                 embedded_source: Some(HOST_SOURCE),
+            }));
+        }
+        if name.components.as_slice() == ["String"] {
+            return Ok(Some(SourceFile {
+                path: PathBuf::from(BUNDLED_STRING_PATH),
+                kind: ModuleKind::Intrinsic(IntrinsicModule::String),
+                embedded_source: Some(STRING_SOURCE),
             }));
         }
 

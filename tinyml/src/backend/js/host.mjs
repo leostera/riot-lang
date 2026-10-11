@@ -39,13 +39,14 @@ const args = () => listFromArray(process.argv.slice(2));
 function read_file(path) {
   if (typeof path !== "string") return err("Host.read_file expects a string path");
   try {
-    return ok(readFileSync(path, "utf8"));
+    const bytes = readFileSync(path);
+    return ok(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch (error) {
     return err(error instanceof Error ? error.message : String(error));
   }
 }
 
-function write_file(path, contents) {
+const write_file = (path) => (contents) => {
   if (typeof path !== "string" || typeof contents !== "string") {
     return err("Host.write_file expects string path and contents");
   }
@@ -55,7 +56,7 @@ function write_file(path, contents) {
   } catch (error) {
     return err(error instanceof Error ? error.message : String(error));
   }
-}
+};
 
 function write_stdout(message) {
   if (typeof message !== "string") throw new TypeError("Host.write_stdout expects a string");
@@ -67,7 +68,7 @@ function write_stderr(message) {
   process.stderr.write(message);
 }
 
-function run_process(program, argumentsList) {
+const run_process = (program) => (argumentsList) => {
   if (typeof program !== "string") {
     return err("Host.run_process expects a string program name");
   }
@@ -84,6 +85,6 @@ function run_process(program, argumentsList) {
   } catch (error) {
     return err(error instanceof Error ? error.message : String(error));
   }
-}
+};
 
 export { args, read_file, write_file, write_stdout, write_stderr, run_process };

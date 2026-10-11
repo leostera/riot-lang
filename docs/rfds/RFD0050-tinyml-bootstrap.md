@@ -158,8 +158,10 @@ definitions, `use` imports, and a documented module-to-source-file mapping.
   inference and let-polymorphism. The polymorphic identity function must
   typecheck and be independently usable at distinct types. Type errors must be
   rejected by the compiler entrypoint.
-- **Primitive values:** `unit`, `bool`, strings/bytes, and all fixed-width
-  integer types `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, and `u64`.
+- **Primitive values:** `unit`, `bool`, Unicode text strings, and all
+  fixed-width integer types `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`,
+  and `u64`. Text files cross the host boundary as strict UTF-8; no separate
+  byte-string primitive is required by the bootstrap subset.
   Floating-point types are not part of Stage 0. Integer literals use an
   expected integer annotation when present and otherwise default to `i32`;
   literals outside the selected type's range are errors. Integer operations
@@ -170,7 +172,10 @@ definitions, `use` imports, and a documented module-to-source-file mapping.
 - **Operators:** arithmetic and comparisons require operands of the same exact
   integer type; there are no implicit signed/unsigned conversions. For
   compatibility with the execution-tested Stage 0 backend, `string + string`
-  remains string concatenation. Other string and byte operations are
+  remains string concatenation. The bundled `String` module provides
+  `concat`, `length`, `get`, `slice`, and `equal`; indices count Unicode scalar
+  values, `get` returns `Option<i32>` containing a code point, and `slice`
+  clamps its half-open range to string bounds. Other text/byte operations are
   standard-library functions, not overloaded arithmetic.
 
 The implementation must not accept an expression after recording a type error
@@ -209,9 +214,10 @@ system.
 
 TinyML ships a small standard library as part of this compiler project. Its
 initial purpose is to support compiler implementations, not to mirror the
-future Riot standard library. It should include only what the compiler needs,
-which is expected to include basic list/option/result types and operations plus
-usable string/byte operations.
+future Riot standard library. It includes the basic list/option/result types
+and operations plus a compiler-focused Unicode text API. A separate byte-string
+abstraction is deferred unless the compiler implementation demonstrates a need
+for it.
 
 The bundled `Host` module is an intrinsic, not a general FFI declaration
 system. `Host.args` excludes the executable name. Its initial contract is:
@@ -227,7 +233,8 @@ Host.run_process  : string -> List<string> -> Result<i32, string>
 
 `run_process` returns the child exit code (including non-zero codes) as `Ok`;
 spawn failures are `Error`. The JS target implements these operations with
-Node APIs, including `child_process` without shell interpolation. The RiotML
+Node APIs, including strict UTF-8 file decoding and `child_process` without
+shell interpolation. The RiotML
 native compiler links a host implementation of the same contract;
 `run_process` lets it invoke the selected native toolchain (Clang is the default
 candidate). Failures return `Result` or cause a non-zero compiler exit, never a
