@@ -221,13 +221,12 @@ impl CEmitter {
                 c_string(&ident_text(name))
             )),
             lambda_ir::ExprKind::Construct { name, args, .. } => {
-                let arguments = self.emit_values(args, environment, &format!("{path}_arg"))?;
-                Ok(format!(
-                    "rt_variant_named({}, {}, {})",
+                let call_prefix = format!(
+                    "rt_variant_named({}, {},",
                     c_string(&ident_text(name)),
-                    args.len(),
-                    arguments
-                ))
+                    args.len()
+                );
+                self.emit_call_with_values(&call_prefix, args, environment, &format!("{path}_arg"))
             }
             lambda_ir::ExprKind::Function { params, body } => {
                 self.emit_function(params, body, environment, path)
@@ -242,8 +241,13 @@ impl CEmitter {
                 self.emit_primitive(op, args, environment, path, expression.span)
             }
             lambda_ir::ExprKind::Tuple(items) => {
-                let values = self.emit_values(items, environment, &format!("{path}_item"))?;
-                Ok(format!("rt_tuple({}, {values})", items.len()))
+                let call_prefix = format!("rt_tuple({},", items.len());
+                self.emit_call_with_values(
+                    &call_prefix,
+                    items,
+                    environment,
+                    &format!("{path}_item"),
+                )
             }
             lambda_ir::ExprKind::Record { name, fields } => {
                 self.emit_record(name, fields, environment, path)
@@ -457,15 +461,13 @@ impl CEmitter {
         Ok(output)
     }
 
-    fn emit_values(
+    fn emit_call_with_values(
         &mut self,
+        call_prefix: &str,
         expressions: &[lambda_ir::Expr],
         environment: &str,
         path: &str,
     ) -> Result<String, EmitError> {
-        if expressions.is_empty() {
-            return Ok("NULL".to_owned());
-        }
         let mut output = String::from("({ ");
         let mut values = Vec::with_capacity(expressions.len());
         for (index, expression) in expressions.iter().enumerate() {
@@ -477,7 +479,8 @@ impl CEmitter {
             values.push(temporary);
         }
         let values = c_value_array(&values);
-        write!(output, "{values}; }})").expect("writing C into a String cannot fail");
+        write!(output, "{call_prefix} {values}); }})")
+            .expect("writing C into a String cannot fail");
         Ok(output)
     }
 
