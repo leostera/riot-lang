@@ -22,6 +22,8 @@ use Backend.Native.Aarch64.PrintMachineIr.{print_function, print_failure}
 use Backend.Native.Aarch64.LowerLinearIr.{lower_function}
 use Backend.Native.Aarch64.VerifyLinearIr.{verify_function}
 use Backend.Native.Aarch64.PrintLinearIr.{print_linear_failure, print_linear_function}
+use Backend.Native.Aarch64.LinearIr.{A64LinearFunction}
+use Backend.Native.Aarch64.Emit.{emit_program}
 use Modules.{
   LoadedModule, load_source_graph, module_source_pairs,
   directory_of, join_path
@@ -446,6 +448,116 @@ let run_aarch64_linear_ir_command = fn source_file -> fn function_name ->
     }
   }
 
+let lower_named_linear_function = fn function_name -> fn substitutions -> fn functions ->
+  match (find_top_level_function function_name functions) {
+    | None -> Err("no top-level function named `" + function_name + "`")
+    | Some(function) -> match (select_function function substitutions) {
+      | Err(failure) -> Err(print_failure failure)
+      | Ok(machine_function) -> match (lower_function machine_function) {
+        | Err(failure) -> Err(print_linear_failure failure)
+        | Ok(linear_function) -> match (verify_function linear_function) {
+          | Err(reason) -> Err("AArch64 LinearIR verification failed: " + reason)
+          | Ok(_) -> Ok(linear_function)
+        }
+      }
+    }
+  }
+
+let remove_native_output = fn output ->
+  match (run_process "/bin/rm" (Cons("-f", Cons("--", Cons(output, Nil))))) {
+    | Err(message) -> Err("cannot remove stale output: " + message)
+    | Ok(0) -> Ok(())
+    | Ok(_) -> Err("cannot remove stale output")
+  }
+
+let prepare_native_outputs = fn output -> fn assembly_path ->
+  match (remove_native_output output) {
+    | Err(message) -> Err(message)
+    | Ok(_) -> remove_native_output assembly_path
+  }
+
+let fail_native_link = fn output -> fn message -> {
+  let cleanup = remove_native_output output;
+  match cleanup {
+    | Ok(_) -> {
+      write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+      1
+    }
+    | Err(cleanup_error) -> {
+      write_stderr ("riotml: AArch64 Codegen: " + message + "; " + cleanup_error + "\n");
+      1
+    }
+  }
+}
+
+let run_native_linker = fn assembly_path -> fn output ->
+  match (run_process "clang" (Cons("-target", Cons("arm64-apple-macosx26.0",
+    Cons(assembly_path, Cons("-o", Cons(output, Nil))))))) {
+    | Err(message) -> fail_native_link output ("cannot run Clang: " + message)
+    | Ok(0) -> 0
+    | Ok(_) -> fail_native_link output "Clang assembler/linker failed"
+  }
+
+let run_aarch64_compile_function_command = fn source_file -> fn function_name -> fn output -> {
+  let assembly_path = output + ".aarch64.s";
+  match (equal source_file output) {
+    | true -> {
+      write_stderr "riotml: AArch64 Codegen: source and executable paths must differ\n";
+      1
+    }
+    | false -> match (equal source_file assembly_path) {
+      | true -> {
+        write_stderr "riotml: AArch64 Codegen: source and assembly paths must differ\n";
+        1
+      }
+      | false -> match (prepare_native_outputs output assembly_path) {
+        | Err(message) -> {
+          write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+          1
+        }
+        | Ok(_) -> match (native_ir_modules_for_file source_file) {
+          | Err(error) -> report_error error
+          | Ok(native_modules) -> match (find_native_module source_file native_modules) {
+            | None -> {
+              write_stderr ("riotml: AArch64 Codegen found no module for " + source_file + "\n");
+              1
+            }
+            | Some(NativeModule {
+                module_identity: _, nominal_types: _, substitutions, globals: _,
+                initializer: _, functions
+              }) -> match (lower_named_linear_function function_name substitutions functions) {
+              | Err(message) -> {
+                write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+                1
+              }
+              | Ok(linear_function) -> {
+                let A64LinearFunction {
+                  identity, result_type: _, entry: _, values: _, frame_size: _,
+                  items: _, span: _
+                } = linear_function;
+                match (emit_program (Cons(linear_function, Nil)) identity) {
+                  | Err(message) -> {
+                    write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+                    1
+                  }
+                  | Ok(assembly) -> match (write_file assembly_path assembly) {
+                    | Err(message) -> {
+                      write_stderr ("riotml: AArch64 Codegen: cannot write assembly: "
+                        + message + "\n");
+                      1
+                    }
+                    | Ok(_) -> run_native_linker assembly_path output
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 let parse_compile_request = fn arguments ->
   match arguments {
     | Cons("compile", Cons(source, Cons("-o", Cons(output, Nil)))) ->
@@ -453,11 +565,14 @@ let parse_compile_request = fn arguments ->
         source_path: SourcePath(source),
         output_path: ExecutablePath(output)
       })
-    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION | aarch64-linear-ir SOURCE FUNCTION")
+    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION | aarch64-linear-ir SOURCE FUNCTION | aarch64-compile-function SOURCE FUNCTION -o OUTPUT")
   }
 
 let main = fn () -> match (args ()) {
   | Cons("native-ir", Cons(source_file, Nil)) -> run_native_ir_command source_file
+  | Cons("aarch64-compile-function", Cons(source_file,
+      Cons(function_name, Cons("-o", Cons(output, Nil))))) ->
+    run_aarch64_compile_function_command source_file function_name output
   | Cons("aarch64-mir", Cons(source_file, Cons(function_name, Nil))) ->
     run_aarch64_mir_command source_file function_name
   | Cons("aarch64-linear-ir", Cons(source_file, Cons(function_name, Nil))) ->

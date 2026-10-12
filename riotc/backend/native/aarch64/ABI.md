@@ -65,12 +65,14 @@ native_fn(environment: pointer, argument?: ValueRep) -> ResultRep?
   `x1`). Direct and indirect calls use the same convention. No aggregate-
   by-value convention or `RtValue`-shaped internal signature is introduced.
 
-The OS entry point is a small C-ABI-compatible wrapper. It receives
-`argc`/`argv`, initializes the C runtime's process/runtime-directory state,
-initializes Riot module globals, invokes the mangled native Riot `main` with a
-null environment and erased unit argument, and returns its `i32` result as the
-process status. The source binding named `main` is not emitted as the Mach-O
-entry symbol.
+The intended whole-program OS entry point is a small C-ABI-compatible wrapper.
+It receives `argc`/`argv`, initializes the C runtime's process/runtime-directory
+state, initializes Riot module globals, invokes the mangled native Riot `main`
+with a null environment and erased unit argument, and returns its `i32` result
+as the process status. The source binding named `main` is not emitted as the
+Mach-O entry symbol. This complete adapter is not implemented yet: the current
+Codegen test harness emits a synthetic `_main` for one selected function and
+does not initialize runtime state or module globals.
 
 ## Implemented LinearIR subset (2026-10-12)
 
@@ -82,8 +84,8 @@ shape while deliberately using an all-spill allocator:
   spill-all strategy, not a boxed `RtValue` representation or a claim about
   eventual aggregate memory layout.
 - Spill offsets are four-byte aligned from the allocated stack-frame `sp`;
-  the local frame size is rounded up to 16 bytes. The function prologue and
-  frame-record save are Codegen responsibilities and are not yet implemented.
+  the local frame size is rounded up to 16 bytes. Current Codegen saves/restores
+  `x29`/`x30`, allocates that frame, and emits the epilogue at returns.
 - Reloaded values and selected operations use caller-saved `w9`/`w10`/`w11`.
   The initial lowering allocates no callee-saved registers. Values are
   reloaded before use and written back after definitions, so control-flow
@@ -99,11 +101,16 @@ shape while deliberately using an all-spill allocator:
   structure, and all branch labels. Unsupported closure-environment calls
   and Host helper calls fail before Codegen; Host marshalling to/from `RtValue`
   is not implemented by this slice.
+- `emit.ml` lowers this verified slice to AArch64 instructions and emits
+  distinct `brk` immediates for the current semantic trap pseudos. This is a
+  machine trap sequence only; it does not yet reproduce the C runtime's trap
+  reporting or diagnostics.
 
 This conservative policy validates the first ABI lowering but is not the full
-native backend. Narrow integer widths, pointers/composites, closures, Host
-helpers, the entry adapter, and assembly emission remain outside the current
-LIR slice.
+native backend. Narrow integer widths, pointers/composites, closures, and Host
+helpers remain outside the current LIR slice. The selected-function harness
+assembles and links with Clang for the approved target, but it is not the
+whole-module entry adapter described above.
 
 The native closure code-pointer convention is distinct from the C runtime's
 legacy `RtFunction` type. Native closure values must not be passed to

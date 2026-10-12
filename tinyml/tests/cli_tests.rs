@@ -396,6 +396,157 @@ fn aarch64_linear_ir_abi_and_control_flow_fixtures_execute() {
     assert!(printed.contains("unit_return@0 -> unit entry .Lbb0 frame 0"));
 }
 
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[test]
+fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let compiler_source = include_dir.join("main.ml");
+    let dir = temp_dir("aarch64-codegen");
+    let compiler_js = dir.join("riotc.mjs");
+    let stage0 = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&compiler_js)
+        .arg(&compiler_source)
+        .output()
+        .unwrap();
+    assert!(
+        stage0.status.success(),
+        "Stage 0 compiler stderr: {}",
+        String::from_utf8_lossy(&stage0.stderr)
+    );
+
+    let runner = dir.join("run-compiler.mjs");
+    fs::write(
+        &runner,
+        "import { main } from \"./riotc.mjs\"; process.exitCode = Number(main(undefined));\n",
+    )
+    .unwrap();
+    let source = dir.join("main.ml");
+    fs::write(&source, "let main = fn () -> 42\n").unwrap();
+    let executable = dir.join("main.native");
+    let compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&source)
+        .arg("main")
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "owned Codegen/link failed: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let assembly = fs::read_to_string(executable.with_file_name("main.native.aarch64.s")).unwrap();
+    assert!(assembly.contains(".section __TEXT,__text,regular,pure_instructions"));
+    assert!(assembly.contains("_main:"));
+    assert!(assembly.contains("stp x29, x30"));
+    assert!(assembly.contains("ldr w9, =42"));
+    assert!(assembly.contains("brk #260"));
+    let run = Command::new(&executable).output().unwrap();
+    assert_eq!(run.status.code(), Some(42));
+
+    let ill_typed_source = dir.join("ill-typed.ml");
+    fs::write(&ill_typed_source, "let main = fn () -> true + 1\n").unwrap();
+    let failed_output = dir.join("ill-typed.native");
+    let failed_assembly = dir.join("ill-typed.native.aarch64.s");
+    fs::write(&failed_output, b"stale output must not survive").unwrap();
+    fs::write(&failed_assembly, b"stale assembly must not survive").unwrap();
+    let rejected = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&ill_typed_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&failed_output)
+        .output()
+        .unwrap();
+    assert!(
+        !rejected.status.success(),
+        "ill-typed source unexpectedly compiled"
+    );
+    assert!(
+        !failed_output.exists(),
+        "failed native compilation left a plausible executable"
+    );
+    assert!(
+        !failed_assembly.exists(),
+        "failed native compilation left stale assembly"
+    );
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr).contains("type error"),
+        "unexpected typechecking diagnostic: {}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+
+    let unsupported_source = dir.join("unsupported.ml");
+    fs::write(&unsupported_source, "let main = fn () -> 7 / 2\n").unwrap();
+    let unsupported_output = dir.join("unsupported.native");
+    let unsupported_assembly = dir.join("unsupported.native.aarch64.s");
+    fs::write(&unsupported_output, b"stale output must not survive").unwrap();
+    fs::write(&unsupported_assembly, b"stale assembly must not survive").unwrap();
+    let unsupported = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&unsupported_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&unsupported_output)
+        .output()
+        .unwrap();
+    assert!(
+        !unsupported.status.success(),
+        "unsupported division unexpectedly compiled"
+    );
+    assert!(!unsupported_output.exists());
+    assert!(!unsupported_assembly.exists());
+    assert!(
+        String::from_utf8_lossy(&unsupported.stderr)
+            .contains("division selection awaits explicit divide-by-zero trap lowering")
+    );
+
+    let fake_bin = dir.join("fake-bin");
+    fs::create_dir_all(&fake_bin).unwrap();
+    let fake_clang = fake_bin.join("clang");
+    fs::write(
+        &fake_clang,
+        "#!/bin/sh\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = \"-o\" ]; then\n    shift\n    printf 'partial link output' > \"$1\"\n    exit 1\n  fi\n  shift\ndone\nexit 1\n",
+    )
+    .unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(&fake_clang, fs::Permissions::from_mode(0o755)).unwrap();
+    let linker_failure_output = dir.join("linker-failure.native");
+    let original_path = std::env::var_os("PATH").unwrap_or_default();
+    let test_path = format!("{}:{}", fake_bin.display(), original_path.to_string_lossy());
+    let linker_failure = Command::new("node")
+        .env("PATH", test_path)
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&source)
+        .arg("main")
+        .arg("-o")
+        .arg(&linker_failure_output)
+        .output()
+        .unwrap();
+    assert!(!linker_failure.status.success());
+    assert!(
+        !linker_failure_output.exists(),
+        "failed linker left a partial executable"
+    );
+    assert!(
+        String::from_utf8_lossy(&linker_failure.stderr).contains("Clang assembler/linker failed")
+    );
+}
+
 #[test]
 fn aarch64_machine_ir_scalar_selection_fixtures_execute() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();

@@ -58,23 +58,52 @@ closure environment and Host helpers requiring `RtValue` marshalling are
 rejected before Codegen. Pointer/composite values and narrow integer widths
 are not yet selected for this LinearIR.
 
-## Codegen status
+## Codegen
 
-AArch64 assembly Codegen, the external `main` adapter, trap sequences, and
-assembler/linker invocation are not implemented yet. LinearIR's `mov_imm`,
-`cmp_set`, logical direct-call target, and trap forms are inspectable pseudos,
-not assembler input. The owned pipeline remains incomplete; unsupported
-RiotML operations must be rejected before Codegen, never emitted as C. The
-existing C-plus-Clang source backend remains a separate measured baseline.
+`emit.ml` emits textual AArch64 Mach-O assembly from verified LinearIR. It
+lowers spill loads/stores, scalar arithmetic/comparisons, branches, direct
+calls with symbols in the supplied function set, frame prologues/epilogues,
+and trap pseudos. Block labels are function-qualified. `NativeTrapKind`
+currently becomes a distinct `brk` immediate; runtime-compatible trap
+reporting is not yet implemented.
+
+Exercise the current function-level path with:
+
+```sh
+riotml aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT
+```
+
+It writes inspectable assembly to `OUTPUT.aarch64.s`, then invokes Clang for
+`arm64-apple-macosx26.0` to assemble and link `OUTPUT`. The synthetic external
+`_main` adapter accepts only an erased unit/no source argument and an `i32`
+result; it sets the hidden environment to null, calls the selected Riot
+function, and returns its status. Existing output is removed before the
+attempt, and a failed Clang invocation removes any partial executable.
+
+This command is deliberately a **single-function Codegen harness**, not a
+whole-module native compiler. It selects and verifies only the named function;
+it does not emit module initializers, globals, closure creation, runtime/Host
+helper marshalling, or other functions. Direct calls fail unless their target
+is present in the Codegen function set (currently one function for this CLI).
+Codegen currently rejects frames larger than 16,380 bytes, the largest
+all-spill frame supported by its immediate addressing sequence.
+
+The harness is useful for exercising assembly and linking but does not prove
+that module initialization or the complete compiler source graph works. Those
+unsupported constructs must remain explicit failures in a future whole-module
+command, never C fallback. The existing C-plus-Clang source backend remains a
+separate measured baseline.
 
 The approved macOS AArch64 target, complete intended value classes, internal
 function convention, and C runtime/Host helper boundary are recorded in
 [`ABI.md`](ABI.md). The current C-first Stage 0 bridge is separate from both
 MachineIR and LinearIR.
 
-Run the executable tests for the selection and LinearIR fixtures with:
+Run the executable tests for selection, LinearIR, and the AArch64
+Codegen/link harness with:
 
 ```sh
 cargo test -p tinyml --test cli_tests aarch64_machine_ir
 cargo test -p tinyml --test cli_tests aarch64_linear_ir_abi_and_control_flow_fixtures_execute
+cargo test -p tinyml --test cli_tests aarch64_codegen_assembles_links_and_removes_failed_outputs
 ```
