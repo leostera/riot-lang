@@ -2836,6 +2836,27 @@ let main = fn () -> match (args ()) {
 }
 
 #[test]
+fn compile_c_rejects_type_errors_before_writing_output() {
+    let dir = temp_dir("compile-c-type-error");
+    let source = dir.join("invalid.ml");
+    let output = dir.join("invalid.c");
+    fs::write(&source, "let main = fn () -> (true: i32)\n").unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(!compile.status.success());
+    assert!(!output.exists(), "type error left a C artifact");
+    assert!(String::from_utf8_lossy(&compile.stderr).contains("typecheck failed"));
+}
+
+#[test]
 fn compile_c_rejects_unsupported_input_without_writing_output() {
     let dir = temp_dir("compile-c-reject");
     let source = dir.join("main.ml");
