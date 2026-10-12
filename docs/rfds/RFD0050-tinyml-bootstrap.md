@@ -447,10 +447,10 @@ TinyML can implement the Riot compiler.
   are intentionally narrower than the full system and exist to reach a useful
   next stage. The same principle applies here, though TinyML's next stage is a
   Riot compiler written in TinyML.
-- RFD0049 frames Riot ML as a language project and treats the current prototype
-  as bootstrap material and evidence, rather than as a permanent product
-  definition. This RFD narrows that broad direction to the concrete TinyML
-  bootstrap contract.
+- [RFD0049 - Becoming a Language](RFD0049-becoming-a-language.md) frames Riot
+  ML as a language project and treats the current prototype as bootstrap
+  material and evidence, rather than as a permanent product definition. This
+  RFD narrows that broad direction to the concrete TinyML bootstrap contract.
 
 ## Decisions and remaining questions
 [decisions-and-remaining-questions]: #decisions-and-remaining-questions
