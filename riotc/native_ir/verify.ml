@@ -25,7 +25,7 @@ use NativeIr.Ir.{
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeCallOperation, NativeCall, NativeClosureCall, NativeCallTarget,
   NativeDirectCall, NativeHostCall, NativeCreateClosure, NativeClosure,
-  NativeCreateAggregate, NativeAggregate, NativeAggregateKind,
+  NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeAggregateKind,
   NativeTupleAggregate, NativeRecordAggregate, NativeVariantAggregate,
   NativeProjectAggregate, NativeProjection, NativeAggregateField,
   NativeTupleField, NativeRecordField, NativeConstructorField,
@@ -583,6 +583,12 @@ let append_optional_target = fn target -> fn values -> match target {
   | Some(value) -> Cons(value, values)
 }
 
+let aggregate_operand_values = fn fields -> match fields {
+  | Nil -> Nil
+  | Cons(NativeAggregateValue { field: _, value }, remaining) ->
+    Cons(value, aggregate_operand_values remaining)
+}
+
 let operation_operands = fn operation -> match operation {
   | NativeConstant(_) -> Nil
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
@@ -598,7 +604,8 @@ let operation_operands = fn operation -> match operation {
       | NativeHostCall(_) -> arguments
     }
   | NativeCreateClosure(NativeClosure { function: _, captures }) -> captures
-  | NativeCreateAggregate(NativeAggregate { kind: _, fields }) -> fields
+  | NativeCreateAggregate(NativeAggregate { kind: _, fields }) ->
+    aggregate_operand_values fields
   | NativeProjectAggregate(NativeProjection { aggregate, field: _ }) -> Cons(aggregate, Nil)
   | NativeTestValue(NativeValueTest { value, test: _ }) -> Cons(value, Nil)
   | NativeLoadCapture(_) -> Nil
@@ -845,16 +852,24 @@ let type_at = fn index -> fn types -> match types {
   }
 }
 
-let verify_tuple_aggregate_fields = fn values -> fn types -> fn definitions ->
-  fn substitutions -> match values {
-    | Nil -> match types { | Nil -> Ok(true) | _ -> Err("NativeIR verifier: tuple aggregate arity mismatch") }
-    | Cons(value, remaining_values) -> match types {
+let verify_tuple_aggregate_fields = fn fields -> fn types -> fn definitions ->
+  fn substitutions -> fn index -> match fields {
+    | Nil -> match types {
+      | Nil -> Ok(true)
+      | _ -> Err("NativeIR verifier: tuple aggregate arity mismatch")
+    }
+    | Cons(NativeAggregateValue { field, value }, remaining_fields) -> match types {
       | Nil -> Err("NativeIR verifier: tuple aggregate arity mismatch")
-      | Cons(expected_type, remaining_types) -> match (same_value_type
-          value expected_type definitions substitutions) {
-        | Err(message) -> Err(message)
-        | Ok(_) -> verify_tuple_aggregate_fields remaining_values remaining_types
-            definitions substitutions
+      | Cons(expected_type, remaining_types) -> match field {
+        | NativeTupleField(field_index) -> match (field_index == index) {
+          | false -> Err("NativeIR verifier: tuple aggregate field index is not canonical")
+          | true -> match (same_value_type value expected_type definitions substitutions) {
+            | Err(message) -> Err(message)
+            | Ok(_) -> verify_tuple_aggregate_fields remaining_fields remaining_types
+                definitions substitutions (index + 1)
+          }
+        }
+        | _ -> Err("NativeIR verifier: tuple aggregate has a non-tuple field key")
       }
     }
   }
@@ -1232,6 +1247,30 @@ let verify_projection_type = fn aggregate -> fn field -> fn result_type ->
     }
   }
 
+let verify_aggregate_field_keys = fn kind -> fn fields -> fn index -> match fields {
+  | Nil -> Ok(true)
+  | Cons(NativeAggregateValue { field, value: _ }, remaining) -> match kind {
+    | NativeTupleAggregate -> match field {
+      | NativeTupleField(field_index) -> match (field_index == index) {
+        | true -> verify_aggregate_field_keys kind remaining (index + 1)
+        | false -> Err("NativeIR verifier: tuple aggregate field index is not canonical")
+      }
+      | _ -> Err("NativeIR verifier: tuple aggregate has a non-tuple field key")
+    }
+    | NativeRecordAggregate(_) -> match field {
+      | NativeRecordField(_) -> verify_aggregate_field_keys kind remaining (index + 1)
+      | _ -> Err("NativeIR verifier: record aggregate has a non-record field key")
+    }
+    | NativeVariantAggregate(_) -> match field {
+      | NativeConstructorField(field_index) -> match (field_index == index) {
+        | true -> verify_aggregate_field_keys kind remaining (index + 1)
+        | false -> Err("NativeIR verifier: constructor aggregate field index is not canonical")
+      }
+      | _ -> Err("NativeIR verifier: constructor aggregate has a non-constructor field key")
+    }
+  }
+}
+
 let verify_instruction_operation = fn module -> fn (NativeInstruction {
   result: _, result_type, operation, effects: _, span: _
 }) -> fn definitions -> fn substitutions -> match operation {
@@ -1283,15 +1322,19 @@ let verify_instruction_operation = fn module -> fn (NativeInstruction {
               }
             }
           }
-        | NativeCreateAggregate(NativeAggregate { kind, fields }) -> match kind {
-          | NativeTupleAggregate -> match (apply_substitutions result_type substitutions) {
-            | InferredTuple(types) -> verify_tuple_aggregate_fields fields types
-                definitions substitutions
-            | _ -> Err("NativeIR verifier: tuple aggregate has a non-tuple result type")
+        | NativeCreateAggregate(NativeAggregate { kind, fields }) ->
+          match (verify_aggregate_field_keys kind fields 0) {
+            | Err(message) -> Err(message)
+            | Ok(_) -> match kind {
+              | NativeTupleAggregate -> match (apply_substitutions result_type substitutions) {
+                | InferredTuple(types) -> verify_tuple_aggregate_fields fields types
+                    definitions substitutions 0
+                | _ -> Err("NativeIR verifier: tuple aggregate has a non-tuple result type")
+              }
+              | NativeRecordAggregate(_) -> Ok(true)
+              | NativeVariantAggregate(_) -> Ok(true)
+            }
           }
-          | NativeRecordAggregate(_) -> Ok(true)
-          | NativeVariantAggregate(_) -> Ok(true)
-        }
         | NativeProjectAggregate(NativeProjection { aggregate, field }) ->
           verify_projection_type aggregate field result_type definitions substitutions
         | NativeTestValue(_) -> verify_named_result result_type "bool" substitutions

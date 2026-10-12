@@ -37,8 +37,8 @@ use NativeIr.Ir.{
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeCallOperation,
   NativeCall, NativeClosureCall, NativeCallTarget, NativeCreateClosure,
-  NativeClosure, NativeCreateAggregate, NativeAggregate, NativeAggregateKind,
-  NativeTupleAggregate, NativeRecordAggregate, NativeVariantAggregate,
+  NativeClosure, NativeCreateAggregate, NativeAggregate, NativeAggregateValue,
+  NativeAggregateKind, NativeTupleAggregate, NativeRecordAggregate, NativeVariantAggregate,
   NativeProjectAggregate, NativeProjection, NativeAggregateField,
   NativeTupleField, NativeRecordField, NativeConstructorField,
   NativeTestValue, NativeValueTest, NativeTest, NativeLiteralTest,
@@ -717,7 +717,7 @@ type NativeLoweredValues = NativeLoweredValues {
 }
 
 type NativeLoweredFields = NativeLoweredFields {
-  values: List<NativeValueId>,
+  fields: List<NativeAggregateValue>,
   builder: NativeFunctionBuilder
 }
 
@@ -754,16 +754,19 @@ let lower_expression_list = fn expressions -> fn builder -> match expressions {
 }
 
 let lower_record_expression_fields = fn fields -> fn builder -> match fields {
-  | Nil -> Ok(NativeLoweredFields { values: Nil, builder: builder })
-  | Cons(LambdaRecordFieldValue { name: _, value }, remaining) ->
+  | Nil -> Ok(NativeLoweredFields { fields: Nil, builder: builder })
+  | Cons(LambdaRecordFieldValue { name, value }, remaining) ->
     match (lower_expression value builder) {
       | Err(message) -> Err(message)
       | Ok(NativeLoweredValue { value: field_value, checked_type: _, builder: next_builder }) ->
         match (lower_record_expression_fields remaining next_builder) {
           | Err(message) -> Err(message)
-          | Ok(NativeLoweredFields { values, builder: final_builder }) ->
+          | Ok(NativeLoweredFields { fields, builder: final_builder }) ->
             Ok(NativeLoweredFields {
-              values: Cons(field_value, values),
+              fields: Cons(NativeAggregateValue {
+                field: NativeRecordField(name),
+                value: field_value
+              }, fields),
               builder: final_builder
             })
         }
@@ -1089,13 +1092,29 @@ let lower_negate_expression = fn operand_type -> fn operand -> fn result_type ->
         }))) (NativeEffectSet(Nil)) span operand_builder
   }
 
+let tuple_aggregate_fields = fn values -> fn index -> match values {
+  | Nil -> Nil
+  | Cons(value, remaining) -> Cons(NativeAggregateValue {
+    field: NativeTupleField(index),
+    value: value
+  }, tuple_aggregate_fields remaining (index + 1))
+}
+
+let constructor_aggregate_fields = fn values -> fn index -> match values {
+  | Nil -> Nil
+  | Cons(value, remaining) -> Cons(NativeAggregateValue {
+    field: NativeConstructorField(index),
+    value: value
+  }, constructor_aggregate_fields remaining (index + 1))
+}
+
 let lower_tuple_expression = fn expressions -> fn result_type -> fn span -> fn builder ->
   match (lower_expression_list expressions builder) {
     | Err(message) -> Err(message)
     | Ok(NativeLoweredValues { values, builder: values_builder }) ->
       emit_instruction result_type (NativeCreateAggregate(NativeAggregate {
         kind: NativeTupleAggregate,
-        fields: values
+        fields: tuple_aggregate_fields values 0
       })) (NativeEffectSet(Cons(NativeAllocate, Nil))) span values_builder
   }
 
@@ -1105,17 +1124,17 @@ let lower_construct_expression = fn entity -> fn expressions -> fn result_type -
     | Ok(NativeLoweredValues { values, builder: values_builder }) ->
       emit_instruction result_type (NativeCreateAggregate(NativeAggregate {
         kind: NativeVariantAggregate(entity),
-        fields: values
+        fields: constructor_aggregate_fields values 0
       })) (NativeEffectSet(Cons(NativeAllocate, Nil))) span values_builder
   }
 
 let lower_record_expression = fn entity -> fn fields -> fn result_type -> fn span ->
   fn builder -> match (lower_record_expression_fields fields builder) {
     | Err(message) -> Err(message)
-    | Ok(NativeLoweredFields { values, builder: fields_builder }) ->
+    | Ok(NativeLoweredFields { fields, builder: fields_builder }) ->
       emit_instruction result_type (NativeCreateAggregate(NativeAggregate {
         kind: NativeRecordAggregate(entity),
-        fields: values
+        fields: fields
       })) (NativeEffectSet(Cons(NativeAllocate, Nil))) span fields_builder
   }
 

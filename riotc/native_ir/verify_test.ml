@@ -3,7 +3,7 @@ use Prelude.{List, Nil, Cons, Result, Ok, Err}
 use Syntax.Ast.{ValueName, IntegerLiteral, Addition, Division}
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
-  InferenceType, AppliedType, InferredNamedType, BindingIdentity,
+  InferenceType, AppliedType, InferredNamedType, InferredTuple, BindingIdentity,
   ModuleValueBinding
 }
 use NativeIr.Ir.{
@@ -12,7 +12,8 @@ use NativeIr.Ir.{
   NativeBlock, NativeBlockParameter, NativeInstruction, NativeOperation,
   NativeConstant, NativeUnit, NativeInteger, NativeBoolean, NativeString,
   NativePrimitiveOperation, NativePrimitiveBinary, NativeBinaryPrimitive,
-  NativeEffectSet, NativeEffect, NativeMayTrap, NativeDivisionByZero,
+  NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeTupleAggregate,
+  NativeTupleField, NativeEffectSet, NativeEffect, NativeMayTrap, NativeDivisionByZero,
   NativeAllocate, NativeEdge, NativeJump, NativeConditionalBranch,
   NativeBranch, NativeReturn, NativeTrap, NativePatternFailure,
   NativeTerminator
@@ -24,6 +25,7 @@ let source_span = SourceSpan { start_codepoint: 0, end_codepoint: 1 }
 let unit_type = AppliedType(InferredNamedType { name: "unit", arguments: Nil })
 let int_type = AppliedType(InferredNamedType { name: "i32", arguments: Nil })
 let bool_type = AppliedType(InferredNamedType { name: "bool", arguments: Nil })
+let tuple_type = InferredTuple(Cons(int_type, Cons(bool_type, Nil)))
 let initializer_id = NativeModuleInitializer(module_name)
 let test_binding = BindingIdentity {
   source_path: module_name,
@@ -200,6 +202,28 @@ let valid_division_effect_function = division_function
 let valid_trap_function = fixture_function unit_type (NativeBlockId(0))
   (Cons(block 0 (Nil) (Nil) (NativeTrap(NativePatternFailure)), Nil))
 
+let tuple_aggregate_function = fn first_index -> {
+  let first = instruction (NativeValueId(0)) int_type
+    (NativeConstant(NativeInteger(IntegerLiteral("7")))) (NativeEffectSet(Nil));
+  let second = instruction (NativeValueId(1)) bool_type
+    (NativeConstant(NativeBoolean(true))) (NativeEffectSet(Nil));
+  let aggregate = instruction (NativeValueId(2)) tuple_type
+    (NativeCreateAggregate(NativeAggregate {
+      kind: NativeTupleAggregate,
+      fields: Cons(NativeAggregateValue {
+        field: NativeTupleField(first_index), value: NativeValueId(0)
+      }, Cons(NativeAggregateValue {
+        field: NativeTupleField(1), value: NativeValueId(1)
+      }, Nil))
+    })) (NativeEffectSet(Cons(NativeAllocate, Nil)));
+  fixture_function tuple_type (NativeBlockId(0)) (Cons(block 0 (Nil)
+    (Cons(first, Cons(second, Cons(aggregate, Nil))))
+    (NativeReturn(NativeValueId(2))), Nil))
+}
+
+let valid_tuple_aggregate_function = tuple_aggregate_function 0
+let bad_tuple_aggregate_function = tuple_aggregate_function 1
+
 let run_existing_tests = fn () -> both
   (expect_ok (verify_module (fixture_module valid_join_function)))
   (both (expect_error (verify_module (fixture_module bad_undefined_function)))
@@ -230,7 +254,9 @@ let bad_branch_condition_function = fixture_function int_type (NativeBlockId(0))
 
 let run_tests = fn () -> both (run_existing_tests ())
   (both (expect_error (verify_module (fixture_module bad_constant_result_type_function)))
-    (expect_error (verify_module (fixture_module bad_branch_condition_function))))
+  (both (expect_error (verify_module (fixture_module bad_branch_condition_function)))
+  (both (expect_ok (verify_module (fixture_module valid_tuple_aggregate_function)))
+    (expect_error (verify_module (fixture_module bad_tuple_aggregate_function))))))
 
 let both = fn first -> fn second -> match first {
   | false -> false

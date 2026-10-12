@@ -23,7 +23,7 @@ use NativeIr.Ir.{
   NativePrimitiveBinary, NativePrimitiveNegate, NativeBinaryPrimitive,
   NativeNegatePrimitive, NativeCallOperation, NativeCall, NativeClosureCall,
   NativeDirectCall, NativeHostCall, NativeCreateClosure, NativeClosure,
-  NativeCreateAggregate, NativeAggregate, NativeTupleAggregate,
+  NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeTupleAggregate,
   NativeRecordAggregate, NativeVariantAggregate, NativeProjectAggregate,
   NativeProjection, NativeTupleField, NativeRecordField, NativeConstructorField,
   NativeTestValue, NativeValueTest, NativeTest, NativeLiteralTest,
@@ -237,6 +237,15 @@ let print_values = fn values -> match values {
   }
 }
 
+let print_aggregate_fields = fn fields -> match fields {
+  | Nil -> ""
+  | Cons(NativeAggregateValue { field, value }, remaining) -> match remaining {
+    | Nil -> print_field field + "=" + value_id value
+    | _ -> print_field field + "=" + value_id value + ", "
+      + print_aggregate_fields remaining
+  }
+}
+
 let print_operation = fn operation -> match operation {
   | NativeConstant(constant) -> "const " + print_constant constant
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
@@ -252,7 +261,7 @@ let print_operation = fn operation -> match operation {
   | NativeCreateClosure(NativeClosure { function, captures }) -> "closure "
     + print_function_id function + " captures [" + print_values captures + "]"
   | NativeCreateAggregate(NativeAggregate { kind, fields }) -> print_aggregate_kind kind
-    + " [" + print_values fields + "]"
+    + " [" + print_aggregate_fields fields + "]"
   | NativeProjectAggregate(NativeProjection { aggregate, field }) -> "project "
     + value_id aggregate + "." + print_field field
   | NativeTestValue(NativeValueTest { value, test }) -> "test " + value_id value

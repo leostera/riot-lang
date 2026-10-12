@@ -124,7 +124,12 @@ type NativeClosure = NativeClosure {
 
 type NativeAggregate = NativeAggregate {
   kind: NativeAggregateKind,
-  fields: List<NativeValueId>
+  fields: List<NativeAggregateValue>
+}
+
+type NativeAggregateValue = NativeAggregateValue {
+  field: NativeAggregateField,
+  value: NativeValueId
 }
 
 type NativeAggregateKind =
