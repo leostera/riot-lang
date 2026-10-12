@@ -2701,18 +2701,21 @@ fn compile_c_preserves_host_file_and_process_behavior() {
     let source = dir.join("main.ml");
     let generated_c = dir.join("main.c");
     let executable = dir.join("main");
-    let output_file = dir.join("roundtrip.txt");
+    let output_file = dir.join("round trip.txt");
     fs::write(
         &source,
         r#"use Host.{args, write_file, read_file, run_process}
 use Prelude.{Cons, Nil, Ok}
-let check_process = fn () -> match (run_process "/usr/bin/true" Nil) {
-  | Ok(0) -> match (run_process "/usr/bin/false" Nil) { | Ok(1) -> 42 | _ -> 0 }
+let check_process = fn path -> match (run_process "/bin/test" (Cons("-f", Cons(path, Nil)))) {
+  | Ok(0) -> match (run_process "/usr/bin/true" Nil) {
+      | Ok(0) -> match (run_process "/usr/bin/false" Nil) { | Ok(1) -> 42 | _ -> 0 }
+      | _ -> 0
+    }
   | _ -> 0
 }
 let main = fn () -> match (args ()) {
   | Cons(path, Nil) -> match (write_file path "✓") {
-      | Ok(_) -> match (read_file path) { | Ok("✓") -> check_process () | _ -> 0 }
+      | Ok(_) -> match (read_file path) { | Ok("✓") -> check_process path | _ -> 0 }
       | _ -> 0
     }
   | _ -> 0
