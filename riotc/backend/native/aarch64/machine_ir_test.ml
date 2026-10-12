@@ -18,7 +18,8 @@ use NativeIr.Ir.{
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeNegatePrimitive, NativeBinaryPrimitive,
   NativeCallOperation, NativeCall, NativeDirectCall, NativeTestValue,
-  NativeValueTest, NativePatternMatchTest, NativeLiteralPatternTest,
+  NativeValueTest, NativeLiteralTest, NativePatternMatchTest,
+  NativeLiteralPatternTest,
   NativeHostCall, NativeUnknownCall, NativeHostRead, NativeEffectSet,
   NativeEffect, NativeMayTrap,
   NativeDivisionByZero, NativeRemainderByZero, NativeExplicitTrap,
@@ -253,8 +254,7 @@ let integer_literal_pattern_function = NativeFunction {
       result_type: bool_type,
       operation: NativeTestValue(NativeValueTest {
         value: NativeValueId(0),
-        test: NativePatternMatchTest(NativeLiteralPatternTest(
-          NativeInteger(IntegerLiteral("10"))))
+        test: NativeLiteralTest(NativeInteger(IntegerLiteral("10")))
       }),
       effects: no_effects,
       span: source_span
