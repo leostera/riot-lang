@@ -2994,6 +2994,34 @@ fn compile_c_rejects_unsupported_input_without_writing_output() {
 }
 
 #[test]
+fn compile_c_rejects_unrepresentable_u64_literals_without_output() {
+    let dir = temp_dir("compile-c-u64-range");
+    let source = dir.join("main.ml");
+    let output = dir.join("main.c");
+    fs::write(
+        &source,
+        "let main = fn () -> { let too_large = (18446744073709551615: u64); 42 }\n",
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(!compile.status.success());
+    assert!(
+        !output.exists(),
+        "unrepresentable integer left a C artifact"
+    );
+    assert!(String::from_utf8_lossy(&compile.stderr).contains("signed 64-bit value range"));
+}
+
+#[test]
 fn compile_c_requires_a_unit_entry_parameter() {
     let dir = temp_dir("compile-c-entry-parameter");
     let source = dir.join("main.ml");
