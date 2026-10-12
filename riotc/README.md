@@ -7,7 +7,9 @@ commands below use no JavaScript or Node.
 
 Stage 0's C output is only a bootstrap bridge. The compiler's existing
 C-plus-Clang source backend remains a separate, measured behavioral baseline;
-it is not a fallback in the owned native backend. That owned path currently
+it is not a fallback in the owned native backend. The C path rejects integer
+operations outside its i32 runtime slice before emission rather than silently
+narrowing typed i64 operations. That owned path currently
 reaches TypedAST, LambdaIR, target-independent SSA NativeIR, ABI-independent
 AArch64 virtual-register MachineIR, an initial all-spill AArch64 LinearIR, and
 tested AArch64 assembly/link function and direct-call-graph harnesses.
