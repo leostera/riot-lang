@@ -286,6 +286,11 @@ let valid_runtime_call_setup = fn previous -> fn last -> match last {
   }
   | None -> false
 }
+let runtime_i32_result_setup = fn instruction -> match instruction {
+  | A64SpillRegister(slot, register) -> bool_and (same_physical register w0)
+      (same_type (frame_slot_type slot) A64I32)
+  | _ -> false
+}
 let valid_call_setup = fn previous -> fn last -> match last {
   | Some(instruction) -> match (null_environment_setup instruction) {
     | true -> true
@@ -319,7 +324,14 @@ let verify_call_sequences = fn items -> fn previous -> fn last -> match items {
   | Cons(A64LinearInstructionItem(A64CallRuntime(helper)), remaining) ->
     match (valid_runtime_call_setup previous last) {
       | false -> Err("LinearIR runtime helper call is missing its typed argument-register setup")
-      | true -> verify_call_sequences remaining last (Some(A64CallRuntime(helper)))
+      | true -> match remaining {
+        | Cons(A64LinearInstructionItem(result_store), _) ->
+          match (runtime_i32_result_setup result_store) {
+            | false -> Err("LinearIR i32 runtime helper result must be spilled from w0")
+            | true -> verify_call_sequences remaining last (Some(A64CallRuntime(helper)))
+          }
+        | _ -> Err("LinearIR i32 runtime helper result is not spilled after the call")
+      }
     }
   | Cons(A64LinearInstructionItem(instruction), remaining) ->
     verify_call_sequences remaining last (Some(instruction))

@@ -279,7 +279,8 @@ let verify_codegen_frame_sizes = fn functions -> match functions {
 }
 
 // This entry adapter is a function-level harness. It intentionally does not
-// claim to emit module initializers, globals, closures, or runtime helpers.
+// emit module initializers, globals, closures, or general Host marshalling;
+// only explicitly selected runtime helpers have dedicated call lowerings.
 let emit_program = fn linear_functions -> fn entry_identity -> {
   let functions = function_symbols linear_functions 0;
   match (verify_functions functions) {

@@ -67,9 +67,15 @@ let find_block = fn wanted -> fn blocks -> match blocks {
   }
 }
 
-let append = fn first -> fn second -> match first {
+let append_locations = fn (first: List<A64ValueLocation>) ->
+  fn (second: List<A64ValueLocation>) -> match first {
   | Nil -> second
-  | Cons(value, remaining) -> Cons(value, append remaining second)
+  | Cons(value, remaining) -> Cons(value, append_locations remaining second)
+}
+let append_linear_items = fn (first: List<A64LinearItem>) ->
+  fn (second: List<A64LinearItem>) -> match first {
+  | Nil -> second
+  | Cons(value, remaining) -> Cons(value, append_linear_items remaining second)
 }
 
 let collect_instruction_values = fn instructions -> match instructions {
@@ -89,8 +95,9 @@ let collect_parameter_values = fn parameters -> match parameters {
 let collect_block_values = fn blocks -> match blocks {
   | Nil -> Nil
   | Cons(A64Block { label: _, parameters, instructions, terminator: _, span: _ }, remaining) ->
-    append (collect_parameter_values parameters)
-      (append (collect_instruction_values instructions) (collect_block_values remaining))
+    append_locations (collect_parameter_values parameters)
+      (append_locations (collect_instruction_values instructions)
+        (collect_block_values remaining))
 }
 
 let assign_locations = fn pending -> fn next_offset -> match pending {
@@ -174,17 +181,17 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
   | A64LoadUnit -> Ok(Nil)
   | A64LoadI32(literal) -> match (lookup_slot function_identity block span destination locations) {
     | Err(failure) -> Err(failure)
-    | Ok(slot) -> Ok(append (add_instruction(A64LoadI32Literal(w9, literal)))
+    | Ok(slot) -> Ok(append_linear_items (add_instruction(A64LoadI32Literal(w9, literal)))
         (add_instruction(A64SpillRegister(slot, w9))))
   }
   | A64LoadBoolean(value) -> match (lookup_slot function_identity block span destination locations) {
     | Err(failure) -> Err(failure)
-    | Ok(slot) -> Ok(append (add_instruction(A64LoadBooleanLiteral(w9, value)))
+    | Ok(slot) -> Ok(append_linear_items (add_instruction(A64LoadBooleanLiteral(w9, value)))
         (add_instruction(A64SpillRegister(slot, w9))))
   }
   | A64TestUnitLiteral(_) -> match (lookup_slot function_identity block span destination locations) {
     | Err(failure) -> Err(failure)
-    | Ok(slot) -> Ok(append (add_instruction(A64LoadBooleanLiteral(w9, true)))
+    | Ok(slot) -> Ok(append_linear_items (add_instruction(A64LoadBooleanLiteral(w9, true)))
         (add_instruction(A64SpillRegister(slot, w9))))
   }
   | A64TestI32Literal(A64I32LiteralTest { value, literal }) ->
@@ -192,9 +199,9 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
       | Err(failure) -> Err(failure)
       | Ok(left_slot) -> match (lookup_slot function_identity block span destination locations) {
         | Err(failure) -> Err(failure)
-        | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w9, left_slot)))
-          (append (add_instruction(A64LoadI32Literal(w10, literal)))
-          (append (add_instruction(A64CompareSetW(A64Equal, w11, w9, w10)))
+        | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, left_slot)))
+          (append_linear_items (add_instruction(A64LoadI32Literal(w10, literal)))
+          (append_linear_items (add_instruction(A64CompareSetW(A64Equal, w11, w9, w10)))
             (add_instruction(A64SpillRegister(result_slot, w11))))))
       }
     }
@@ -203,9 +210,9 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
       | Err(failure) -> Err(failure)
       | Ok(left_slot) -> match (lookup_slot function_identity block span destination locations) {
         | Err(failure) -> Err(failure)
-        | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w9, left_slot)))
-          (append (add_instruction(A64LoadBooleanLiteral(w10, literal)))
-          (append (add_instruction(A64CompareSetW(A64Equal, w11, w9, w10)))
+        | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, left_slot)))
+          (append_linear_items (add_instruction(A64LoadBooleanLiteral(w10, literal)))
+          (append_linear_items (add_instruction(A64CompareSetW(A64Equal, w11, w9, w10)))
             (add_instruction(A64SpillRegister(result_slot, w11))))))
       }
     }
@@ -213,8 +220,43 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
     lower_call function_identity block span destination result_type target arguments
       call_result locations
   | A64RuntimeCall(A64RuntimeCallSite { helper, arguments, result_type: call_result }) ->
-    lower_runtime_call function_identity block span destination result_type helper
-      arguments call_result locations
+    match (same_value_type result_type call_result) {
+      | false -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "runtime call result type differs from its instruction type"
+      })
+      | true -> match call_result {
+        | A64Unit -> Err(A64LinearFailure {
+          function: function_identity, block: block, span: span,
+          reason: "typed i32 runtime helper must return i32"
+        })
+        | A64Boolean -> Err(A64LinearFailure {
+          function: function_identity, block: block, span: span,
+          reason: "typed i32 runtime helper must return i32"
+        })
+        | A64I32 -> match arguments {
+          | Cons(A64CallArgument { register: left, value_type: A64I32 },
+              Cons(A64CallArgument { register: right, value_type: A64I32 }, Nil)) ->
+            match (lookup_slot function_identity block span left locations) {
+              | Err(failure) -> Err(failure)
+              | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
+                | Err(failure) -> Err(failure)
+                | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
+                  | Err(failure) -> Err(failure)
+                  | Ok(result_slot) -> Ok(Cons(A64LinearInstructionItem(A64ReloadSpill(w0, left_slot)),
+                    Cons(A64LinearInstructionItem(A64ReloadSpill(w1, right_slot)),
+                    Cons(A64LinearInstructionItem(A64CallRuntime(helper)),
+                    Cons(A64LinearInstructionItem(A64SpillRegister(result_slot, w0)), Nil)))))
+                }
+              }
+            }
+          | _ -> Err(A64LinearFailure {
+            function: function_identity, block: block, span: span,
+            reason: "typed i32 runtime helper requires exactly two i32 arguments"
+          })
+        }
+      }
+    }
   | A64AddI32(A64BinaryOperands { left, right }) ->
     lower_binary function_identity block span destination left right locations A64OpcodeAdd
   | A64SubtractI32(A64BinaryOperands { left, right }) ->
@@ -231,8 +273,8 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
     | Err(failure) -> Err(failure)
     | Ok(source_slot) -> match (lookup_slot function_identity block span destination locations) {
       | Err(failure) -> Err(failure)
-      | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w9, source_slot)))
-        (append (add_instruction(A64NegateW(w11, w9)))
+      | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, source_slot)))
+        (append_linear_items (add_instruction(A64NegateW(w11, w9)))
           (add_instruction(A64SpillRegister(result_slot, w11)))))
     }
   }
@@ -252,9 +294,9 @@ let lower_binary = fn function_identity -> fn block -> fn span ->
       | Err(failure) -> Err(failure)
       | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
         | Err(failure) -> Err(failure)
-        | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w9, left_slot)))
-          (append (add_instruction(A64ReloadSpill(w10, right_slot)))
-          (append (add_instruction(binary_instruction opcode w11 w9 w10))
+        | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, left_slot)))
+          (append_linear_items (add_instruction(A64ReloadSpill(w10, right_slot)))
+          (append_linear_items (add_instruction(binary_instruction opcode w11 w9 w10))
             (add_instruction(A64SpillRegister(result_slot, w11))))))
       }
     }
@@ -268,9 +310,9 @@ let lower_comparison = fn function_identity -> fn block -> fn span ->
       | Err(failure) -> Err(failure)
       | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
         | Err(failure) -> Err(failure)
-        | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w9, left_slot)))
-          (append (add_instruction(A64ReloadSpill(w10, right_slot)))
-          (append (add_instruction(A64CompareSetW(condition, w11, w9, w10)))
+        | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, left_slot)))
+          (append_linear_items (add_instruction(A64ReloadSpill(w10, right_slot)))
+          (append_linear_items (add_instruction(A64CompareSetW(condition, w11, w9, w10)))
             (add_instruction(A64SpillRegister(result_slot, w11))))))
       }
     }
@@ -325,56 +367,16 @@ let lower_call = fn function_identity -> fn block -> fn span ->
         reason: "call instruction result type differs from its typed call signature"
       })
       | true -> match (is_unit call_result) {
-        | true -> Ok(append (add_instruction(A64MoveZero(x0)))
-          (append argument_setup (add_instruction(A64CallDirect(callee)))))
+        | true -> Ok(append_linear_items (add_instruction(A64MoveZero(x0)))
+          (append_linear_items argument_setup (add_instruction(A64CallDirect(callee)))))
         | false -> match (lookup_slot function_identity block span destination locations) {
           | Err(failure) -> Err(failure)
-          | Ok(result_slot) -> Ok(append (add_instruction(A64MoveZero(x0)))
-            (append argument_setup (append (add_instruction(A64CallDirect(callee)))
+          | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64MoveZero(x0)))
+            (append_linear_items argument_setup (append_linear_items (add_instruction(A64CallDirect(callee)))
               (add_instruction(A64SpillRegister(result_slot, w0))))))
         }
       }
     }
-    }
-  }
-}
-
-let lower_runtime_call = fn function_identity -> fn block -> fn span ->
-  fn destination -> fn instruction_type -> fn helper -> fn arguments ->
-  fn call_result -> fn locations -> match (same_value_type instruction_type call_result) {
-  | false -> Err(A64LinearFailure {
-    function: function_identity, block: block, span: span,
-    reason: "runtime call result type differs from its instruction type"
-  })
-  | true -> match call_result {
-    | A64Unit -> Err(A64LinearFailure {
-      function: function_identity, block: block, span: span,
-      reason: "typed i32 runtime helper must return i32"
-    })
-    | A64Boolean -> Err(A64LinearFailure {
-      function: function_identity, block: block, span: span,
-      reason: "typed i32 runtime helper must return i32"
-    })
-    | A64I32 -> match arguments {
-      | Cons(A64CallArgument { register: left, value_type: A64I32 },
-          Cons(A64CallArgument { register: right, value_type: A64I32 }, Nil)) ->
-        match (lookup_slot function_identity block span left locations) {
-          | Err(failure) -> Err(failure)
-          | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
-            | Err(failure) -> Err(failure)
-            | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
-              | Err(failure) -> Err(failure)
-              | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w0, left_slot)))
-                (append (add_instruction(A64ReloadSpill(w1, right_slot)))
-                (append (add_instruction(A64CallRuntime(helper)))
-                  (add_instruction(A64SpillRegister(result_slot, w0))))))
-            }
-          }
-        }
-      | _ -> Err(A64LinearFailure {
-        function: function_identity, block: block, span: span,
-        reason: "typed i32 runtime helper requires exactly two i32 arguments"
-      })
     }
   }
 }
@@ -394,7 +396,7 @@ let lower_instructions = fn function_identity -> fn block -> fn instructions ->
     | Err(failure) -> Err(failure)
     | Ok(current) -> match (lower_instructions function_identity block remaining locations) {
       | Err(failure) -> Err(failure)
-      | Ok(rest) -> Ok(append current rest)
+      | Ok(rest) -> Ok(append_linear_items current rest)
     }
   }
 }
@@ -442,9 +444,9 @@ let lower_edge_copies = fn function_identity -> fn block -> fn span ->
                 | Err(failure) -> Err(failure)
                 | Ok(source_slot) -> match (lookup_slot function_identity block span destination locations) {
                   | Err(failure) -> Err(failure)
-                  | Ok(destination_slot) -> Ok(append
+                  | Ok(destination_slot) -> Ok(append_linear_items
                     (add_instruction(A64ReloadSpill(w9, source_slot)))
-                    (append (add_instruction(A64SpillRegister(destination_slot, w9))) rest))
+                    (append_linear_items (add_instruction(A64SpillRegister(destination_slot, w9))) rest))
                 }
               }
             }
@@ -470,7 +472,7 @@ let lower_terminator = fn function_identity -> fn function_result -> fn block ->
   fn span -> fn terminator -> fn blocks -> fn locations -> match terminator {
   | A64Jump(edge) -> match (lower_edge function_identity block span edge blocks locations) {
     | Err(failure) -> Err(failure)
-    | Ok(A64LoweredEdge(copies, target)) -> Ok(append copies (add_terminator(A64LinearJump(target))))
+    | Ok(A64LoweredEdge(copies, target)) -> Ok(append_linear_items copies (add_terminator(A64LinearJump(target))))
   }
   | A64ConditionalBranch(A64Branch { condition, when_true, when_false }) ->
     match (lookup_slot function_identity block span condition locations) {
@@ -483,11 +485,11 @@ let lower_terminator = fn function_identity -> fn function_result -> fn block ->
             let source_label = block;
             let true_label = A64TrueEdgeLabel(source_label);
             let false_label = A64FalseEdgeLabel(source_label);
-            Ok(append (add_instruction(A64ReloadSpill(w9, condition_slot)))
-              (append (add_terminator(A64LinearBranch(w9, true_label, false_label)))
-              (append (Cons(A64LinearLabelItem(true_label), true_copies))
-              (append (add_terminator(A64LinearJump(true_target)))
-              (append (Cons(A64LinearLabelItem(false_label), false_copies))
+            Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, condition_slot)))
+              (append_linear_items (add_terminator(A64LinearBranch(w9, true_label, false_label)))
+              (append_linear_items (Cons(A64LinearLabelItem(true_label), true_copies))
+              (append_linear_items (add_terminator(A64LinearJump(true_target)))
+              (append_linear_items (Cons(A64LinearLabelItem(false_label), false_copies))
                 (add_terminator(A64LinearJump(false_target))))))))
           }
         }
@@ -504,7 +506,7 @@ let lower_terminator = fn function_identity -> fn function_result -> fn block ->
         | true -> Ok(add_terminator(A64LinearReturn))
         | false -> match (lookup_slot function_identity block span value locations) {
           | Err(failure) -> Err(failure)
-          | Ok(slot) -> Ok(append (add_instruction(A64ReloadSpill(w0, slot)))
+          | Ok(slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w0, slot)))
             (add_terminator(A64LinearReturn)))
         }
       }
@@ -543,8 +545,8 @@ let lower_block_items = fn function_identity -> fn function_result -> fn blocks 
     | Ok(lowered_instructions) -> match (lower_terminator function_identity function_result
         label span terminator blocks locations) {
       | Err(failure) -> Err(failure)
-      | Ok(lowered_terminator) -> Ok(append (Cons(A64LinearLabelItem(A64BasicBlockLabel(label)),
-          append parameter_setup lowered_instructions)) lowered_terminator)
+      | Ok(lowered_terminator) -> Ok(append_linear_items (Cons(A64LinearLabelItem(A64BasicBlockLabel(label)),
+          append_linear_items parameter_setup lowered_instructions)) lowered_terminator)
     }
   }
 
@@ -569,7 +571,7 @@ let lower_blocks_from = fn function_identity -> fn function_result -> fn entry -
     | Ok(current) -> match (lower_blocks_from function_identity function_result
         entry all_blocks remaining locations) {
       | Err(failure) -> Err(failure)
-      | Ok(rest) -> Ok(append current rest)
+      | Ok(rest) -> Ok(append_linear_items current rest)
     }
   }
 }
