@@ -7,13 +7,14 @@ use Host.{
 use Syntax.Ast.{ValueName}
 use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
 use Check.Inference.{
-  CheckedModuleInterface, BindingIdentity, infer_source_module,
-  validate_native_entry_module
+  CheckedModuleInterface, InferredModuleInterface, TypedModule,
+  SchemeBinding, BindingIdentity, ModuleValueBinding,
+  infer_source_module, validate_native_entry_module
 }
 use Codegen.C.Emit.{emit_module_program}
 use Lambda.Ir.{LambdaModule}
 use Lambda.Lower.{lower_checked_module}
-use NativeIr.Lower.{lower_module, lower_native_globals}
+use NativeIr.Lower.{lower_module}
 use NativeIr.Verify.{verify_module}
 use NativeIr.Ir.{NativeModule, NativeGlobal, NativeFunction, NativeTopLevelFunction}
 use NativeIr.Print.{print_native_module}
@@ -327,20 +328,39 @@ let native_ir_modules_for_file = fn source_file -> match (read_file source_file)
   }
 }
 
-let find_root_lambda_module = fn root_path -> fn checked_modules -> fn lambda_modules ->
-  match checked_modules {
-    | Nil -> None
-    | Cons(CheckedModuleInterface {
-        loaded_module: LoadedModule { module_path: _, source_path, source_module: _ },
-        interface: _, typed_module: _
-      }, remaining_checked) -> match lambda_modules {
-      | Nil -> None
-      | Cons(lambda_module, remaining_lambda) -> match (equal root_path source_path) {
-        | true -> Some(lambda_module)
-        | false -> find_root_lambda_module root_path remaining_checked remaining_lambda
+let module_binding_span = fn (BindingIdentity {
+  source_path: _, declaration_span, name: _, scope: _
+}) -> declaration_span
+
+let find_module_value_binding = fn wanted_name -> fn bindings -> match bindings {
+  | Nil -> None
+  | Cons(binding, remaining) -> match binding {
+    | BindingIdentity {
+        source_path: _, declaration_span: _, name: ValueName(name),
+        scope: ModuleValueBinding
+      } -> match (equal wanted_name name) {
+      | true -> Some(binding)
+      | false -> find_module_value_binding wanted_name remaining
+    }
+    | _ -> find_module_value_binding wanted_name remaining
+  }
+}
+
+let native_globals_from_interface_values = fn values -> fn bindings -> match values {
+  | Nil -> Ok(Nil)
+  | Cons(SchemeBinding(ValueName(name), scheme), remaining) ->
+    match (find_module_value_binding name bindings) {
+      | None -> Err("NativeIR: checked module interface has no binding for `" + name + "`")
+      | Some(binding) -> match (native_globals_from_interface_values remaining bindings) {
+        | Err(message) -> Err(message)
+        | Ok(rest) -> Ok(Cons(NativeGlobal {
+          binding: binding,
+          scheme: scheme,
+          span: module_binding_span binding
+        }, rest))
       }
     }
-  }
+}
 
 let append_native_globals = fn (first: List<NativeGlobal>) ->
   fn (second: List<NativeGlobal>) -> match first {
@@ -349,16 +369,26 @@ let append_native_globals = fn (first: List<NativeGlobal>) ->
     Cons(global, append_native_globals remaining second)
 }
 
-let native_globals_from_lambda_modules = fn modules -> match modules {
-  | Nil -> Nil
-  | Cons(LambdaModule {
-      nominal_types: _, substitutions: _, recursive_values
-    }, remaining) -> append_native_globals (lower_native_globals recursive_values)
-      (native_globals_from_lambda_modules remaining)
+let native_globals_from_checked_modules = fn modules -> match modules {
+  | Nil -> Ok(Nil)
+  | Cons(CheckedModuleInterface {
+      loaded_module: _, interface: InferredModuleInterface { values, types: _ },
+      typed_module: TypedModule {
+        source_module: _, expression_types: _, pattern_types: _, nominal_types: _,
+        substitutions: _, bindings, value_references: _, constructor_references: _
+      }
+    }, remaining) -> match (native_globals_from_interface_values values bindings) {
+    | Err(message) -> Err(message)
+    | Ok(module_globals) -> match (native_globals_from_checked_modules remaining) {
+      | Err(message) -> Err(message)
+      | Ok(rest) -> Ok(append_native_globals module_globals rest)
+    }
+  }
 }
 
-// NativeCodegen compiles one root-module function set, so lower only that
-// module to NativeIR after checking and Lambda-lowering the whole import graph.
+// NativeCodegen compiles one root-module function set. Typecheck every import,
+// but Lambda-lower and build NativeIR only for the root; interfaces supply the
+// verified global signatures for referenced dependencies.
 let native_ir_root_modules_for_file = fn source_file -> match (read_file source_file) {
   | Err(message) -> Err(compile_error (SourceRead)
       ("cannot read " + source_file + ": " + message) None)
@@ -372,31 +402,35 @@ let native_ir_root_modules_for_file = fn source_file -> match (read_file source_
       | Err(message) -> Err(compile_error (SourceParsing) message None)
       | Ok(modules) -> match (check_loaded_modules modules Nil) {
         | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-        | Ok(checked_modules) -> match (lower_checked_modules checked_modules) {
-          | Err(message) -> Err(compile_error (LambdaLowering) message None)
-          | Ok(lambda_modules) -> match (find_root_lambda_module source_file
-              checked_modules lambda_modules) {
-            | None -> Err(compile_error (NativeIRLowering)
-              "source graph has no root LambdaIR module" None)
-            | Some(lambda_module) -> match (lower_module source_file lambda_module) {
+        | Ok(checked_modules) -> match (find_root_checked_module source_file checked_modules) {
+          | None -> Err(compile_error (LambdaLowering)
+            "source graph has no root checked module" None)
+          | Some(checked_module) -> match (lower_checked_module checked_module) {
+            | Err(message) -> Err(compile_error (LambdaLowering)
+              ("LambdaIR lowering failed for " + source_file + ": " + message) None)
+            | Ok(lambda_module) -> match (lower_module source_file lambda_module) {
               | Err(message) -> Err(compile_error (NativeIRLowering)
                 ("NativeIR lowering failed for " + source_file + ": " + message) None)
-              | Ok(NativeModule {
-                  module_identity, nominal_types, substitutions, globals: _,
-                  initializer, functions
-                }) -> {
-                let native_module = NativeModule {
-                  module_identity: module_identity,
-                  nominal_types: nominal_types,
-                  substitutions: substitutions,
-                  globals: native_globals_from_lambda_modules lambda_modules,
-                  initializer: initializer,
-                  functions: functions
-                };
-                match (verify_module native_module) {
-                  | Err(message) -> Err(compile_error (NativeIRLowering)
-                    ("NativeIR verification failed for " + source_file + ": " + message) None)
-                  | Ok(_) -> Ok(Cons(native_module, Nil))
+              | Ok(root_module) -> match (native_globals_from_checked_modules checked_modules) {
+                | Err(message) -> Err(compile_error (NativeIRLowering) message None)
+                | Ok(globals) -> {
+                  let NativeModule {
+                    module_identity, nominal_types, substitutions, globals: _,
+                    initializer, functions
+                  } = root_module;
+                  let native_module = NativeModule {
+                    module_identity: module_identity,
+                    nominal_types: nominal_types,
+                    substitutions: substitutions,
+                    globals: globals,
+                    initializer: initializer,
+                    functions: functions
+                  };
+                  match (verify_module native_module) {
+                    | Err(message) -> Err(compile_error (NativeIRLowering)
+                      ("NativeIR verification failed for " + source_file + ": " + message) None)
+                    | Ok(_) -> Ok(Cons(native_module, Nil))
+                  }
                 }
               }
             }

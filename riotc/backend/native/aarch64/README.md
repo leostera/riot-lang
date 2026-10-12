@@ -8,11 +8,12 @@ compiler with:
 riotml aarch64-mir SOURCE TOP_LEVEL_FUNCTION
 ```
 
-The command typechecks and Lambda-lowers the complete import graph, then lowers
-and verifies the root module as NativeIR using the graph's declared globals.
-It selects only the requested top-level function and prints its AArch64
-MachineIR; it does not lower imported modules to NativeIR or claim that the
-whole source module is ready for native code generation.
+The command typechecks the complete import graph, then Lambda-lowers and
+lowers/verifies only the root module as NativeIR, using dependency global
+signatures from checked module interfaces. It selects only the requested
+top-level function and prints its AArch64 MachineIR; it does not lower imported
+modules to LambdaIR/NativeIR or claim that the whole source module is ready for
+native code generation.
 Unsupported instructions return a diagnostic with function, block, and source
 span; there is no C fallback from this command.
 
