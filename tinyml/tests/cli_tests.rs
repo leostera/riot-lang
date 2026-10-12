@@ -2994,6 +2994,31 @@ fn compile_c_rejects_unsupported_input_without_writing_output() {
 }
 
 #[test]
+fn compile_c_requires_a_unit_entry_parameter() {
+    let dir = temp_dir("compile-c-entry-parameter");
+    let source = dir.join("main.ml");
+    let output = dir.join("main.c");
+    fs::write(&source, "let main = fn (input: i32) -> input\n").unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(!compile.status.success());
+    assert!(!output.exists(), "invalid entry ABI left a C artifact");
+    assert!(
+        String::from_utf8_lossy(&compile.stderr).contains("requires a top-level"),
+        "unexpected entry diagnostic: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+}
+
+#[test]
 fn compile_c_rejects_embedded_nul_strings_without_writing_output() {
     let dir = temp_dir("compile-c-nul-string");
     let source = dir.join("main.ml");
