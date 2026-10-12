@@ -2716,6 +2716,63 @@ let main = fn () -> { write_stdout "stdout\\n"; write_stderr "stderr"; 42 }
 }
 
 #[test]
+fn compile_c_preserves_unicode_string_intrinsics() {
+    let dir = temp_dir("compile-c-unicode-strings");
+    let source = dir.join("main.ml");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
+    fs::write(
+        &source,
+        r#"use String.{concat, length, get, slice, equal}
+use Prelude.{Some}
+let main = fn () -> {
+  let text = "A😀B";
+  match (length text, get text 1, slice text 1 2, equal text "A😀B", concat text "!") {
+    | (3, Some(128512), "😀", true, "A😀B!") -> 42
+    | _ -> 0
+  }
+}
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
+    let clang = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable).output().unwrap();
+    assert_eq!(run.status.code(), Some(42));
+}
+
+#[test]
 fn compile_c_rejects_invalid_utf8_from_host_files() {
     let dir = temp_dir("compile-c-host-invalid-utf8");
     let source = dir.join("main.ml");
