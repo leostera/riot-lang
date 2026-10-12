@@ -2568,6 +2568,11 @@ fn compile_c_supports_tuple_patterns() {
         "clang stderr: {}",
         String::from_utf8_lossy(&clang.stderr)
     );
+    assert!(
+        !String::from_utf8_lossy(&clang.stderr).contains("return-stack-address"),
+        "Clang reported a dangling aggregate argument: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
     let run = Command::new(&executable).output().unwrap();
     assert_eq!(run.status.code(), Some(42));
 }
