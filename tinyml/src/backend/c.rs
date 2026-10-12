@@ -4,12 +4,15 @@
 //! It emits C only when every expression is represented exactly; the owned
 //! Riotc backend remains a separate pipeline and never falls back to this code.
 
-use std::fmt::Write as _;
+use std::{collections::HashMap, fmt::Write as _};
 
 use thiserror::Error;
 
 use crate::{
-    checker::{builtin, tir::Type},
+    checker::{
+        builtin,
+        tir::{BindingId, EntityId, Type, ValueEntity},
+    },
     lambda::ir::{self, ExprKind, Primitive},
     parser::{ast::Literal, lexer::Span},
 };
@@ -89,66 +92,140 @@ pub fn emit_main_i32(module: &ir::Module) -> Result<String, EmitError> {
         ));
     }
 
-    let body = emit_i32_expression(body)?;
+    let mut body_emitter = I32BodyEmitter::default();
+    let body = body_emitter.emit_expression(body)?;
     let mut output = String::new();
     output.push_str(C_I32_RUNTIME);
-    writeln!(
-        output,
-        "\nstatic int32_t tinyml_entry(void) {{\n    return {body};\n}}"
-    )
-    .expect("writing C into a String cannot fail");
+    writeln!(output, "\nstatic int32_t tinyml_entry(void) {{")
+        .expect("writing C into a String cannot fail");
+    for statement in body_emitter.statements {
+        writeln!(output, "    {statement}").expect("writing C into a String cannot fail");
+    }
+    writeln!(output, "    return {body};\n}}").expect("writing C into a String cannot fail");
     output.push_str(
         "\nint main(int argc, char **argv) {\n    (void)argc;\n    (void)argv;\n    return (int)tinyml_entry();\n}\n",
     );
     Ok(output)
 }
 
-fn emit_i32_expression(expression: &ir::Expr) -> Result<String, EmitError> {
-    if !builtin::is_unqualified_type(&expression.ty, "i32") {
-        return Err(unsupported_expr(
-            "a non-i32 expression in `main`",
-            expression.span,
-        ));
+#[derive(Default)]
+struct I32BodyEmitter {
+    locals: HashMap<BindingId, String>,
+    statements: Vec<String>,
+    next_local: usize,
+}
+
+impl I32BodyEmitter {
+    fn emit_expression(&mut self, expression: &ir::Expr) -> Result<String, EmitError> {
+        if !builtin::is_unqualified_type(&expression.ty, "i32") {
+            return Err(unsupported_expr(
+                "a non-i32 expression in `main`",
+                expression.span,
+            ));
+        }
+
+        match &expression.kind {
+            ExprKind::Constant(ir::Constant::Literal(Literal::Int(value))) => {
+                let Some(decimal) = integer_literal_as_decimal(value.as_str()) else {
+                    return Err(unsupported_expr(
+                        "an invalid checked i32 literal",
+                        expression.span,
+                    ));
+                };
+                Ok(format!("tinyml_i32_literal(\"{decimal}\")"))
+            }
+            ExprKind::Var {
+                entity: EntityId::Value(ValueEntity { binding }),
+                ..
+            } => self
+                .locals
+                .get(binding)
+                .cloned()
+                .ok_or_else(|| unsupported_expr("a non-local value reference", expression.span)),
+            ExprKind::Prim { op, args } => {
+                let [left, right] = args.as_slice() else {
+                    return Err(unsupported_expr(
+                        "a non-binary integer operation",
+                        expression.span,
+                    ));
+                };
+                let operation = match op {
+                    Primitive::Add { operand } if builtin::is_unqualified_type(operand, "i32") => {
+                        "add"
+                    }
+                    Primitive::Sub { operand } if builtin::is_unqualified_type(operand, "i32") => {
+                        "sub"
+                    }
+                    Primitive::Mul { operand } if builtin::is_unqualified_type(operand, "i32") => {
+                        "mul"
+                    }
+                    Primitive::Div { operand } if builtin::is_unqualified_type(operand, "i32") => {
+                        "div"
+                    }
+                    Primitive::Rem { operand } if builtin::is_unqualified_type(operand, "i32") => {
+                        "rem"
+                    }
+                    _ => {
+                        return Err(unsupported_expr(
+                            "this primitive operation",
+                            expression.span,
+                        ));
+                    }
+                };
+                let left = self.emit_expression(left)?;
+                let right = self.emit_expression(right)?;
+                Ok(format!("tinyml_i32_{operation}({left}, {right})"))
+            }
+            ExprKind::Block(expressions) => self.emit_block(expressions, expression),
+            _ => Err(unsupported_expr(
+                "this expression in `main`",
+                expression.span,
+            )),
+        }
     }
 
-    match &expression.kind {
-        ExprKind::Constant(ir::Constant::Literal(Literal::Int(value))) => {
-            let Some(decimal) = integer_literal_as_decimal(value.as_str()) else {
-                return Err(unsupported_expr(
-                    "an invalid checked i32 literal",
-                    expression.span,
-                ));
-            };
-            Ok(format!("tinyml_i32_literal(\"{decimal}\")"))
-        }
-        ExprKind::Prim { op, args } => {
-            let [left, right] = args.as_slice() else {
-                return Err(unsupported_expr(
-                    "a non-binary integer operation",
-                    expression.span,
-                ));
-            };
-            let operation = match op {
-                Primitive::Add { operand } if builtin::is_unqualified_type(operand, "i32") => "add",
-                Primitive::Sub { operand } if builtin::is_unqualified_type(operand, "i32") => "sub",
-                Primitive::Mul { operand } if builtin::is_unqualified_type(operand, "i32") => "mul",
-                Primitive::Div { operand } if builtin::is_unqualified_type(operand, "i32") => "div",
-                Primitive::Rem { operand } if builtin::is_unqualified_type(operand, "i32") => "rem",
+    fn emit_block(
+        &mut self,
+        expressions: &[ir::Expr],
+        block: &ir::Expr,
+    ) -> Result<String, EmitError> {
+        let Some((last, prefix)) = expressions.split_last() else {
+            return Err(unsupported_expr("an empty block", block.span));
+        };
+        let previous_locals = self.locals.clone();
+
+        for expression in prefix {
+            match &expression.kind {
+                ExprKind::Let { bind, body, .. } => {
+                    let value = self.emit_expression(body)?;
+                    match &bind.kind {
+                        ir::PatternKind::Var { binding, .. }
+                            if builtin::is_unqualified_type(&bind.ty, "i32") =>
+                        {
+                            let local = format!("tinyml_local_{}", self.next_local);
+                            self.next_local += 1;
+                            self.statements.push(format!("int32_t {local} = {value};"));
+                            self.locals.insert(binding.clone(), local);
+                        }
+                        ir::PatternKind::Wildcard => {}
+                        _ => {
+                            return Err(unsupported_expr("this local binding pattern", bind.span));
+                        }
+                    }
+                }
+                _ if builtin::is_unqualified_type(&expression.ty, "unit") => {}
                 _ => {
                     return Err(unsupported_expr(
-                        "this primitive operation",
+                        "a discarded non-unit block expression",
                         expression.span,
                     ));
                 }
-            };
-            let left = emit_i32_expression(left)?;
-            let right = emit_i32_expression(right)?;
-            Ok(format!("tinyml_i32_{operation}({left}, {right})"))
+            }
         }
-        _ => Err(unsupported_expr(
-            "this expression in `main`",
-            expression.span,
-        )),
+
+        let result = self.emit_expression(last);
+        self.locals = previous_locals;
+        result
     }
 }
 
@@ -280,10 +357,12 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unsupported_body_with_source_span() {
-        let error =
-            emit_main_i32(&checked_lambda("let main = fn () -> { let x = 1; x }")).unwrap_err();
-        assert!(error.to_string().contains("this expression in `main`"));
-        assert!(error.to_string().contains("bytes "));
+    fn emits_block_bindings_to_local_c_variables() {
+        let emitted = emit_main_i32(&checked_lambda(
+            "let main = fn () -> { let x = 20; x + 22 }",
+        ))
+        .unwrap();
+        assert!(emitted.contains("int32_t tinyml_local_0 = tinyml_i32_literal(\"20\");"));
+        assert!(emitted.contains("tinyml_i32_add(tinyml_local_0,"));
     }
 }

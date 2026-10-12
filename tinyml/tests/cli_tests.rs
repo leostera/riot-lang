@@ -2319,7 +2319,11 @@ fn compile_c_emits_status_42_executable_without_javascript() {
     let source = dir.join("main.ml");
     let generated_c = dir.join("main.c");
     let executable = dir.join("main");
-    fs::write(&source, "let main = fn () -> 42\n").unwrap();
+    fs::write(
+        &source,
+        "let main = fn () -> { let base = 20; base + 22 }\n",
+    )
+    .unwrap();
 
     let compile = Command::new(tinyml())
         .arg("compile")
