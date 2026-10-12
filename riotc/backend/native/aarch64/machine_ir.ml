@@ -11,11 +11,11 @@ use NativeIr.Ir.{
 type A64VirtualRegister = A64VirtualRegister(i32)
 type A64Label = A64Label(NativeBlockId)
 
-type A64ScalarType = A64I32 | A64Boolean
+type A64ValueType = A64Unit | A64I32 | A64Boolean
 
 type A64Function = A64Function {
   identity: NativeFunctionId,
-  result_type: A64ScalarType,
+  result_type: A64ValueType,
   entry: A64Label,
   blocks: List<A64Block>,
   span: SourceSpan
@@ -31,21 +31,23 @@ type A64Block = A64Block {
 
 type A64BlockParameter = A64BlockParameter {
   register: A64VirtualRegister,
-  value_type: A64ScalarType,
+  value_type: A64ValueType,
   span: SourceSpan
 }
 
 type A64Instruction = A64Instruction {
   destination: A64VirtualRegister,
-  result_type: A64ScalarType,
+  result_type: A64ValueType,
   operation: A64Operation,
   effects: NativeEffectSet,
   span: SourceSpan
 }
 
 type A64Operation =
+  | A64LoadUnit
   | A64LoadI32(IntegerLiteral)
   | A64LoadBoolean(bool)
+  | A64TestUnitLiteral(A64VirtualRegister)
   | A64TestI32Literal(A64I32LiteralTest)
   | A64TestBooleanLiteral(A64BooleanLiteralTest)
   | A64Call(A64CallSite)
@@ -71,7 +73,7 @@ type A64BooleanLiteralTest = A64BooleanLiteralTest {
 type A64CallSite = A64CallSite {
   target: A64CallTarget,
   arguments: List<A64CallArgument>,
-  result_type: A64ScalarType
+  result_type: A64ValueType
 }
 
 type A64CallTarget =
@@ -80,7 +82,7 @@ type A64CallTarget =
 
 type A64CallArgument = A64CallArgument {
   register: A64VirtualRegister,
-  value_type: A64ScalarType
+  value_type: A64ValueType
 }
 
 type A64BinaryOperands = A64BinaryOperands {

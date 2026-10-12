@@ -19,6 +19,9 @@ use NativeIr.Ir.{NativeModule, NativeFunction, NativeTopLevelFunction}
 use NativeIr.Print.{print_native_module}
 use Backend.Native.Aarch64.SelectMachineIr.{select_function}
 use Backend.Native.Aarch64.PrintMachineIr.{print_function, print_failure}
+use Backend.Native.Aarch64.LowerLinearIr.{lower_function}
+use Backend.Native.Aarch64.VerifyLinearIr.{verify_function}
+use Backend.Native.Aarch64.PrintLinearIr.{print_linear_failure, print_linear_function}
 use Modules.{
   LoadedModule, load_source_graph, module_source_pairs,
   directory_of, join_path
@@ -400,6 +403,49 @@ let run_aarch64_mir_command = fn source_file -> fn function_name ->
     }
   }
 
+let run_aarch64_linear_ir_command = fn source_file -> fn function_name ->
+  match (native_ir_modules_for_file source_file) {
+    | Err(error) -> report_error error
+    | Ok(native_modules) -> match (find_native_module source_file native_modules) {
+      | None -> {
+        write_stderr ("riotml: AArch64 linearization found no module for " + source_file + "\n");
+        1
+      }
+      | Some(NativeModule {
+          module_identity: _, nominal_types: _, substitutions, globals: _,
+          initializer: _, functions
+        }) -> match (find_top_level_function function_name functions) {
+        | None -> {
+          write_stderr ("riotml: AArch64 linearization found no top-level function `"
+            + function_name + "` in " + source_file + "\n");
+          1
+        }
+        | Some(function) -> match (select_function function substitutions) {
+          | Err(failure) -> {
+            write_stderr ("riotml: " + print_failure failure + "\n");
+            1
+          }
+          | Ok(machine_function) -> match (lower_function machine_function) {
+            | Err(failure) -> {
+              write_stderr ("riotml: " + print_linear_failure failure + "\n");
+              1
+            }
+            | Ok(linear_function) -> match (verify_function linear_function) {
+              | Err(reason) -> {
+                write_stderr ("riotml: AArch64 LinearIR verification failed: " + reason + "\n");
+                1
+              }
+              | Ok(_) -> {
+                write_stdout (print_linear_function linear_function);
+                0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
 let parse_compile_request = fn arguments ->
   match arguments {
     | Cons("compile", Cons(source, Cons("-o", Cons(output, Nil)))) ->
@@ -407,13 +453,15 @@ let parse_compile_request = fn arguments ->
         source_path: SourcePath(source),
         output_path: ExecutablePath(output)
       })
-    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION")
+    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION | aarch64-linear-ir SOURCE FUNCTION")
   }
 
 let main = fn () -> match (args ()) {
   | Cons("native-ir", Cons(source_file, Nil)) -> run_native_ir_command source_file
   | Cons("aarch64-mir", Cons(source_file, Cons(function_name, Nil))) ->
     run_aarch64_mir_command source_file function_name
+  | Cons("aarch64-linear-ir", Cons(source_file, Cons(function_name, Nil))) ->
+    run_aarch64_linear_ir_command source_file function_name
   | arguments -> match (parse_compile_request arguments) {
     | Err(message) -> {
       write_stderr ("riotml: " + message + "\n");

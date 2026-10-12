@@ -131,6 +131,8 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
     fs::write(
         &supported_source,
         "let add = fn x -> x + 1\n\
+         let callee = fn x -> x + 2\n\
+         let caller = fn x -> callee x\n\
          let is_ten = fn x -> match x { | 10 -> true | _ -> false }\n\
          let is_true = fn x -> match x { | true -> 1 | false -> 0 }\n\
          let main = fn () -> 42\n",
@@ -244,7 +246,7 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
     let unsupported_value_diagnostic = String::from_utf8_lossy(&unsupported_value.stderr);
     assert!(
         unsupported_value_diagnostic
-            .contains("only i32 and bool values have an AArch64 scalar representation here"),
+            .contains("only unit, i32 and bool values have an AArch64 representation here"),
         "unexpected unsupported-value diagnostic: {unsupported_value_diagnostic}"
     );
 
@@ -257,13 +259,141 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         .output()
         .unwrap();
     assert!(
-        !unit_entry.status.success(),
-        "unit-valued entry parameter unexpectedly selected"
+        unit_entry.status.success(),
+        "erased unit entry parameter failed selection: {}",
+        String::from_utf8_lossy(&unit_entry.stderr)
     );
     assert!(
-        unit_entry.stdout.is_empty(),
-        "unsupported unit entry unexpectedly emitted MachineIR"
+        String::from_utf8_lossy(&unit_entry.stdout).contains("unit"),
+        "MachineIR omitted the typed erased unit entry parameter"
     );
+
+    let linear_main = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-linear-ir")
+        .arg(&supported_source)
+        .arg("main")
+        .output()
+        .unwrap();
+    assert!(
+        linear_main.status.success(),
+        "unit-entry LinearIR lowering failed: {}",
+        String::from_utf8_lossy(&linear_main.stderr)
+    );
+    let linear_main_text = String::from_utf8_lossy(&linear_main.stdout);
+    assert!(linear_main_text.contains("%v0:unit = erased"));
+    assert!(linear_main_text.contains("mov_imm w9, #42"));
+
+    let linear_caller = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-linear-ir")
+        .arg(&supported_source)
+        .arg("caller")
+        .output()
+        .unwrap();
+    assert!(
+        !linear_caller.status.success(),
+        "unselected closure operation unexpectedly reached LinearIR"
+    );
+    assert!(linear_caller.stdout.is_empty());
+    let closure_diagnostic = String::from_utf8_lossy(&linear_caller.stderr);
+    assert!(
+        closure_diagnostic.contains("AArch64 selection failed in")
+            && closure_diagnostic
+                .contains("operation is not in the AArch64 scalar selector subset"),
+        "unexpected closure-operation rejection: {closure_diagnostic}"
+    );
+
+    let rejected_linear = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-linear-ir")
+        .arg(&unsupported_source)
+        .arg("divide")
+        .output()
+        .unwrap();
+    assert!(!rejected_linear.status.success());
+    assert!(rejected_linear.stdout.is_empty());
+    assert!(
+        String::from_utf8_lossy(&rejected_linear.stderr)
+            .contains("division selection awaits explicit divide-by-zero trap lowering")
+    );
+}
+
+#[test]
+fn aarch64_linear_ir_abi_and_control_flow_fixtures_execute() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let fixture = include_dir.join("backend/native/aarch64/linear_ir_test.ml");
+    let dir = temp_dir("aarch64-linear-ir-abi");
+    let module_path = dir.join("linear_ir_test.mjs");
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&module_path)
+        .arg(&fixture)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ main }} from {:?}; process.exitCode = Number(main());",
+            module_path.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "LinearIR fixture failed: {}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+    let printed = String::from_utf8_lossy(&node.stdout);
+    assert!(
+        printed.contains("%v0:i32 = [sp,#0]"),
+        "missing spill layout:\n{printed}"
+    );
+    assert!(
+        printed.contains("%v0:unit = erased"),
+        "unit was not erased:\n{printed}"
+    );
+    assert!(
+        printed.contains("mov x0, xzr"),
+        "missing hidden environment ABI:\n{printed}"
+    );
+    assert!(
+        printed.contains(".Ledge0_true:"),
+        "missing edge-copy block:\n{printed}"
+    );
+    assert!(
+        printed.contains("b .Lbb1"),
+        "missing linear branch target:\n{printed}"
+    );
+    assert!(printed.contains("function fn linear-ir-test::unit_caller@0 -> i32"));
+    let unit_caller = printed
+        .split("function fn linear-ir-test::unit_caller@0")
+        .nth(1)
+        .unwrap()
+        .split("function fn ")
+        .next()
+        .unwrap();
+    assert!(unit_caller.contains("mov x0, xzr"));
+    assert!(
+        !unit_caller.contains("ldr w1,"),
+        "unit argument was not erased:\n{unit_caller}"
+    );
+    assert!(printed.contains("unit_return@0 -> unit entry .Lbb0 frame 0"));
 }
 
 #[test]

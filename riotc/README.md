@@ -8,10 +8,10 @@ commands below use no JavaScript or Node.
 Stage 0's C output is only a bootstrap bridge. The compiler's existing
 C-plus-Clang source backend remains a separate, measured behavioral baseline;
 it is not a fallback in the owned native backend. That owned path currently
-reaches TypedAST, LambdaIR, target-independent SSA NativeIR, and an
-ABI-independent AArch64 virtual-register MachineIR inspection command. ARM
-LinearIR and assembly Codegen are not complete, so the final native
-self-rebuild acceptance chain is still pending.
+reaches TypedAST, LambdaIR, target-independent SSA NativeIR, ABI-independent
+AArch64 virtual-register MachineIR, and an initial all-spill AArch64 LinearIR.
+Assembly Codegen, runtime/Host helper marshalling, and the final native
+self-rebuild acceptance chain are not complete.
 
 ## Verified C-first Stage 0 bridge
 
@@ -75,8 +75,11 @@ target-independent SSA with explicit blocks, terminators, block arguments, and
 call/allocation/trap/Host effects; it has a deterministic printer, verifier,
 and positive/negative tests. The `native-ir SOURCE` command prints this IR.
 `aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar
-AArch64 MachineIR selection. Calls remain logical pseudos, and unsupported
-operations are reported rather than emitted as C by this inspection path.
+AArch64 MachineIR selection. `aarch64-linear-ir SOURCE TOP_LEVEL_FUNCTION`
+lowers and verifies the initial unit/i32/bool ABI slice with explicit spill
+slots, call-register assignments, and linearized control flow. Unsupported
+closures, Host boundaries, aggregates, strings, division/remainder, and other
+operations are rejected before Codegen rather than emitted as C.
 
 The existing source compiler still goes through `codegen/c/emit.ml` and
 Clang. Its supported subset includes functions and closures, local bindings,
@@ -112,8 +115,9 @@ Those measurements are distinct from the Rust TinyML Stage 0 to C bridge.
   reporting, and cycle detection.
 - `lambda/` and `native_ir/`: typed core lowering, SSA lowering, printing, and
   verification.
-- `backend/native/aarch64/`: virtual-register MachineIR selection and
-  inspection; ABI lowering, LinearIR, and assembly Codegen remain future work.
+- `backend/native/aarch64/`: virtual-register MachineIR, initial ABI lowering,
+  verified LinearIR, and inspection; assembly Codegen and runtime/Host
+  marshalling remain future work.
 - `codegen/c/emit.ml`: existing C-plus-Clang source-backend baseline.
 - `runtime.h`, `runtime.c`: tagged values, closures, module environments, and
   the C-hosted runtime linked by Clang.

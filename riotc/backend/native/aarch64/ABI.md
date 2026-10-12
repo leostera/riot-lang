@@ -72,6 +72,39 @@ null environment and erased unit argument, and returns its `i32` result as the
 process status. The source binding named `main` is not emitted as the Mach-O
 entry symbol.
 
+## Implemented LinearIR subset (2026-10-12)
+
+The first MachineIR-to-LinearIR implementation keeps this approved signature
+shape while deliberately using an all-spill allocator:
+
+- Each non-unit MachineIR SSA value in the current `i32`/`bool` slice receives
+  a distinct unboxed four-byte stack slot. `unit` receives no slot. This is a
+  spill-all strategy, not a boxed `RtValue` representation or a claim about
+  eventual aggregate memory layout.
+- Spill offsets are four-byte aligned from the allocated stack-frame `sp`;
+  the local frame size is rounded up to 16 bytes. The function prologue and
+  frame-record save are Codegen responsibilities and are not yet implemented.
+- Reloaded values and selected operations use caller-saved `w9`/`w10`/`w11`.
+  The initial lowering allocates no callee-saved registers. Values are
+  reloaded before use and written back after definitions, so control-flow
+  edges copy block arguments explicitly through `w9`.
+- A direct call to a top-level function or module initializer sets hidden
+  environment `x0` to null, places its optional non-unit scalar argument in
+  `w1`, emits the logical direct-call pseudo, and spills a scalar result from
+  `w0`. `unit` arguments and results emit no data move. A function entry's
+  optional scalar argument is spilled from `w1`; an entry `unit` argument is
+  erased.
+- The current LIR verifier checks slot ownership/uniqueness, frame alignment
+  and bounds, physical scratch-register assignment, terminated block
+  structure, and all branch labels. Unsupported closure-environment calls
+  and Host helper calls fail before Codegen; Host marshalling to/from `RtValue`
+  is not implemented by this slice.
+
+This conservative policy validates the first ABI lowering but is not the full
+native backend. Narrow integer widths, pointers/composites, closures, Host
+helpers, the entry adapter, and assembly emission remain outside the current
+LIR slice.
+
 The native closure code-pointer convention is distinct from the C runtime's
 legacy `RtFunction` type. Native closure values must not be passed to
 `rt_apply` or stored as `RtFunction` callbacks unless a deliberate adapter is
@@ -157,8 +190,9 @@ alignment, and payload offset.
   callback ABI; no such conversion is implicit.
 - Native trap sequences and diagnostics for each `NativeTrapKind`.
 - ABI support for source types or aggregate shapes not yet implemented by the
-  AArch64 selector. The current virtual-register selector supports only `i32`
-  and `bool`; this contract does not claim that other types have codegen yet.
+  AArch64 selector. MachineIR retains typed `unit`, `i32`, and `bool`, but the
+  current physical LinearIR slice only gives data slots/registers to `i32` and
+  `bool`; this does not claim that other types have Codegen yet.
 
 ## References
 

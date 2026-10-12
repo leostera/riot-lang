@@ -11,7 +11,7 @@ use Check.Inference.{
 }
 use NativeIr.Ir.{
   NativeFunction, NativeFunctionId, NativeBlock, NativeBlockId, NativeBlockParameter,
-  NativeValueId, NativeInstruction, NativeConstant, NativeInteger,
+  NativeValueId, NativeInstruction, NativeConstant, NativeUnit, NativeInteger,
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeTestValue, NativeValueTest, NativeLiteralTest, NativePatternMatchTest,
@@ -22,9 +22,9 @@ use NativeIr.Ir.{
   NativeEdge
 }
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64ScalarType, A64I32, A64Boolean,
+  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
-  A64LoadI32, A64LoadBoolean, A64Call, A64CallSite, A64DirectCall,
+  A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64AddI32, A64SubtractI32, A64MultiplyI32,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64CompareI32, A64EqualBoolean, A64NotEqualBoolean,
@@ -42,14 +42,16 @@ let native_label = fn block -> A64Label(block)
 let scalar_type = fn checked_type -> fn substitutions ->
   match (apply_substitutions checked_type substitutions) {
     | AppliedType(InferredNamedType { name, arguments: Nil }) -> match name {
+      | "unit" -> Ok(A64Unit)
       | "i32" -> Ok(A64I32)
       | "bool" -> Ok(A64Boolean)
-      | _ -> Err("only i32 and bool values have an AArch64 scalar representation here")
+      | _ -> Err("only unit, i32 and bool values have an AArch64 representation here")
     }
-    | _ -> Err("only fully resolved i32 and bool values are selected here")
+    | _ -> Err("only fully resolved unit, i32 and bool values are selected here")
   }
 
 let same_scalar_type = fn first -> fn second -> match first {
+  | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
   | A64Boolean -> match second { | A64Boolean -> true | _ -> false }
 }
@@ -204,6 +206,7 @@ let select_literal_test = fn value -> fn constant -> fn result_type ->
   fn substitutions -> match (is_scalar_type A64Boolean result_type substitutions) {
     | false -> Err("literal pattern test must produce bool")
     | true -> match constant {
+      | NativeUnit -> Ok(A64TestUnitLiteral(native_register value))
       | NativeInteger(literal) -> Ok(A64TestI32Literal(A64I32LiteralTest {
         value: native_register value,
         literal: literal
@@ -217,6 +220,10 @@ let select_literal_test = fn value -> fn constant -> fn result_type ->
   }
 
 let select_operation = fn operation -> fn result_type -> fn substitutions -> match operation {
+  | NativeConstant(NativeUnit) -> match (is_scalar_type A64Unit result_type substitutions) {
+    | true -> Ok(A64LoadUnit)
+    | false -> Err("unit constant must have type unit")
+  }
   | NativeConstant(NativeInteger(literal)) -> match (is_scalar_type A64I32 result_type substitutions) {
     | true -> Ok(A64LoadI32(literal))
     | false -> Err("integer constant must have type i32")
@@ -225,7 +232,7 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
     | true -> Ok(A64LoadBoolean(value))
     | false -> Err("boolean constant must have type bool")
   }
-  | NativeConstant(_) -> Err("unit and string constants are outside the scalar selector")
+  | NativeConstant(_) -> Err("string constants are outside the scalar selector")
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
       operator, operand_type, left, right
     })) -> select_integer_binary operator operand_type result_type left right substitutions
