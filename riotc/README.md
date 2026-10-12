@@ -1,87 +1,119 @@
 # RiotML compiler bootstrap source
 
-This is the repository-root source tree for the RiotML compiler implemented in
-TinyML. Stage 0 compiles it to JavaScript; running that compiler under Node then
-compiles the same source graph to a native compiler using C and Clang. The
-native compiler can compile and run a native RiotML program.
+`riotc/` contains the RiotML compiler implementation in bootstrap-compatible
+TinyML/RiotML source. The required bootstrap is C-first: Rust TinyML Stage 0
+emits C for this source graph, then Clang builds a C-hosted compiler. The
+commands below use no JavaScript or Node.
 
-## End-to-end bootstrap
+Stage 0's C output is only a bootstrap bridge. The compiler's existing
+C-plus-Clang source backend remains a separate, measured behavioral baseline;
+it is not a fallback in the owned native backend. That owned path currently
+reaches TypedAST, LambdaIR, target-independent SSA NativeIR, and an
+ABI-independent AArch64 virtual-register MachineIR inspection command. ARM
+LinearIR and assembly Codegen are not complete, so the final native
+self-rebuild acceptance chain is still pending.
 
-Run these commands from the repository root. They require Rust/Cargo, Node,
-Clang, and the POSIX process APIs used by the C runtime.
+## Verified C-first Stage 0 bridge
+
+Run from the repository root. Build TinyML Stage 0, emit C for the complete
+Riotc source graph, and build the C-hosted compiler:
 
 ```sh
-mkdir -p build
-cargo run -p tinyml -- compile -I riotc -o build/riotc.mjs riotc/main.ml
-cat > build/run-compiler.mjs <<'EOF'
-import { main } from "./riotc.mjs";
-process.exitCode = Number(main(undefined));
-EOF
-
-# Stage 0-hosted compiler builds the native compiler from the same source.
-node build/run-compiler.mjs compile riotc/main.ml -o build/riotml-compiler.native
-
-# The native compiler builds and runs a native RiotML program.
-printf 'let main = fn () -> 42\n' > build/smoke.ml
-build/riotml-compiler.native compile build/smoke.ml -o build/smoke
-build/smoke
+cargo build -p tinyml
+work="$(mktemp -d)"
+PATH=/usr/bin:/bin target/debug/tinyml compile --target c -I riotc \
+  riotc/main.ml -o "$work/riotml-compiler.c"
+PATH=/usr/bin:/bin target/debug/tinyml compile --target c -I riotc \
+  riotc/main.ml -o "$work/riotml-compiler-again.c"
+cmp "$work/riotml-compiler.c" "$work/riotml-compiler-again.c"
+PATH=/usr/bin:/bin clang -std=gnu11 -I riotc \
+  "$work/riotml-compiler.c" riotc/runtime.c \
+  -o "$work/riotml-compiler"
 ```
 
-The smoke executable exits with status 42. The integration test
-`riotml_compiler_emits_native_smoke_program_and_rejects_bad_types` performs the
-full chain in temporary directories. It verifies that the native compiler
-builds this executable, runs it from an unrelated working directory, and
-rejects invalid programs before leaving output executables behind. The Rust
-Stage 0 compiler itself still emits JavaScript only.
+Then exercise the C-hosted compiler with Node excluded from `PATH`:
 
-## Native compiler slice and checking
+```sh
+export RIOTML_RUNTIME_DIR="$PWD/riotc"
+printf 'let main = fn () -> 42\n' > "$work/smoke.ml"
+PATH=/usr/bin:/bin "$work/riotml-compiler" compile \
+  "$work/smoke.ml" -o "$work/smoke"
+PATH=/usr/bin:/bin "$work/smoke"
+smoke_status=$?
+test "$smoke_status" -eq 42
 
-The frontend loads and parses the complete reachable source-module graph before
-checking or emitting C. `Check.Inference` performs rank-1 Hindley–Milner
-inference over the compiler's supported native subset, preserving polymorphic
-value schemes and nominal type identities across module boundaries. Local
-`let` bindings and imported values are independently instantiated; constructors
-and patterns are checked against their payload and nominal types. The native
-entry point must have type `unit -> i32`.
+printf 'let main = fn () -> 1 + true\n' > "$work/invalid.ml"
+rm -f "$work/invalid" "$work/invalid.c"
+if PATH=/usr/bin:/bin "$work/riotml-compiler" compile \
+    "$work/invalid.ml" -o "$work/invalid"; then
+  echo 'ill-typed input unexpectedly compiled' >&2
+  exit 1
+fi
+test ! -e "$work/invalid"
+test ! -e "$work/invalid.c"
+```
 
-The self-compilation test exercises both accepted and rejected HM cases: local
-polymorphic identity at distinct types; imported polymorphic identity and a
-generic nominal variant; mismatches between a nominal variant and a different
-variant; ambiguous imports and local/imported name conflicts; duplicate value
-and pattern bindings; bad primitive operators and function arguments; unknown
-names/types; and incompatible match patterns. A rejected source fails before C
-generation, returns a non-zero status, and leaves no plausible executable. The
-checker does not use an unknown/dynamic-type escape hatch.
+The restricted `PATH` contains Clang and POSIX tools but not Node. The
+C-hosted compiler's current `compile` command still uses Riotc's C-plus-Clang
+source backend. This proves the Stage 0 bridge and its failure boundary; it
+does not yet prove compilation through the owned AArch64 backend. The final
+acceptance chain must additionally build an owned native compiler, self-rebuild
+it, and have the successor compile and run the status-42 fixture.
 
-The RiotML native slice supports the constructs needed by the compiler source:
-functions and closures, local bindings, applications, `i32`, booleans, strings,
-tuples, records, named variants, and their supported patterns and matches. This
-is narrower than Stage 0 TinyML's documented fixed-width integer contract; it
-is not a claim that every Stage 0 type or operator has a native RiotML lowering.
+## Compiler pipeline status
 
-`Host` and the bundled `String` module are connected to the native runtime;
-Clang is invoked through `Host.run_process`. The compiler embeds its runtime
-source directory in the generated native executable. At compile time it checks
-the embedded directory, the current directory's `riotc/`, and the source
-module's directory before using the repository-relative fallback. The
-integration test verifies runtime discovery while the native compiler runs
-outside the repository.
+The checker loads the complete reachable source-module graph and performs
+rank-1 Hindley–Milner inference, preserving polymorphic schemes and nominal
+type identities across module boundaries. Local `let` bindings and imported
+values are independently instantiated; constructors and patterns are checked
+against their payload and nominal types. The native entry point must have type
+`unit -> i32`.
 
-The compiler CLI currently accepts `compile SOURCE -o OUTPUT`. It resolves
-imports relative to the source module, then uses the source root and bundled
-TinyML library roots. C plus Clang remains provisional through the release gate;
-changing the bootstrap architecture requires user approval.
+TypedAST retains resolved binding identities, checked types, and source spans.
+LambdaIR is a typed, target-independent desugared core. NativeIR is typed
+target-independent SSA with explicit blocks, terminators, block arguments, and
+call/allocation/trap/Host effects; it has a deterministic printer, verifier,
+and positive/negative tests. The `native-ir SOURCE` command prints this IR.
+`aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar
+AArch64 MachineIR selection. Calls remain logical pseudos, and unsupported
+operations are reported rather than emitted as C by this inspection path.
+
+The existing source compiler still goes through `codegen/c/emit.ml` and
+Clang. Its supported subset includes functions and closures, local bindings,
+applications, `i32`, booleans, strings, tuples, records, named variants, and
+their supported patterns and matches. This subset is narrower than Stage 0
+TinyML's documented type/operator surface. Unsupported C-backend constructs
+fail before output is written; this baseline is separate from the unfinished
+owned native path.
+
+`Host` and the bundled `String` module are connected to the C runtime. The
+runtime preserves embedded NUL bytes in string values, file contents, and
+stdout/stderr; OS paths and process names/arguments reject NUL explicitly.
+Text-file I/O uses strict UTF-8 validation. Clang is launched through
+`Host.run_process`; runtime discovery uses `RIOTML_RUNTIME_DIR`, the current
+working directory, and the source/runtime directories. The existing
+integration tests exercise Host files, arguments, directories, processes,
+errors, output, and exit status.
+
+The existing C-plus-Clang source-backend and self-rebuild baseline is recorded
+in [`../docs/benchmarks/riotc-c-bootstrap-baseline-2026-10-12.md`](../docs/benchmarks/riotc-c-bootstrap-baseline-2026-10-12.md).
+Those measurements are distinct from the Rust TinyML Stage 0 to C bridge.
 
 ## Source organization
 
-- `syntax/ast.ml` and `syntax/parser/`: domain-specific source types and the
-  lexer/parser, including complete source-module parsing.
-- `check/names.ml`: value, type, constructor, import, and pattern-name checks.
-- `check/inference.ml`: unification, generalization, instantiation, module
-  interfaces, nominal constructor schemes, and native-entry validation.
+- `syntax/ast.ml` and `syntax/parser/`: source types, lexer, and parser.
+- `check/names.ml` and `check/inference.ml`: name checks, HM inference,
+  module interfaces, nominal constructor schemes, and native-entry validation.
 - `modules.ml`: dependency-first module graph loading, missing-module
   reporting, and cycle detection.
-- `codegen/c/emit.ml`: tagged-runtime C emission for source modules.
+- `lambda/` and `native_ir/`: typed core lowering, SSA lowering, printing, and
+  verification.
+- `backend/native/aarch64/`: virtual-register MachineIR selection and
+  inspection; ABI lowering, LinearIR, and assembly Codegen remain future work.
+- `codegen/c/emit.ml`: existing C-plus-Clang source-backend baseline.
 - `runtime.h`, `runtime.c`: tagged values, closures, module environments, and
-  the native host runtime linked by Clang.
+  the C-hosted runtime linked by Clang.
 - `main.ml`: compiler pipeline, runtime discovery, and CLI.
+
+Run `cargo fmt --all -- --check` and `cargo test --workspace` for the current
+Rust Stage 0 and compiler regression suites.
