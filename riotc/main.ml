@@ -8,6 +8,8 @@ use Check.Inference.{
   CheckedModuleInterface, infer_source_module, validate_native_entry_module
 }
 use Codegen.C.Emit.{emit_module_program}
+use Lambda.Ir.{LambdaModule}
+use Lambda.Lower.{lower_checked_module}
 use Modules.{
   LoadedModule, load_source_graph, module_source_pairs,
   directory_of, join_path
@@ -26,6 +28,7 @@ type CompilationStage =
   | SourceRead
   | SourceParsing
   | SourceTypechecking
+  | LambdaLowering
   | COutputWrite
   | ClangLaunch
   | ClangCompilation
@@ -78,6 +81,18 @@ let check_loaded_modules = fn (modules: List<LoadedModule>) ->
     }
   }
 
+let lower_checked_modules = fn checked_modules ->
+  match checked_modules {
+    | Nil -> Ok(Nil)
+    | Cons(checked_module, remaining) -> match (lower_checked_module checked_module) {
+      | Err(message) -> Err(message)
+      | Ok(lambda_module) -> match (lower_checked_modules remaining) {
+        | Err(message) -> Err(message)
+        | Ok(lambda_modules) -> Ok(Cons((lambda_module: LambdaModule), lambda_modules))
+      }
+    }
+  }
+
 let find_root_checked_module = fn (root_path: string) ->
   fn (checked_modules: List<CheckedModuleInterface>) ->
   match checked_modules {
@@ -106,7 +121,9 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
     | Err(message) -> Err(compile_error (SourceParsing) message None)
     | Ok(modules) -> match (check_loaded_modules modules Nil) {
       | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-      | Ok(checked_modules) -> match (find_root_checked_module source_file checked_modules) {
+      | Ok(checked_modules) -> match (lower_checked_modules checked_modules) {
+        | Err(message) -> Err(compile_error (LambdaLowering) message None)
+        | Ok(_) -> match (find_root_checked_module source_file checked_modules) {
         | None -> Err(compile_error (SourceParsing)
           "source graph has no entry module" None)
         | Some(CheckedModuleInterface {
@@ -116,6 +133,7 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
           | Err(message) -> Err(compile_error (SourceTypechecking) message None)
           | Ok(_) -> Ok(emit_module_program source_file
             (runtime_include_directory source_file) (module_source_pairs modules))
+        }
         }
       }
     }
@@ -194,6 +212,7 @@ let compilation_stage_name = fn stage ->
     | SourceRead -> "source read"
     | SourceParsing -> "source parsing"
     | SourceTypechecking -> "typechecking"
+    | LambdaLowering -> "LambdaIR lowering"
     | COutputWrite -> "C output"
     | ClangLaunch -> "Clang launch"
     | ClangCompilation -> "Clang compilation"
