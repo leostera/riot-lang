@@ -60,15 +60,15 @@ python3 tools/benchmarks/riotc_c_bootstrap.py \
   --root ../riot-lang-worktrees/baseline-f419986a2 --iterations 3
 ```
 
-## Current C-backend baseline at `db25954a4`
+## Earlier C-backend baseline at `db25954a4`
 
-This is the primary baseline for the current compiler source before the
-ABI-dependent ARM backend (`db25954a4bc3c75b112826761ceb3efce0d570d8`). The
-worktree was clean. Since `f419986a2`, the compiler source graph has grown to
-include TypedAST, LambdaIR, NativeIR and its verifier; the C emitter and
-inference implementation have also changed. The runtime C/header fingerprints
-are unchanged. Do not interpret the historical and current timing delta as an
-isolated codegen regression.
+This was the primary baseline before the ABI-free AArch64 MachineIR inspection
+stage was added (`db25954a4bc3c75b112826761ceb3efce0d570d8`). The worktree was
+clean. Since `f419986a2`, the compiler source graph had grown to include
+TypedAST, LambdaIR, NativeIR and its verifier; the C emitter and inference
+implementation had also changed. The runtime C/header fingerprints were
+unchanged. Do not interpret the historical and earlier timing delta as an
+isolated codegen regression. The updated primary baseline is below.
 
 | Stage (seconds) | Sample 1 | Sample 2 | Sample 3 | Median |
 |---|---:|---:|---:|---:|
@@ -97,6 +97,51 @@ The C-backend self-rebuild remains much slower than the historical revision,
 which now contains substantially more compiler source and checker/IR logic.
 No numeric acceptance threshold has been selected.
 
+## Updated C-backend baseline at `929d8b7ee`
+
+This is the primary reproducible baseline at the source revision after adding
+the ABI-free scalar AArch64 MachineIR selector, printer and inspection command
+(`929d8b7eeff755c19b29b480191ab4c4786a6c97`). The worktree was clean. The
+measured compile path remains the existing C-plus-Clang reference; the new
+MachineIR CLI is not invoked by this benchmark. Its source is nevertheless
+part of the compiler graph and therefore contributes to Stage 0 and native
+compiler output. The NativeIR/C-path separation, runtime C/header contracts,
+and language behavior are otherwise unchanged from `db25954a4`.
+
+| Stage (seconds) | Sample 1 | Sample 2 | Sample 3 | Median |
+|---|---:|---:|---:|---:|
+| Stage 0 -> JS | 0.913 | 0.365 | 0.367 | 0.367 |
+| JS-hosted compiler -> native compiler | 122.204 | 117.924 | 120.279 | 120.279 |
+| Standalone Clang of generated C | 2.153 | 2.138 | 2.184 | 2.153 |
+| Native compiler self-rebuild | 294.708 | 295.981 | 296.598 | 295.981 |
+| Successor compiles the smoke program | 0.597 | 0.569 | 0.577 | 0.577 |
+
+Artifacts were stable across all three samples: generated C 4,081,362 bytes
+(first build) and 4,081,358 bytes (self-rebuild); compiler and successor
+executables 2,024,856 bytes; smoke C 874 bytes; smoke executable 55,784 bytes.
+The root Stage 0 JavaScript module was 26,506 bytes (dependency modules are
+emitted separately). All smoke programs exited 42. Ill-typed input returned 1
+and left neither an executable nor a `.c` file. The Stage 0 Rust build, excluded
+from sample timings, took 7.377 seconds in this run.
+
+The source graph and compiler binary are larger than at `db25954a4` because
+MachineIR selection/printing and CLI inspection code is now compiled as part of
+the compiler. The timing changes between these revisions are not a controlled
+measurement of the C code generator or the owned backend. No numeric acceptance
+threshold has been selected.
+
+Reproduce from a clean checkout:
+
+```sh
+git worktree add --detach ../riot-lang-worktrees/aarch64-mir-c-baseline 929d8b7ee
+python3 tools/benchmarks/riotc_c_bootstrap.py \
+  --root ../riot-lang-worktrees/aarch64-mir-c-baseline --iterations 3
+```
+
+Raw logs and `results.json` for this series were retained at
+`/var/folders/qy/3zl3lsrj0s9fwtjgjs6dx6vr0000gn/T/riotc-c-bootstrap-baseline-kyselmk2`
+on the measurement host.
+
 ## C-path/NativeIR separation finding
 
 At `d05e5927f`, compiling `riotc/main.ml` still lowered and verified LambdaIR
@@ -104,7 +149,7 @@ and NativeIR before selecting the C backend. One self-rebuild attempt was
 terminated by signal 9 after 419.739 seconds, before it wrote successor C or an
 executable. `db25954a4` keeps the C differential path independent of those
 owned-IR checks; the `native-ir` inspection command continues to perform them.
-The three successful current-baseline samples above confirm native self-rebuild
+The three successful samples at `db25954a4` above confirm native self-rebuild
 and the status-42/ill-typed checks after this separation.
 
 This command split is not a generated-C fallback for an owned backend. The C
