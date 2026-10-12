@@ -28,9 +28,9 @@ use NativeIr.Ir.{
   NativeEdge
 }
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean, A64Pointer,
+  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
-  A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
+  A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64RuntimeCall, A64RuntimeCallSite,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64AddI32, A64SubtractI32,
   A64MultiplyI32,
@@ -91,10 +91,10 @@ let variant_cases_are_concrete = fn cases -> fn substitutions -> match cases {
 let representation_for_named_type = fn name -> fn arguments -> match name {
   | "unit" -> match arguments { | Nil -> Ok(A64Unit) | _ -> Err("unit cannot have type arguments") }
   | "i32" -> match arguments { | Nil -> Ok(A64I32) | _ -> Err("i32 cannot have type arguments") }
+  | "i64" -> match arguments { | Nil -> Ok(A64I64) | _ -> Err("i64 cannot have type arguments") }
   | "bool" -> match arguments { | Nil -> Ok(A64Boolean) | _ -> Err("bool cannot have type arguments") }
   | "i8" -> Err("i8 has no AArch64 representation in this backend slice")
   | "i16" -> Err("i16 has no AArch64 representation in this backend slice")
-  | "i64" -> Err("i64 has no AArch64 representation in this backend slice")
   | "u8" -> Err("u8 has no AArch64 representation in this backend slice")
   | "u16" -> Err("u16 has no AArch64 representation in this backend slice")
   | "u32" -> Err("u32 has no AArch64 representation in this backend slice")
@@ -119,6 +119,7 @@ let native_type = fn checked_type -> fn substitutions -> match
 let same_value_type = fn first -> fn second -> match first {
   | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
+  | A64I64 -> match second { | A64I64 -> true | _ -> false }
   | A64Boolean -> match second { | A64Boolean -> true | _ -> false }
   | A64Pointer -> match second { | A64Pointer -> true | _ -> false }
 }
@@ -313,9 +314,10 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
     | true -> Ok(A64LoadUnit)
     | false -> Err("unit constant must have type unit")
   }
-  | NativeConstant(NativeInteger(literal)) -> match (is_value_type A64I32 result_type substitutions) {
-    | true -> Ok(A64LoadI32(literal))
-    | false -> Err("integer constant must have type i32")
+  | NativeConstant(NativeInteger(literal)) -> match (native_type result_type substitutions) {
+    | Ok(A64I32) -> Ok(A64LoadI32(literal))
+    | Ok(A64I64) -> Ok(A64LoadI64(literal))
+    | _ -> Err("integer constant must have type i32 or i64")
   }
   | NativeConstant(NativeBoolean(value)) -> match (is_value_type A64Boolean result_type substitutions) {
     | true -> Ok(A64LoadBoolean(value))

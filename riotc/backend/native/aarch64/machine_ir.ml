@@ -11,7 +11,7 @@ use NativeIr.Ir.{
 type A64VirtualRegister = A64VirtualRegister(i32)
 type A64Label = A64Label(NativeBlockId)
 
-type A64ValueType = A64Unit | A64I32 | A64Boolean | A64Pointer
+type A64ValueType = A64Unit | A64I32 | A64I64 | A64Boolean | A64Pointer
 
 type A64Function = A64Function {
   identity: NativeFunctionId,
@@ -46,6 +46,7 @@ type A64Instruction = A64Instruction {
 type A64Operation =
   | A64LoadUnit
   | A64LoadI32(IntegerLiteral)
+  | A64LoadI64(IntegerLiteral)
   | A64LoadBoolean(bool)
   | A64TestUnitLiteral(A64VirtualRegister)
   | A64TestI32Literal(A64I32LiteralTest)

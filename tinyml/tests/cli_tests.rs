@@ -722,6 +722,58 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert_eq!(recursive_run.stdout, recursive_c_run.stdout);
     assert_eq!(recursive_run.stderr, recursive_c_run.stderr);
 
+    let i64_call_source = dir.join("i64-direct-graph.ml");
+    fs::write(
+        &i64_call_source,
+        "let echo = fn (value: i64) -> value\nlet choose = fn flag -> match flag { | true -> echo (41: i64) | false -> echo (42: i64) }\nlet take_i64 = fn (ignored: i64) -> 42\nlet main = fn () -> take_i64 (choose true)\n",
+    )
+    .unwrap();
+    let i64_call_executable = dir.join("i64-direct-graph.native");
+    let i64_call_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_call_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_call_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_call_compile.status.success(),
+        "i64 direct-call graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_call_compile.stderr)
+    );
+    let i64_call_assembly =
+        fs::read_to_string(i64_call_executable.with_file_name("i64-direct-graph.native.aarch64.s"))
+            .unwrap();
+    assert!(i64_call_assembly.contains("ldr x9, =41"));
+    assert!(i64_call_assembly.contains("ldr x1"));
+    assert!(i64_call_assembly.contains("str x0"));
+    assert!(i64_call_assembly.contains("str x9"));
+    let i64_call_run = Command::new(&i64_call_executable).output().unwrap();
+    assert_eq!(i64_call_run.status.code(), Some(42));
+
+    let i64_call_c_executable = dir.join("i64-direct-graph.c-backend");
+    let i64_call_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&i64_call_source)
+        .arg("-o")
+        .arg(&i64_call_c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_call_c_compile.status.success(),
+        "C-backend i64 differential fixture failed: {}",
+        String::from_utf8_lossy(&i64_call_c_compile.stderr)
+    );
+    let i64_call_c_run = Command::new(&i64_call_c_executable).output().unwrap();
+    assert_eq!(i64_call_run.status.code(), i64_call_c_run.status.code());
+    assert_eq!(i64_call_run.stdout, i64_call_c_run.stdout);
+    assert_eq!(i64_call_run.stderr, i64_call_c_run.stderr);
+
     let global_initializer_source = dir.join("global-initializer.ml");
     fs::write(
         &global_initializer_source,

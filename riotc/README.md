@@ -84,9 +84,12 @@ lowering; aliases, imported values, and generalized functions retain closure
 semantics. The `native-ir SOURCE` command prints this IR.
 `aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar,
 opaque-pointer, and `Host.args` AArch64 MachineIR selection. `aarch64-linear-ir SOURCE
-TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice plus
-opaque-pointer pass-through, with explicit spill slots, call-register
-assignments, and linearized control flow.
+TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice, signed
+`i64` direct-call pass-through, and opaque-pointer pass-through, with explicit
+spill slots, call-register assignments, and linearized control flow. The
+current i64 slice supports explicitly ascribed small integer literals,
+parameters, returns, direct-call arguments/results, and block-edge copies; it
+does not yet support i64 arithmetic, comparisons, or pattern tests.
 `aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT` emits and links
 AArch64 assembly for one selected function and writes `OUTPUT.aarch64.s` for
 inspection. This is a function-level Codegen harness, not a whole-module

@@ -1,5 +1,5 @@
 // Lower AArch64 virtual-register MachineIR to an all-spill, physical-register LinearIR.
-// Unit is erased; internal calls pass null x0 environment plus at most one typed W argument.
+// Unit is erased; direct calls pass null x0 environment and at most one typed W/X argument.
 use Prelude.{List, Nil, Cons, Result, Ok, Err, Option, Some, None}
 use String.{equal}
 use NativeIr.Ir.{
@@ -11,9 +11,9 @@ use Syntax.Ast.{ValueName}
 use Check.Inference.{BindingIdentity, ModuleValueBinding}
 use NativeIr.Print.{block_id}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean, A64Pointer,
+  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
-  A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral,
+  A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
   A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64RuntimeHostArgs,
@@ -29,7 +29,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister,
   A64ValueLocation, A64FrameSlot, A64LinearLabel, A64BasicBlockLabel,
   A64TrueEdgeLabel, A64FalseEdgeLabel, A64LinearInstruction,
-  A64MoveZero, A64LoadI32Literal, A64LoadBooleanLiteral, A64ReloadSpill,
+  A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill,
   A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW, A64NegateW,
   A64CompareSetW, A64CallDirect, A64CallRuntime, A64LinearTerminator, A64LinearJump,
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
@@ -53,6 +53,7 @@ let location_register = fn (A64ValueLocation { value, value_type: _, slot: _ }) 
 let same_value_type = fn first -> fn second -> match first {
   | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
+  | A64I64 -> match second { | A64I64 -> true | _ -> false }
   | A64Boolean -> match second { | A64Boolean -> true | _ -> false }
   | A64Pointer -> match second { | A64Pointer -> true | _ -> false }
 }
@@ -198,6 +199,11 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
     | Ok(slot) -> Ok(append_linear_items (add_instruction(A64LoadI32Literal(w9, literal)))
         (add_instruction(A64SpillRegister(slot, w9))))
   }
+  | A64LoadI64(literal) -> match (lookup_slot function_identity block span destination locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(append_linear_items (add_instruction(A64LoadI64Literal(x9, literal)))
+        (add_instruction(A64SpillRegister(slot, x9))))
+  }
   | A64LoadBoolean(value) -> match (lookup_slot function_identity block span destination locations) {
     | Err(failure) -> Err(failure)
     | Ok(slot) -> Ok(append_linear_items (add_instruction(A64LoadBooleanLiteral(w9, value)))
@@ -249,6 +255,10 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
           reason: "typed i32 runtime helper must return i32"
         })
         | A64Pointer -> Err(A64LinearFailure {
+          function: function_identity, block: block, span: span,
+          reason: "typed i32 runtime helper must return i32"
+        })
+        | A64I64 -> Err(A64LinearFailure {
           function: function_identity, block: block, span: span,
           reason: "typed i32 runtime helper must return i32"
         })
@@ -346,6 +356,10 @@ let lower_call_argument = fn function_identity -> fn block -> fn span ->
   | A64Boolean -> match (lookup_slot function_identity block span register locations) {
     | Err(failure) -> Err(failure)
     | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(w1, slot)))
+  }
+  | A64I64 -> match (lookup_slot function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(x1, slot)))
   }
   | A64Pointer -> match (lookup_slot function_identity block span register locations) {
     | Err(failure) -> Err(failure)
@@ -451,6 +465,7 @@ let lower_call = fn function_identity -> fn block -> fn span ->
             (append_linear_items argument_setup (append_linear_items (add_instruction(A64CallDirect(callee)))
               (add_instruction(A64SpillRegister(result_slot, match call_result {
                 | A64Pointer -> x0
+                | A64I64 -> x0
                 | _ -> w0
               }))))))
         }
@@ -526,6 +541,7 @@ let lower_edge_copies = fn function_identity -> fn block -> fn span ->
                   | Ok(destination_slot) -> {
                     let copy_register = match source_type {
                       | A64Pointer -> x9
+                      | A64I64 -> x9
                       | _ -> w9
                     };
                     Ok(append_linear_items
@@ -595,6 +611,7 @@ let lower_terminator = fn function_identity -> fn function_result -> fn block ->
           | Ok(slot) -> {
             let return_register = match function_result {
               | A64Pointer -> x0
+              | A64I64 -> x0
               | _ -> w0
             };
             Ok(append_linear_items (add_instruction(A64ReloadSpill(return_register, slot)))
@@ -621,6 +638,11 @@ let lower_entry_parameter_setup = fn function_identity -> fn label ->
     match (lookup_slot function_identity label span register locations) {
       | Err(failure) -> Err(failure)
       | Ok(slot) -> Ok(add_instruction(A64SpillRegister(slot, w1)))
+    }
+  | Cons(A64BlockParameter { register, value_type: A64I64, span: _ }, Nil) ->
+    match (lookup_slot function_identity label span register locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(slot) -> Ok(add_instruction(A64SpillRegister(slot, x1)))
     }
   | Cons(A64BlockParameter { register, value_type: A64Pointer, span: _ }, Nil) ->
     match (lookup_slot function_identity label span register locations) {

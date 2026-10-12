@@ -8,7 +8,7 @@ use NativeIr.Ir.{
 }
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
-  A64Label, A64Unit, A64I32, A64Boolean, A64Pointer, A64Equal, A64NotEqual,
+  A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer, A64Equal, A64NotEqual,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeHostArgs,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual
@@ -16,7 +16,7 @@ use Backend.Native.Aarch64.MachineIr.{
 use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64FrameSlot,
   A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel, A64FalseEdgeLabel,
-  A64LinearInstruction, A64MoveZero, A64LoadI32Literal, A64LoadBooleanLiteral,
+  A64LinearInstruction, A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral,
   A64ReloadSpill, A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW,
   A64NegateW, A64CompareSetW, A64CallDirect, A64CallRuntime,
   A64LinearTerminator,
@@ -143,6 +143,8 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
   | A64MoveZero(destination) -> Ok("mov " + register_text destination + ", "
       + zero_register destination + "\n")
   | A64LoadI32Literal(destination, IntegerLiteral(value)) ->
+    Ok("ldr " + register_text destination + ", =" + value + "\n")
+  | A64LoadI64Literal(destination, IntegerLiteral(value)) ->
     Ok("ldr " + register_text destination + ", =" + value + "\n")
   | A64LoadBooleanLiteral(destination, value) -> Ok("mov " + register_text destination + ", #"
       + (match value { | true -> "1" | false -> "0" }) + "\n")
@@ -297,6 +299,7 @@ let emit_program = fn linear_functions -> fn entry_identity -> {
             | A64Unit -> Err("function-level entry must return i32")
             | A64Boolean -> Err("function-level entry must return i32")
             | A64Pointer -> Err("function-level entry must return i32")
+            | A64I64 -> Err("function-level entry must return i32")
             | A64I32 -> match (entry_has_unit_or_no_argument entry) {
               | false -> Err("function-level entry cannot accept a source argument")
               | true -> match (emit_functions functions functions) {

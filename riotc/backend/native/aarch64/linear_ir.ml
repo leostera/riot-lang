@@ -1,11 +1,11 @@
 // Physical-register, stack-slot AArch64 IR after ABI lowering and control-flow linearization.
-// Scalars use unboxed 32-bit spill slots; opaque pointers use aligned 64-bit slots.
+// i32/bool use 32-bit slots; i64 and opaque pointers use aligned 64-bit slots.
 use Prelude.{List, Option, Some, None}
 use Syntax.Ast.{IntegerLiteral}
 use Syntax.Lexer.{SourceSpan}
 use NativeIr.Ir.{NativeFunctionId, NativeTrapKind}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean, A64Pointer,
+  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Condition, A64Equal, A64NotEqual, A64SignedLessThan,
   A64SignedLessThanOrEqual, A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
   A64RuntimeHelper, A64RuntimeI32Division, A64RuntimeI32Remainder
@@ -37,6 +37,7 @@ type A64LinearLabel =
 type A64LinearInstruction =
   | A64MoveZero(A64PhysicalRegister)
   | A64LoadI32Literal(A64PhysicalRegister, IntegerLiteral)
+  | A64LoadI64Literal(A64PhysicalRegister, IntegerLiteral)
   | A64LoadBooleanLiteral(A64PhysicalRegister, bool)
   | A64ReloadSpill(A64PhysicalRegister, A64FrameSlot)
   | A64SpillRegister(A64FrameSlot, A64PhysicalRegister)
@@ -81,6 +82,7 @@ type A64LinearFailure = A64LinearFailure {
 let width_of_type = fn value_type -> match value_type {
   | A64Unit -> A64W32
   | A64I32 -> A64W32
+  | A64I64 -> A64X64
   | A64Boolean -> A64W32
   | A64Pointer -> A64X64
 }
@@ -101,6 +103,7 @@ let x0 = A64PhysicalRegister { number: 0, width: A64X64 }
 let slot_size = fn value_type -> match value_type {
   | A64Unit -> 0
   | A64I32 -> 4
+  | A64I64 -> 8
   | A64Boolean -> 4
   | A64Pointer -> 8
 }
@@ -108,6 +111,7 @@ let slot_size = fn value_type -> match value_type {
 let slot_alignment = fn value_type -> match value_type {
   | A64Unit -> 1
   | A64I32 -> 4
+  | A64I64 -> 8
   | A64Boolean -> 4
   | A64Pointer -> 8
 }

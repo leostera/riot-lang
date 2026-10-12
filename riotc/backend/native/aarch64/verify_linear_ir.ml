@@ -5,7 +5,7 @@ use NativeIr.Ir.{
   NativeModuleInitializer
 }
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer,
+  A64VirtualRegister, A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Equal, A64NotEqual, A64SignedLessThan, A64SignedLessThanOrEqual,
   A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeHostArgs
@@ -14,7 +14,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64ValueLocation,
   A64FrameSlot, A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel,
   A64FalseEdgeLabel, A64LinearInstruction, A64MoveZero, A64LoadI32Literal,
-  A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
+  A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
   A64SubtractW, A64MultiplyW, A64NegateW, A64CompareSetW, A64CallDirect,
   A64CallRuntime,
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
@@ -89,6 +89,10 @@ let valid_slot = fn (A64FrameSlot { value: _, offset, value_type }) -> match val
     | false -> false
     | true -> match (offset <= 2147483628) { | true -> offset % 4 == 0 | false -> false }
   }
+  | A64I64 -> match (offset >= 0) {
+    | false -> false
+    | true -> match (offset <= 2147483632) { | true -> offset % 8 == 0 | false -> false }
+  }
   | A64Pointer -> match (offset >= 0) {
     | false -> false
     | true -> match (offset <= 2147483632) { | true -> offset % 8 == 0 | false -> false }
@@ -114,6 +118,7 @@ let same_slot = fn first -> fn second ->
 let same_type = fn first -> fn second -> match first {
   | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
+  | A64I64 -> match second { | A64I64 -> true | _ -> false }
   | A64Boolean -> match second { | A64Boolean -> true | _ -> false }
   | A64Pointer -> match second { | A64Pointer -> true | _ -> false }
 }
@@ -189,6 +194,19 @@ let validate_location_list = fn values -> match values {
         }
       }
     }
+    | A64I64 -> match slot {
+      | None -> Err("i64 is missing its unboxed spill slot")
+      | Some(frame_slot) -> match (same_register value (frame_slot_value frame_slot)) {
+        | false -> Err("spill slot is assigned to a different SSA value")
+        | true -> match (same_type value_type (frame_slot_type frame_slot)) {
+          | false -> Err("spill slot type differs from its SSA value type")
+          | true -> match (valid_slot frame_slot) {
+            | true -> validate_location_list remaining
+            | false -> Err("spill slot has an invalid offset or unit representation")
+          }
+        }
+      }
+    }
     | A64Boolean -> match slot {
       | None -> Err("bool is missing its unboxed spill slot")
       | Some(frame_slot) -> match (same_register value (frame_slot_value frame_slot)) {
@@ -235,6 +253,7 @@ let valid_instruction_registers = fn instruction -> fn values -> match instructi
     | _ -> false
   }
   | A64LoadI32Literal(register, _) -> bool_or (same_physical register w9) (same_physical register w10)
+  | A64LoadI64Literal(register, _) -> bool_or (same_physical register x9) (same_physical register x10)
   | A64LoadBooleanLiteral(register, _) -> bool_or (same_physical register w9) (same_physical register w10)
   | A64ReloadSpill(register, slot) -> bool_and (physical_register_allowed register)
       (bool_and (physical_matches_type register (frame_slot_type slot)) (slot_is_known slot values))

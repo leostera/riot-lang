@@ -81,26 +81,26 @@ module globals, or call module initializers.
 The first MachineIR-to-LinearIR implementation keeps this approved signature
 shape while deliberately using an all-spill allocator:
 
-- Each non-unit MachineIR SSA value in the current `i32`/`bool` slice receives
-  a distinct unboxed four-byte stack slot. Opaque pointers receive distinct
-  eight-byte stack slots aligned to eight bytes; `unit` receives no slot. This
-  is a spill-all strategy, not a boxed `RtValue` representation or a claim
-  about eventual aggregate memory layout. Pointer pass-through does not select
+- Each non-unit MachineIR SSA value receives a distinct unboxed spill slot:
+  `i32`/`bool` use four bytes, while signed `i64` and opaque pointers use
+  eight-byte slots aligned to eight bytes. `unit` receives no slot. This is a
+  spill-all strategy, not a boxed `RtValue` representation or a claim about
+  eventual aggregate memory layout. Pointer pass-through does not select
   concrete string/composite layouts or implement their constructors/accessors.
-- Scalar spill offsets are four-byte aligned and pointer spill offsets are
-  eight-byte aligned from the allocated stack-frame `sp`; the local frame size
-  is rounded up to 16 bytes. Current Codegen saves/restores `x29`/`x30`,
+- `i32`/`bool` spill offsets are four-byte aligned; `i64`/pointer spill
+  offsets are eight-byte aligned from the allocated stack-frame `sp`. The
+  local frame size is rounded up to 16 bytes. Current Codegen saves/restores `x29`/`x30`,
   allocates that frame, and emits the epilogue at returns.
-- Reloaded scalar values and selected operations use caller-saved
-  `w9`/`w10`/`w11`; opaque pointer copies use `x9`. The initial lowering
-  allocates no callee-saved registers. Values are reloaded before use and
+- Reloaded `i32`/`bool` values and selected operations use caller-saved
+  `w9`/`w10`/`w11`; signed `i64` and opaque pointer copies use `x9`. The
+  initial lowering allocates no callee-saved registers. Values are reloaded before use and
   written back after definitions, so control-flow edges copy block arguments
   explicitly through the width-appropriate scratch register.
 - A direct call to a top-level function or module initializer sets hidden
   environment `x0` to null, places its optional non-unit scalar argument in
-  `w1` or opaque pointer argument in `x1`, emits the logical direct-call
-  pseudo, and spills a scalar or pointer result from `w0` or `x0`. `unit`
-  arguments and results emit no data move. A function entry's optional source
+  `w1` for `i32`/`bool` or `x1` for `i64`/opaque pointers, emits the logical
+  direct-call pseudo, and spills scalar or pointer results from `w0` or `x0`.
+  `unit` arguments and results emit no data move. A function entry's optional source
   argument is spilled from its width-appropriate `w1`/`x1`; an entry `unit`
   argument is erased.
 - The current LIR verifier checks slot ownership/uniqueness, frame alignment
@@ -118,12 +118,16 @@ shape while deliberately using an all-spill allocator:
   lowers through `rt_native_host_args`; every other Host helper still fails
   before Codegen.
 
-This conservative policy validates the first ABI lowering but is not the full
-native backend. `A64Pointer` currently supports opaque pointer arguments,
-returns, spill/reload, and edge copies; it does not implement string constants,
-heap layouts, constructors, projections, or closure calls. Narrow integer
-widths, closure environments, and general Host helper marshalling remain
-outside the current LIR slice. The selected-function harness rejects pointer-argument or
+This conservative policy validates an initial ABI lowering but is not the full
+native backend. The current LIR slice supports signed `i64` constants only
+when explicitly ascribed and within the parser's existing `i32` literal range,
+plus `i64` parameters, returns, direct-call arguments/results, spill/reload,
+and block-edge copies. It does not support `i64` arithmetic, comparisons, or
+pattern tests. `A64Pointer` supports opaque pointer arguments, returns,
+spill/reload, and edge copies; it does not implement string constants, heap
+layouts, constructors, projections, or closure calls. Narrow integer widths,
+closure environments, and general Host helper marshalling remain outside the
+current LIR slice. The selected-function harness rejects pointer-argument or
 pointer-result entry adapters, assembles and links only supported `unit -> i32`
 entries with Clang for the approved target, and is not the whole-module entry
 adapter described above.

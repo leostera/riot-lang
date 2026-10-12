@@ -1439,7 +1439,10 @@ let verify_instruction_operation = fn module -> fn (NativeInstruction {
 }) -> fn definitions -> fn substitutions -> match operation {
         | NativeConstant(constant) -> match constant {
           | NativeUnit -> verify_named_result result_type "unit" substitutions
-          | NativeInteger(_) -> verify_named_result result_type "i32" substitutions
+          | NativeInteger(_) -> match (verify_named_result result_type "i32" substitutions) {
+            | Ok(_) -> Ok(true)
+            | Err(_) -> verify_named_result result_type "i64" substitutions
+          }
           | NativeBoolean(_) -> verify_named_result result_type "bool" substitutions
           | NativeString(_) -> verify_named_result result_type "string" substitutions
         }

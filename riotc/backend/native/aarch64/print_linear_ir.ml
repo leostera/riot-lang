@@ -6,7 +6,7 @@ use NativeIr.Ir.{NativeBlockId, NativeDivisionByZero, NativeRemainderByZero,
   NativeArithmeticOverflow, NativePatternFailure, NativeExplicitTrap}
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer, A64Condition,
+  A64VirtualRegister, A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer, A64Condition,
   A64Equal, A64NotEqual,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual, A64RuntimeI32Division, A64RuntimeI32Remainder,
@@ -16,7 +16,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64ValueLocation,
   A64FrameSlot, A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel,
   A64FalseEdgeLabel, A64LinearInstruction, A64MoveZero, A64LoadI32Literal,
-  A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
+  A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
   A64SubtractW, A64MultiplyW, A64NegateW, A64CompareSetW, A64CallDirect,
   A64CallRuntime,
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
@@ -49,6 +49,7 @@ let label_text = fn label -> match label {
 let value_type_text = fn value_type -> match value_type {
   | A64Unit -> "unit"
   | A64I32 -> "i32"
+  | A64I64 -> "i64"
   | A64Boolean -> "bool"
   | A64Pointer -> "ptr"
 }
@@ -82,6 +83,7 @@ let trap_text = fn reason -> match reason {
 let print_instruction = fn instruction -> match instruction {
   | A64MoveZero(destination) -> "  mov " + register_text destination + ", xzr\n"
   | A64LoadI32Literal(destination, IntegerLiteral(value)) -> "  mov_imm " + register_text destination + ", #" + value + "\n"
+  | A64LoadI64Literal(destination, IntegerLiteral(value)) -> "  mov_imm " + register_text destination + ", #" + value + "\n"
   | A64LoadBooleanLiteral(destination, value) -> "  mov " + register_text destination + ", #" + (match value { | true -> "1" | false -> "0" }) + "\n"
   | A64ReloadSpill(destination, slot) -> "  ldr " + register_text destination + ", " + print_slot slot + "\n"
   | A64SpillRegister(slot, source) -> "  str " + register_text source + ", " + print_slot slot + "\n"

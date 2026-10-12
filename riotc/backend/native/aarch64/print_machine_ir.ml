@@ -11,9 +11,9 @@ use NativeIr.Ir.{
 }
 use NativeIr.Print.{print_function_id, print_binding}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer,
+  A64VirtualRegister, A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Function, A64Block,
-  A64BlockParameter, A64Instruction, A64Operation, A64LoadUnit, A64LoadI32,
+  A64BlockParameter, A64Instruction, A64Operation, A64LoadUnit, A64LoadI32, A64LoadI64,
   A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
@@ -53,6 +53,7 @@ let print_label = fn (A64Label(NativeBlockId(number))) -> ".Lbb" + decimal_text 
 let print_value_type = fn value_type -> match value_type {
   | A64Unit -> "unit"
   | A64I32 -> "i32"
+  | A64I64 -> "i64"
   | A64Boolean -> "bool"
   | A64Pointer -> "ptr"
 }
@@ -115,6 +116,7 @@ let print_operation = fn operation -> match operation {
   | A64LoadUnit -> "load_unit"
   | A64TestUnitLiteral(_) -> "cmp_set.eq_unit"
   | A64LoadI32(IntegerLiteral(value)) -> "load_i32 " + value
+  | A64LoadI64(IntegerLiteral(value)) -> "load_i64 " + value
   | A64LoadBoolean(value) -> match value {
     | true -> "load_bool true"
     | false -> "load_bool false"

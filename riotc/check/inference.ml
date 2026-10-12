@@ -1053,6 +1053,7 @@ let convert_record_type_fields = fn fields -> fn variables -> fn visible_types -
 let builtin_type_name = fn name ->
   match name {
     | "i32" -> true
+    | "i64" -> true
     | "bool" -> true
     | "string" -> true
     | "unit" -> true
@@ -2676,14 +2677,31 @@ let infer_expression_node = fn expression -> fn environment -> fn visible_types 
     | Ascription(AscriptionExpression { expression: inner, annotation }) ->
       match (convert_type_expression annotation Nil visible_types Nil) {
         | Err(message) -> Err(message)
-        | Ok(annotation_type) -> match (infer_expression inner environment visible_types state) {
-          | Err(message) -> Err(message)
-          | Ok(InferenceResult { inferred_type, state: next_state }) ->
-            match (constrain_types inferred_type annotation_type next_state) {
-              | Err(message) -> Err("expression annotation: " + message)
-              | Ok(final_state) -> Ok(make_inference_result
-                (apply_state_substitutions annotation_type final_state) final_state)
+        | Ok(annotation_type) -> match (expression_kind inner) {
+          | Integer(_) -> match annotation_type {
+            | AppliedType(InferredNamedType { name: "i64", arguments: Nil }) -> {
+              let annotated_state = record_expression_annotation inner annotation_type state;
+              Ok(make_inference_result annotation_type annotated_state)
             }
+            | _ -> match (infer_expression inner environment visible_types state) {
+              | Err(message) -> Err(message)
+              | Ok(InferenceResult { inferred_type, state: next_state }) ->
+                match (constrain_types inferred_type annotation_type next_state) {
+                  | Err(message) -> Err("expression annotation: " + message)
+                  | Ok(final_state) -> Ok(make_inference_result
+                    (apply_state_substitutions annotation_type final_state) final_state)
+                }
+            }
+          }
+          | _ -> match (infer_expression inner environment visible_types state) {
+            | Err(message) -> Err(message)
+            | Ok(InferenceResult { inferred_type, state: next_state }) ->
+              match (constrain_types inferred_type annotation_type next_state) {
+                | Err(message) -> Err("expression annotation: " + message)
+                | Ok(final_state) -> Ok(make_inference_result
+                  (apply_state_substitutions annotation_type final_state) final_state)
+              }
+          }
         }
       }
     | Block(expressions) -> infer_sequence infer_expression expressions
