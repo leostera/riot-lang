@@ -8,7 +8,7 @@ use Syntax.Ast.{ValueName}
 use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
 use Check.Inference.{
   CheckedModuleInterface, InferredModuleInterface, TypedModule,
-  SchemeBinding, BindingIdentity, ModuleValueBinding,
+  SchemeBinding, BindingIdentity, ModuleValueBinding, LocalValueBinding,
   infer_source_module, validate_native_entry_module
 }
 use Codegen.C.Emit.{emit_module_program}
@@ -16,8 +16,15 @@ use Lambda.Ir.{LambdaModule}
 use Lambda.Lower.{lower_checked_module}
 use NativeIr.Lower.{lower_module}
 use NativeIr.Verify.{verify_module}
-use NativeIr.Ir.{NativeModule, NativeGlobal, NativeFunction, NativeTopLevelFunction}
-use NativeIr.Print.{print_native_module}
+use NativeIr.Ir.{
+  NativeModule, NativeGlobal, NativeFunction, NativeFunctionId,
+  NativeTopLevelFunction, NativeNestedFunction, NativeNestedFunctionId,
+  NativeModuleInitializer, NativeBlock, NativeBlockId,
+  NativeInstruction, NativeOperation, NativeCallOperation, NativeCall,
+  NativeDirectCall, NativeCreateClosure, NativeClosure, NativeStoreGlobal,
+  NativeConstant, NativeUnit, NativeReturn
+}
+use NativeIr.Print.{print_native_module, print_function_id}
 use Backend.Native.Aarch64.SelectMachineIr.{select_function}
 use Backend.Native.Aarch64.PrintMachineIr.{print_function, print_failure}
 use Backend.Native.Aarch64.LowerLinearIr.{lower_function}
@@ -488,6 +495,208 @@ let find_top_level_function = fn wanted_name -> fn functions -> match functions 
   }
 }
 
+let same_source_span = fn first -> fn second -> {
+  let SourceSpan { start_codepoint: first_start, end_codepoint: first_end } = first;
+  let SourceSpan { start_codepoint: second_start, end_codepoint: second_end } = second;
+  match (first_start == second_start) {
+  | false -> false
+  | true -> first_end == second_end
+  }
+}
+
+let same_binding_scope = fn first -> fn second -> match first {
+  | ModuleValueBinding -> match second {
+    | ModuleValueBinding -> true
+    | _ -> false
+  }
+  | LocalValueBinding -> match second {
+    | LocalValueBinding -> true
+    | _ -> false
+  }
+}
+
+let same_binding_identity = fn first -> fn second -> {
+  let BindingIdentity {
+    source_path: first_path, declaration_span: first_span,
+    name: ValueName(first_name), scope: first_scope
+  } = first;
+  let BindingIdentity {
+    source_path: second_path, declaration_span: second_span,
+    name: ValueName(second_name), scope: second_scope
+  } = second;
+  match (equal first_path second_path) {
+  | false -> false
+  | true -> match (equal first_name second_name) {
+    | false -> false
+    | true -> match (same_source_span first_span second_span) {
+      | false -> false
+      | true -> same_binding_scope first_scope second_scope
+    }
+  }
+}
+}
+
+let same_native_function_id = fn first -> fn second -> match first {
+  | NativeTopLevelFunction(first_binding) -> match second {
+    | NativeTopLevelFunction(second_binding) ->
+      same_binding_identity first_binding second_binding
+    | _ -> false
+  }
+  | NativeNestedFunction(NativeNestedFunctionId {
+      parent: first_parent, source_span: first_span, ordinal: first_ordinal
+    }) -> match second {
+    | NativeNestedFunction(NativeNestedFunctionId {
+        parent: second_parent, source_span: second_span, ordinal: second_ordinal
+      }) -> match (same_binding_identity first_parent second_parent) {
+      | false -> false
+      | true -> match (same_source_span first_span second_span) {
+        | false -> false
+        | true -> first_ordinal == second_ordinal
+      }
+    }
+    | _ -> false
+  }
+  | NativeModuleInitializer(first_path) -> match second {
+    | NativeModuleInitializer(second_path) -> equal first_path second_path
+    | _ -> false
+  }
+}
+
+let find_native_function_by_id = fn wanted -> fn functions -> match functions {
+  | Nil -> None
+  | Cons(function, remaining) -> {
+    let NativeFunction { identity, result_type: _, entry: _, blocks: _, span: _ } = function;
+    match (same_native_function_id wanted identity) {
+      | true -> Some(function)
+      | false -> find_native_function_by_id wanted remaining
+    }
+  }
+}
+
+let native_function_id_is_in_functions = fn wanted -> fn functions -> match functions {
+  | Nil -> false
+  | Cons(function, remaining) -> {
+    let NativeFunction { identity, result_type: _, entry: _, blocks: _, span: _ } = function;
+    match (same_native_function_id wanted identity) {
+      | true -> true
+      | false -> native_function_id_is_in_functions wanted remaining
+    }
+  }
+}
+
+let append_native_function_ids = fn first -> fn second -> match first {
+  | Nil -> second
+  | Cons(identity, remaining) ->
+    Cons(identity, append_native_function_ids remaining second)
+}
+
+let direct_call_targets_in_instructions = fn instructions -> match instructions {
+  | Nil -> Nil
+  | Cons(NativeInstruction {
+      result: _, result_type: _,
+      operation: NativeCallOperation(NativeCall {
+        target: NativeDirectCall(callee), arguments: _, argument_types: _, result_type: _
+      }), effects: _, span: _
+    }, remaining) -> Cons(callee, direct_call_targets_in_instructions remaining)
+  | Cons(NativeInstruction { result: _, result_type: _, operation: _, effects: _, span: _ },
+      remaining) -> direct_call_targets_in_instructions remaining
+}
+
+let direct_call_targets_in_blocks = fn blocks -> match blocks {
+  | Nil -> Nil
+  | Cons(NativeBlock {
+      identity: _, parameters: _, instructions, terminator: _, span: _
+    }, remaining) -> append_native_function_ids
+      (direct_call_targets_in_instructions instructions)
+      (direct_call_targets_in_blocks remaining)
+}
+
+let direct_call_targets_in_function = fn (NativeFunction {
+  identity: _, result_type: _, entry: _, blocks, span: _
+}) -> direct_call_targets_in_blocks blocks
+
+let collect_native_direct_call_graph = fn pending -> fn selected -> fn available ->
+  match pending {
+    | Nil -> Ok(selected)
+    | Cons(wanted, remaining) -> match (native_function_id_is_in_functions wanted selected) {
+      | true -> collect_native_direct_call_graph remaining selected available
+      | false -> match (find_native_function_by_id wanted available) {
+        | None -> Err("direct-call target is absent from the root NativeIR function set: "
+          + print_function_id wanted)
+        | Some(function) -> {
+          let targets = direct_call_targets_in_function function;
+          collect_native_direct_call_graph
+            (append_native_function_ids targets remaining)
+            (Cons(function, selected)) available
+        }
+      }
+    }
+  }
+
+let lower_native_function_set = fn functions -> fn substitutions -> match functions {
+  | Nil -> Ok(Nil)
+  | Cons(function, remaining) -> match (select_function function substitutions) {
+    | Err(failure) -> Err(print_failure failure)
+    | Ok(machine_function) -> match (lower_function machine_function) {
+      | Err(failure) -> Err(print_linear_failure failure)
+      | Ok(linear_function) -> match (verify_function linear_function) {
+        | Err(reason) -> Err("AArch64 LinearIR verification failed: " + reason)
+        | Ok(_) -> match (lower_native_function_set remaining substitutions) {
+          | Err(message) -> Err(message)
+          | Ok(rest) -> Ok(Cons(linear_function, rest))
+        }
+      }
+    }
+  }
+}
+
+let initializer_operation_is_closure_only = fn operation -> match operation {
+  | NativeCreateClosure(NativeClosure { function: _, captures: Nil }) -> true
+  | NativeStoreGlobal(_) -> true
+  | NativeConstant(NativeUnit) -> true
+  | _ -> false
+}
+
+let initializer_instructions_are_closure_only = fn instructions -> match instructions {
+  | Nil -> true
+  | Cons(NativeInstruction {
+      result: _, result_type: _, operation, effects: _, span: _
+    }, remaining) -> match (initializer_operation_is_closure_only operation) {
+    | false -> false
+    | true -> initializer_instructions_are_closure_only remaining
+  }
+}
+
+let initializer_terminator_is_return = fn terminator -> match terminator {
+  | NativeReturn(_) -> true
+  | _ -> false
+}
+
+let same_native_block_id = fn first -> fn second -> {
+  let NativeBlockId(first_id) = first;
+  let NativeBlockId(second_id) = second;
+  first_id == second_id
+}
+
+let module_initializer_is_closure_only = fn initializer -> fn functions ->
+  match (find_native_function_by_id initializer functions) {
+    | None -> false
+    | Some(NativeFunction {
+        identity: _, result_type: _, entry, blocks, span: _
+      }) -> match blocks {
+      | Cons(NativeBlock {
+          identity, parameters: Nil, instructions, terminator, span: _
+        }, Nil) -> match (same_native_block_id entry identity) {
+        | false -> false
+        | true -> match (initializer_terminator_is_return terminator) {
+          | false -> false
+          | true -> initializer_instructions_are_closure_only instructions
+        }
+      }
+      | _ -> false
+    }
+  }
+
 let run_aarch64_mir_command = fn source_file -> fn function_name ->
   match (native_ir_root_modules_for_file source_file) {
     | Err(error) -> report_error error
@@ -677,6 +886,93 @@ let run_aarch64_compile_function_command = fn source_file -> fn function_name ->
   }
 }
 
+// Compile a selected same-module direct-call graph. This deliberately omits the
+// module initializer only when it consists solely of closure stores; selected
+// functions must not require those globals or any unsupported closure path.
+let run_aarch64_compile_direct_graph_command = fn source_file ->
+  fn function_name -> fn output -> {
+  let assembly_path = output + ".aarch64.s";
+  match (equal source_file output) {
+    | true -> {
+      write_stderr "riotml: AArch64 Codegen: source and executable paths must differ\n";
+      1
+    }
+    | false -> match (equal source_file assembly_path) {
+      | true -> {
+        write_stderr "riotml: AArch64 Codegen: source and assembly paths must differ\n";
+        1
+      }
+      | false -> match (prepare_native_outputs output assembly_path) {
+        | Err(message) -> {
+          write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+          1
+        }
+        | Ok(_) -> match (native_ir_root_modules_for_file source_file) {
+          | Err(error) -> report_error error
+          | Ok(native_modules) -> match (find_native_module source_file native_modules) {
+            | None -> {
+              write_stderr ("riotml: AArch64 Codegen found no module for " + source_file + "\n");
+              1
+            }
+            | Some(NativeModule {
+                module_identity: _, nominal_types: _, substitutions, globals: _,
+                initializer, functions
+              }) -> match (module_initializer_is_closure_only initializer functions) {
+              | false -> {
+                write_stderr ("riotml: AArch64 Codegen: module initializer for "
+                  + source_file + " has non-closure work; direct-call graph mode cannot omit it\n");
+                1
+              }
+              | true -> match (find_top_level_function function_name functions) {
+                | None -> {
+                  write_stderr ("riotml: AArch64 Codegen found no top-level function `"
+                    + function_name + "` in " + source_file + "\n");
+                  1
+                }
+                | Some(entry_function) -> {
+                  let NativeFunction {
+                    identity: entry_identity, result_type: _, entry: _, blocks: _, span: _
+                  } = entry_function;
+                  match (collect_native_direct_call_graph
+                      (Cons(entry_identity, Nil)) Nil functions) {
+                    | Err(message) -> {
+                      write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+                      1
+                    }
+                    | Ok(native_functions) -> match (lower_native_function_set
+                        native_functions substitutions) {
+                      | Err(message) -> {
+                        write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+                        1
+                      }
+                      | Ok(linear_functions) -> match (emit_program
+                          linear_functions entry_identity) {
+                        | Err(message) -> {
+                          write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
+                          1
+                        }
+                        | Ok(assembly) -> match (write_file assembly_path assembly) {
+                          | Err(message) -> {
+                            write_stderr ("riotml: AArch64 Codegen: cannot write assembly: "
+                              + message + "\n");
+                            1
+                          }
+                          | Ok(_) -> run_native_linker
+                            (runtime_include_directory source_file) assembly_path output
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 let parse_compile_request = fn arguments ->
   match arguments {
     | Cons("compile", Cons(source, Cons("-o", Cons(output, Nil)))) ->
@@ -684,7 +980,7 @@ let parse_compile_request = fn arguments ->
         source_path: SourcePath(source),
         output_path: ExecutablePath(output)
       })
-    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION | aarch64-linear-ir SOURCE FUNCTION | aarch64-compile-function SOURCE FUNCTION -o OUTPUT")
+    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION | aarch64-linear-ir SOURCE FUNCTION | aarch64-compile-function SOURCE FUNCTION -o OUTPUT | aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT")
   }
 
 let main = fn () -> match (args ()) {
@@ -692,6 +988,9 @@ let main = fn () -> match (args ()) {
   | Cons("aarch64-compile-function", Cons(source_file,
       Cons(function_name, Cons("-o", Cons(output, Nil))))) ->
     run_aarch64_compile_function_command source_file function_name output
+  | Cons("aarch64-compile-direct-graph", Cons(source_file,
+      Cons(function_name, Cons("-o", Cons(output, Nil))))) ->
+    run_aarch64_compile_direct_graph_command source_file function_name output
   | Cons("aarch64-mir", Cons(source_file, Cons(function_name, Nil))) ->
     run_aarch64_mir_command source_file function_name
   | Cons("aarch64-linear-ir", Cons(source_file, Cons(function_name, Nil))) ->

@@ -105,6 +105,16 @@ it does not emit module initializers, globals, closure creation, general
 runtime/Host helper marshalling, or other functions. Direct calls fail unless
 their target is present in the Codegen function set (currently one function
 for this CLI).
+
+`aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT` expands the Codegen set
+to the entry's reachable same-module `NativeDirectCall` targets. It accepts
+only a single-block, no-parameter initializer with a return terminator and
+instructions limited to zero-capture closure creation, global stores, and unit
+constants; it verifies and skips that initializer. Selected functions that
+load globals still fail in selection. It does not include unrelated functions,
+imported closure targets, or general module initialization, so it is not a
+whole-module compiler.
+
 Codegen currently rejects frames larger than 16,380 bytes, the largest
 all-spill frame supported by its immediate addressing sequence.
 
@@ -126,13 +136,16 @@ Codegen/link harness with:
 cargo test -p tinyml --test cli_tests aarch64_machine_ir
 cargo test -p tinyml --test cli_tests aarch64_linear_ir_abi_and_control_flow_fixtures_execute
 cargo test -p tinyml --test cli_tests aarch64_codegen_assembles_links_and_removes_failed_outputs
+cargo test -p tinyml --test cli_tests c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript
 ```
 
 That Codegen test compares process status, stdout, and stderr against the
 existing C backend for scalar arithmetic, signed comparisons/branches, wrapped
 integer operations, i32 division/remainder (including zero and `INT32_MIN / -1`
-edge behavior), pattern-failure diagnostics, and a `Host.args` helper call. It
-also confirms an unsupported `Host.current_directory` call fails before
-Codegen. This is a bounded differential slice, not evidence that unsupported
-strings, Host APIs beyond `Host.args`, globals, or whole-module initialization
-behave natively.
+edge behavior), a two-function direct-call graph, pattern-failure diagnostics,
+and a `Host.args` helper call. It also confirms unsupported Host helpers,
+nested constructor patterns, and non-closure global initialization fail before
+Codegen. A separate macOS/AArch64 test builds the C-first C-hosted compiler
+with Node excluded and uses it to compile/run the direct-call graph. These are
+bounded slices, not evidence that Riotc itself or unsupported string/Host/global
+semantics work through whole-module native Codegen.

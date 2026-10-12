@@ -31,8 +31,23 @@ assembly; pattern lowering itself remains unimplemented. Clang emitted a
 benign warning about the missing optional MariaDB connector search path during
 link.
 
+## Follow-up direct-call-graph slice
+
+A separate macOS/AArch64 integration test now builds the Stage 0 C-hosted
+compiler with Clang `-O2`, then invokes
+`aarch64-compile-direct-graph` with `PATH=/usr/bin:/bin` and
+`RIOTML_RUNTIME_DIR` set. The compiler emitted a two-function AArch64 program
+through its reachable monomorphic same-module direct-call graph; that native
+program exited 42. The same no-Node path rejected ill-typed input before
+Codegen and removed stale executable/assembly outputs. The direct-graph command
+checks that the module initializer is one no-parameter block with a return,
+containing only zero-capture closure creation, global stores, and unit
+constants; it skips that initializer and selected-function global loads fail
+in selection. Non-closure initializer work is rejected. This is not a
+whole-module compiler or a native self-rebuild.
+
 The separately tested C-first bootstrap still emits deterministic C, builds a
-C-hosted compiler, and runs its smoke/negative-input checks with Node excluded
-from `PATH`. The owned native Codegen path remains a selected-function harness;
-whole-module/global initialization and the native self-rebuild are not
-implemented.
+C-hosted compiler, and runs its legacy `compile`/smoke/negative-input path with
+Node excluded from `PATH`. The C backend and direct-call native graph are
+distinct CLI paths; the required native Riotc compiler, successor rebuild, and
+full compiler-source corpus remain unimplemented.

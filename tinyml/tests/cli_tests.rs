@@ -612,7 +612,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     let direct_call_source = dir.join("direct-call.ml");
     fs::write(
         &direct_call_source,
-        "let callee = fn (value: i32) -> value + 1\nlet caller = fn () -> callee 41\n",
+        "let callee = fn (value: i32) -> value + 1\nlet main = fn () -> callee 41\n",
     )
     .unwrap();
     let direct_call_executable = dir.join("direct-call.native");
@@ -624,7 +624,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         .arg(&runner)
         .arg("aarch64-compile-function")
         .arg(&direct_call_source)
-        .arg("caller")
+        .arg("main")
         .arg("-o")
         .arg(&direct_call_executable)
         .output()
@@ -636,6 +636,74 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     );
     assert!(!direct_call_executable.exists());
     assert!(!direct_call_assembly.exists());
+
+    let direct_graph_executable = dir.join("direct-graph.native");
+    let direct_graph_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&direct_call_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&direct_graph_executable)
+        .output()
+        .unwrap();
+    assert!(
+        direct_graph_compile.status.success(),
+        "direct-call graph Codegen failed: {}",
+        String::from_utf8_lossy(&direct_graph_compile.stderr)
+    );
+    let direct_graph_run = Command::new(&direct_graph_executable).output().unwrap();
+    assert_eq!(direct_graph_run.status.code(), Some(42));
+    let direct_graph_c_executable = dir.join("direct-graph.c-backend");
+    let direct_graph_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&direct_call_source)
+        .arg("-o")
+        .arg(&direct_graph_c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        direct_graph_c_compile.status.success(),
+        "C-backend direct-call differential fixture failed: {}",
+        String::from_utf8_lossy(&direct_graph_c_compile.stderr)
+    );
+    let direct_graph_c_run = Command::new(&direct_graph_c_executable).output().unwrap();
+    assert_eq!(
+        direct_graph_run.status.code(),
+        direct_graph_c_run.status.code()
+    );
+    assert_eq!(direct_graph_run.stdout, direct_graph_c_run.stdout);
+    assert_eq!(direct_graph_run.stderr, direct_graph_c_run.stderr);
+
+    let global_initializer_source = dir.join("global-initializer.ml");
+    fs::write(
+        &global_initializer_source,
+        "let answer = 42\nlet main = fn () -> answer\n",
+    )
+    .unwrap();
+    let global_initializer_executable = dir.join("global-initializer.native");
+    let global_initializer_assembly = dir.join("global-initializer.native.aarch64.s");
+    fs::write(&global_initializer_executable, "stale executable").unwrap();
+    fs::write(&global_initializer_assembly, "stale assembly").unwrap();
+    let global_initializer_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&global_initializer_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&global_initializer_executable)
+        .output()
+        .unwrap();
+    assert!(!global_initializer_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&global_initializer_compile.stderr).contains("module initializer")
+    );
+    assert!(!global_initializer_executable.exists());
+    assert!(!global_initializer_assembly.exists());
 
     let host_args_source = dir.join("host-args.ml");
     fs::write(
@@ -3556,6 +3624,107 @@ let main = fn () -> {
     );
     assert!(!invalid_executable.exists());
     assert!(!invalid_c.exists());
+}
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+#[test]
+fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let riotc_dir = repo.join("riotc");
+    let compiler_source = riotc_dir.join("main.ml");
+    let dir = temp_dir("c-hosted-native-direct-graph");
+    let generated_c = dir.join("riotml-compiler.c");
+    let bootstrap_compiler = dir.join("riotml-compiler");
+    let no_node_path = "/usr/bin:/bin";
+
+    let stage0 = Command::new(tinyml())
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg("-I")
+        .arg("riotc")
+        .arg(&compiler_source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        stage0.status.success(),
+        "Stage 0 C emission failed: {}",
+        String::from_utf8_lossy(&stage0.stderr)
+    );
+    let clang = Command::new("clang")
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .arg("-O2")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&riotc_dir)
+        .arg(&generated_c)
+        .arg(riotc_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&bootstrap_compiler)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "Clang failed to build the C-hosted compiler: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+
+    let direct_source = dir.join("direct-graph.ml");
+    fs::write(
+        &direct_source,
+        "let callee = fn (value: i32) -> value + 1\nlet main = fn () -> callee 41\n",
+    )
+    .unwrap();
+    let direct_executable = dir.join("direct-graph.native");
+    let runtime_directory = riotc_dir.to_str().unwrap();
+    let direct_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&direct_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&direct_executable)
+        .output()
+        .unwrap();
+    assert!(
+        direct_compile.status.success(),
+        "C-hosted compiler failed to produce owned native code: {}",
+        String::from_utf8_lossy(&direct_compile.stderr)
+    );
+    let native_run = Command::new(&direct_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(native_run.status.code(), Some(42));
+
+    let invalid_source = dir.join("invalid-native.ml");
+    let invalid_executable = dir.join("invalid-native");
+    let invalid_assembly = dir.join("invalid-native.aarch64.s");
+    fs::write(&invalid_source, "let main = fn () -> true + 1\n").unwrap();
+    fs::write(&invalid_executable, "stale executable").unwrap();
+    fs::write(&invalid_assembly, "stale assembly").unwrap();
+    let invalid_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&invalid_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&invalid_executable)
+        .output()
+        .unwrap();
+    assert!(!invalid_compile.status.success());
+    assert!(String::from_utf8_lossy(&invalid_compile.stderr).contains("typechecking"));
+    assert!(!invalid_executable.exists());
+    assert!(!invalid_assembly.exists());
 }
 
 #[test]

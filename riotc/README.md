@@ -10,10 +10,10 @@ C-plus-Clang source backend remains a separate, measured behavioral baseline;
 it is not a fallback in the owned native backend. That owned path currently
 reaches TypedAST, LambdaIR, target-independent SSA NativeIR, ABI-independent
 AArch64 virtual-register MachineIR, an initial all-spill AArch64 LinearIR, and
-a tested AArch64 assembly/link function harness. Whole-module Codegen,
-general runtime/Host helper marshalling, and the final native self-rebuild
-acceptance chain are not complete. The function harness supports only the
-explicit typed `Host.args` bridge.
+tested AArch64 assembly/link function and direct-call-graph harnesses.
+Whole-module Codegen, general runtime/Host helper marshalling, and the final
+native self-rebuild acceptance chain are not complete. These harnesses support
+only the explicit typed `Host.args` bridge.
 
 ## Verified C-first Stage 0 bridge
 
@@ -57,8 +57,11 @@ test ! -e "$work/invalid.c"
 
 The restricted `PATH` contains Clang and POSIX tools but not Node. The
 C-hosted compiler's current `compile` command still uses Riotc's C-plus-Clang
-source backend. This proves the Stage 0 bridge and its failure boundary; it
-does not yet prove compilation through the owned AArch64 backend. The final
+source backend. A separate macOS/AArch64 integration test invokes
+`aarch64-compile-direct-graph` from the C-hosted compiler with Node excluded
+from `PATH`; it compiles a two-function direct-call graph through the owned
+pipeline and runs with status 42. This is a bounded native slice, not a native
+Riotc compiler or self-rebuild. The final
 acceptance chain must additionally build an owned native compiler, self-rebuild
 it, and have the successor compile and run the status-42 fixture.
 
@@ -93,6 +96,14 @@ must be in the supplied Codegen set, so the one-function CLI explicitly rejects
 calls to other functions. Unsupported operations in the selected function fail
 before Codegen rather than being emitted as C. The full compiler must similarly reject unsupported module
 constructs; it must not use this harness as a fallback.
+
+`aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT` emits and links the
+reachable same-module direct-call graph for an entry. It accepts only a
+single-block, no-parameter initializer with a return terminator and only
+zero-capture closure creation, global stores, and unit constants; it verifies
+that shape and skips the initializer. Selected functions must not rely on
+global loads. This is a larger Codegen set, not whole-module/global
+initialization support.
 
 The existing source compiler still goes through `codegen/c/emit.ml` and
 Clang. Its supported subset includes functions and closures, local bindings,
@@ -129,9 +140,10 @@ Those measurements are distinct from the Rust TinyML Stage 0 to C bridge.
 - `lambda/` and `native_ir/`: typed core lowering, SSA lowering, printing, and
   verification.
 - `backend/native/aarch64/`: virtual-register MachineIR, initial ABI lowering,
-  verified LinearIR, assembly Codegen and a single-function Clang link harness;
-  whole-module Codegen and general runtime/Host marshalling remain future work;
-  only `Host.args` has an explicit typed native bridge.
+  verified LinearIR, assembly Codegen, a selected-function harness, and a
+  reachable direct-call-graph link mode; whole-module Codegen and general
+  runtime/Host marshalling remain future work; only `Host.args` has an explicit
+  typed native bridge.
 - `codegen/c/emit.ml`: existing C-plus-Clang source-backend baseline.
 - `runtime.h`, `runtime.c`: tagged values, closures, module environments, and
   the C-hosted runtime linked by Clang.
