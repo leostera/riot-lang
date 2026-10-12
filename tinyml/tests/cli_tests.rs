@@ -748,6 +748,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         fs::read_to_string(i64_call_executable.with_file_name("i64-direct-graph.native.aarch64.s"))
             .unwrap();
     assert!(i64_call_assembly.contains("ldr x9, =41"));
+    assert!(i64_call_assembly.contains("    str x1, [sp,#0]\n    ldr x0, [sp,#0]"));
     assert!(i64_call_assembly.contains("ldr x1"));
     assert!(i64_call_assembly.contains("str x0"));
     assert!(i64_call_assembly.contains("str x9"));
