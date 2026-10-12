@@ -1,13 +1,14 @@
 # TinyML Stage 0
 
 TinyML is Riot's small implementation language and the Rust Stage 0 compiler.
-Stage 0 currently has both its JavaScript/Node target and an experimental C
-source target. The C target lowers checked module graphs through TinyML
-LambdaIR into a single C translation unit linked with the existing Riotc C
-runtime. It is the intended no-JavaScript bootstrap bridge, but remains
-incomplete and does not yet compile the complete Riotc source graph. It is not
-the Riotc-owned native backend: once bootstrapped, Riotc source must use its own
-IR and AArch64 pipeline. See
+Stage 0 has a JavaScript/Node target and a C source target. The C target lowers
+checked module graphs through TinyML LambdaIR into a single C translation unit
+linked with the Riotc C runtime. It emits C for the complete reachable
+`riotc/main.ml` source graph and is the required no-JavaScript bootstrap
+bridge. It supports a narrower TinyML subset than the JS target and rejects
+unsupported constructs before writing output. It is not the Riotc-owned native
+backend: once bootstrapped, Riotc source must use its own IR and AArch64
+pipeline. See
 [`docs/rfds/RFD0050-tinyml-bootstrap.md`](../docs/rfds/RFD0050-tinyml-bootstrap.md)
 for the bootstrap contract and full acceptance criteria.
 
@@ -20,7 +21,11 @@ cargo test -p tinyml
 cargo run -p tinyml -- --help
 ```
 
-The tests cover checker acceptance/rejection and execute generated JS with Node.
+The tests cover checker acceptance/rejection, generated JS behavior, and the
+C-first Riotc bootstrap. The test
+`compile_c_first_bootstraps_riotc_without_javascript` emits the compiler graph
+twice, builds the C-hosted compiler, and compiles/runs a smoke program with
+Node excluded from `PATH`.
 
 ## CLI
 
@@ -47,16 +52,15 @@ RIOTML_RUNTIME_DIR="$PWD/riotc" build/Main
   beside the input. `--target js` emits the reachable JS module graph using the
   default output location.
 - `compile` currently defaults to `--target js`; `--target c` selects the
-  experimental C bootstrap emitter. Both targets check the full reachable
-  module graph before writing output. JavaScript emits the root `.mjs` and
-  dependency modules beside it. C emits a graph as one translation unit and
-  currently supports a limited source subset (including checked imports,
-  curried closures, aggregate patterns, i32 arithmetic, and selected Host
-  bindings). It rejects unsupported constructs before writing a C artifact;
-  embedded-NUL strings and the complete Riotc compiler graph are not supported
-  yet. Link generated C with `riotc/runtime.c` and include `riotc/runtime.h`.
-  Generated programs read `RIOTML_RUNTIME_DIR` at startup to expose the runtime
-  directory through `Host.runtime_directory`.
+  Stage 0 bootstrap emitter. Both targets check the full reachable module graph
+  before writing output. JavaScript emits the root `.mjs` and dependency
+  modules beside it. C emits a graph as one translation unit and supports the
+  compiler source graph plus a narrower subset of TinyML (including checked
+  imports, curried closures, aggregate patterns, i32 arithmetic, NUL-aware
+  strings, and selected Host bindings). It rejects unsupported constructs
+  before writing a C artifact. Link generated C with `riotc/runtime.c` and
+  include `riotc/runtime.h`. Generated programs read `RIOTML_RUNTIME_DIR` at
+  startup to expose the runtime directory through `Host.runtime_directory`.
   Without `-o`, the selected target chooses `.mjs` or `.c` in the invocation
   directory.
 - Errors are reported with a non-zero command status. Type and module failures
@@ -66,8 +70,8 @@ Module paths follow the RFD0050 naming and search rules: the importing
 file's directory, ordered `-I` roots, bundled `tinyml/lib/`, then bundled
 `tinyml/lib/std/`. `Host` is a compiler-provided intrinsic with JavaScript/Node
 implementations for arguments, UTF-8 file reads/writes, stdout/stderr, and safe
-process invocation (argument vectors, no shell interpolation). The experimental
-C runtime provides a subset of those operations for the no-JavaScript bridge.
+process invocation (argument vectors, no shell interpolation). The C runtime
+provides a subset of those operations for the no-JavaScript bridge.
 
 ## Current language boundary
 
@@ -75,16 +79,17 @@ The checker subset includes HM inference, top-level recursive functions,
 annotations, selected source imports, tuples, records, recursive variants,
 pattern matching, `unit`, `bool`, Unicode text strings, and exact
 `i8/i16/i32/i64` and `u8/u16/u32/u64` arithmetic. Integer arithmetic wraps at
-the annotated width; the JavaScript backend uses `BigInt`. The experimental C
-emitter currently lowers only its supported subset through the existing dynamic
-`RtValue` runtime and does not yet implement all integer-width semantics or all
-string cases. `string + string` concatenates in both backends where supported.
+the annotated width; the JavaScript backend uses `BigInt`. The C emitter
+lowers only its supported subset through the existing dynamic `RtValue`
+runtime and does not implement all integer-width semantics. `string + string`
+concatenates in both backends where supported.
 The bundled `String` module also provides `concat`, `length`,
 `get`, `slice`, and `equal`; indices count Unicode scalar values, and `get`
 returns `Option<i32>` containing a code point. Host text-file I/O uses strict
 UTF-8 decoding and encoding. The C runtime preserves embedded NUL bytes in
-string values, file contents, and stdout/stderr; `Host` paths and process names
-reject NUL because the underlying OS APIs require C strings. Floating point,
+string values, file contents, and stdout/stderr; `Host` paths, process names,
+and process arguments reject NUL because the underlying OS APIs require C
+strings. Floating point,
 general FFI, actors, distribution,
 package management, WASM, and native code generation by Stage 0 are
 unsupported. Unsupported or ill-typed input must be rejected rather than
