@@ -114,6 +114,8 @@ impl Lowerer {
                     right.ty.clone()
                 } else if crate::checker::builtin::is_unqualified_type(&left.ty, "string") {
                     left.ty.clone()
+                } else if crate::checker::builtin::is_unqualified_type(&right.ty, "string") {
+                    right.ty.clone()
                 } else {
                     expr.ty.clone()
                 };
@@ -428,6 +430,25 @@ mod tests {
                 op: ir::Primitive::Add { .. },
                 ..
             }
+        ));
+    }
+
+    #[test]
+    fn resolves_string_addition_from_the_right_operand_type() {
+        let module = checked(r#"let concat = fn prefix -> prefix + ".ml""#);
+        let lowered = lower_module(&module);
+        let ir::ExprKind::Function { body, .. } = &lowered.values[0].body.kind else {
+            panic!("expected a function expression");
+        };
+        let ir::ExprKind::Prim {
+            op: ir::Primitive::Add { operand },
+            ..
+        } = &body.kind
+        else {
+            panic!("expected an addition primitive");
+        };
+        assert!(crate::checker::builtin::is_unqualified_type(
+            operand, "string"
         ));
     }
 
