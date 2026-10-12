@@ -17,18 +17,22 @@ Unsupported instructions return a diagnostic with function, block, and source
 span; there is no C fallback from this command.
 
 The selected subset currently includes typed `unit`, `i32`, and `bool` values
-(`unit` remains visible in MachineIR but has no physical value); `i32`
-addition, subtraction, multiplication, negation, signed comparisons, and
-boolean equality/inequality; typed i32 division/remainder helper calls; unit/
-i32/bool literal-pattern tests; conditional and unconditional branches with
-block arguments; returns, unreachable and trap pseudos; plus direct or Host
-calls whose arguments and result are in this value subset. Calls retain typed
-virtual arguments and NativeIR effects. Runtime division/remainder use explicit
-helper IDs with fixed `i32, i32 -> i32` signatures; other calls remain logical
-until ABI lowering.
+(`unit` remains visible in MachineIR but has no physical value), plus opaque
+pointer values for concrete strings, composites, and function values. Pointer
+values can be passed through a function unchanged; string constants and
+operations that inspect or construct pointed-to values remain unsupported.
+The slice also includes `i32` addition, subtraction, multiplication,
+negation, signed comparisons, and boolean equality/inequality; typed i32
+division/remainder helper calls; unit/i32/bool literal-pattern tests;
+conditional and unconditional branches with block arguments; returns,
+unreachable and trap pseudos; plus direct or Host calls whose arguments and
+result are in this value subset. Calls retain typed virtual arguments and
+NativeIR effects. Runtime division/remainder use explicit helper IDs with
+fixed `i32, i32 -> i32` signatures; other calls remain logical until ABI
+lowering.
 
-Closure creation/calls/captures, strings, aggregates, globals, and switches
-are outside this selection slice. A64 virtual registers preserve NativeIR SSA
+Closure creation/calls/captures, string constants, aggregate construction or
+projection, globals, and switches are outside this selection slice. A64 virtual registers preserve NativeIR SSA
 IDs, and labels preserve NativeIR block IDs. No physical registers, stack/frame
 layout, object format, assembler, runtime-value layout, or external calling
 convention is selected by MachineIR. `A64Trap` remains a semantic pseudo until
@@ -43,23 +47,24 @@ ABI-lowered, linearly ordered IR. Inspect it with:
 riotml aarch64-linear-ir SOURCE TOP_LEVEL_FUNCTION
 ```
 
-The current lowerer handles the selected scalar/control-flow slice using a
-simple all-spill strategy: each non-unit SSA value receives a distinct
-unboxed four-byte stack slot, unit is erased, local frames are rounded up to
-16 bytes, and `w9`/`w10`/`w11` are the caller-saved scratch registers. Function
-entry scalar arguments arrive in `w1`; direct top-level/module-initializer
-calls set the hidden environment `x0` to null, pass an optional scalar in
-`w1`, and take scalar results from `w0`. Typed runtime division/remainder use
+The current lowerer handles the selected scalar/pointer/control-flow slice
+using a simple all-spill strategy: each non-unit SSA value receives a distinct
+slot (four bytes for scalars, eight-byte aligned for opaque pointers), unit is
+erased, local frames are rounded up to 16 bytes, and `w9`/`w10`/`w11` plus
+`x9` are the caller-saved scratch registers. Function entry scalar and pointer
+arguments arrive in `w1` and `x1`; direct top-level/module-initializer calls
+set the hidden environment `x0` to null, pass an optional scalar or pointer in
+`w1` or `x1`, and take results from `w0` or `x0`. Typed runtime division/remainder use
 their declared C helper ABI: `i32` arguments in `w0`/`w1` and an `i32` result in
 `w0`, without a hidden environment. Unit arguments/results have no data
 transfer. Conditional edges are explicit labels with typed spill/reload copies.
 
 The LinearIR verifier checks value/slot ownership, unique non-overlapping
 slots, stack-frame bounds/alignment, the physical-register assignment,
-terminated labeled blocks, and branch targets. Nested direct calls that need a
-closure environment and Host helpers requiring `RtValue` marshalling are
-rejected before Codegen. Pointer/composite values and narrow integer widths
-are not yet selected for this LinearIR.
+terminated labeled blocks, and branch targets. Nested direct calls that need a closure environment and Host helpers
+requiring `RtValue` marshalling are rejected before Codegen. Opaque pointer
+pass-through is selected, but concrete composite layouts/operations and narrow
+integer widths are not yet supported by this LinearIR.
 
 ## Codegen
 

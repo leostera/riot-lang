@@ -11,7 +11,8 @@ use NativeIr.Ir.{
 }
 use NativeIr.Print.{print_function_id, print_binding}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Function, A64Block,
+  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer,
+  A64Function, A64Block,
   A64BlockParameter, A64Instruction, A64Operation, A64LoadUnit, A64LoadI32,
   A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
@@ -49,10 +50,11 @@ let print_register = fn (A64VirtualRegister(number)) -> "%v" + decimal_text numb
 
 let print_label = fn (A64Label(NativeBlockId(number))) -> ".Lbb" + decimal_text number
 
-let print_scalar_type = fn value_type -> match value_type {
+let print_value_type = fn value_type -> match value_type {
   | A64Unit -> "unit"
   | A64I32 -> "i32"
   | A64Boolean -> "bool"
+  | A64Pointer -> "ptr"
 }
 
 let print_condition = fn condition -> match condition {
@@ -80,9 +82,9 @@ let print_runtime_helper = fn helper -> match helper {
 let print_call_arguments = fn arguments -> match arguments {
   | Nil -> ""
   | Cons(A64CallArgument { register, value_type }, Nil) ->
-    print_register register + ":" + print_scalar_type value_type
+    print_register register + ":" + print_value_type value_type
   | Cons(A64CallArgument { register, value_type }, remaining) ->
-    print_register register + ":" + print_scalar_type value_type + ", "
+    print_register register + ":" + print_value_type value_type + ", "
       + print_call_arguments remaining
 }
 
@@ -126,10 +128,10 @@ let print_operation = fn operation -> match operation {
     })
   | A64Call(A64CallSite { target, arguments, result_type }) ->
     "call " + print_call_target target + "(" + print_call_arguments arguments
-      + ") -> " + print_scalar_type result_type
+      + ") -> " + print_value_type result_type
   | A64RuntimeCall(A64RuntimeCallSite { helper, arguments, result_type }) ->
     "call runtime " + print_runtime_helper helper + "("
-      + print_call_arguments arguments + ") -> " + print_scalar_type result_type
+      + print_call_arguments arguments + ") -> " + print_value_type result_type
   | A64AddI32(operands) -> "add_w " + print_binary_operands operands
   | A64SubtractI32(operands) -> "sub_w " + print_binary_operands operands
   | A64MultiplyI32(operands) -> "mul_w " + print_binary_operands operands
@@ -144,21 +146,21 @@ let print_operation = fn operation -> match operation {
 let print_parameters = fn parameters -> match parameters {
   | Nil -> ""
   | Cons(A64BlockParameter { register, value_type, span: _ }, remaining) ->
-    print_register register + ":" + print_scalar_type value_type
+    print_register register + ":" + print_value_type value_type
       + print_parameter_suffix remaining
 }
 
 let print_parameter_suffix = fn parameters -> match parameters {
   | Nil -> ""
   | Cons(A64BlockParameter { register, value_type, span: _ }, remaining) ->
-    ", " + print_register register + ":" + print_scalar_type value_type
+    ", " + print_register register + ":" + print_value_type value_type
       + print_parameter_suffix remaining
 }
 
 let print_instruction = fn (A64Instruction {
   destination, result_type, operation, effects, span: _
 }) ->
-  "    " + print_register destination + ":" + print_scalar_type result_type
+  "    " + print_register destination + ":" + print_value_type result_type
     + " = " + print_operation operation + print_effect_suffix effects + "\n"
 
 let print_instructions = fn instructions -> match instructions {
@@ -207,7 +209,7 @@ let print_blocks = fn blocks -> match blocks {
 let print_function = fn (A64Function {
   identity, result_type, entry, blocks, span: _
 }) -> "function " + print_function_id identity + " -> "
-  + print_scalar_type result_type + " entry " + print_label entry + " {\n"
+  + print_value_type result_type + " entry " + print_label entry + " {\n"
   + print_blocks blocks + "}\n"
 
 let print_failure = fn (A64SelectionFailure {

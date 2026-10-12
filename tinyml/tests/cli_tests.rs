@@ -266,10 +266,61 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
     );
     let unsupported_value_diagnostic = String::from_utf8_lossy(&unsupported_value.stderr);
     assert!(
-        unsupported_value_diagnostic
-            .contains("only unit, i32 and bool values have an AArch64 representation here"),
+        unsupported_value_diagnostic.contains("string constants are outside the scalar selector"),
         "unexpected unsupported-value diagnostic: {unsupported_value_diagnostic}"
     );
+
+    let pointer_source = dir.join("pointer-identity.ml");
+    fs::write(
+        &pointer_source,
+        "let identity = fn (text: string) -> text\nlet main = fn () -> 42\n",
+    )
+    .unwrap();
+    let pointer_linear_ir = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-linear-ir")
+        .arg(&pointer_source)
+        .arg("identity")
+        .output()
+        .unwrap();
+    assert!(
+        pointer_linear_ir.status.success(),
+        "opaque pointer parameter/return lowering failed: {}",
+        String::from_utf8_lossy(&pointer_linear_ir.stderr)
+    );
+    let pointer_ir_text = String::from_utf8_lossy(&pointer_linear_ir.stdout);
+    assert!(
+        pointer_ir_text.contains("ptr"),
+        "missing pointer type:\n{pointer_ir_text}"
+    );
+    assert!(
+        pointer_ir_text.contains("x1"),
+        "missing X-register argument:\n{pointer_ir_text}"
+    );
+    assert!(
+        pointer_ir_text.contains("x0"),
+        "missing X-register return:\n{pointer_ir_text}"
+    );
+
+    let generic_source = dir.join("generic.ml");
+    fs::write(
+        &generic_source,
+        "let generic = fn value -> value\nlet main = fn () -> 42\n",
+    )
+    .unwrap();
+    let generic_selection = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&generic_source)
+        .arg("generic")
+        .output()
+        .unwrap();
+    assert!(!generic_selection.status.success());
+    assert!(generic_selection.stdout.is_empty());
+    let generic_diagnostic = String::from_utf8_lossy(&generic_selection.stderr);
+    assert!(generic_diagnostic.contains("unresolved generic type has no native specialization"));
 
     let unit_entry = Command::new("node")
         .current_dir(repo)
@@ -418,6 +469,20 @@ fn aarch64_linear_ir_abi_and_control_flow_fixtures_execute() {
         "unit argument was not erased:\n{unit_caller}"
     );
     assert!(printed.contains("unit_return@0 -> unit entry .Lbb0 frame 0"));
+    assert!(printed.contains("pointer_identity@0 -> ptr"));
+    assert!(
+        printed.contains("str x1,"),
+        "pointer entry was not spilled from x1:\n{printed}"
+    );
+    assert!(
+        printed.contains("ldr x0,"),
+        "pointer result was not returned in x0:\n{printed}"
+    );
+    assert!(printed.contains("bl fn linear-ir-test::callee@0"));
+    assert!(
+        printed.contains("ldr x9,"),
+        "pointer edge copy omitted x9:\n{printed}"
+    );
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -496,6 +561,40 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert_eq!(run.status.code(), c_run.status.code());
     assert_eq!(run.stdout, c_run.stdout);
     assert_eq!(run.stderr, c_run.stderr);
+
+    let pointer_entry_source = dir.join("pointer-entry.ml");
+    fs::write(
+        &pointer_entry_source,
+        "let entry = fn (value: string) -> 42\n",
+    )
+    .unwrap();
+    let pointer_executable = dir.join("pointer-entry.native");
+    let pointer_assembly = dir.join("pointer-entry.native.aarch64.s");
+    fs::write(&pointer_executable, "stale executable").unwrap();
+    fs::write(&pointer_assembly, "stale assembly").unwrap();
+    let pointer_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&pointer_entry_source)
+        .arg("entry")
+        .arg("-o")
+        .arg(&pointer_executable)
+        .output()
+        .unwrap();
+    assert!(!pointer_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&pointer_compile.stderr)
+            .contains("function-level entry cannot accept a source argument")
+    );
+    assert!(
+        !pointer_executable.exists(),
+        "rejected pointer entry left an executable"
+    );
+    assert!(
+        !pointer_assembly.exists(),
+        "rejected pointer entry left assembly"
+    );
 
     for (fixture_name, source_text, expected_status) in [
         ("arithmetic", "let main = fn () -> 20 + 22\n", 42),
@@ -725,7 +824,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert!(!unsupported_assembly.exists());
     assert!(
         String::from_utf8_lossy(&unsupported.stderr)
-            .contains("only unit, i32 and bool values have an AArch64 representation here")
+            .contains("string constants are outside the scalar selector")
     );
 
     let fake_bin = dir.join("fake-bin");

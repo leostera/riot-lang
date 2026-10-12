@@ -5,7 +5,7 @@ use NativeIr.Ir.{
   NativeModuleInitializer
 }
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean,
+  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer,
   A64Equal, A64NotEqual, A64SignedLessThan, A64SignedLessThanOrEqual,
   A64SignedGreaterThan, A64SignedGreaterThanOrEqual
 }
@@ -19,7 +19,8 @@ use Backend.Native.Aarch64.LinearIr.{
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
   A64LinearTrap, A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
   A64LinearInstructionItem, A64LinearTerminatorItem, A64LinearFunction,
-  w0, w1, w9, w10, w11, x0
+  w0, w1, w9, w10, w11, x0, x1, x9, x10, x11,
+  width_of_type, slot_size
 }
 
 let bool_and = fn first -> fn second -> match first {
@@ -87,6 +88,10 @@ let valid_slot = fn (A64FrameSlot { value: _, offset, value_type }) -> match val
     | false -> false
     | true -> match (offset <= 2147483628) { | true -> offset % 4 == 0 | false -> false }
   }
+  | A64Pointer -> match (offset >= 0) {
+    | false -> false
+    | true -> match (offset <= 2147483632) { | true -> offset % 8 == 0 | false -> false }
+  }
 }
 let frame_slot_value = fn (A64FrameSlot { value, offset: _, value_type: _ }) -> value
 let frame_slot_offset = fn (A64FrameSlot { value: _, offset, value_type: _ }) -> offset
@@ -101,21 +106,20 @@ let slot_is_known = fn wanted -> fn values -> match values {
       | false -> slot_is_known wanted remaining
     }
 }
-let same_slot_offset = fn first -> fn second ->
-  frame_slot_offset first == frame_slot_offset second
 let same_slot = fn first -> fn second ->
   bool_and (same_register (frame_slot_value first) (frame_slot_value second))
-    (bool_and (same_slot_offset first second)
+    (bool_and (frame_slot_offset first == frame_slot_offset second)
       (same_type (frame_slot_type first) (frame_slot_type second)))
 let same_type = fn first -> fn second -> match first {
   | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
   | A64Boolean -> match second { | A64Boolean -> true | _ -> false }
+  | A64Pointer -> match second { | A64Pointer -> true | _ -> false }
 }
 
 let location_end = fn location -> match location {
   | A64ValueLocation { value: _, value_type: A64Unit, slot: None } -> 0
-  | A64ValueLocation { value: _, value_type: _, slot: Some(A64FrameSlot { value: _, offset, value_type: _ }) } -> offset + 4
+  | A64ValueLocation { value: _, value_type, slot: Some(A64FrameSlot { value: _, offset, value_type: _ }) } -> offset + slot_size value_type
   | _ -> -1
 }
 let max_int = fn first -> fn second -> match (first >= second) {
@@ -126,33 +130,41 @@ let maximum_end = fn values -> match values {
   | Nil -> 0
   | Cons(value, remaining) -> max_int (location_end value) (maximum_end remaining)
 }
-let contains_slot_offset = fn wanted -> fn values -> match values {
+let slot_ranges_overlap = fn first -> fn second -> {
+  let first_offset = frame_slot_offset first;
+  let second_offset = frame_slot_offset second;
+  match (first_offset <= second_offset) {
+    | true -> second_offset - first_offset < slot_size (frame_slot_type first)
+    | false -> first_offset - second_offset < slot_size (frame_slot_type second)
+  }
+}
+let contains_overlapping_slot = fn wanted -> fn values -> match values {
   | Nil -> false
   | Cons(A64ValueLocation { value: _, value_type: _, slot: None }, remaining) ->
-    contains_slot_offset wanted remaining
+    contains_overlapping_slot wanted remaining
   | Cons(A64ValueLocation { value: _, value_type: _, slot: Some(slot) }, remaining) ->
-    match (same_slot_offset wanted slot) {
+    match (slot_ranges_overlap wanted slot) {
       | true -> true
-      | false -> contains_slot_offset wanted remaining
+      | false -> contains_overlapping_slot wanted remaining
     }
 }
-let has_duplicate_slot_offsets = fn values -> match values {
+let has_overlapping_slot_ranges = fn values -> match values {
   | Nil -> false
   | Cons(A64ValueLocation { value: _, value_type: _, slot: None }, remaining) ->
-    has_duplicate_slot_offsets remaining
+    has_overlapping_slot_ranges remaining
   | Cons(A64ValueLocation { value: _, value_type: _, slot: Some(slot) }, remaining) ->
-    match (contains_slot_offset slot remaining) {
+    match (contains_overlapping_slot slot remaining) {
       | true -> true
-      | false -> has_duplicate_slot_offsets remaining
+      | false -> has_overlapping_slot_ranges remaining
     }
 }
 let validate_locations = fn values -> match (has_duplicate_values values) {
   | true -> Err("LinearIR assigns more than one location to an SSA value")
-  | false -> match (has_duplicate_slot_offsets values) {
-    | true -> Err("LinearIR assigns overlapping SSA spill slots")
-    | false -> match (validate_location_list values) {
-      | Err(message) -> Err(message)
-      | Ok(_) -> Ok(0)
+  | false -> match (validate_location_list values) {
+    | Err(message) -> Err(message)
+    | Ok(_) -> match (has_overlapping_slot_ranges values) {
+      | true -> Err("LinearIR assigns overlapping SSA spill slots")
+      | false -> Ok(0)
     }
   }
 }
@@ -189,19 +201,31 @@ let validate_location_list = fn values -> match values {
         }
       }
     }
+    | A64Pointer -> match slot {
+      | None -> Err("pointer is missing its 64-bit spill slot")
+      | Some(frame_slot) -> match (same_register value (frame_slot_value frame_slot)) {
+        | false -> Err("spill slot is assigned to a different SSA value")
+        | true -> match (same_type value_type (frame_slot_type frame_slot)) {
+          | false -> Err("spill slot type differs from its SSA value type")
+          | true -> match (valid_slot frame_slot) {
+            | true -> validate_location_list remaining
+            | false -> Err("spill slot has an invalid offset or unit representation")
+          }
+        }
+      }
+    }
   }
 }
 
-let physical_is_w32 = fn register -> match (physical_width register) {
-  | A64W32 -> true
-  | A64X64 -> false
-}
+let physical_matches_type = fn register -> fn value_type ->
+  same_width (physical_width register) (width_of_type value_type)
+let physical_number_is = fn wanted -> fn register -> physical_number register == wanted
 let physical_register_allowed = fn (A64PhysicalRegister { number, width }) -> match number {
   | 0 -> true
-  | 1 -> match width { | A64W32 -> true | A64X64 -> false }
-  | 9 -> match width { | A64W32 -> true | A64X64 -> false }
-  | 10 -> match width { | A64W32 -> true | A64X64 -> false }
-  | 11 -> match width { | A64W32 -> true | A64X64 -> false }
+  | 1 -> true
+  | 9 -> true
+  | 10 -> true
+  | 11 -> true
   | _ -> false
 }
 let valid_instruction_registers = fn instruction -> fn values -> match instruction {
@@ -212,9 +236,9 @@ let valid_instruction_registers = fn instruction -> fn values -> match instructi
   | A64LoadI32Literal(register, _) -> bool_or (same_physical register w9) (same_physical register w10)
   | A64LoadBooleanLiteral(register, _) -> bool_or (same_physical register w9) (same_physical register w10)
   | A64ReloadSpill(register, slot) -> bool_and (physical_register_allowed register)
-      (bool_and (physical_is_w32 register) (slot_is_known slot values))
+      (bool_and (physical_matches_type register (frame_slot_type slot)) (slot_is_known slot values))
   | A64SpillRegister(slot, register) -> bool_and (physical_register_allowed register)
-      (bool_and (physical_is_w32 register) (slot_is_known slot values))
+      (bool_and (physical_matches_type register (frame_slot_type slot)) (slot_is_known slot values))
   | A64AddW(destination, left, right) -> bool_and (same_physical destination w11)
       (bool_and (same_physical left w9) (same_physical right w10))
   | A64SubtractW(destination, left, right) -> bool_and (same_physical destination w11)
@@ -267,8 +291,9 @@ let null_environment_setup = fn instruction -> match instruction {
   | A64MoveZero(register) -> same_physical register x0
   | _ -> false
 }
-let scalar_argument_setup = fn instruction -> match instruction {
-  | A64ReloadSpill(register, _) -> same_physical register w1
+let source_argument_setup = fn instruction -> match instruction {
+  | A64ReloadSpill(register, slot) -> bool_and (physical_number_is 1 register)
+      (physical_matches_type register (frame_slot_type slot))
   | _ -> false
 }
 let runtime_i32_argument_setup = fn expected -> fn instruction -> match instruction {
@@ -294,7 +319,7 @@ let runtime_i32_result_setup = fn instruction -> match instruction {
 let valid_call_setup = fn previous -> fn last -> match last {
   | Some(instruction) -> match (null_environment_setup instruction) {
     | true -> true
-    | false -> match (scalar_argument_setup instruction) {
+    | false -> match (source_argument_setup instruction) {
       | false -> false
       | true -> match previous {
         | Some(previous_instruction) -> null_environment_setup previous_instruction
@@ -317,7 +342,7 @@ let verify_call_sequences = fn items -> fn previous -> fn last -> match items {
     match (target_has_no_environment target) {
       | false -> Err("LinearIR direct call target requires an explicit closure environment")
       | true -> match (valid_call_setup previous last) {
-        | false -> Err("LinearIR direct call is missing its null environment or argument-register setup")
+        | false -> Err("LinearIR direct call is missing its null environment or typed argument-register setup")
         | true -> verify_call_sequences remaining last (Some(A64CallDirect(target)))
       }
     }

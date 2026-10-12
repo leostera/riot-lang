@@ -8,7 +8,7 @@ use NativeIr.Ir.{
 use Syntax.Lexer.{SourceSpan}
 use NativeIr.Print.{block_id}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean,
+  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean, A64Pointer,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
   A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
@@ -31,7 +31,8 @@ use Backend.Native.Aarch64.LinearIr.{
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
   A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
   A64LinearTerminatorItem, A64LinearFunction, A64LinearFailure,
-  w0, w1, w9, w10, w11, x0, slot_size, align_frame, is_unit
+  w0, w1, w9, w10, w11, x0, x1, x9, slot_size, slot_alignment,
+  align_frame, is_unit
 }
 
 type A64LocationAssignment = A64LocationAssignment(List<A64ValueLocation>, i32)
@@ -49,6 +50,7 @@ let same_value_type = fn first -> fn second -> match first {
   | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
   | A64Boolean -> match second { | A64Boolean -> true | _ -> false }
+  | A64Pointer -> match second { | A64Pointer -> true | _ -> false }
 }
 
 let label_number = fn (A64Label(NativeBlockId(number))) -> number
@@ -111,15 +113,22 @@ let assign_locations = fn pending -> fn next_offset -> match pending {
           rest_offset
         ))
       }
-      | _ -> match (next_offset > 2147483643) {
-        | true -> Err("AArch64 spill frame exceeds the supported 32-bit size")
-        | false -> {
-          let slot = A64FrameSlot {
-            value: value,
-            offset: next_offset,
-            value_type: value_type
-          };
-          match (assign_locations remaining (next_offset + slot_size value_type)) {
+      | _ -> {
+        let alignment = slot_alignment value_type;
+        let offset = match (next_offset % alignment) {
+          | 0 -> next_offset
+          | remainder -> next_offset + (alignment - remainder)
+        };
+        let size = slot_size value_type;
+        match (offset > 2147483647 - size) {
+          | true -> Err("AArch64 spill frame exceeds the supported 32-bit size")
+          | false -> {
+            let slot = A64FrameSlot {
+              value: value,
+              offset: offset,
+              value_type: value_type
+            };
+            match (assign_locations remaining (offset + size)) {
             | Err(message) -> Err(message)
             | Ok(A64LocationAssignment(rest_values, rest_offset)) -> Ok(A64LocationAssignment(
               Cons(A64ValueLocation {
@@ -127,6 +136,7 @@ let assign_locations = fn pending -> fn next_offset -> match pending {
               }, rest_values),
               rest_offset
             ))
+            }
           }
         }
       }
@@ -234,6 +244,10 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
           function: function_identity, block: block, span: span,
           reason: "typed i32 runtime helper must return i32"
         })
+        | A64Pointer -> Err(A64LinearFailure {
+          function: function_identity, block: block, span: span,
+          reason: "typed i32 runtime helper must return i32"
+        })
         | A64I32 -> match arguments {
           | Cons(A64CallArgument { register: left, value_type: A64I32 },
               Cons(A64CallArgument { register: right, value_type: A64I32 }, Nil)) ->
@@ -329,6 +343,10 @@ let lower_call_argument = fn function_identity -> fn block -> fn span ->
     | Err(failure) -> Err(failure)
     | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(w1, slot)))
   }
+  | A64Pointer -> match (lookup_slot function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(x1, slot)))
+  }
 }
 
 let lower_call_arguments = fn function_identity -> fn block -> fn span ->
@@ -373,7 +391,10 @@ let lower_call = fn function_identity -> fn block -> fn span ->
           | Err(failure) -> Err(failure)
           | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64MoveZero(x0)))
             (append_linear_items argument_setup (append_linear_items (add_instruction(A64CallDirect(callee)))
-              (add_instruction(A64SpillRegister(result_slot, w0))))))
+              (add_instruction(A64SpillRegister(result_slot, match call_result {
+                | A64Pointer -> x0
+                | _ -> w0
+              }))))))
         }
       }
     }
@@ -444,9 +465,16 @@ let lower_edge_copies = fn function_identity -> fn block -> fn span ->
                 | Err(failure) -> Err(failure)
                 | Ok(source_slot) -> match (lookup_slot function_identity block span destination locations) {
                   | Err(failure) -> Err(failure)
-                  | Ok(destination_slot) -> Ok(append_linear_items
-                    (add_instruction(A64ReloadSpill(w9, source_slot)))
-                    (append_linear_items (add_instruction(A64SpillRegister(destination_slot, w9))) rest))
+                  | Ok(destination_slot) -> {
+                    let copy_register = match source_type {
+                      | A64Pointer -> x9
+                      | _ -> w9
+                    };
+                    Ok(append_linear_items
+                      (add_instruction(A64ReloadSpill(copy_register, source_slot)))
+                      (append_linear_items
+                        (add_instruction(A64SpillRegister(destination_slot, copy_register))) rest))
+                  }
                 }
               }
             }
@@ -506,8 +534,14 @@ let lower_terminator = fn function_identity -> fn function_result -> fn block ->
         | true -> Ok(add_terminator(A64LinearReturn))
         | false -> match (lookup_slot function_identity block span value locations) {
           | Err(failure) -> Err(failure)
-          | Ok(slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w0, slot)))
-            (add_terminator(A64LinearReturn)))
+          | Ok(slot) -> {
+            let return_register = match function_result {
+              | A64Pointer -> x0
+              | _ -> w0
+            };
+            Ok(append_linear_items (add_instruction(A64ReloadSpill(return_register, slot)))
+              (add_terminator(A64LinearReturn)))
+          }
         }
       }
     }
@@ -529,6 +563,11 @@ let lower_entry_parameter_setup = fn function_identity -> fn label ->
     match (lookup_slot function_identity label span register locations) {
       | Err(failure) -> Err(failure)
       | Ok(slot) -> Ok(add_instruction(A64SpillRegister(slot, w1)))
+    }
+  | Cons(A64BlockParameter { register, value_type: A64Pointer, span: _ }, Nil) ->
+    match (lookup_slot function_identity label span register locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(slot) -> Ok(add_instruction(A64SpillRegister(slot, x1)))
     }
   | Cons(_, Cons(_, _)) -> Err(A64LinearFailure {
     function: function_identity,

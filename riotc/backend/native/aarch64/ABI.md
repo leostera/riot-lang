@@ -80,22 +80,27 @@ The first MachineIR-to-LinearIR implementation keeps this approved signature
 shape while deliberately using an all-spill allocator:
 
 - Each non-unit MachineIR SSA value in the current `i32`/`bool` slice receives
-  a distinct unboxed four-byte stack slot. `unit` receives no slot. This is a
-  spill-all strategy, not a boxed `RtValue` representation or a claim about
-  eventual aggregate memory layout.
-- Spill offsets are four-byte aligned from the allocated stack-frame `sp`;
-  the local frame size is rounded up to 16 bytes. Current Codegen saves/restores
-  `x29`/`x30`, allocates that frame, and emits the epilogue at returns.
-- Reloaded values and selected operations use caller-saved `w9`/`w10`/`w11`.
-  The initial lowering allocates no callee-saved registers. Values are
-  reloaded before use and written back after definitions, so control-flow
-  edges copy block arguments explicitly through `w9`.
+  a distinct unboxed four-byte stack slot. Opaque pointers receive distinct
+  eight-byte stack slots aligned to eight bytes; `unit` receives no slot. This
+  is a spill-all strategy, not a boxed `RtValue` representation or a claim
+  about eventual aggregate memory layout. Pointer pass-through does not select
+  concrete string/composite layouts or implement their constructors/accessors.
+- Scalar spill offsets are four-byte aligned and pointer spill offsets are
+  eight-byte aligned from the allocated stack-frame `sp`; the local frame size
+  is rounded up to 16 bytes. Current Codegen saves/restores `x29`/`x30`,
+  allocates that frame, and emits the epilogue at returns.
+- Reloaded scalar values and selected operations use caller-saved
+  `w9`/`w10`/`w11`; opaque pointer copies use `x9`. The initial lowering
+  allocates no callee-saved registers. Values are reloaded before use and
+  written back after definitions, so control-flow edges copy block arguments
+  explicitly through the width-appropriate scratch register.
 - A direct call to a top-level function or module initializer sets hidden
   environment `x0` to null, places its optional non-unit scalar argument in
-  `w1`, emits the logical direct-call pseudo, and spills a scalar result from
-  `w0`. `unit` arguments and results emit no data move. A function entry's
-  optional scalar argument is spilled from `w1`; an entry `unit` argument is
-  erased.
+  `w1` or opaque pointer argument in `x1`, emits the logical direct-call
+  pseudo, and spills a scalar or pointer result from `w0` or `x0`. `unit`
+  arguments and results emit no data move. A function entry's optional source
+  argument is spilled from its width-appropriate `w1`/`x1`; an entry `unit`
+  argument is erased.
 - The current LIR verifier checks slot ownership/uniqueness, frame alignment
   and bounds, physical scratch-register assignment, terminated block
   structure, and all branch labels. Unsupported closure-environment calls
@@ -109,10 +114,14 @@ shape while deliberately using an all-spill allocator:
   `rt_native_i32_rem` C helpers; general Host marshalling is still absent.
 
 This conservative policy validates the first ABI lowering but is not the full
-native backend. Narrow integer widths, pointers/composites, closures, and Host
-helpers remain outside the current LIR slice. The selected-function harness
-assembles and links with Clang for the approved target, but it is not the
-whole-module entry adapter described above.
+native backend. `A64Pointer` currently supports opaque pointer arguments,
+returns, spill/reload, and edge copies; it does not implement string constants,
+heap layouts, constructors, projections, or closure calls. Narrow integer
+widths, closure environments, and Host helper marshalling remain outside the
+current LIR slice. The selected-function harness rejects pointer-argument or
+pointer-result entry adapters, assembles and links only supported `unit -> i32`
+entries with Clang for the approved target, and is not the whole-module entry
+adapter described above.
 
 The native closure code-pointer convention is distinct from the C runtime's
 legacy `RtFunction` type. Native closure values must not be passed to

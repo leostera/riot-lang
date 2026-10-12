@@ -1,11 +1,11 @@
 // Physical-register, stack-slot AArch64 IR after ABI lowering and control-flow linearization.
-// Every non-unit SSA value lives in an unboxed 32-bit spill slot in this initial slice.
+// Scalars use unboxed 32-bit spill slots; opaque pointers use aligned 64-bit slots.
 use Prelude.{List, Option, Some, None}
 use Syntax.Ast.{IntegerLiteral}
 use Syntax.Lexer.{SourceSpan}
 use NativeIr.Ir.{NativeFunctionId, NativeTrapKind}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean,
+  A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean, A64Pointer,
   A64Condition, A64Equal, A64NotEqual, A64SignedLessThan,
   A64SignedLessThanOrEqual, A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
   A64RuntimeHelper, A64RuntimeI32Division, A64RuntimeI32Remainder
@@ -82,21 +82,34 @@ let width_of_type = fn value_type -> match value_type {
   | A64Unit -> A64W32
   | A64I32 -> A64W32
   | A64Boolean -> A64W32
+  | A64Pointer -> A64X64
 }
 
 // These are the only scratch and ABI registers emitted in this bootstrap slice.
 // x18 is intentionally never allocated; x9-x11 are caller-saved scratch registers.
 let w0 = A64PhysicalRegister { number: 0, width: A64W32 }
 let w1 = A64PhysicalRegister { number: 1, width: A64W32 }
+let x1 = A64PhysicalRegister { number: 1, width: A64X64 }
 let w9 = A64PhysicalRegister { number: 9, width: A64W32 }
 let w10 = A64PhysicalRegister { number: 10, width: A64W32 }
 let w11 = A64PhysicalRegister { number: 11, width: A64W32 }
+let x9 = A64PhysicalRegister { number: 9, width: A64X64 }
+let x10 = A64PhysicalRegister { number: 10, width: A64X64 }
+let x11 = A64PhysicalRegister { number: 11, width: A64X64 }
 let x0 = A64PhysicalRegister { number: 0, width: A64X64 }
 
 let slot_size = fn value_type -> match value_type {
   | A64Unit -> 0
   | A64I32 -> 4
   | A64Boolean -> 4
+  | A64Pointer -> 8
+}
+
+let slot_alignment = fn value_type -> match value_type {
+  | A64Unit -> 1
+  | A64I32 -> 4
+  | A64Boolean -> 4
+  | A64Pointer -> 8
 }
 
 let align_frame = fn bytes -> match (bytes % 16) {

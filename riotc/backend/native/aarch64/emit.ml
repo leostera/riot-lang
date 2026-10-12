@@ -1,4 +1,4 @@
-// Emit verified AArch64 LinearIR as Mach-O assembly for the current scalar slice.
+// Emit verified scalar and opaque-pointer AArch64 LinearIR as Mach-O assembly.
 use Prelude.{List, Nil, Cons, Result, Ok, Err, Option, Some, None}
 use String.{equal}
 use Syntax.Ast.{IntegerLiteral}
@@ -8,7 +8,7 @@ use NativeIr.Ir.{
 }
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
-  A64Label, A64Unit, A64I32, A64Boolean, A64Equal, A64NotEqual,
+  A64Label, A64Unit, A64I32, A64Boolean, A64Pointer, A64Equal, A64NotEqual,
   A64RuntimeI32Division, A64RuntimeI32Remainder,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual
@@ -82,10 +82,8 @@ let same_label = fn first -> fn second -> match first {
     | _ -> false
   }
 }
-let is_w1 = fn (A64PhysicalRegister { number, width }) -> match width {
-  | A64W32 -> number == 1
-  | A64X64 -> false
-}
+let is_source_argument_register = fn (A64PhysicalRegister { number, width: _ }) ->
+  number == 1
 let find_function_symbol = fn wanted -> fn functions -> match functions {
   | Nil -> None
   | Cons(A64CodegenFunction {
@@ -129,16 +127,16 @@ let emit_store_spill = fn slot -> fn source ->
   "str " + register_text source + ", [sp,#"
     + decimal_text (slot_offset slot) + "]\n"
 
-let find_entry_scalar_argument = fn entry -> fn items -> match items {
+let find_entry_source_argument = fn entry -> fn items -> match items {
   | Nil -> false
   | Cons(A64LinearLabelItem(label), remaining) -> match (same_label entry label) {
-    | false -> find_entry_scalar_argument entry remaining
+    | false -> find_entry_source_argument entry remaining
     | true -> match remaining {
-      | Cons(A64LinearInstructionItem(A64SpillRegister(_, register)), _) -> is_w1 register
+      | Cons(A64LinearInstructionItem(A64SpillRegister(_, register)), _) -> is_source_argument_register register
       | _ -> false
     }
   }
-  | Cons(_, remaining) -> find_entry_scalar_argument entry remaining
+  | Cons(_, remaining) -> find_entry_source_argument entry remaining
 }
 
 let emit_instruction = fn functions -> fn instruction -> match instruction {
@@ -250,7 +248,7 @@ let entry_has_unit_or_no_argument = fn function -> {
   let A64CodegenFunction { symbol: _, linear_function: A64LinearFunction {
     identity: _, result_type: _, entry, values: _, frame_size: _, items, span: _
   } } = function;
-  match (find_entry_scalar_argument entry items) {
+  match (find_entry_source_argument entry items) {
     | true -> false
     | false -> true
   }
@@ -296,8 +294,9 @@ let emit_program = fn linear_functions -> fn entry_identity -> {
           match result_type {
             | A64Unit -> Err("function-level entry must return i32")
             | A64Boolean -> Err("function-level entry must return i32")
+            | A64Pointer -> Err("function-level entry must return i32")
             | A64I32 -> match (entry_has_unit_or_no_argument entry) {
-              | false -> Err("function-level entry cannot accept a scalar source argument")
+              | false -> Err("function-level entry cannot accept a source argument")
               | true -> match (emit_functions functions functions) {
                 | Err(message) -> Err(message)
                 | Ok(function_assembly) -> Ok(

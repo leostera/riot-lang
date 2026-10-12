@@ -6,7 +6,7 @@ use NativeIr.Ir.{NativeBlockId, NativeDivisionByZero, NativeRemainderByZero,
   NativeArithmeticOverflow, NativePatternFailure, NativeExplicitTrap}
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
-  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Condition,
+  A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer, A64Condition,
   A64Equal, A64NotEqual,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual, A64RuntimeI32Division, A64RuntimeI32Remainder
@@ -49,6 +49,7 @@ let value_type_text = fn value_type -> match value_type {
   | A64Unit -> "unit"
   | A64I32 -> "i32"
   | A64Boolean -> "bool"
+  | A64Pointer -> "ptr"
 }
 let condition_text = fn condition -> match condition {
   | A64Equal -> "eq"
