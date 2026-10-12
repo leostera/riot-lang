@@ -74,18 +74,23 @@ TypedAST retains resolved binding identities, checked types, and source spans.
 LambdaIR is a typed, target-independent desugared core. NativeIR is typed
 target-independent SSA with explicit blocks, terminators, block arguments, and
 call/allocation/trap/Host effects; it has a deterministic printer, verifier,
-and positive/negative tests. The `native-ir SOURCE` command prints this IR.
+and positive/negative tests. Same-module, monomorphic top-level function
+references become direct-call candidates by binding identity during NativeIR
+lowering; aliases, imported values, and generalized functions retain closure
+semantics. The `native-ir SOURCE` command prints this IR.
 `aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar
-AArch64 MachineIR selection. `aarch64-linear-ir SOURCE TOP_LEVEL_FUNCTION`
-lowers and verifies the initial unit/i32/bool ABI slice with explicit spill
-slots, call-register assignments, and linearized control flow.
+and opaque-pointer AArch64 MachineIR selection. `aarch64-linear-ir SOURCE
+TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice plus
+opaque-pointer pass-through, with explicit spill slots, call-register
+assignments, and linearized control flow.
 `aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT` emits and links
 AArch64 assembly for one selected function and writes `OUTPUT.aarch64.s` for
 inspection. This is a function-level Codegen harness, not a whole-module
 compiler: it omits module initializers and globals, closure construction,
-runtime/Host helper marshalling, and unselected functions. Unsupported
-operations in the selected function fail before Codegen rather than being
-emitted as C. The full compiler must similarly reject unsupported module
+runtime/Host helper marshalling, and unselected functions. A direct-call target
+must be in the supplied Codegen set, so the one-function CLI explicitly rejects
+calls to other functions. Unsupported operations in the selected function fail
+before Codegen rather than being emitted as C. The full compiler must similarly reject unsupported module
 constructs; it must not use this harness as a fallback.
 
 The existing source compiler still goes through `codegen/c/emit.ml` and

@@ -273,7 +273,7 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
     let pointer_source = dir.join("pointer-identity.ml");
     fs::write(
         &pointer_source,
-        "let identity = fn (text: string) -> text\nlet main = fn () -> 42\n",
+        "let identity = fn (text: string) -> text\nlet caller = fn (text: string) -> identity text\nlet main = fn () -> 42\n",
     )
     .unwrap();
     let pointer_linear_ir = Command::new("node")
@@ -302,6 +302,22 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
         pointer_ir_text.contains("x0"),
         "missing X-register return:\n{pointer_ir_text}"
     );
+    let pointer_caller = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-linear-ir")
+        .arg(&pointer_source)
+        .arg("caller")
+        .output()
+        .unwrap();
+    assert!(
+        pointer_caller.status.success(),
+        "typed pointer direct-call lowering failed: {}",
+        String::from_utf8_lossy(&pointer_caller.stderr)
+    );
+    let pointer_caller_text = String::from_utf8_lossy(&pointer_caller.stdout);
+    assert!(pointer_caller_text.contains("bl fn "));
+    assert!(pointer_caller_text.contains("x1"));
 
     let generic_source = dir.join("generic.ml");
     fs::write(
@@ -366,17 +382,13 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
         .output()
         .unwrap();
     assert!(
-        !linear_caller.status.success(),
-        "unselected closure operation unexpectedly reached LinearIR"
+        linear_caller.status.success(),
+        "same-module direct-call lowering failed: {}",
+        String::from_utf8_lossy(&linear_caller.stderr)
     );
-    assert!(linear_caller.stdout.is_empty());
-    let closure_diagnostic = String::from_utf8_lossy(&linear_caller.stderr);
-    assert!(
-        closure_diagnostic.contains("AArch64 selection failed in")
-            && closure_diagnostic
-                .contains("operation is not in the AArch64 scalar selector subset"),
-        "unexpected closure-operation rejection: {closure_diagnostic}"
-    );
+    let linear_caller_text = String::from_utf8_lossy(&linear_caller.stdout);
+    assert!(linear_caller_text.contains("bl fn "));
+    assert!(linear_caller_text.contains("callee@"));
 
     let linear_division = Command::new("node")
         .current_dir(repo)
@@ -595,6 +607,34 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         !pointer_assembly.exists(),
         "rejected pointer entry left assembly"
     );
+
+    let direct_call_source = dir.join("direct-call.ml");
+    fs::write(
+        &direct_call_source,
+        "let callee = fn (value: i32) -> value + 1\nlet caller = fn () -> callee 41\n",
+    )
+    .unwrap();
+    let direct_call_executable = dir.join("direct-call.native");
+    let direct_call_assembly = dir.join("direct-call.native.aarch64.s");
+    fs::write(&direct_call_executable, "stale executable").unwrap();
+    fs::write(&direct_call_assembly, "stale assembly").unwrap();
+    let direct_call_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&direct_call_source)
+        .arg("caller")
+        .arg("-o")
+        .arg(&direct_call_executable)
+        .output()
+        .unwrap();
+    assert!(!direct_call_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&direct_call_compile.stderr)
+            .contains("direct-call target is absent from the Codegen function set")
+    );
+    assert!(!direct_call_executable.exists());
+    assert!(!direct_call_assembly.exists());
 
     for (fixture_name, source_text, expected_status) in [
         ("arithmetic", "let main = fn () -> 20 + 22\n", 42),

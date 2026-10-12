@@ -36,7 +36,7 @@ use NativeIr.Ir.{
   NativePrimitive, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeCallOperation,
-  NativeCall, NativeClosureCall, NativeCallTarget, NativeCreateClosure,
+  NativeCall, NativeDirectCall, NativeClosureCall, NativeCallTarget, NativeCreateClosure,
   NativeClosure, NativeCreateAggregate, NativeAggregate, NativeAggregateValue,
   NativeAggregateKind, NativeTupleAggregate, NativeRecordAggregate, NativeVariantAggregate,
   NativeProjectAggregate, NativeProjection, NativeAggregateField,
@@ -72,6 +72,7 @@ type NativeBlockBuilder = NativeBlockBuilder {
 type NativeFunctionBuilder = NativeFunctionBuilder {
   identity: NativeFunctionId,
   owner: Option<BindingIdentity>,
+  direct_functions: List<BindingIdentity>,
   substitutions: List<TypeSubstitution>,
   result_type: InferenceType,
   entry: NativeBlockId,
@@ -157,8 +158,8 @@ let native_bool_type = AppliedType(InferredNamedType {
   arguments: Nil
 })
 
-let new_function_builder = fn identity -> fn owner -> fn substitutions ->
-  fn result_type -> fn span -> {
+let new_function_builder = fn identity -> fn owner -> fn direct_functions ->
+  fn substitutions -> fn result_type -> fn span -> {
   let entry = NativeBlockId(0);
   let entry_block = NativeBlockBuilder {
     identity: entry,
@@ -170,6 +171,7 @@ let new_function_builder = fn identity -> fn owner -> fn substitutions ->
   NativeFunctionBuilder {
     identity: identity,
     owner: owner,
+    direct_functions: direct_functions,
     substitutions: substitutions,
     result_type: result_type,
     entry: entry,
@@ -206,11 +208,12 @@ let replace_block_builder = fn wanted -> fn replacement -> fn blocks -> match bl
 }
 
 let update_current_block = fn replacement -> fn (NativeFunctionBuilder {
-  identity, owner, substitutions, result_type, entry, current, blocks, next_block,
+  identity, owner, direct_functions, substitutions, result_type, entry, current, blocks, next_block,
   next_value, environment, generated_functions, span
 }) -> NativeFunctionBuilder {
   identity: identity,
   owner: owner,
+  direct_functions: direct_functions,
   substitutions: substitutions,
   result_type: result_type,
   entry: entry,
@@ -224,16 +227,17 @@ let update_current_block = fn replacement -> fn (NativeFunctionBuilder {
 }
 
 let fresh_value_id = fn (NativeFunctionBuilder {
-  identity, owner, substitutions: _, result_type, entry, current, blocks, next_block, next_value,
+  identity, owner, direct_functions: _, substitutions: _, result_type, entry, current, blocks, next_block, next_value,
   environment, generated_functions, span
 }) -> NativeValueId(next_value)
 
 let allocate_value_id = fn (NativeFunctionBuilder {
-  identity, owner, substitutions, result_type, entry, current, blocks, next_block, next_value,
+  identity, owner, direct_functions, substitutions, result_type, entry, current, blocks, next_block, next_value,
   environment, generated_functions, span
 }) -> NativeFunctionBuilder {
   identity: identity,
   owner: owner,
+  direct_functions: direct_functions,
   substitutions: substitutions,
   result_type: result_type,
   entry: entry,
@@ -247,12 +251,12 @@ let allocate_value_id = fn (NativeFunctionBuilder {
 }
 
 let function_builder_current = fn (NativeFunctionBuilder {
-  current, identity: _, owner: _, substitutions: _, result_type: _, entry: _, blocks: _,
+  current, identity: _, owner: _, direct_functions: _, substitutions: _, result_type: _, entry: _, blocks: _,
   next_block: _, next_value: _, environment: _, generated_functions: _, span: _
 }) -> current
 
 let function_builder_blocks = fn (NativeFunctionBuilder {
-  blocks, identity: _, owner: _, substitutions: _, result_type: _, entry: _, current: _,
+  blocks, identity: _, owner: _, direct_functions: _, substitutions: _, result_type: _, entry: _, current: _,
   next_block: _, next_value: _, environment: _, generated_functions: _, span: _
 }) -> blocks
 
@@ -316,7 +320,7 @@ let set_terminator = fn terminator -> fn builder ->
   }
 
 let create_block = fn span -> fn (NativeFunctionBuilder {
-  identity: function_identity, owner, substitutions, result_type, entry, current: _, blocks,
+  identity: function_identity, owner, direct_functions, substitutions, result_type, entry, current: _, blocks,
   next_block, next_value, environment, generated_functions, span: function_span
 }) -> {
   let block_identity = NativeBlockId(next_block);
@@ -330,6 +334,7 @@ let create_block = fn span -> fn (NativeFunctionBuilder {
   NativeFunctionBuilder {
     identity: function_identity,
     owner: owner,
+    direct_functions: direct_functions,
     substitutions: substitutions,
     result_type: result_type,
     entry: entry,
@@ -383,11 +388,12 @@ let append_native_parameters = fn first -> fn second -> match first {
 }
 
 let select_block = fn wanted -> fn (NativeFunctionBuilder {
-  identity, owner, substitutions, result_type, entry, current: _, blocks, next_block, next_value,
+  identity, owner, direct_functions, substitutions, result_type, entry, current: _, blocks, next_block, next_value,
   environment, generated_functions, span
 }) -> NativeFunctionBuilder {
   identity: identity,
   owner: owner,
+  direct_functions: direct_functions,
   substitutions: substitutions,
   result_type: result_type,
   entry: entry,
@@ -402,11 +408,12 @@ let select_block = fn wanted -> fn (NativeFunctionBuilder {
 
 let add_binding_value = fn binding -> fn value -> fn checked_type ->
   fn (NativeFunctionBuilder {
-    identity, owner, substitutions, result_type, entry, current, blocks, next_block, next_value,
+    identity, owner, direct_functions, substitutions, result_type, entry, current, blocks, next_block, next_value,
     environment, generated_functions, span
   }) -> NativeFunctionBuilder {
     identity: identity,
     owner: owner,
+    direct_functions: direct_functions,
     substitutions: substitutions,
     result_type: result_type,
     entry: entry,
@@ -437,11 +444,12 @@ let lookup_binding_value = fn wanted -> fn environment -> match environment {
 }
 
 let set_builder_environment = fn environment -> fn (NativeFunctionBuilder {
-  identity, owner, substitutions, result_type, entry, current, blocks, next_block, next_value,
+  identity, owner, direct_functions, substitutions, result_type, entry, current, blocks, next_block, next_value,
   environment: _, generated_functions, span
 }) -> NativeFunctionBuilder {
   identity: identity,
   owner: owner,
+  direct_functions: direct_functions,
   substitutions: substitutions,
   result_type: result_type,
   entry: entry,
@@ -455,11 +463,12 @@ let set_builder_environment = fn environment -> fn (NativeFunctionBuilder {
 }
 
 let set_builder_owner = fn owner -> fn (NativeFunctionBuilder {
-  identity, owner: _, substitutions, result_type, entry, current, blocks, next_block, next_value,
+  identity, owner: _, direct_functions, substitutions, result_type, entry, current, blocks, next_block, next_value,
   environment, generated_functions, span
 }) -> NativeFunctionBuilder {
   identity: identity,
   owner: owner,
+  direct_functions: direct_functions,
   substitutions: substitutions,
   result_type: result_type,
   entry: entry,
@@ -473,11 +482,12 @@ let set_builder_owner = fn owner -> fn (NativeFunctionBuilder {
 }
 
 let add_generated_function = fn generated -> fn (NativeFunctionBuilder {
-  identity, owner, substitutions, result_type, entry, current, blocks, next_block, next_value,
+  identity, owner, direct_functions, substitutions, result_type, entry, current, blocks, next_block, next_value,
   environment, generated_functions, span
 }) -> NativeFunctionBuilder {
   identity: identity,
   owner: owner,
+  direct_functions: direct_functions,
   substitutions: substitutions,
   result_type: result_type,
   entry: entry,
@@ -548,7 +558,7 @@ let finish_native_blocks = fn builders -> match builders {
 
 let finish_function_builder = fn (NativeFunctionBuilder {
   identity, result_type, entry, blocks, generated_functions: _, span,
-  owner: _, substitutions: _, current: _, next_block: _, next_value: _, environment: _
+  owner: _, direct_functions: _, substitutions: _, current: _, next_block: _, next_value: _, environment: _
 }) -> match (finish_native_blocks
     (reverse_native_blocks blocks Nil)) {
   | Err(message) -> Err(message)
@@ -801,7 +811,7 @@ let store_global = fn binding -> fn value -> fn span -> fn builder ->
   })) (NativeEffectSet(Cons(NativeWriteMutableState, Nil))) span builder
 
 let builder_generated_functions = fn (NativeFunctionBuilder {
-  identity: _, owner: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
+  identity: _, owner: _, direct_functions: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
   next_block: _, next_value: _, environment: _, generated_functions, span: _
 }) -> generated_functions
 
@@ -834,14 +844,14 @@ let binding_declaration_span = fn (BindingIdentity {
   source_path: _, declaration_span, name: _, scope: _
 }) -> declaration_span
 
-let compile_function_body = fn identity -> fn owner -> fn substitutions ->
+let compile_function_body = fn identity -> fn owner -> fn direct_functions -> fn substitutions ->
   fn (LambdaFunctionExpression { parameter, body }) ->
   fn checked_type -> fn span -> fn captured_bindings ->
   match (function_parts checked_type substitutions) {
     | Err(message) -> Err(message)
     | Ok(NativeFunctionParts { argument, result }) -> {
       let initial_builder = new_function_builder identity (Some(owner))
-        substitutions result span;
+        direct_functions substitutions result span;
       match (compile_capture_bindings captured_bindings 0 initial_builder) {
         | Err(message) -> Err(message)
         | Ok(NativeCapturedBindings {
@@ -882,6 +892,7 @@ let compile_function_body = fn identity -> fn owner -> fn substitutions ->
 let compile_lambda = fn identity -> fn owner -> fn function_expression ->
   fn checked_type -> fn span -> fn captured_bindings -> fn outer_builder ->
   match (compile_function_body identity owner
+      (function_builder_direct_functions outer_builder)
       (function_builder_substitutions outer_builder) function_expression
       checked_type span captured_bindings) {
     | Err(message) -> Err(message)
@@ -897,19 +908,24 @@ let compile_lambda = fn identity -> fn owner -> fn function_expression ->
   }
 
 let function_builder_environment = fn (NativeFunctionBuilder {
-  identity: _, owner: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
+  identity: _, owner: _, direct_functions: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
   next_block: _, next_value: _, environment, generated_functions: _, span: _
 }) -> environment
 
 let function_builder_owner = fn (NativeFunctionBuilder {
-  identity: _, owner, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
+  identity: _, owner, direct_functions: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
   next_block: _, next_value: _, environment: _, generated_functions: _, span: _
 }) -> owner
 
 let function_builder_substitutions = fn (NativeFunctionBuilder {
-  identity: _, owner: _, substitutions, result_type: _, entry: _, current: _, blocks: _,
+  identity: _, owner: _, direct_functions: _, substitutions, result_type: _, entry: _, current: _, blocks: _,
   next_block: _, next_value: _, environment: _, generated_functions: _, span: _
 }) -> substitutions
+
+let function_builder_direct_functions = fn (NativeFunctionBuilder {
+  identity: _, owner: _, direct_functions, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
+  next_block: _, next_value: _, environment: _, generated_functions: _, span: _
+}) -> direct_functions
 
 let lower_lambda_function = fn function_expression -> fn checked_type -> fn span ->
   fn builder -> match (function_builder_owner builder) {
@@ -944,7 +960,7 @@ let lower_expression_list_last = fn expressions -> fn result_type -> fn span ->
   }
 
 let function_builder_span = fn (NativeFunctionBuilder {
-  identity: _, owner: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
+  identity: _, owner: _, direct_functions: _, substitutions: _, result_type: _, entry: _, current: _, blocks: _,
   next_block: _, next_value: _, environment: _, generated_functions: _, span
 }) -> span
 
@@ -1037,7 +1053,33 @@ let expression_checked_type = fn (LambdaExpression {
   checked_type, kind: _, span: _
 }) -> checked_type
 
-let lower_apply_expression = fn callee -> fn argument -> fn result_type -> fn span ->
+let has_direct_function_binding = fn wanted -> fn candidates -> match candidates {
+  | Nil -> false
+  | Cons(candidate, remaining) -> match (same_binding wanted candidate) {
+    | true -> true
+    | false -> has_direct_function_binding wanted remaining
+  }
+}
+
+let lower_direct_apply_expression = fn binding -> fn callee_type -> fn argument ->
+  fn result_type -> fn span -> fn builder ->
+  match (function_parts callee_type (function_builder_substitutions builder)) {
+    | Err(message) -> Err(message)
+    | Ok(NativeFunctionParts { argument: argument_type, result: _ }) ->
+      match (lower_expression argument builder) {
+        | Err(message) -> Err(message)
+        | Ok(NativeLoweredValue { value: argument_value, checked_type: _, builder: argument_builder }) ->
+          emit_instruction result_type (NativeCallOperation(NativeCall {
+            target: NativeDirectCall(NativeTopLevelFunction(binding)),
+            arguments: Cons(argument_value, Nil),
+            argument_types: Cons(argument_type, Nil),
+            result_type: result_type
+          })) (NativeEffectSet(Cons(NativeReadMutableState,
+            Cons(NativeUnknownCall, Nil)))) span argument_builder
+      }
+  }
+
+let lower_closure_apply_expression = fn callee -> fn argument -> fn result_type -> fn span ->
   fn builder -> match (lower_expression callee builder) {
     | Err(message) -> Err(message)
     | Ok(NativeLoweredValue {
@@ -1061,6 +1103,19 @@ let lower_apply_expression = fn callee -> fn argument -> fn result_type -> fn sp
           }
       }
     }
+  }
+
+let lower_apply_expression = fn callee -> fn argument -> fn result_type -> fn span ->
+  fn builder -> match callee {
+    | LambdaExpression { checked_type: callee_type,
+        kind: LambdaValueReference(binding), span: _ } ->
+      match (has_direct_function_binding binding
+          (function_builder_direct_functions builder)) {
+        | true -> lower_direct_apply_expression binding callee_type argument
+            result_type span builder
+        | false -> lower_closure_apply_expression callee argument result_type span builder
+      }
+    | _ -> lower_closure_apply_expression callee argument result_type span builder
   }
 
 let lower_binary_expression = fn operator -> fn operand_type -> fn left -> fn right ->
@@ -1208,6 +1263,18 @@ let lower_native_globals = fn declarations -> match declarations {
     }, lower_native_globals remaining)
 }
 
+// Binding identity is enough to bypass a closure only for a monomorphic,
+// same-module lambda declaration. Aliases, imported values, and generalized
+// functions retain ordinary closure-call semantics.
+let direct_function_bindings = fn declarations -> match declarations {
+  | Nil -> Nil
+  | Cons(LambdaValueDeclaration {
+      binding, body: LambdaExpression { kind: LambdaFunction(_), checked_type: _, span: _ },
+      scheme: TypeScheme { quantified_variables: Nil, body: _ }, span: _
+    }, remaining) -> Cons(binding, direct_function_bindings remaining)
+  | Cons(_, remaining) -> direct_function_bindings remaining
+}
+
 let lower_top_level_initializer = fn binding ->
   fn (LambdaExpression { checked_type, kind, span }) -> fn builder -> match kind {
     | LambdaFunction(function_expression) -> compile_lambda
@@ -1248,7 +1315,8 @@ let lower_module = fn module_identity ->
     | Cons(LambdaValueDeclaration { span, binding: _, scheme: _, body: _ }, _) -> span
   };
   let initializer_identity = NativeModuleInitializer(module_identity);
-  let initial_builder = new_function_builder initializer_identity None
+  let direct_functions = direct_function_bindings recursive_values;
+  let initial_builder = new_function_builder initializer_identity None direct_functions
     substitutions native_unit_type module_span;
   match (lower_module_declarations recursive_values initial_builder) {
     | Err(message) -> Err(message)
