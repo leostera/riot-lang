@@ -111,6 +111,8 @@ let fixture_module = fn function ->
   fixture_module_with_functions (Cons(function, Nil))
 
 let valid_add_function = binary_function (Addition) (NativeEffectSet(Nil)) "sum"
+let effectful_add_function = binary_function (Addition)
+  (NativeEffectSet(Cons(NativeHostRead, Nil))) "effectful_sum"
 
 let boolean_comparison_function = fn operator -> fn function_name -> NativeFunction {
   identity: NativeTopLevelFunction(BindingIdentity {
@@ -397,6 +399,13 @@ let selection_rejects_division_without_trap_lowering = fn function ->
       equal reason "division selection awaits explicit divide-by-zero trap lowering"
   }
 
+let selection_rejects_unmodeled_effect = fn function ->
+  match (select_function function Nil) {
+    | Ok(_) -> false
+    | Err(A64SelectionFailure { reason, function: _, block: _, span: _ }) ->
+      equal reason "selection would discard an explicit NativeIR effect"
+  }
+
 let module_verifies = fn native_module -> match (verify_module native_module) {
   | Err(_) -> false
   | Ok(_) -> true
@@ -410,6 +419,7 @@ let all_pass = fn tests -> match tests {
 
 let run_tests = fn () -> all_pass (Cons(
   module_verifies (fixture_module valid_add_function),
+  Cons(module_verifies (fixture_module effectful_add_function),
   Cons(module_verifies (fixture_module boolean_equality_function),
   Cons(module_verifies (fixture_module boolean_inequality_function),
   Cons(module_verifies (fixture_module branch_function),
@@ -417,13 +427,14 @@ let run_tests = fn () -> all_pass (Cons(
   Cons(module_verifies (fixture_module host_call_function),
   Cons(module_verifies (fixture_module division_function),
   Cons(selection_prints_expected_ir valid_add_function,
+  Cons(selection_rejects_unmodeled_effect effectful_add_function,
   Cons(selection_prints_boolean_equality boolean_equality_function,
   Cons(selection_prints_boolean_inequality boolean_inequality_function,
   Cons(selection_preserves_direct_call_and_effect direct_call_function,
   Cons(selection_preserves_host_call_and_effect host_call_function,
   Cons(selection_preserves_branch_labels_and_edge_arguments branch_function,
   Cons(selection_rejects_division_without_trap_lowering division_function,
-    Nil)))))))))))))))
+    Nil)))))))))))))))))
 
 let main = fn () -> match (run_tests ()) {
   | true -> 0

@@ -16,10 +16,10 @@ span; there is no C fallback from this command.
 
 The selected subset currently includes `i32`/`bool` constants; `i32`
 addition, subtraction, multiplication, negation, signed comparisons, and boolean
-equality/inequality; conditional branches, block arguments, returns and trap pseudos; plus direct or
-Host calls whose arguments and result are scalar. Calls retain their logical
-target, typed virtual arguments, and NativeIR effects, but do not assign
-physical argument/result registers or name runtime symbols.
+equality/inequality; conditional branches, block arguments, returns and trap
+pseudos; plus direct or Host calls whose arguments and result are scalar. Calls
+retain their logical target, typed virtual arguments, and NativeIR effects, but
+do not assign physical argument/result registers or name runtime symbols.
 
 Division/remainder are rejected until their explicit zero-trap behavior is
 lowered. Closure calls, closure capture, strings, unit values, aggregates,
@@ -29,8 +29,8 @@ stack/frame layout, object format, assembler, runtime-value layout, or external
 calling convention is selected here. In particular, `A64Trap` remains a
 semantic pseudo until an approved trap/runtime boundary exists.
 
-Run the executable scalar, branch, direct/Host-call, effect-preservation and
-unsupported-division fixtures with:
+Run the executable scalar, branch, direct/Host-call, effect-preservation,
+unmodeled-effect rejection and unsupported-division fixtures with:
 
 ```sh
 cargo test -p tinyml --test cli_tests aarch64_machine_ir
