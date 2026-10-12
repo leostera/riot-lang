@@ -2716,6 +2716,65 @@ let main = fn () -> { write_stdout "stdout"; write_stderr "stderr"; 42 }
 }
 
 #[test]
+fn compile_c_rejects_invalid_utf8_from_host_files() {
+    let dir = temp_dir("compile-c-host-invalid-utf8");
+    let source = dir.join("main.ml");
+    let invalid_file = dir.join("invalid.txt");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
+    fs::write(&invalid_file, [0xff, 0xfe]).unwrap();
+    fs::write(
+        &source,
+        r#"use Host.{args, read_file}
+use Prelude.{Cons, Nil, Err}
+let main = fn () -> match (args ()) {
+  | Cons(path, Nil) -> match (read_file path) { | Err(_) -> 42 | _ -> 0 }
+  | _ -> 0
+}
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
+    let clang = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable)
+        .arg(invalid_file)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(42));
+}
+
+#[test]
 fn compile_c_returns_host_process_launch_errors_as_results() {
     let dir = temp_dir("compile-c-host-process-error");
     let source = dir.join("main.ml");
