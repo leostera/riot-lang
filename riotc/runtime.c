@@ -255,26 +255,32 @@ char *rt_as_string(RtValue value) {
   return value.as.string;
 }
 
+static int32_t rt_i32_from_bits(uint32_t bits) {
+  uint32_t sign_bit = (uint32_t)INT32_MAX + UINT32_C(1);
+  if (bits < sign_bit) return (int32_t)bits;
+  return INT32_MIN + (int32_t)(bits - sign_bit);
+}
+
 RtValue rt_add(RtValue left, RtValue right) {
   if (left.tag == RT_STRING && right.tag == RT_STRING)
     return rt_concat(left, right);
   uint32_t result = (uint32_t)rt_as_int(left) + (uint32_t)rt_as_int(right);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_i32_add(RtValue left, RtValue right) {
   uint32_t result = (uint32_t)rt_as_int(left) + (uint32_t)rt_as_int(right);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_i32_sub(RtValue left, RtValue right) {
   uint32_t result = (uint32_t)rt_as_int(left) - (uint32_t)rt_as_int(right);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_i32_mul(RtValue left, RtValue right) {
   uint32_t result = (uint32_t)rt_as_int(left) * (uint32_t)rt_as_int(right);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_i32_div(RtValue left, RtValue right) {
@@ -320,17 +326,17 @@ RtValue rt_i32_greater_equal(RtValue left, RtValue right) {
 
 RtValue rt_i32_neg(RtValue value) {
   uint32_t result = 0u - (uint32_t)rt_as_int(value);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_sub(RtValue left, RtValue right) {
   uint32_t result = (uint32_t)rt_as_int(left) - (uint32_t)rt_as_int(right);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_mul(RtValue left, RtValue right) {
   uint32_t result = (uint32_t)rt_as_int(left) * (uint32_t)rt_as_int(right);
-  return rt_int((int32_t)result);
+  return rt_int(rt_i32_from_bits(result));
 }
 
 RtValue rt_div(RtValue left, RtValue right) {

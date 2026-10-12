@@ -2426,7 +2426,17 @@ fn compile_c_preserves_i32_wraparound() {
     let executable = dir.join("main");
     fs::write(
         &source,
-        "let main = fn () -> match (((2147483647: i32) + 1) == (-2147483648: i32)) { | true -> 42 | false -> 0 }\n",
+        r#"let main = fn () -> match (
+  (((2147483647: i32) + 1) == (-2147483648: i32)),
+  (((-2147483648: i32) - 1) == (2147483647: i32)),
+  (((65536: i32) * 65536) == 0),
+  (((-2147483648: i32) / (-1)) == (-2147483648: i32)),
+  (((-2147483648: i32) % (-1)) == 0)
+) {
+  | (true, true, true, true, true) -> 42
+  | _ -> 0
+}
+"#,
     )
     .unwrap();
 
