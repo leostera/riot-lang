@@ -17,8 +17,8 @@ span; there is no C fallback from this command.
 The selected subset currently includes `i32`/`bool` constants; `i32`
 addition, subtraction, multiplication, negation, signed comparisons, and boolean
 equality/inequality; `i32`/`bool` literal-pattern tests; conditional/unconditional
-branches, block arguments, returns and trap pseudos; plus direct or Host calls
-whose arguments and result are scalar. Calls retain their logical target, typed
+branches, block arguments, returns, unreachable and trap pseudos; plus direct or
+Host calls whose arguments and result are scalar. Calls retain their logical target, typed
 virtual arguments, and NativeIR effects, but do not assign physical
 argument/result registers or name runtime symbols.
 

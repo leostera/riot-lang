@@ -23,7 +23,7 @@ use NativeIr.Ir.{
   NativeHostCall, NativeUnknownCall, NativeHostRead, NativeEffectSet,
   NativeEffect, NativeMayTrap,
   NativeDivisionByZero, NativeRemainderByZero, NativeExplicitTrap,
-  NativeJump, NativeReturn, NativeTrap,
+  NativeJump, NativeReturn, NativeTrap, NativeUnreachable,
   NativeConditionalBranch, NativeBranch, NativeEdge
 }
 use NativeIr.Verify.{verify_module}
@@ -189,6 +189,25 @@ let jump_function = NativeFunction {
     terminator: NativeReturn(NativeValueId(1)),
     span: source_span
   }, Nil)),
+  span: source_span
+}
+
+let unreachable_function = NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName("never_returns"),
+    scope: ModuleValueBinding
+  }),
+  result_type: int_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Nil,
+    terminator: NativeUnreachable,
+    span: source_span
+  }, Nil),
   span: source_span
 }
 
@@ -536,6 +555,15 @@ let selection_prints_jump_edge = fn function -> match (select_function function 
         + "    return %v1\n}\n")
 }
 
+let selection_prints_unreachable = fn function ->
+  match (select_function function Nil) {
+    | Err(_) -> false
+    | Ok(selected) -> equal (print_function selected)
+        ("function fn aarch64-machine-ir-test::never_returns@0 -> i32 entry .Lbb0 {\n"
+          + ".Lbb0():\n"
+          + "    unreachable\n}\n")
+  }
+
 let selection_prints_explicit_trap = fn function -> match (select_function function Nil) {
   | Err(_) -> false
   | Ok(selected) -> equal (print_function selected)
@@ -672,10 +700,12 @@ let all_pass = fn tests -> match tests {
 
 let run_tests = fn () -> all_pass (
   Cons(module_verifies (fixture_module explicit_trap_function),
+  Cons(module_verifies (fixture_module unreachable_function),
   Cons(module_verifies (fixture_module jump_function),
   Cons(selection_prints_jump_edge jump_function,
   Cons(selection_prints_negation negation_function,
   Cons(selection_prints_explicit_trap explicit_trap_function,
+  Cons(selection_prints_unreachable unreachable_function,
   Cons(module_verifies scalar_operations_module,
   Cons(module_verifies literal_pattern_module,
   Cons(module_verifies (fixture_module effectful_add_function),
@@ -705,7 +735,7 @@ let run_tests = fn () -> all_pass (
   Cons(selection_preserves_branch_labels_and_edge_arguments branch_function,
   Cons(selection_rejects_division_without_trap_lowering division_function,
   Cons(selection_rejects_remainder_without_trap_lowering remainder_function,
-  Nil)))))))))))))))))))))))))))))))))))
+  Nil)))))))))))))))))))))))))))))))))))))
 
 let main = fn () -> match (run_tests ()) {
   | true -> 0
