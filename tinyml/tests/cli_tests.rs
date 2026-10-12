@@ -100,6 +100,118 @@ fn riotc_native_ir_verifier_fixtures_execute() {
 }
 
 #[test]
+fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let compiler_source = include_dir.join("main.ml");
+    let dir = temp_dir("aarch64-machine-ir-cli");
+    let compiler_js = dir.join("riotc.mjs");
+    let stage0 = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&compiler_js)
+        .arg(&compiler_source)
+        .output()
+        .unwrap();
+    assert!(
+        stage0.status.success(),
+        "Stage 0 compiler stderr: {}",
+        String::from_utf8_lossy(&stage0.stderr)
+    );
+
+    let runner = dir.join("run-compiler.mjs");
+    fs::write(
+        &runner,
+        "import { main } from \"./riotc.mjs\"; process.exitCode = Number(main(undefined));\n",
+    )
+    .unwrap();
+    let supported_source = dir.join("supported.ml");
+    fs::write(
+        &supported_source,
+        "let add = fn x -> x + 1\nlet main = fn () -> 42\n",
+    )
+    .unwrap();
+    let selected = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&supported_source)
+        .arg("add")
+        .output()
+        .unwrap();
+    assert!(
+        selected.status.success(),
+        "selection stderr: {}",
+        String::from_utf8_lossy(&selected.stderr)
+    );
+    let printed = String::from_utf8_lossy(&selected.stdout);
+    assert!(
+        printed.contains("add_w %v0, %v1"),
+        "unexpected MachineIR:\n{printed}"
+    );
+
+    let unsupported_source = dir.join("unsupported.ml");
+    fs::write(
+        &unsupported_source,
+        "let divide = fn x -> x / 2\nlet main = fn () -> 42\n",
+    )
+    .unwrap();
+    let rejected = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&unsupported_source)
+        .arg("divide")
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success(), "division unexpectedly selected");
+    let diagnostic = String::from_utf8_lossy(&rejected.stderr);
+    assert!(
+        diagnostic.contains("division selection awaits explicit divide-by-zero trap lowering"),
+        "unexpected selection diagnostic: {diagnostic}"
+    );
+}
+
+#[test]
+fn aarch64_machine_ir_scalar_selection_fixtures_execute() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let fixture = include_dir.join("backend/native/aarch64/machine_ir_test.ml");
+    let dir = temp_dir("aarch64-machine-ir-selection");
+    let module_path = dir.join("machine_ir_test.mjs");
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&module_path)
+        .arg(&fixture)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let runner = dir.join("run.mjs");
+    fs::write(
+        &runner,
+        "import { main } from \"./machine_ir_test.mjs\"; process.exitCode = Number(main());\n",
+    )
+    .unwrap();
+    let node = Command::new("node").arg(&runner).output().unwrap();
+    assert!(
+        node.status.success(),
+        "fixture stderr: {}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
 fn riotc_native_ir_command_verifies_and_prints_nominal_aggregates() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let include_dir = repo.join("riotc");

@@ -4,17 +4,21 @@ use Host.{
   args, current_directory, runtime_directory, read_file, write_file, write_stderr,
   write_stdout, run_process
 }
+use Syntax.Ast.{ValueName}
 use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
 use Check.Inference.{
-  CheckedModuleInterface, infer_source_module, validate_native_entry_module
+  CheckedModuleInterface, BindingIdentity, infer_source_module,
+  validate_native_entry_module
 }
 use Codegen.C.Emit.{emit_module_program}
 use Lambda.Ir.{LambdaModule}
 use Lambda.Lower.{lower_checked_module}
 use NativeIr.Lower.{lower_module}
 use NativeIr.Verify.{verify_module}
-use NativeIr.Ir.{NativeModule}
+use NativeIr.Ir.{NativeModule, NativeFunction, NativeTopLevelFunction}
 use NativeIr.Print.{print_native_module}
+use Backend.Native.Aarch64.SelectMachineIr.{select_function}
+use Backend.Native.Aarch64.PrintMachineIr.{print_function, print_failure}
 use Modules.{
   LoadedModule, load_source_graph, module_source_pairs,
   directory_of, join_path
@@ -333,6 +337,69 @@ let run_native_ir_command = fn source_file ->
     }
   }
 
+let find_native_module = fn wanted -> fn modules -> match modules {
+  | Nil -> None
+  | Cons(native_module, remaining) -> {
+    let NativeModule {
+      module_identity, nominal_types: _, substitutions: _, globals: _,
+      initializer: _, functions: _
+    } = native_module;
+    match (equal wanted module_identity) {
+      | true -> Some(native_module)
+      | false -> find_native_module wanted remaining
+    }
+  }
+}
+
+let find_top_level_function = fn wanted_name -> fn functions -> match functions {
+  | Nil -> None
+  | Cons(function, remaining) -> {
+    let NativeFunction {
+      identity, result_type: _, entry: _, blocks: _, span: _
+    } = function;
+    match identity {
+      | NativeTopLevelFunction(BindingIdentity {
+          name: ValueName(name), source_path: _, declaration_span: _, scope: _
+        }) -> match (equal wanted_name name) {
+        | true -> Some(function)
+        | false -> find_top_level_function wanted_name remaining
+      }
+      | _ -> find_top_level_function wanted_name remaining
+    }
+  }
+}
+
+let run_aarch64_mir_command = fn source_file -> fn function_name ->
+  match (native_ir_modules_for_file source_file) {
+    | Err(error) -> report_error error
+    | Ok(native_modules) -> match (find_native_module source_file native_modules) {
+      | None -> {
+        write_stderr ("riotml: AArch64 selection found no module for " + source_file + "\n");
+        1
+      }
+      | Some(NativeModule {
+          module_identity: _, nominal_types: _, substitutions, globals: _,
+          initializer: _, functions
+        }) -> match (find_top_level_function function_name functions) {
+        | None -> {
+          write_stderr ("riotml: AArch64 selection found no top-level function `"
+            + function_name + "` in " + source_file + "\n");
+          1
+        }
+        | Some(function) -> match (select_function function substitutions) {
+          | Err(failure) -> {
+            write_stderr ("riotml: " + print_failure failure + "\n");
+            1
+          }
+          | Ok(machine_function) -> {
+            write_stdout (print_function machine_function);
+            0
+          }
+        }
+      }
+    }
+  }
+
 let parse_compile_request = fn arguments ->
   match arguments {
     | Cons("compile", Cons(source, Cons("-o", Cons(output, Nil)))) ->
@@ -340,11 +407,13 @@ let parse_compile_request = fn arguments ->
         source_path: SourcePath(source),
         output_path: ExecutablePath(output)
       })
-    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT")
+    | _ -> Err("usage: riotml compile SOURCE -o OUTPUT | native-ir SOURCE | aarch64-mir SOURCE FUNCTION")
   }
 
 let main = fn () -> match (args ()) {
   | Cons("native-ir", Cons(source_file, Nil)) -> run_native_ir_command source_file
+  | Cons("aarch64-mir", Cons(source_file, Cons(function_name, Nil))) ->
+    run_aarch64_mir_command source_file function_name
   | arguments -> match (parse_compile_request arguments) {
     | Err(message) -> {
       write_stderr ("riotml: " + message + "\n");
