@@ -1167,8 +1167,10 @@ let main = fn () -> {
   let wrapped_neg = negate (-2147483648: i32) == (-2147483648: i32);
   let wrapped_div = ((-2147483648: i32) / (-1)) == (-2147483648: i32);
   let wrapped_rem = ((-2147483648: i32) % (-1)) == 0;
-  match (wrapped_add, wrapped_sub, wrapped_mul, wrapped_neg, wrapped_div, wrapped_rem, item) {
-    | (true, true, true, true, true, true, Some(value)) -> value
+  let text = "A\0B";
+  let string_matches = match text { | "A\0B" -> true | _ -> false };
+  match (wrapped_add, wrapped_sub, wrapped_mul, wrapped_neg, wrapped_div, wrapped_rem, string_matches, item) {
+    | (true, true, true, true, true, true, true, Some(value)) -> value
     | _ -> 0
   }
 }
@@ -2744,8 +2746,8 @@ let check_process = fn path -> match (run_process "/bin/test" (Cons("-f", Cons(p
   | _ -> 0
 }
 let main = fn () -> match (args ()) {
-  | Cons(path, Nil) -> match (write_file path "✓") {
-      | Ok(_) -> match (read_file path) { | Ok("✓") -> check_process path | _ -> 0 }
+  | Cons(path, Nil) -> match (write_file path "✓\0!") {
+      | Ok(_) -> match (read_file path) { | Ok("✓\0!") -> check_process path | _ -> 0 }
       | _ -> 0
     }
   | _ -> 0
@@ -2791,7 +2793,7 @@ let main = fn () -> match (args ()) {
         .output()
         .unwrap();
     assert_eq!(run.status.code(), Some(42));
-    assert_eq!(fs::read_to_string(output_file).unwrap(), "✓");
+    assert_eq!(fs::read_to_string(output_file).unwrap(), "✓\0!");
 }
 
 #[test]
@@ -2964,26 +2966,20 @@ let main = fn () -> {
 }
 
 #[test]
-fn compile_c_rejects_invalid_utf8_and_embedded_nul_from_host_files() {
+fn compile_c_rejects_invalid_utf8_from_host_files() {
     let dir = temp_dir("compile-c-host-invalid-utf8");
     let source = dir.join("main.ml");
     let invalid_file = dir.join("invalid.txt");
-    let nul_file = dir.join("embedded-nul.txt");
     let generated_c = dir.join("main.c");
     let executable = dir.join("main");
     fs::write(&invalid_file, [0xff, 0xfe]).unwrap();
-    fs::write(&nul_file, b"prefix\0suffix").unwrap();
     fs::write(
         &source,
         r#"use Host.{args, read_file}
 use Prelude.{Cons, Nil, Err}
 let main = fn () -> match (args ()) {
   | Cons(path, Nil) -> match (read_file path) {
-      | Err(message) -> match message {
-          | "file is not valid UTF-8" -> 41
-          | "file contains an embedded NUL byte" -> 42
-          | _ -> 0
-        }
+      | Err(message) -> match message { | "file is not valid UTF-8" -> 42 | _ -> 0 }
       | _ -> 0
     }
   | _ -> 0
@@ -3025,13 +3021,10 @@ let main = fn () -> match (args ()) {
         String::from_utf8_lossy(&clang.stderr)
     );
     let invalid_utf8 = Command::new(&executable)
-        .arg(&invalid_file)
+        .arg(invalid_file)
         .output()
         .unwrap();
-    assert_eq!(invalid_utf8.status.code(), Some(41));
-
-    let embedded_nul = Command::new(&executable).arg(nul_file).output().unwrap();
-    assert_eq!(embedded_nul.status.code(), Some(42));
+    assert_eq!(invalid_utf8.status.code(), Some(42));
 }
 
 #[test]
@@ -3278,13 +3271,28 @@ fn compile_c_requires_a_unit_entry_parameter() {
 }
 
 #[test]
-fn compile_c_rejects_embedded_nul_strings_without_writing_output() {
+fn compile_c_preserves_embedded_nul_strings() {
     let dir = temp_dir("compile-c-nul-string");
     let source = dir.join("main.ml");
-    let output = dir.join("main.c");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
     fs::write(
         &source,
-        r#"let main = fn () -> match "\0" { | "\0" -> 42 | _ -> 0 }
+        r#"use String.{concat, length, get, slice, equal}
+use Prelude.{Cons, Err, Nil, Some}
+use Host.{write_stdout, read_file, write_file, run_process}
+let main = fn () -> {
+  let text = "A\0B";
+  write_stdout text;
+  let joined = concat "A\0" "B";
+  let read_rejects_nul = match (read_file "file\0name") { | Err(_) -> true | _ -> false };
+  let write_rejects_nul = match (write_file "file\0name" "contents") { | Err(_) -> true | _ -> false };
+  let process_rejects_nul = match (run_process "/bin/true" (Cons("argument\0", Nil))) { | Err(_) -> true | _ -> false };
+  match (length text, get text 1, slice text 1 2, equal joined text, text, read_rejects_nul, write_rejects_nul, process_rejects_nul) {
+    | (3, Some(0), "\0", true, "A\0B", true, true, true) -> 42
+    | _ -> 0
+  }
+}
 "#,
     )
     .unwrap();
@@ -3295,12 +3303,35 @@ fn compile_c_rejects_embedded_nul_strings_without_writing_output() {
         .arg("c")
         .arg(&source)
         .arg("-o")
-        .arg(&output)
+        .arg(&generated_c)
         .output()
         .unwrap();
-    assert!(!compile.status.success());
-    assert!(!output.exists(), "unsupported NUL string left a C artifact");
-    assert!(String::from_utf8_lossy(&compile.stderr).contains("embedded NUL byte"));
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
+    let clang = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable).output().unwrap();
+    assert_eq!(run.status.code(), Some(42));
+    assert_eq!(run.stdout, b"A\0B");
 }
 
 #[test]

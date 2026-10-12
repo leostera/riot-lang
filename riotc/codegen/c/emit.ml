@@ -187,7 +187,8 @@ let emit_pattern_condition = fn pattern -> fn value ->
     | PatternBoolean(false) -> "(rt_is_bool(" + value + ") && !rt_as_bool(" + value + "))"
     | PatternString(TextLiteral(text)) ->
       "(rt_is_string(" + value + ") && rt_as_bool(rt_string_equal_to("
-      + value + "," + c_string_literal text + ")))"
+      + value + "," + c_string_literal text + ",sizeof("
+      + c_string_literal text + ")-1)))"
     | TuplePattern(items) ->
       "(rt_has_tuple_count(" + value + "," + decimal_text (count_values items) + ") && "
       + emit_pattern_list_condition items value 0 + ")"
@@ -287,7 +288,8 @@ let emit_source_expression = fn path -> fn environment -> fn expression ->
     | Boolean(true) -> GeneratedCode { expression: "rt_bool(1)", functions: "" }
     | Boolean(false) -> GeneratedCode { expression: "rt_bool(0)", functions: "" }
     | StringLiteral(TextLiteral(value)) -> GeneratedCode {
-      expression: "rt_string(" + c_string_literal value + ")",
+      expression: "rt_string_n(" + c_string_literal value + ",sizeof("
+        + c_string_literal value + ")-1)",
       functions: ""
     }
     | Unit -> GeneratedCode { expression: "rt_unit()", functions: "" }

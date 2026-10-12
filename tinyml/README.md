@@ -82,9 +82,10 @@ string cases. `string + string` concatenates in both backends where supported.
 The bundled `String` module also provides `concat`, `length`,
 `get`, `slice`, and `equal`; indices count Unicode scalar values, and `get`
 returns `Option<i32>` containing a code point. Host text-file I/O uses strict
-UTF-8 decoding and encoding. Until the C runtime uses length-aware strings, its
-`Host.read_file` also rejects files containing embedded NUL bytes. Floating
-point, general FFI, actors, distribution,
+UTF-8 decoding and encoding. The C runtime preserves embedded NUL bytes in
+string values, file contents, and stdout/stderr; `Host` paths and process names
+reject NUL because the underlying OS APIs require C strings. Floating point,
+general FFI, actors, distribution,
 package management, WASM, and native code generation by Stage 0 are
 unsupported. Unsupported or ill-typed input must be rejected rather than
 treated as successful output.

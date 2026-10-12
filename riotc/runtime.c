@@ -13,6 +13,29 @@
 
 extern char **environ;
 
+struct RtString {
+  size_t length;
+  char bytes[];
+};
+
+typedef struct {
+  int tag;
+  union {
+    int64_t integer;
+    char *string;
+    RtBox *box;
+    RtClosure *closure;
+    RtEnvironment *environment;
+  } as;
+} RtValueLegacyLayout;
+
+_Static_assert(sizeof(RtValue) == sizeof(RtValueLegacyLayout),
+               "length-aware strings changed RtValue size");
+_Static_assert(_Alignof(RtValue) == _Alignof(RtValueLegacyLayout),
+               "length-aware strings changed RtValue alignment");
+_Static_assert(offsetof(RtValue, as) == offsetof(RtValueLegacyLayout, as),
+               "length-aware strings changed the RtValue payload offset");
+
 static int rt_argc;
 static char **rt_argv;
 static char *rt_runtime_directory;
@@ -41,13 +64,28 @@ RtValue rt_bool(int boolean) {
   return value;
 }
 
-RtValue rt_string(const char *string) {
+static RtString *rt_allocate_string(size_t length) {
+  if (length > SIZE_MAX - sizeof(RtString) - 1)
+    rt_fail("string is too large");
+  RtString *string = malloc(sizeof(*string) + length + 1);
+  if (string == NULL) rt_fail("out of memory");
+  string->length = length;
+  string->bytes[length] = '\0';
+  return string;
+}
+
+RtValue rt_string_n(const char *bytes, size_t length) {
+  if (bytes == NULL && length != 0) rt_fail("null bytes passed to rt_string_n");
+  RtString *string = rt_allocate_string(length);
+  if (length != 0) memcpy(string->bytes, bytes, length);
   RtValue value = rt_value(RT_STRING);
-  size_t length = strlen(string);
-  value.as.string = malloc(length + 1);
-  if (value.as.string == NULL) rt_fail("out of memory");
-  memcpy(value.as.string, string, length + 1);
+  value.as.string = string;
   return value;
+}
+
+RtValue rt_string(const char *string) {
+  if (string == NULL) rt_fail("null string passed to rt_string");
+  return rt_string_n(string, strlen(string));
 }
 
 RtValue rt_unit(void) { return rt_value(RT_UNIT); }
@@ -218,8 +256,12 @@ RtValue rt_environment_get(RtValue value, const char *name) {
   abort();
 }
 
-RtValue rt_string_equal_to(RtValue value, const char *expected) {
-  return rt_bool(strcmp(rt_as_string(value), expected) == 0);
+RtValue rt_string_equal_to(RtValue value, const char *expected,
+                           size_t expected_length) {
+  if (value.tag != RT_STRING) return rt_bool(0);
+  RtString *string = value.as.string;
+  return rt_bool(string->length == expected_length &&
+                 memcmp(string->bytes, expected, expected_length) == 0);
 }
 
 void rt_pattern_fail(void) { rt_fail("RiotML pattern match failed"); }
@@ -252,7 +294,17 @@ int rt_as_bool(RtValue value) {
 
 char *rt_as_string(RtValue value) {
   if (value.tag != RT_STRING) rt_fail("expected a string");
-  return value.as.string;
+  return value.as.string->bytes;
+}
+
+size_t rt_string_byte_length(RtValue value) {
+  if (value.tag != RT_STRING) rt_fail("expected a string");
+  return value.as.string->length;
+}
+
+static int rt_string_has_nul(RtValue value) {
+  if (value.tag != RT_STRING) rt_fail("expected a string");
+  return memchr(value.as.string->bytes, '\0', value.as.string->length) != NULL;
 }
 
 /* Decode modulo-2^32 results without implementation-defined unsigned-to-signed casts. */
@@ -364,7 +416,9 @@ RtValue rt_equal(RtValue left, RtValue right) {
   case RT_BOOL:
     return rt_bool(left.as.integer == right.as.integer);
   case RT_STRING:
-    return rt_bool(strcmp(left.as.string, right.as.string) == 0);
+    return rt_bool(left.as.string->length == right.as.string->length &&
+                   memcmp(left.as.string->bytes, right.as.string->bytes,
+                          left.as.string->length) == 0);
   case RT_UNIT:
     return rt_bool(1);
   default:
@@ -381,12 +435,17 @@ RtValue rt_greater(RtValue left, RtValue right) {
 }
 
 RtValue rt_concat(RtValue left, RtValue right) {
-  size_t left_length = strlen(rt_as_string(left));
-  size_t right_length = strlen(rt_as_string(right));
-  char *joined = malloc(left_length + right_length + 1);
-  if (joined == NULL) rt_fail("out of memory");
-  memcpy(joined, left.as.string, left_length);
-  memcpy(joined + left_length, right.as.string, right_length + 1);
+  if (left.tag != RT_STRING || right.tag != RT_STRING)
+    rt_fail("string concatenation expects two strings");
+  RtString *left_string = left.as.string;
+  RtString *right_string = right.as.string;
+  if (left_string->length > SIZE_MAX - right_string->length)
+    rt_fail("concatenated string is too large");
+  size_t length = left_string->length + right_string->length;
+  RtString *joined = rt_allocate_string(length);
+  memcpy(joined->bytes, left_string->bytes, left_string->length);
+  memcpy(joined->bytes + left_string->length, right_string->bytes,
+         right_string->length);
   RtValue result = rt_value(RT_STRING);
   result.as.string = joined;
   return result;
@@ -499,7 +558,10 @@ int rt_utf8_valid(const char *bytes, size_t length) {
 
 RtValue rt_read_file(RtValue ignored, RtValue path) {
   (void)ignored;
-  FILE *file = fopen(rt_as_string(path), "rb");
+  char *file_path = rt_as_string(path);
+  if (rt_string_has_nul(path))
+    return rt_err(rt_unit(), rt_string("file path contains an embedded NUL byte"));
+  FILE *file = fopen(file_path, "rb");
   if (file == NULL) return rt_err(rt_unit(), rt_string(strerror(errno)));
   if (fseek(file, 0, SEEK_END) != 0) {
     int error = errno;
@@ -521,25 +583,23 @@ RtValue rt_read_file(RtValue ignored, RtValue path) {
     free(contents);
     return rt_err(rt_unit(), rt_string("failed to read file"));
   }
-  if (memchr(contents, '\0', read_count) != NULL) {
-    free(contents);
-    return rt_err(rt_unit(), rt_string("file contains an embedded NUL byte"));
-  }
   if (!rt_utf8_valid(contents, read_count)) {
     free(contents);
     return rt_err(rt_unit(), rt_string("file is not valid UTF-8"));
   }
-  contents[read_count] = '\0';
-  RtValue text = rt_value(RT_STRING);
-  text.as.string = contents;
+  RtValue text = rt_string_n(contents, read_count);
+  free(contents);
   return rt_ok(rt_unit(), text);
 }
 
 static RtValue rt_write_file_contents(RtValue path, RtValue contents) {
-  FILE *file = fopen(rt_as_string(path), "wb");
+  char *file_path = rt_as_string(path);
+  if (rt_string_has_nul(path))
+    return rt_err(rt_unit(), rt_string("file path contains an embedded NUL byte"));
+  FILE *file = fopen(file_path, "wb");
   if (file == NULL) return rt_err(rt_unit(), rt_string(strerror(errno)));
   char *text = rt_as_string(contents);
-  size_t length = strlen(text);
+  size_t length = rt_string_byte_length(contents);
   size_t written = fwrite(text, 1, length, file);
   int write_failed = ferror(file) || written != length;
   int close_failed = fclose(file) != 0;
@@ -560,21 +620,28 @@ RtValue rt_write_file(RtValue ignored, RtValue path) {
 RtValue rt_write_stdout(RtValue ignored, RtValue message) {
   (void)ignored;
   char *text = rt_as_string(message);
-  fwrite(text, 1, strlen(text), stdout);
+  fwrite(text, 1, rt_string_byte_length(message), stdout);
   return rt_unit();
 }
 
 RtValue rt_write_stderr(RtValue ignored, RtValue message) {
   (void)ignored;
   char *text = rt_as_string(message);
-  fwrite(text, 1, strlen(text), stderr);
+  fwrite(text, 1, rt_string_byte_length(message), stderr);
   return rt_unit();
 }
 
 static RtValue rt_process_args(RtValue program, RtValue list) {
+  char *program_name = rt_as_string(program);
+  if (rt_string_has_nul(program))
+    return rt_err(rt_unit(), rt_string("process name contains an embedded NUL byte"));
   size_t count = 0;
   RtValue cursor = list;
   while (rt_has_tag(cursor, RT_CONS)) {
+    RtValue argument = rt_field(cursor, 0);
+    (void)rt_as_string(argument);
+    if (rt_string_has_nul(argument))
+      return rt_err(rt_unit(), rt_string("process argument contains an embedded NUL byte"));
     ++count;
     cursor = rt_field(cursor, 1);
   }
@@ -582,7 +649,7 @@ static RtValue rt_process_args(RtValue program, RtValue list) {
     return rt_err(rt_unit(), rt_string("Host.run_process expects a List<string>"));
   char **argv = calloc(count + 2, sizeof(*argv));
   if (argv == NULL) rt_fail("out of memory");
-  argv[0] = rt_as_string(program);
+  argv[0] = program_name;
   cursor = list;
   for (size_t index = 0; index < count; ++index) {
     argv[index + 1] = rt_as_string(rt_field(cursor, 0));
@@ -624,34 +691,47 @@ RtValue rt_string_concat(RtValue ignored, RtValue left) {
   return rt_function(rt_string_concat_right, left);
 }
 
+static uint32_t rt_decode_codepoint(const unsigned char *text, size_t available,
+                                    size_t *width);
+
 RtValue rt_string_length(RtValue ignored, RtValue value) {
   (void)ignored;
   const unsigned char *text = (const unsigned char *)rt_as_string(value);
-  size_t length = 0;
-  for (size_t index = 0; text[index] != 0; ++length) {
-    unsigned char first = text[index];
-    index += first < 0x80 ? 1 : (first & 0xe0) == 0xc0 ? 2 :
-             (first & 0xf0) == 0xe0 ? 3 : 4;
+  size_t byte_length = rt_string_byte_length(value);
+  size_t offset = 0;
+  size_t character_length = 0;
+  while (offset < byte_length) {
+    size_t width;
+    (void)rt_decode_codepoint(text + offset, byte_length - offset, &width);
+    offset += width;
+    ++character_length;
   }
-  return rt_int((int64_t)length);
+  return rt_int((int64_t)character_length);
 }
 
-static uint32_t rt_decode_codepoint(const unsigned char *text, size_t *width) {
+static uint32_t rt_decode_codepoint(const unsigned char *text, size_t available,
+                                    size_t *width) {
   unsigned char first = text[0];
   if (first < 0x80) {
     *width = 1;
-    return first;
-  }
-  if ((first & 0xe0) == 0xc0) {
+  } else if ((first & 0xe0) == 0xc0) {
     *width = 2;
-    return ((uint32_t)(first & 0x1f) << 6) | (text[1] & 0x3f);
-  }
-  if ((first & 0xf0) == 0xe0) {
+  } else if ((first & 0xf0) == 0xe0) {
     *width = 3;
+  } else if ((first & 0xf8) == 0xf0) {
+    *width = 4;
+  } else {
+    rt_fail("invalid UTF-8 in RiotML string");
+  }
+  if (*width > available || !rt_utf8_valid((const char *)text, *width))
+    rt_fail("invalid UTF-8 in RiotML string");
+
+  if (*width == 1) return first;
+  if (*width == 2)
+    return ((uint32_t)(first & 0x1f) << 6) | (text[1] & 0x3f);
+  if (*width == 3)
     return ((uint32_t)(first & 0x0f) << 12) |
            ((uint32_t)(text[1] & 0x3f) << 6) | (text[2] & 0x3f);
-  }
-  *width = 4;
   return ((uint32_t)(first & 0x07) << 18) |
          ((uint32_t)(text[1] & 0x3f) << 12) |
          ((uint32_t)(text[2] & 0x3f) << 6) | (text[3] & 0x3f);
@@ -661,11 +741,13 @@ static RtValue rt_string_get_index(RtValue text, RtValue index) {
   int64_t wanted = rt_as_int(index);
   if (wanted < 0) return rt_none();
   const unsigned char *bytes = (const unsigned char *)rt_as_string(text);
+  size_t byte_length = rt_string_byte_length(text);
   size_t offset = 0;
   int64_t position = 0;
-  while (bytes[offset] != 0) {
+  while (offset < byte_length) {
     size_t width;
-    uint32_t codepoint = rt_decode_codepoint(bytes + offset, &width);
+    uint32_t codepoint =
+        rt_decode_codepoint(bytes + offset, byte_length - offset, &width);
     if (position == wanted) return rt_some(rt_unit(), rt_int((int64_t)codepoint));
     offset += width;
     ++position;
@@ -682,15 +764,16 @@ RtValue rt_string_get(RtValue ignored, RtValue text) {
   return rt_function(rt_string_get_second, text);
 }
 
-static size_t rt_byte_offset(const char *text, int64_t character_index) {
+static size_t rt_byte_offset(RtValue text, int64_t character_index) {
   if (character_index <= 0) return 0;
-  const unsigned char *bytes = (const unsigned char *)text;
+  const unsigned char *bytes = (const unsigned char *)rt_as_string(text);
+  size_t byte_length = rt_string_byte_length(text);
   size_t offset = 0;
   int64_t position = 0;
-  while (bytes[offset] != 0 && position < character_index) {
-    unsigned char first = bytes[offset];
-    offset += first < 0x80 ? 1 : (first & 0xe0) == 0xc0 ? 2 :
-             (first & 0xf0) == 0xe0 ? 3 : 4;
+  while (offset < byte_length && position < character_index) {
+    size_t width;
+    (void)rt_decode_codepoint(bytes + offset, byte_length - offset, &width);
+    offset += width;
     ++position;
   }
   return offset;
@@ -705,15 +788,9 @@ static RtValue rt_string_slice_end(RtValue state, RtValue end_value) {
   if (start > length) start = length;
   if (end < start) end = start;
   if (end > length) end = length;
-  size_t first = rt_byte_offset(rt_as_string(text), start);
-  size_t last = rt_byte_offset(rt_as_string(text), end);
-  char *slice = malloc(last - first + 1);
-  if (slice == NULL) rt_fail("out of memory");
-  memcpy(slice, rt_as_string(text) + first, last - first);
-  slice[last - first] = '\0';
-  RtValue result = rt_value(RT_STRING);
-  result.as.string = slice;
-  return result;
+  size_t first = rt_byte_offset(text, start);
+  size_t last = rt_byte_offset(text, end);
+  return rt_string_n(rt_as_string(text) + first, last - first);
 }
 
 static RtValue rt_string_slice_start(RtValue text, RtValue start) {
@@ -731,7 +808,7 @@ RtValue rt_string_slice(RtValue ignored, RtValue text) {
 }
 
 static RtValue rt_string_equal_right(RtValue left, RtValue right) {
-  return rt_bool(strcmp(rt_as_string(left), rt_as_string(right)) == 0);
+  return rt_equal(left, right);
 }
 
 RtValue rt_string_equal(RtValue ignored, RtValue left) {

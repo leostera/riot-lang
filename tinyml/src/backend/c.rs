@@ -293,13 +293,8 @@ impl CEmitter {
             }
             lambda_ir::Constant::Literal(Literal::String(value)) => {
                 let value = decode_string_literal(value);
-                if value.contains('\0') {
-                    return Err(unsupported(
-                        "a string literal containing an embedded NUL byte",
-                        span,
-                    ));
-                }
-                Ok(format!("rt_string({})", c_string(&value)))
+                let literal = c_string(&value);
+                Ok(format!("rt_string_n({literal}, sizeof({literal}) - 1)"))
             }
             lambda_ir::Constant::Literal(Literal::Float(_)) => {
                 Err(unsupported("a floating-point literal", span))
@@ -605,15 +600,9 @@ impl CEmitter {
                 expected,
             ))) => {
                 let expected = decode_string_literal(expected);
-                if expected.contains('\0') {
-                    return Err(unsupported(
-                        "a string pattern containing an embedded NUL byte",
-                        pattern.span,
-                    ));
-                }
+                let literal = c_string(&expected);
                 Ok(format!(
-                    "(rt_is_string({value}) && rt_as_bool(rt_string_equal_to({value}, {})))",
-                    c_string(&expected)
+                    "(rt_is_string({value}) && rt_as_bool(rt_string_equal_to({value}, {literal}, sizeof({literal}) - 1)))"
                 ))
             }
             lambda_ir::PatternKind::Constant(lambda_ir::Constant::Literal(Literal::Float(_))) => {

@@ -5,6 +5,8 @@
 #include <stddef.h>
 
 typedef struct RtValue RtValue;
+/* Heap-owned length-aware payload; RtValue stores only its pointer. */
+typedef struct RtString RtString;
 typedef struct RtBox RtBox;
 typedef struct RtClosure RtClosure;
 typedef struct RtEnvironment RtEnvironment;
@@ -14,7 +16,7 @@ struct RtValue {
   int tag;
   union {
     int64_t integer;
-    char *string;
+    RtString *string;
     RtBox *box;
     RtClosure *closure;
     RtEnvironment *environment;
@@ -68,6 +70,8 @@ enum {
 RtValue rt_int(int64_t value);
 RtValue rt_bool(int value);
 RtValue rt_string(const char *value);
+/* Copies exactly `length` bytes; embedded NUL bytes are preserved. */
+RtValue rt_string_n(const char *bytes, size_t length);
 RtValue rt_unit(void);
 RtValue rt_tuple(size_t count, const RtValue *fields);
 RtValue rt_variant(int tag, size_t count, const RtValue *fields);
@@ -89,13 +93,16 @@ RtValue rt_environment_root(void);
 RtValue rt_environment_child(RtValue parent);
 void rt_environment_bind(RtValue environment, const char *name, RtValue value);
 RtValue rt_environment_get(RtValue environment, const char *name);
-RtValue rt_string_equal_to(RtValue value, const char *expected);
+RtValue rt_string_equal_to(RtValue value, const char *expected,
+                           size_t expected_length);
 void rt_pattern_fail(void);
 RtValue rt_function(RtFunction function, RtValue environment);
 RtValue rt_apply(RtValue function, RtValue argument);
 int64_t rt_as_int(RtValue value);
 int rt_as_bool(RtValue value);
+/* Returns a NUL-terminated buffer that may contain interior NUL bytes. */
 char *rt_as_string(RtValue value);
+size_t rt_string_byte_length(RtValue value);
 
 RtValue rt_add(RtValue left, RtValue right);
 RtValue rt_i32_add(RtValue left, RtValue right);
