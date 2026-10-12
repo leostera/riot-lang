@@ -213,6 +213,11 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         diagnostic.contains("division selection awaits explicit divide-by-zero trap lowering"),
         "unexpected selection diagnostic: {diagnostic}"
     );
+    assert!(
+        diagnostic.contains("AArch64 selection failed in")
+            && diagnostic.contains("block 0 at codepoints "),
+        "selection failure lost its function/block/source provenance: {diagnostic}"
+    );
 
     let unsupported_value_source = dir.join("unsupported-value.ml");
     fs::write(
