@@ -490,9 +490,13 @@ let fail_native_link = fn output -> fn message -> {
   }
 }
 
-let run_native_linker = fn assembly_path -> fn output ->
-  match (run_process "clang" (Cons("-target", Cons("arm64-apple-macosx26.0",
-    Cons(assembly_path, Cons("-o", Cons(output, Nil))))))) {
+let native_linker_arguments = fn runtime_directory -> fn assembly_path -> fn output ->
+  Cons("-target", Cons("arm64-apple-macosx26.0", Cons("-I", Cons(runtime_directory,
+    Cons(assembly_path, Cons(join_path runtime_directory "runtime.c",
+      Cons("-o", Cons(output, Nil))))))))
+
+let run_native_linker = fn runtime_directory -> fn assembly_path -> fn output ->
+  match (run_process "clang" (native_linker_arguments runtime_directory assembly_path output)) {
     | Err(message) -> fail_native_link output ("cannot run Clang: " + message)
     | Ok(0) -> 0
     | Ok(_) -> fail_native_link output "Clang assembler/linker failed"
@@ -546,7 +550,8 @@ let run_aarch64_compile_function_command = fn source_file -> fn function_name ->
                         + message + "\n");
                       1
                     }
-                    | Ok(_) -> run_native_linker assembly_path output
+                    | Ok(_) -> run_native_linker (runtime_include_directory source_file)
+                      assembly_path output
                   }
                 }
               }

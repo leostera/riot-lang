@@ -6,6 +6,7 @@ use NativeIr.Ir.{
   NativeModuleInitializer
 }
 use Syntax.Lexer.{SourceSpan}
+use NativeIr.Print.{block_id}
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
@@ -43,8 +44,6 @@ let same_register = fn first -> fn second ->
   register_number first == register_number second
 
 let location_register = fn (A64ValueLocation { value, value_type: _, slot: _ }) -> value
-let label_identity = fn (A64Label(block)) -> block
-
 let same_value_type = fn first -> fn second -> match first {
   | A64Unit -> match second { | A64Unit -> true | _ -> false }
   | A64I32 -> match second { | A64I32 -> true | _ -> false }
@@ -357,11 +356,12 @@ let lower_instructions = fn function_identity -> fn block -> fn instructions ->
 }
 
 let target_parameters = fn function_identity -> fn block -> fn span ->
-  fn (A64Edge { target, arguments: _ }) -> fn blocks -> match (find_block target blocks) {
+  fn (A64Edge { target: A64Label(target_block), arguments: _ }) -> fn blocks ->
+  match (find_block (A64Label(target_block)) blocks) {
     | Some(A64Block { parameters, label: _, instructions: _, terminator: _, span: _ }) -> Ok(parameters)
     | None -> Err(A64LinearFailure {
       function: function_identity, block: block, span: span,
-      reason: "MachineIR edge targets a missing block"
+      reason: "MachineIR edge targets missing " + block_id target_block
     })
   }
 
@@ -516,17 +516,22 @@ let lower_block = fn function_identity -> fn function_result -> fn entry -> fn b
     }
   }
 
-let lower_blocks = fn function_identity -> fn function_result -> fn entry -> fn blocks ->
-  fn locations -> match blocks {
+let lower_blocks_from = fn function_identity -> fn function_result -> fn entry ->
+  fn all_blocks -> fn pending_blocks -> fn locations -> match pending_blocks {
   | Nil -> Ok(Nil)
-  | Cons(block, remaining) -> match (lower_block function_identity function_result entry blocks locations block) {
+  | Cons(block, remaining) -> match (lower_block function_identity function_result
+      entry all_blocks locations block) {
     | Err(failure) -> Err(failure)
-    | Ok(current) -> match (lower_blocks function_identity function_result entry remaining locations) {
+    | Ok(current) -> match (lower_blocks_from function_identity function_result
+        entry all_blocks remaining locations) {
       | Err(failure) -> Err(failure)
       | Ok(rest) -> Ok(append current rest)
     }
   }
 }
+let lower_blocks = fn function_identity -> fn function_result -> fn entry -> fn blocks ->
+  fn locations -> lower_blocks_from function_identity function_result entry
+    blocks blocks locations
 
 let lower_function = fn (A64Function { identity, result_type, entry, blocks, span }) ->
   match (assign_locations (collect_block_values blocks) 0) {

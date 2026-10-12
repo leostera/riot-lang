@@ -101,10 +101,11 @@ shape while deliberately using an all-spill allocator:
   structure, and all branch labels. Unsupported closure-environment calls
   and Host helper calls fail before Codegen; Host marshalling to/from `RtValue`
   is not implemented by this slice.
-- `emit.ml` lowers this verified slice to AArch64 instructions and emits
-  distinct `brk` immediates for the current semantic trap pseudos. This is a
-  machine trap sequence only; it does not yet reproduce the C runtime's trap
-  reporting or diagnostics.
+- `emit.ml` lowers this verified slice to AArch64 instructions. A pattern
+  failure calls the declared no-argument `rt_pattern_fail` helper from
+  `runtime.h`/`runtime.c` under the Apple C ABI, then emits a `brk` fallback;
+  other current trap pseudos use distinct `brk` immediates. This does not yet
+  implement division/remainder lowering or general Host marshalling.
 
 This conservative policy validates the first ABI lowering but is not the full
 native backend. Narrow integer widths, pointers/composites, closures, and Host

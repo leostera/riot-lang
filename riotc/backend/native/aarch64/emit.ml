@@ -180,6 +180,7 @@ let emit_terminator = fn symbol -> fn frame_size -> fn terminator -> match termi
       + label_text symbol when_false + "\n"
   | A64LinearReturn -> emit_stack_adjust A64ReleaseStack frame_size
       + "ldp x29, x30, [sp], #16\nret\n"
+  | A64LinearTrap(NativePatternFailure) -> "bl _rt_pattern_fail\nbrk #260\n"
   | A64LinearTrap(reason) -> "brk #" + decimal_text (trap_immediate reason) + "\n"
   | A64LinearUnreachable -> "brk #511\n"
 }

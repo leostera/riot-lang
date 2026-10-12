@@ -63,9 +63,11 @@ are not yet selected for this LinearIR.
 `emit.ml` emits textual AArch64 Mach-O assembly from verified LinearIR. It
 lowers spill loads/stores, scalar arithmetic/comparisons, branches, direct
 calls with symbols in the supplied function set, frame prologues/epilogues,
-and trap pseudos. Block labels are function-qualified. `NativeTrapKind`
-currently becomes a distinct `brk` immediate; runtime-compatible trap
-reporting is not yet implemented.
+and trap pseudos. Block labels are function-qualified. Pattern-failure traps
+call the declared no-argument C helper `rt_pattern_fail` and retain a `brk`
+fallback if it returns; the linker includes the existing `runtime.c`. Other
+`NativeTrapKind`s currently become distinct `brk` immediates. Host helpers and
+general `RtValue` marshalling are not implemented.
 
 Exercise the current function-level path with:
 
@@ -74,7 +76,8 @@ riotml aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT
 ```
 
 It writes inspectable assembly to `OUTPUT.aarch64.s`, then invokes Clang for
-`arm64-apple-macosx26.0` to assemble and link `OUTPUT`. The synthetic external
+`arm64-apple-macosx26.0` to assemble and link `OUTPUT` with the discovered
+`riotc/runtime.c` implementation. The synthetic external
 `_main` adapter accepts only an erased unit/no source argument and an `i32`
 result; it sets the hidden environment to null, calls the selected Riot
 function, and returns its status. Existing output is removed before the

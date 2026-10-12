@@ -448,9 +448,86 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert!(assembly.contains("_main:"));
     assert!(assembly.contains("stp x29, x30"));
     assert!(assembly.contains("ldr w9, =42"));
+    assert!(assembly.contains("bl _rt_pattern_fail"));
     assert!(assembly.contains("brk #260"));
     let run = Command::new(&executable).output().unwrap();
     assert_eq!(run.status.code(), Some(42));
+
+    let c_executable = dir.join("main.c-backend");
+    let c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&source)
+        .arg("-o")
+        .arg(&c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        c_compile.status.success(),
+        "C-backend differential fixture did not compile: {}",
+        String::from_utf8_lossy(&c_compile.stderr)
+    );
+    let c_run = Command::new(&c_executable).output().unwrap();
+    assert_eq!(run.status.code(), c_run.status.code());
+    assert_eq!(run.stdout, c_run.stdout);
+    assert_eq!(run.stderr, c_run.stderr);
+
+    for (fixture_name, source_text, expected_status) in [
+        ("arithmetic", "let main = fn () -> 20 + 22\n", 42),
+        (
+            "boolean-branch",
+            "let main = fn () -> match true { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        ("wrapped-add", "let main = fn () -> 2147483647 + 1\n", 0),
+    ] {
+        let fixture_source = dir.join(format!("{fixture_name}.ml"));
+        fs::write(&fixture_source, source_text).unwrap();
+        let native_executable = dir.join(format!("{fixture_name}.native"));
+        let native_compile = Command::new("node")
+            .current_dir(repo)
+            .arg(&runner)
+            .arg("aarch64-compile-function")
+            .arg(&fixture_source)
+            .arg("main")
+            .arg("-o")
+            .arg(&native_executable)
+            .output()
+            .unwrap();
+        assert!(
+            native_compile.status.success(),
+            "native {fixture_name} fixture failed: {}",
+            String::from_utf8_lossy(&native_compile.stderr)
+        );
+        let c_executable = dir.join(format!("{fixture_name}.c-backend"));
+        let c_compile = Command::new("node")
+            .current_dir(repo)
+            .arg(&runner)
+            .arg("compile")
+            .arg(&fixture_source)
+            .arg("-o")
+            .arg(&c_executable)
+            .output()
+            .unwrap();
+        assert!(
+            c_compile.status.success(),
+            "C-backend {fixture_name} fixture failed: {}",
+            String::from_utf8_lossy(&c_compile.stderr)
+        );
+        let native_run = Command::new(&native_executable)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        let c_run = Command::new(&c_executable)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert_eq!(native_run.status.code(), Some(expected_status));
+        assert_eq!(native_run.status.code(), c_run.status.code());
+        assert_eq!(native_run.stdout, c_run.stdout);
+        assert_eq!(native_run.stderr, c_run.stderr);
+    }
 
     let ill_typed_source = dir.join("ill-typed.ml");
     fs::write(&ill_typed_source, "let main = fn () -> true + 1\n").unwrap();

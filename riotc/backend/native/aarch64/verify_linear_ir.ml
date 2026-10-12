@@ -250,14 +250,16 @@ let valid_terminator_targets = fn terminator -> fn items -> match terminator {
   | A64LinearTrap(_) -> true
   | A64LinearUnreachable -> true
 }
-let verify_references = fn items -> match items {
+let verify_references_from = fn all_items -> fn pending_items -> match pending_items {
   | Nil -> Ok(0)
-  | Cons(A64LinearTerminatorItem(terminator), remaining) -> match (valid_terminator_targets terminator items) {
-    | false -> Err("LinearIR branch targets a label that is not defined")
-    | true -> verify_references remaining
-  }
-  | Cons(_, remaining) -> verify_references remaining
+  | Cons(A64LinearTerminatorItem(terminator), remaining) ->
+    match (valid_terminator_targets terminator all_items) {
+      | false -> Err("LinearIR branch targets a label that is not defined")
+      | true -> verify_references_from all_items remaining
+    }
+  | Cons(_, remaining) -> verify_references_from all_items remaining
 }
+let verify_references = fn items -> verify_references_from items items
 
 let null_environment_setup = fn instruction -> match instruction {
   | A64MoveZero(register) -> same_physical register x0
@@ -326,10 +328,7 @@ let verify_item_structure = fn items -> fn values -> fn active_block -> fn termi
     | false -> Err("LinearIR terminator appears outside a live labeled block")
     | true -> match (valid_terminator_registers terminator) {
       | false -> Err("LinearIR branch condition violates the physical-register assignment")
-      | true -> match (valid_terminator_targets terminator items) {
-        | false -> Err("LinearIR branch targets a label that is not defined")
-        | true -> verify_item_structure remaining values active_block true
-      }
+      | true -> verify_item_structure remaining values active_block true
     }
   }
 }
