@@ -815,6 +815,35 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert_eq!(i64_call_run.stdout, i64_call_c_run.stdout);
     assert_eq!(i64_call_run.stderr, i64_call_c_run.stderr);
 
+    let i64_negation_source = dir.join("i64-negation.ml");
+    fs::write(
+        &i64_negation_source,
+        "let negate = fn (value: i64) -> -value\nlet take_i64 = fn (ignored: i64) -> 42\nlet main = fn () -> take_i64 (negate (9223372036854775807: i64))\n",
+    )
+    .unwrap();
+    let i64_negation_executable = dir.join("i64-negation.native");
+    let i64_negation_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_negation_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_negation_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_negation_compile.status.success(),
+        "i64 negation graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_negation_compile.stderr)
+    );
+    let i64_negation_assembly =
+        fs::read_to_string(i64_negation_executable.with_file_name("i64-negation.native.aarch64.s"))
+            .unwrap();
+    assert!(i64_negation_assembly.contains("neg x11, x9"));
+    let i64_negation_run = Command::new(&i64_negation_executable).output().unwrap();
+    assert_eq!(i64_negation_run.status.code(), Some(42));
+
     let out_of_range_i64_source = dir.join("out-of-range-i64.ml");
     fs::write(
         &out_of_range_i64_source,

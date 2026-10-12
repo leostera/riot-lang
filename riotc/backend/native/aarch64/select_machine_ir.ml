@@ -41,7 +41,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64Equal, A64NotEqual, A64SignedLessThan, A64SignedLessThanOrEqual,
   A64SignedGreaterThan, A64SignedGreaterThanOrEqual, A64Edge,
   A64Branch, A64Terminator, A64Jump, A64ConditionalBranch, A64Return,
-  A64Trap, A64Unreachable, A64NegateI32, A64SelectionFailure
+  A64Trap, A64Unreachable, A64NegateI32, A64NegateI64, A64SelectionFailure
 }
 
 let native_register = fn (NativeValueId(number)) -> A64VirtualRegister(number)
@@ -363,12 +363,17 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
     }
   | NativePrimitiveOperation(NativePrimitiveNegate(NativeNegatePrimitive {
       operand_type, operand
-    })) -> match (is_value_type A64I32 operand_type substitutions) {
-    | false -> Err("integer negation requires an i32 operand")
-    | true -> match (is_value_type A64I32 result_type substitutions) {
+    })) -> match (native_type operand_type substitutions) {
+    | Err(message) -> Err("integer negation: " + message)
+    | Ok(A64I32) -> match (is_value_type A64I32 result_type substitutions) {
       | true -> Ok(A64NegateI32(native_register operand))
       | false -> Err("i32 negation must produce i32")
     }
+    | Ok(A64I64) -> match (is_value_type A64I64 result_type substitutions) {
+      | true -> Ok(A64NegateI64(native_register operand))
+      | false -> Err("i64 negation must produce i64")
+    }
+    | Ok(_) -> Err("integer negation supports only i32 and i64")
   }
   | _ -> Err("operation is not in the AArch64 scalar selector subset")
 }

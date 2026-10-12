@@ -77,8 +77,9 @@ unsigned integer widths are not yet supported by this LinearIR.
 ## Codegen
 
 `emit.ml` emits textual AArch64 Mach-O assembly from verified LinearIR. It
-lowers spill loads/stores, i32 arithmetic/comparisons, i64 pass-through values,
-branches, direct calls with symbols in the supplied function set, frame
+lowers spill loads/stores, i32 arithmetic/comparisons, i64 pass-through values
+and unary negation, branches, direct calls with symbols in the supplied
+function set, frame
 prologues/epilogues, and trap pseudos. Block labels are function-qualified. Typed i32
 division/remainder call `_rt_native_i32_div`/`_rt_native_i32_rem`, whose exact
 prototypes are in `runtime.h`; the linker includes the existing `runtime.c`.

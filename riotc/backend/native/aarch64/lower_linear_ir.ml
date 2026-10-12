@@ -19,7 +19,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64RuntimeHostArgs,
   A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32,
-  A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64NegateI32,
+  A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64NegateI32, A64NegateI64,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
   A64Edge, A64Branch,
   A64Terminator, A64Jump, A64ConditionalBranch, A64Return, A64Trap,
@@ -30,12 +30,12 @@ use Backend.Native.Aarch64.LinearIr.{
   A64ValueLocation, A64FrameSlot, A64LinearLabel, A64BasicBlockLabel,
   A64TrueEdgeLabel, A64FalseEdgeLabel, A64LinearInstruction,
   A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill,
-  A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW, A64NegateW,
+  A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW, A64NegateW, A64NegateX,
   A64CompareSetW, A64CallDirect, A64CallRuntime, A64LinearTerminator, A64LinearJump,
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
   A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
   A64LinearTerminatorItem, A64LinearFunction, A64LinearFailure,
-  w0, w1, w9, w10, w11, x0, x1, x9, slot_size, slot_alignment,
+  w0, w1, w9, w10, w11, x0, x1, x9, x11, slot_size, slot_alignment,
   align_frame, is_unit
 }
 
@@ -304,6 +304,15 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
       | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, source_slot)))
         (append_linear_items (add_instruction(A64NegateW(w11, w9)))
           (add_instruction(A64SpillRegister(result_slot, w11)))))
+    }
+  }
+  | A64NegateI64(operand) -> match (lookup_slot function_identity block span operand locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(source_slot) -> match (lookup_slot function_identity block span destination locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(x9, source_slot)))
+        (append_linear_items (add_instruction(A64NegateX(x11, x9)))
+          (add_instruction(A64SpillRegister(result_slot, x11)))))
     }
   }
 }

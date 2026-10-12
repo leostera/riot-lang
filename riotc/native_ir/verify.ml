@@ -1435,6 +1435,16 @@ let verify_native_nominal_aggregate = fn kind -> fn entity -> fn fields ->
     }
   }
 
+let verify_integer_negation = fn operand_type -> fn result_type -> fn substitutions ->
+  match (apply_substitutions operand_type substitutions) {
+    | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
+        (integer_type_name name) {
+      | true -> verify_named_result result_type name substitutions
+      | false -> Err("NativeIR verifier: negation operand must be an integer")
+    }
+    | _ -> Err("NativeIR verifier: negation operand must be an integer")
+  }
+
 let verify_integer_result = fn checked_type -> fn substitutions ->
   match (apply_substitutions checked_type substitutions) {
     | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
@@ -1467,10 +1477,7 @@ let verify_instruction_operation = fn module -> fn (NativeInstruction {
             operand_type, operand
           })) -> match (same_value_type operand operand_type definitions substitutions) {
           | Err(message) -> Err(message)
-          | Ok(_) -> match (verify_named_result operand_type "i32" substitutions) {
-            | Err(message) -> Err(message)
-            | Ok(_) -> verify_named_result result_type "i32" substitutions
-          }
+          | Ok(_) -> verify_integer_negation operand_type result_type substitutions
         }
         | NativeCallOperation(NativeCall {
             target, arguments, argument_types, result_type: call_result

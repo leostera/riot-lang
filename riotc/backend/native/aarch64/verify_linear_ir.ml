@@ -15,7 +15,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64FrameSlot, A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel,
   A64FalseEdgeLabel, A64LinearInstruction, A64MoveZero, A64LoadI32Literal,
   A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
-  A64SubtractW, A64MultiplyW, A64NegateW, A64CompareSetW, A64CallDirect,
+  A64SubtractW, A64MultiplyW, A64NegateW, A64NegateX, A64CompareSetW, A64CallDirect,
   A64CallRuntime,
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
   A64LinearTrap, A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
@@ -266,6 +266,7 @@ let valid_instruction_registers = fn instruction -> fn values -> match instructi
   | A64MultiplyW(destination, left, right) -> bool_and (same_physical destination w11)
       (bool_and (same_physical left w9) (same_physical right w10))
   | A64NegateW(destination, operand) -> bool_and (same_physical destination w11) (same_physical operand w9)
+  | A64NegateX(destination, operand) -> bool_and (same_physical destination x11) (same_physical operand x9)
   | A64CompareSetW(_, destination, left, right) -> bool_and (same_physical destination w11)
       (bool_and (same_physical left w9) (same_physical right w10))
   | A64CallDirect(_) -> true

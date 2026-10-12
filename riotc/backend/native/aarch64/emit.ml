@@ -18,7 +18,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel, A64FalseEdgeLabel,
   A64LinearInstruction, A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral,
   A64ReloadSpill, A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW,
-  A64NegateW, A64CompareSetW, A64CallDirect, A64CallRuntime,
+  A64NegateW, A64NegateX, A64CompareSetW, A64CallDirect, A64CallRuntime,
   A64LinearTerminator,
   A64LinearJump, A64LinearBranch, A64LinearReturn, A64LinearTrap,
   A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
@@ -157,6 +157,8 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
   | A64MultiplyW(destination, left, right) -> Ok("mul " + register_text destination + ", "
       + register_text left + ", " + register_text right + "\n")
   | A64NegateW(destination, operand) -> Ok("neg " + register_text destination + ", "
+      + register_text operand + "\n")
+  | A64NegateX(destination, operand) -> Ok("neg " + register_text destination + ", "
       + register_text operand + "\n")
   | A64CompareSetW(condition, destination, left, right) -> Ok("cmp " + register_text left
       + ", " + register_text right + "\ncset " + register_text destination + ", "

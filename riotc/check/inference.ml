@@ -2652,6 +2652,24 @@ let infer_ascribed_expression = fn inner -> fn annotation_type ->
       }
   }
 
+let infer_i32_negation = fn operand_type -> fn state ->
+  match (constrain_types operand_type (builtin_inferred_type "i32") state) {
+    | Err(message) -> Err("unary `-` requires an integer operand: " + message)
+    | Ok(next_state) -> Ok(make_inference_result
+      (builtin_inferred_type "i32") next_state)
+  }
+
+let infer_unary_negation = fn operand_type -> fn state ->
+  match (apply_state_substitutions operand_type state) {
+    | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
+        (integer_type_name name) {
+      | true -> Ok(make_inference_result
+        (apply_state_substitutions operand_type state) state)
+      | false -> infer_i32_negation operand_type state
+    }
+    | _ -> infer_i32_negation operand_type state
+  }
+
 let infer_expression_node = fn expression -> fn environment -> fn visible_types -> fn state ->
   match (expression_kind expression) {
     | Integer(IntegerLiteral(value)) -> match (integer_literal_fits value "i32") {
@@ -2675,11 +2693,7 @@ let infer_expression_node = fn expression -> fn environment -> fn visible_types 
     | Negate(operand) -> match (infer_expression operand environment visible_types state) {
       | Err(message) -> Err(message)
       | Ok(InferenceResult { inferred_type, state: next_state }) ->
-        match (constrain_types inferred_type (builtin_inferred_type "i32") next_state) {
-          | Err(message) -> Err("unary `-` requires i32: " + message)
-          | Ok(final_state) -> Ok(make_inference_result
-            (builtin_inferred_type "i32") final_state)
-        }
+        infer_unary_negation inferred_type next_state
     }
     | Function(function_expression) -> infer_function_expression infer_expression
       function_expression environment visible_types state

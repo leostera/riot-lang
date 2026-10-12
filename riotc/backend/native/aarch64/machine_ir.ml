@@ -60,6 +60,7 @@ type A64Operation =
   | A64EqualBoolean(A64BinaryOperands)
   | A64NotEqualBoolean(A64BinaryOperands)
   | A64NegateI32(A64VirtualRegister)
+  | A64NegateI64(A64VirtualRegister)
 
 // This call pseudo carries typed virtual arguments but assigns no physical ABI registers.
 type A64I32LiteralTest = A64I32LiteralTest {
