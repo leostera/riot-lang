@@ -2341,11 +2341,17 @@ fn compile_c_emits_status_42_executable_without_javascript() {
     );
     let generated = fs::read_to_string(&generated_c).unwrap();
     assert!(generated.contains("int main(int argc, char **argv)"));
+    assert!(generated.contains("rt_environment_get(module_environment_0, \"main\")"));
     assert!(!generated.contains("export {"));
 
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
     let clang = Command::new("clang")
-        .arg("-std=c11")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
         .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
         .arg("-o")
         .arg(&executable)
         .output()
@@ -2356,6 +2362,108 @@ fn compile_c_emits_status_42_executable_without_javascript() {
         String::from_utf8_lossy(&clang.stderr)
     );
     let run = Command::new(&executable).output().unwrap();
+    assert_eq!(run.status.code(), Some(42));
+}
+
+#[test]
+fn compile_c_supports_imported_polymorphic_closures_and_matches() {
+    let dir = temp_dir("compile-c-imported-closure");
+    let source = dir.join("main.ml");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
+    fs::write(
+        &source,
+        r#"use Std.List.{map}
+use Prelude.{List, Cons, Nil}
+let main = fn () -> match (map (fn x -> x + 22) (Cons(20, Nil))) { | Cons(result, Nil) -> result | _ -> 0 }
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
+    let clang = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable).output().unwrap();
+    assert_eq!(run.status.code(), Some(42));
+}
+
+#[test]
+fn compile_c_uses_the_host_runtime_without_javascript() {
+    let dir = temp_dir("compile-c-host-args");
+    let source = dir.join("main.ml");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
+    fs::write(
+        &source,
+        r#"use Host.{args}
+use Prelude.{Cons, Nil}
+let main = fn () -> match (args ()) { | Cons(_, _) -> 42 | Nil -> 0 }
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
+    let clang = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable).arg("present").output().unwrap();
     assert_eq!(run.status.code(), Some(42));
 }
 

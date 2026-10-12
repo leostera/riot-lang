@@ -1,11 +1,13 @@
 # TinyML Stage 0
 
 TinyML is Riot's small implementation language and the Rust Stage 0 compiler.
-Stage 0 currently retains its JavaScript/Node target and has an experimental C
-source target for the closed `main : unit -> i32` smoke subset. The C target is
-being expanded for the required C-first, no-JavaScript bootstrap; it does not
-yet compile the full Riotc source graph. The required native RiotML backend
-belongs to the later RiotML compiler written in TinyML. See
+Stage 0 currently has both its JavaScript/Node target and an experimental C
+source target. The C target lowers checked module graphs through TinyML
+LambdaIR into a single C translation unit linked with the existing Riotc C
+runtime. It is the intended no-JavaScript bootstrap bridge, but remains
+incomplete and does not yet compile the complete Riotc source graph. It is not
+the Riotc-owned native backend: once bootstrapped, Riotc source must use its own
+IR and AArch64 pipeline. See
 [`docs/rfds/RFD0050-tinyml-bootstrap.md`](../docs/rfds/RFD0050-tinyml-bootstrap.md)
 for the bootstrap contract and full acceptance criteria.
 
@@ -34,7 +36,7 @@ cargo run -p tinyml -- emit --target js path/to/Main.ml -I path/to/modules
 cargo run -p tinyml -- compile path/to/Main.ml --target js -o build/Main.mjs -I path/to/modules
 node build/Main.mjs
 cargo run -p tinyml -- compile path/to/Main.ml --target c -o build/Main.c -I path/to/modules
-clang -std=c11 build/Main.c -o build/Main
+clang -std=gnu11 -I riotc build/Main.c riotc/runtime.c -o build/Main
 ```
 
 - `lex` prints tokens and byte spans; `parse` prints the AST.
@@ -44,12 +46,16 @@ clang -std=c11 build/Main.c -o build/Main
   beside the input. `--target js` emits the reachable JS module graph using the
   default output location.
 - `compile` currently defaults to `--target js`; `--target c` selects the
-  experimental C bootstrap emitter. Both targets check the full module graph
-  before writing output. JavaScript emits the root `.mjs` and dependency modules
-  beside it. C currently accepts only a single closed `main : unit -> i32`
-  module with supported i32 expressions; it rejects imports and other
-  constructs before writing a C artifact. Without `-o`, the selected target
-  chooses `.mjs` or `.c` in the invocation directory.
+  experimental C bootstrap emitter. Both targets check the full reachable
+  module graph before writing output. JavaScript emits the root `.mjs` and
+  dependency modules beside it. C emits a graph as one translation unit and
+  currently supports a limited source subset (including checked imports,
+  curried closures, aggregate patterns, i32 arithmetic, and selected Host
+  bindings). It rejects unsupported constructs before writing a C artifact;
+  embedded-NUL strings and the complete Riotc compiler graph are not supported
+  yet. Link generated C with `riotc/runtime.c` and include `riotc/runtime.h`.
+  Without `-o`, the selected target chooses `.mjs` or `.c` in the invocation
+  directory.
 - Errors are reported with a non-zero command status. Type and module failures
   stop compilation before target artifacts are written.
 
@@ -66,8 +72,10 @@ annotations, selected source imports, tuples, records, recursive variants,
 pattern matching, `unit`, `bool`, Unicode text strings, and exact
 `i8/i16/i32/i64` and `u8/u16/u32/u64` arithmetic. Integer arithmetic wraps at
 the annotated width; the JavaScript backend uses `BigInt`. The experimental C
-emitter currently implements only the closed i32 entry slice described above.
-`string + string` concatenates in the JavaScript backend. The bundled `String` module also provides `concat`, `length`,
+emitter currently lowers only its supported subset through the existing dynamic
+`RtValue` runtime and does not yet implement all integer-width semantics or all
+string cases. `string + string` concatenates in both backends where supported.
+The bundled `String` module also provides `concat`, `length`,
 `get`, `slice`, and `equal`; indices count Unicode scalar values, and `get`
 returns `Option<i32>` containing a code point. Host text-file I/O uses strict
 UTF-8 decoding and encoding. Floating point, general FFI, actors, distribution,

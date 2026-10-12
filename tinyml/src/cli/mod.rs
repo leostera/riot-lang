@@ -293,13 +293,12 @@ fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> R
 
 fn compile_c(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> Result<()> {
     let checked = checked_pipeline_with_imports(file, include_dirs)?;
-    if checked.modules.len() != 1 {
-        return Err(miette!(
-            "C Stage 0 backend does not yet support imported module graphs"
-        ));
-    }
-    let module = lambda::translate(&checked.root().summary.tir);
-    let generated = backend::c::emit_main_i32(&module)
+    let modules = checked
+        .modules
+        .iter()
+        .map(|module| (&module.source, &module.summary))
+        .collect::<Vec<_>>();
+    let generated = backend::c::emit_graph(&modules, checked.root)
         .map_err(|error| miette!("C source emission failed: {error}"))?;
     let output = output
         .map(Path::to_path_buf)
