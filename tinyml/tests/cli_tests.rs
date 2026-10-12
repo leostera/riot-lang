@@ -195,6 +195,30 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
         "unexpected boolean-match MachineIR:\n{boolean_machine_ir}"
     );
 
+    let imported_helper = dir.join("Helper.ml");
+    fs::write(&imported_helper, "let value = 41\n").unwrap();
+    let imported_global_source = dir.join("imported-global.ml");
+    fs::write(
+        &imported_global_source,
+        "use Helper.{value}\nlet main = fn () -> value\n",
+    )
+    .unwrap();
+    let imported_global = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&imported_global_source)
+        .arg("main")
+        .output()
+        .unwrap();
+    assert!(!imported_global.status.success());
+    let imported_global_diagnostic = String::from_utf8_lossy(&imported_global.stderr);
+    assert!(imported_global_diagnostic.contains("AArch64 selection failed"));
+    assert!(
+        !imported_global_diagnostic.contains("NativeIR verification failed"),
+        "dependency global declarations were absent from root NativeIR verification: {imported_global_diagnostic}"
+    );
+
     let unsupported_source = dir.join("unsupported.ml");
     fs::write(
         &unsupported_source,

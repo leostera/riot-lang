@@ -13,9 +13,9 @@ use Check.Inference.{
 use Codegen.C.Emit.{emit_module_program}
 use Lambda.Ir.{LambdaModule}
 use Lambda.Lower.{lower_checked_module}
-use NativeIr.Lower.{lower_module}
+use NativeIr.Lower.{lower_module, lower_native_globals}
 use NativeIr.Verify.{verify_module}
-use NativeIr.Ir.{NativeModule, NativeFunction, NativeTopLevelFunction}
+use NativeIr.Ir.{NativeModule, NativeGlobal, NativeFunction, NativeTopLevelFunction}
 use NativeIr.Print.{print_native_module}
 use Backend.Native.Aarch64.SelectMachineIr.{select_function}
 use Backend.Native.Aarch64.PrintMachineIr.{print_function, print_failure}
@@ -327,6 +327,86 @@ let native_ir_modules_for_file = fn source_file -> match (read_file source_file)
   }
 }
 
+let find_root_lambda_module = fn root_path -> fn checked_modules -> fn lambda_modules ->
+  match checked_modules {
+    | Nil -> None
+    | Cons(CheckedModuleInterface {
+        loaded_module: LoadedModule { module_path: _, source_path, source_module: _ },
+        interface: _, typed_module: _
+      }, remaining_checked) -> match lambda_modules {
+      | Nil -> None
+      | Cons(lambda_module, remaining_lambda) -> match (equal root_path source_path) {
+        | true -> Some(lambda_module)
+        | false -> find_root_lambda_module root_path remaining_checked remaining_lambda
+      }
+    }
+  }
+
+let append_native_globals = fn (first: List<NativeGlobal>) ->
+  fn (second: List<NativeGlobal>) -> match first {
+  | Nil -> second
+  | Cons(global, remaining) ->
+    Cons(global, append_native_globals remaining second)
+}
+
+let native_globals_from_lambda_modules = fn modules -> match modules {
+  | Nil -> Nil
+  | Cons(LambdaModule {
+      nominal_types: _, substitutions: _, recursive_values
+    }, remaining) -> append_native_globals (lower_native_globals recursive_values)
+      (native_globals_from_lambda_modules remaining)
+}
+
+// NativeCodegen compiles one root-module function set, so lower only that
+// module to NativeIR after checking and Lambda-lowering the whole import graph.
+let native_ir_root_modules_for_file = fn source_file -> match (read_file source_file) {
+  | Err(message) -> Err(compile_error (SourceRead)
+      ("cannot read " + source_file + ": " + message) None)
+  | Ok(source) -> match (lex source) {
+    | Err(UnterminatedString(span)) -> Err(compile_error (SourceParsing)
+      "unterminated string literal" (Some(span)))
+    | Err(UnterminatedEscape(span)) -> Err(compile_error (SourceParsing)
+      "unterminated escape in string literal" (Some(span)))
+    | Ok(_) -> match (load_source_graph source_file
+        (Cons(directory_of source_file, Nil))) {
+      | Err(message) -> Err(compile_error (SourceParsing) message None)
+      | Ok(modules) -> match (check_loaded_modules modules Nil) {
+        | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+        | Ok(checked_modules) -> match (lower_checked_modules checked_modules) {
+          | Err(message) -> Err(compile_error (LambdaLowering) message None)
+          | Ok(lambda_modules) -> match (find_root_lambda_module source_file
+              checked_modules lambda_modules) {
+            | None -> Err(compile_error (NativeIRLowering)
+              "source graph has no root LambdaIR module" None)
+            | Some(lambda_module) -> match (lower_module source_file lambda_module) {
+              | Err(message) -> Err(compile_error (NativeIRLowering)
+                ("NativeIR lowering failed for " + source_file + ": " + message) None)
+              | Ok(NativeModule {
+                  module_identity, nominal_types, substitutions, globals: _,
+                  initializer, functions
+                }) -> {
+                let native_module = NativeModule {
+                  module_identity: module_identity,
+                  nominal_types: nominal_types,
+                  substitutions: substitutions,
+                  globals: native_globals_from_lambda_modules lambda_modules,
+                  initializer: initializer,
+                  functions: functions
+                };
+                match (verify_module native_module) {
+                  | Err(message) -> Err(compile_error (NativeIRLowering)
+                    ("NativeIR verification failed for " + source_file + ": " + message) None)
+                  | Ok(_) -> Ok(Cons(native_module, Nil))
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 let print_native_modules = fn modules -> match modules {
   | Nil -> ""
   | Cons(native_module, remaining) ->
@@ -375,7 +455,7 @@ let find_top_level_function = fn wanted_name -> fn functions -> match functions 
 }
 
 let run_aarch64_mir_command = fn source_file -> fn function_name ->
-  match (native_ir_modules_for_file source_file) {
+  match (native_ir_root_modules_for_file source_file) {
     | Err(error) -> report_error error
     | Ok(native_modules) -> match (find_native_module source_file native_modules) {
       | None -> {
@@ -406,7 +486,7 @@ let run_aarch64_mir_command = fn source_file -> fn function_name ->
   }
 
 let run_aarch64_linear_ir_command = fn source_file -> fn function_name ->
-  match (native_ir_modules_for_file source_file) {
+  match (native_ir_root_modules_for_file source_file) {
     | Err(error) -> report_error error
     | Ok(native_modules) -> match (find_native_module source_file native_modules) {
       | None -> {
@@ -519,7 +599,7 @@ let run_aarch64_compile_function_command = fn source_file -> fn function_name ->
           write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
           1
         }
-        | Ok(_) -> match (native_ir_modules_for_file source_file) {
+        | Ok(_) -> match (native_ir_root_modules_for_file source_file) {
           | Err(error) -> report_error error
           | Ok(native_modules) -> match (find_native_module source_file native_modules) {
             | None -> {
