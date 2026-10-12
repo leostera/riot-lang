@@ -11,8 +11,9 @@ it is not a fallback in the owned native backend. That owned path currently
 reaches TypedAST, LambdaIR, target-independent SSA NativeIR, ABI-independent
 AArch64 virtual-register MachineIR, an initial all-spill AArch64 LinearIR, and
 a tested AArch64 assembly/link function harness. Whole-module Codegen,
-runtime/Host helper marshalling, and the final native self-rebuild acceptance
-chain are not complete.
+general runtime/Host helper marshalling, and the final native self-rebuild
+acceptance chain are not complete. The function harness supports only the
+explicit typed `Host.args` bridge.
 
 ## Verified C-first Stage 0 bridge
 
@@ -78,8 +79,8 @@ and positive/negative tests. Same-module, monomorphic top-level function
 references become direct-call candidates by binding identity during NativeIR
 lowering; aliases, imported values, and generalized functions retain closure
 semantics. The `native-ir SOURCE` command prints this IR.
-`aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar
-and opaque-pointer AArch64 MachineIR selection. `aarch64-linear-ir SOURCE
+`aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar,
+opaque-pointer, and `Host.args` AArch64 MachineIR selection. `aarch64-linear-ir SOURCE
 TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice plus
 opaque-pointer pass-through, with explicit spill slots, call-register
 assignments, and linearized control flow.
@@ -87,7 +88,7 @@ assignments, and linearized control flow.
 AArch64 assembly for one selected function and writes `OUTPUT.aarch64.s` for
 inspection. This is a function-level Codegen harness, not a whole-module
 compiler: it omits module initializers and globals, closure construction,
-runtime/Host helper marshalling, and unselected functions. A direct-call target
+general runtime/Host helper marshalling, and unselected functions. A direct-call target
 must be in the supplied Codegen set, so the one-function CLI explicitly rejects
 calls to other functions. Unsupported operations in the selected function fail
 before Codegen rather than being emitted as C. The full compiler must similarly reject unsupported module
@@ -129,7 +130,8 @@ Those measurements are distinct from the Rust TinyML Stage 0 to C bridge.
   verification.
 - `backend/native/aarch64/`: virtual-register MachineIR, initial ABI lowering,
   verified LinearIR, assembly Codegen and a single-function Clang link harness;
-  whole-module Codegen and runtime/Host marshalling remain future work.
+  whole-module Codegen and general runtime/Host marshalling remain future work;
+  only `Host.args` has an explicit typed native bridge.
 - `codegen/c/emit.ml`: existing C-plus-Clang source-backend baseline.
 - `runtime.h`, `runtime.c`: tagged values, closures, module environments, and
   the C-hosted runtime linked by Clang.

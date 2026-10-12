@@ -131,6 +131,8 @@ RtValue rt_concat(RtValue left, RtValue right);
 
 RtValue rt_args(void);
 RtValue rt_host_args(RtValue ignored, RtValue unit);
+/* Typed opaque-pointer bridge used by the native backend for Host.args. */
+void *rt_native_host_args(void);
 RtValue rt_host_current_directory(RtValue ignored, RtValue unit);
 RtValue rt_host_runtime_directory(RtValue ignored, RtValue unit);
 RtValue rt_read_file(RtValue ignored, RtValue path);

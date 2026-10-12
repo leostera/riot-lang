@@ -373,7 +373,7 @@ let run_and_print = fn machine_function -> match (lower_function machine_functio
 }
 let check_rejection = fn machine_function -> match (lower_function machine_function) {
   | Err(A64LinearFailure { reason, function: _, block: _, span: _ }) ->
-    match (equal reason "Host helper call requires explicit RtValue boundary marshalling before ABI lowering") {
+    match (equal reason "unsupported Host helper `write` requires explicit boundary marshalling") {
       | true -> 0
       | false -> 1
     }

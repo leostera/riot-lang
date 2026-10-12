@@ -515,6 +515,15 @@ RtValue rt_host_args(RtValue ignored, RtValue unit) {
   return rt_args();
 }
 
+void *rt_native_host_args(void) {
+  RtValue arguments = rt_host_args(rt_unit(), rt_unit());
+  if (arguments.tag != RT_VARIANT || arguments.as.box == NULL) {
+    rt_pattern_fail();
+    return NULL;
+  }
+  return (void *)arguments.as.box;
+}
+
 RtValue rt_host_current_directory(RtValue ignored, RtValue unit) {
   (void)ignored;
   (void)unit;

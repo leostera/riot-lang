@@ -1,11 +1,14 @@
 // Lower AArch64 virtual-register MachineIR to an all-spill, physical-register LinearIR.
 // Unit is erased; internal calls pass null x0 environment plus at most one typed W argument.
 use Prelude.{List, Nil, Cons, Result, Ok, Err, Option, Some, None}
+use String.{equal}
 use NativeIr.Ir.{
   NativeBlockId, NativeTopLevelFunction, NativeNestedFunction,
   NativeModuleInitializer
 }
 use Syntax.Lexer.{SourceSpan}
+use Syntax.Ast.{ValueName}
+use Check.Inference.{BindingIdentity, ModuleValueBinding}
 use NativeIr.Print.{block_id}
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean, A64Pointer,
@@ -13,7 +16,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
-  A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64CallArgument,
+  A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64RuntimeHostArgs,
+  A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32,
   A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64NegateI32,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
@@ -365,13 +369,67 @@ let direct_target_has_no_environment = fn target -> match target {
   | NativeNestedFunction(_) -> false
 }
 
+let lower_host_args_call = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn instruction_type -> fn arguments -> fn call_result ->
+  fn locations -> match (same_value_type instruction_type call_result) {
+  | false -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "Host.args result type differs from its typed call signature"
+  })
+  | true -> match call_result {
+    | A64Pointer -> match arguments {
+      | Cons(A64CallArgument { register: _, value_type: A64Unit }, Nil) ->
+        match (lookup_slot function_identity block span destination locations) {
+          | Err(failure) -> Err(failure)
+          | Ok(result_slot) -> Ok(append_linear_items
+            (add_instruction(A64CallRuntime(A64RuntimeHostArgs)))
+            (add_instruction(A64SpillRegister(result_slot, x0))))
+        }
+      | _ -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "Host.args helper requires one erased unit argument"
+      })
+    }
+    | _ -> Err(A64LinearFailure {
+      function: function_identity, block: block, span: span,
+      reason: "Host.args helper must return an opaque pointer"
+    })
+  }
+}
+
+let is_host_args_binding = fn (binding: BindingIdentity) -> match binding {
+  | BindingIdentity {
+      source_path, declaration_span: _, name: ValueName(name), scope
+    } -> match (equal source_path "tinyml/lib/host.ml") {
+    | false -> false
+    | true -> match (equal name "args") {
+      | false -> false
+      | true -> match scope {
+        | ModuleValueBinding -> true
+        | _ -> false
+      }
+    }
+  }
+  | _ -> false
+}
+
 let lower_call = fn function_identity -> fn block -> fn span ->
   fn destination -> fn instruction_type -> fn target -> fn arguments ->
   fn call_result -> fn locations -> match target {
-  | A64HostCall(_) -> Err(A64LinearFailure {
-    function: function_identity, block: block, span: span,
-    reason: "Host helper call requires explicit RtValue boundary marshalling before ABI lowering"
-  })
+  | A64HostCall(binding) -> match (is_host_args_binding binding) {
+    | true -> lower_host_args_call function_identity block span destination
+        instruction_type arguments call_result locations
+    | false -> {
+      let BindingIdentity {
+        source_path: _, declaration_span: _, name: ValueName(name), scope: _
+      } = binding;
+      Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "unsupported Host helper `" + name
+          + "` requires explicit boundary marshalling"
+      })
+    }
+  }
   | A64DirectCall(callee) -> match (direct_target_has_no_environment callee) {
     | false -> Err(A64LinearFailure {
       function: function_identity, block: block, span: span,

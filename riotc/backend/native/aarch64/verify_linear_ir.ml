@@ -7,7 +7,8 @@ use NativeIr.Ir.{
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer,
   A64Equal, A64NotEqual, A64SignedLessThan, A64SignedLessThanOrEqual,
-  A64SignedGreaterThan, A64SignedGreaterThanOrEqual
+  A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
+  A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeHostArgs
 }
 use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64ValueLocation,
@@ -301,7 +302,12 @@ let runtime_i32_argument_setup = fn expected -> fn instruction -> match instruct
       (same_type (frame_slot_type slot) A64I32)
   | _ -> false
 }
-let valid_runtime_call_setup = fn previous -> fn last -> match last {
+let valid_runtime_call_setup = fn helper -> fn previous -> fn last -> match helper {
+  | A64RuntimeHostArgs -> true
+  | A64RuntimeI32Division -> valid_i32_runtime_call_setup previous last
+  | A64RuntimeI32Remainder -> valid_i32_runtime_call_setup previous last
+}
+let valid_i32_runtime_call_setup = fn previous -> fn last -> match last {
   | Some(instruction) -> match (runtime_i32_argument_setup w1 instruction) {
     | false -> false
     | true -> match previous {
@@ -315,6 +321,16 @@ let runtime_i32_result_setup = fn instruction -> match instruction {
   | A64SpillRegister(slot, register) -> bool_and (same_physical register w0)
       (same_type (frame_slot_type slot) A64I32)
   | _ -> false
+}
+let runtime_host_args_result_setup = fn instruction -> match instruction {
+  | A64SpillRegister(slot, register) -> bool_and (same_physical register x0)
+      (same_type (frame_slot_type slot) A64Pointer)
+  | _ -> false
+}
+let runtime_result_setup = fn helper -> fn instruction -> match helper {
+  | A64RuntimeHostArgs -> runtime_host_args_result_setup instruction
+  | A64RuntimeI32Division -> runtime_i32_result_setup instruction
+  | A64RuntimeI32Remainder -> runtime_i32_result_setup instruction
 }
 let valid_call_setup = fn previous -> fn last -> match last {
   | Some(instruction) -> match (null_environment_setup instruction) {
@@ -347,15 +363,15 @@ let verify_call_sequences = fn items -> fn previous -> fn last -> match items {
       }
     }
   | Cons(A64LinearInstructionItem(A64CallRuntime(helper)), remaining) ->
-    match (valid_runtime_call_setup previous last) {
+    match (valid_runtime_call_setup helper previous last) {
       | false -> Err("LinearIR runtime helper call is missing its typed argument-register setup")
       | true -> match remaining {
         | Cons(A64LinearInstructionItem(result_store), _) ->
-          match (runtime_i32_result_setup result_store) {
-            | false -> Err("LinearIR i32 runtime helper result must be spilled from w0")
+          match (runtime_result_setup helper result_store) {
+            | false -> Err("LinearIR runtime helper result uses the wrong result register or type")
             | true -> verify_call_sequences remaining last (Some(A64CallRuntime(helper)))
           }
-        | _ -> Err("LinearIR i32 runtime helper result is not spilled after the call")
+        | _ -> Err("LinearIR runtime helper result is not spilled after the call")
       }
     }
   | Cons(A64LinearInstructionItem(instruction), remaining) ->

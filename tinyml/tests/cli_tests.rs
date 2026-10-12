@@ -547,6 +547,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     let assembly = fs::read_to_string(executable.with_file_name("main.native.aarch64.s")).unwrap();
     assert!(assembly.contains(".section __TEXT,__text,regular,pure_instructions"));
     assert!(assembly.contains("_main:"));
+    assert!(assembly.contains("bl _rt_set_args"));
     assert!(assembly.contains("stp x29, x30"));
     assert!(assembly.contains("ldr w9, =42"));
     assert!(assembly.contains("bl _rt_pattern_fail"));
@@ -635,6 +636,81 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     );
     assert!(!direct_call_executable.exists());
     assert!(!direct_call_assembly.exists());
+
+    let host_args_source = dir.join("host-args.ml");
+    fs::write(
+        &host_args_source,
+        "use Host.{args}\nlet main = fn () -> match args () { | _ -> 42 }\n",
+    )
+    .unwrap();
+    let host_args_executable = dir.join("host-args.native");
+    let host_args_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&host_args_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&host_args_executable)
+        .output()
+        .unwrap();
+    assert!(
+        host_args_compile.status.success(),
+        "native Host.args bridge failed: {}",
+        String::from_utf8_lossy(&host_args_compile.stderr)
+    );
+    let host_args_assembly =
+        fs::read_to_string(host_args_executable.with_file_name("host-args.native.aarch64.s"))
+            .unwrap();
+    assert!(host_args_assembly.contains("bl _rt_native_host_args"));
+    let host_args_run = Command::new(&host_args_executable).output().unwrap();
+    assert_eq!(host_args_run.status.code(), Some(42));
+
+    let host_args_c_executable = dir.join("host-args.c-backend");
+    let host_args_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&host_args_source)
+        .arg("-o")
+        .arg(&host_args_c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        host_args_c_compile.status.success(),
+        "C-backend Host.args differential fixture did not compile: {}",
+        String::from_utf8_lossy(&host_args_c_compile.stderr)
+    );
+    let host_args_c_run = Command::new(&host_args_c_executable).output().unwrap();
+    assert_eq!(host_args_run.status.code(), host_args_c_run.status.code());
+    assert_eq!(host_args_run.stdout, host_args_c_run.stdout);
+    assert_eq!(host_args_run.stderr, host_args_c_run.stderr);
+
+    let unsupported_host_source = dir.join("unsupported-host.ml");
+    fs::write(
+        &unsupported_host_source,
+        "use Host.{current_directory}\nlet main = fn () -> match current_directory () { | _ -> 42 }\n",
+    )
+    .unwrap();
+    let unsupported_host_executable = dir.join("unsupported-host.native");
+    let unsupported_host_assembly = dir.join("unsupported-host.native.aarch64.s");
+    let unsupported_host_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&unsupported_host_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&unsupported_host_executable)
+        .output()
+        .unwrap();
+    assert!(!unsupported_host_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&unsupported_host_compile.stderr)
+            .contains("unsupported Host helper `current_directory`")
+    );
+    assert!(!unsupported_host_executable.exists());
+    assert!(!unsupported_host_assembly.exists());
 
     for (fixture_name, source_text, expected_status) in [
         ("arithmetic", "let main = fn () -> 20 + 22\n", 42),

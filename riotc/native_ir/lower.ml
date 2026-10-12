@@ -36,7 +36,8 @@ use NativeIr.Ir.{
   NativePrimitive, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeCallOperation,
-  NativeCall, NativeDirectCall, NativeClosureCall, NativeCallTarget, NativeCreateClosure,
+  NativeCall, NativeDirectCall, NativeClosureCall, NativeHostCall,
+  NativeCallTarget, NativeCreateClosure,
   NativeClosure, NativeCreateAggregate, NativeAggregate, NativeAggregateValue,
   NativeAggregateKind, NativeTupleAggregate, NativeRecordAggregate, NativeVariantAggregate,
   NativeProjectAggregate, NativeProjection, NativeAggregateField,
@@ -49,7 +50,8 @@ use NativeIr.Ir.{
   NativeRecordPatternFieldTest,
   NativeLoadCapture, NativeLoadGlobal, NativeStoreGlobal, NativeGlobalStore,
   NativeEffectSet, NativeEffect, NativeMayTrap, NativeAllocate,
-  NativeReadMutableState, NativeWriteMutableState, NativeUnknownCall,
+  NativeReadMutableState, NativeWriteMutableState, NativeHostRead,
+  NativeHostWrite, NativeHostProcess, NativeUnknownCall,
   NativeDivisionByZero, NativeRemainderByZero, NativePatternFailure,
   NativeEdge, NativeJump, NativeConditionalBranch, NativeBranch,
   NativeReturn, NativeTrap, NativeUnreachable, NativeTerminator
@@ -130,6 +132,32 @@ let same_binding = fn first -> fn second -> {
       }
     }
   }
+}
+
+// Host bindings are recognized by resolved module identity and name; aliases
+// still retain closure semantics rather than inheriting an intrinsic mapping.
+let native_host_effect_for_binding = fn (binding: BindingIdentity) ->
+  match binding {
+  | BindingIdentity {
+      source_path, declaration_span: _, name: ValueName(name), scope
+    } -> match scope {
+    | LocalValueBinding -> None
+    | ModuleValueBinding -> match (equal source_path "tinyml/lib/host.ml") {
+      | false -> None
+      | true -> match name {
+        | "args" -> Some(NativeHostRead)
+        | "current_directory" -> Some(NativeHostRead)
+        | "runtime_directory" -> Some(NativeHostRead)
+        | "read_file" -> Some(NativeHostRead)
+        | "write_file" -> Some(NativeHostWrite)
+        | "write_stdout" -> Some(NativeHostWrite)
+        | "write_stderr" -> Some(NativeHostWrite)
+        | "run_process" -> Some(NativeHostProcess)
+        | _ -> None
+      }
+    }
+  }
+  | _ -> None
 }
 
 let value_id_number = fn (NativeValueId(number)) -> number
@@ -1105,6 +1133,24 @@ let lower_closure_apply_expression = fn callee -> fn argument -> fn result_type 
     }
   }
 
+let lower_host_apply_expression = fn binding -> fn host_effect -> fn callee_type ->
+  fn argument -> fn result_type -> fn span -> fn builder ->
+  match (function_parts callee_type (function_builder_substitutions builder)) {
+    | Err(message) -> Err(message)
+    | Ok(NativeFunctionParts { argument: argument_type, result: _ }) ->
+      match (lower_expression argument builder) {
+        | Err(message) -> Err(message)
+        | Ok(NativeLoweredValue {
+            value: argument_value, checked_type: _, builder: argument_builder
+          }) -> emit_instruction result_type (NativeCallOperation(NativeCall {
+            target: NativeHostCall(binding),
+            arguments: Cons(argument_value, Nil),
+            argument_types: Cons(argument_type, Nil),
+            result_type: result_type
+          })) (NativeEffectSet(Cons(host_effect, Nil))) span argument_builder
+      }
+  }
+
 let lower_apply_expression = fn callee -> fn argument -> fn result_type -> fn span ->
   fn builder -> match callee {
     | LambdaExpression { checked_type: callee_type,
@@ -1113,7 +1159,12 @@ let lower_apply_expression = fn callee -> fn argument -> fn result_type -> fn sp
           (function_builder_direct_functions builder)) {
         | true -> lower_direct_apply_expression binding callee_type argument
             result_type span builder
-        | false -> lower_closure_apply_expression callee argument result_type span builder
+        | false -> match (native_host_effect_for_binding binding) {
+          | Some(host_effect) -> lower_host_apply_expression binding host_effect
+              callee_type argument result_type span builder
+          | None -> lower_closure_apply_expression callee argument
+              result_type span builder
+        }
       }
     | _ -> lower_closure_apply_expression callee argument result_type span builder
   }

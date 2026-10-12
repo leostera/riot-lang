@@ -9,7 +9,7 @@ use NativeIr.Ir.{
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
   A64Label, A64Unit, A64I32, A64Boolean, A64Pointer, A64Equal, A64NotEqual,
-  A64RuntimeI32Division, A64RuntimeI32Remainder,
+  A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeHostArgs,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual
 }
@@ -166,6 +166,7 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
   }
   | A64CallRuntime(A64RuntimeI32Division) -> Ok("bl _rt_native_i32_div\n")
   | A64CallRuntime(A64RuntimeI32Remainder) -> Ok("bl _rt_native_i32_rem\n")
+  | A64CallRuntime(A64RuntimeHostArgs) -> Ok("bl _rt_native_host_args\n")
 }
 
 let trap_immediate = fn reason -> match reason {
@@ -255,7 +256,8 @@ let entry_has_unit_or_no_argument = fn function -> {
 }
 let emit_entry_adapter = fn target_symbol ->
   ".globl _main\n.p2align 2\n_main:\n"
-    + "stp x29, x30, [sp, #-16]!\nmov x29, sp\nmov x0, xzr\n"
+    + "stp x29, x30, [sp, #-16]!\nmov x29, sp\n"
+    + "bl _rt_set_args\nmov x0, xzr\n"
     + "bl " + target_symbol + "\nldp x29, x30, [sp], #16\nret\n"
 
 let verify_functions = fn functions -> match functions {

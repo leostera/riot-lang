@@ -70,9 +70,11 @@ It receives `argc`/`argv`, initializes the C runtime's process/runtime-directory
 state, initializes Riot module globals, invokes the mangled native Riot `main`
 with a null environment and erased unit argument, and returns its `i32` result
 as the process status. The source binding named `main` is not emitted as the
-Mach-O entry symbol. This complete adapter is not implemented yet: the current
-Codegen test harness emits a synthetic `_main` for one selected function and
-does not initialize runtime state or module globals.
+Mach-O entry symbol. The current function-level harness emits a synthetic
+`_main` for one selected function and passes incoming `argc`/`argv` to the
+runtime's declared `rt_set_args` helper before calling it. The whole-program
+adapter remains incomplete: it does not set the runtime directory, initialize
+module globals, or call module initializers.
 
 ## Implemented LinearIR subset (2026-10-12)
 
@@ -103,22 +105,25 @@ shape while deliberately using an all-spill allocator:
   argument is erased.
 - The current LIR verifier checks slot ownership/uniqueness, frame alignment
   and bounds, physical scratch-register assignment, terminated block
-  structure, and all branch labels. Unsupported closure-environment calls
-  and Host helper calls fail before Codegen; Host marshalling to/from `RtValue`
-  is not implemented by this slice.
+  structure, and all branch labels. Unsupported closure-environment calls and
+  Host helpers without an explicit bridge fail before Codegen. `Host.args` is
+  the one typed Host bridge in this slice; general Host marshalling is not
+  implemented.
 - `emit.ml` lowers this verified slice to AArch64 instructions. A pattern
   failure calls the declared no-argument `rt_pattern_fail` helper from
   `runtime.h`/`runtime.c` under the Apple C ABI, then emits a `brk` fallback;
   other current trap pseudos use distinct `brk` immediates. Typed i32
   division/remainder lower through the declared `rt_native_i32_div` and
-  `rt_native_i32_rem` C helpers; general Host marshalling is still absent.
+  `rt_native_i32_rem` C helpers. The exact `tinyml/lib/host.ml::args` binding
+  lowers through `rt_native_host_args`; every other Host helper still fails
+  before Codegen.
 
 This conservative policy validates the first ABI lowering but is not the full
 native backend. `A64Pointer` currently supports opaque pointer arguments,
 returns, spill/reload, and edge copies; it does not implement string constants,
 heap layouts, constructors, projections, or closure calls. Narrow integer
-widths, closure environments, and Host helper marshalling remain outside the
-current LIR slice. The selected-function harness rejects pointer-argument or
+widths, closure environments, and general Host helper marshalling remain
+outside the current LIR slice. The selected-function harness rejects pointer-argument or
 pointer-result entry adapters, assembles and links only supported `unit -> i32`
 entries with Clang for the approved target, and is not the whole-module entry
 adapter described above.
@@ -184,6 +189,20 @@ The original boxed `rt_i32_div`/`rt_i32_rem` helpers keep their own contracts.
 C helper prototypes using `int`, `size_t`, pointers, or other C types use those
 declared types directly under the same C ABI. Host operations retain the
 behavior in `riotc/runtime.c`; the owned compiler adds no generated-C fallback.
+
+The current Host bridge is deliberately limited to the module binding
+`tinyml/lib/host.ml::args`. NativeIR keeps it as a `NativeHostCall` with a
+`NativeHostRead` effect. LinearIR erases its unit argument and calls the
+explicitly typed `void *rt_native_host_args(void)` helper; the helper invokes
+the existing `rt_host_args` implementation, validates the returned `RtValue`
+is a variant box, and returns only its opaque pointer payload in `x0`. Native
+code does not inspect or depend on `RtBox` layout, and no `RtValue` crosses the
+native-to-C call boundary for this helper. The selected-function test adapter
+does not currently initialize `argc`/`argv`, so this bridge sees the runtime's
+empty argument list in that harness; full process argument setup remains part
+of the unimplemented whole-program entry adapter. Aliases and all other Host
+operations retain closure/global behavior and are explicitly unsupported by
+this LIR slice.
 
 ## Reproducible `RtValue` ABI probe
 
