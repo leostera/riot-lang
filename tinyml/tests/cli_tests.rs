@@ -2672,7 +2672,7 @@ fn compile_c_preserves_host_output_and_exit_status() {
     fs::write(
         &source,
         r#"use Host.{write_stdout, write_stderr}
-let main = fn () -> { write_stdout "stdout"; write_stderr "stderr"; 42 }
+let main = fn () -> { write_stdout "stdout\\n"; write_stderr "stderr"; 42 }
 "#,
     )
     .unwrap();
@@ -2711,7 +2711,7 @@ let main = fn () -> { write_stdout "stdout"; write_stderr "stderr"; 42 }
     );
     let run = Command::new(&executable).output().unwrap();
     assert_eq!(run.status.code(), Some(42));
-    assert_eq!(run.stdout, b"stdout");
+    assert_eq!(run.stdout, b"stdout\\n");
     assert_eq!(run.stderr, b"stderr");
 }
 
