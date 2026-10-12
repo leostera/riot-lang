@@ -1,7 +1,11 @@
 // Positive/negative fixtures for ABI-free AArch64 scalar selection.
 use Prelude.{List, Nil, Cons, Result, Ok, Err}
 use String.{equal}
-use Syntax.Ast.{ValueName, IntegerLiteral, Addition, Division, Equal, NotEqual}
+use Syntax.Ast.{
+  ValueName, IntegerLiteral, Addition, Subtraction, Multiplication, Division,
+  Remainder, Equal, NotEqual, LessThan, LessThanOrEqual, GreaterThan,
+  GreaterThanOrEqual
+}
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
   InferenceType, AppliedType, InferredNamedType, BindingIdentity,
@@ -12,11 +16,13 @@ use NativeIr.Ir.{
   NativeFunction, NativeBlockId, NativeValueId, NativeBlock, NativeBlockParameter,
   NativeInstruction, NativeConstant, NativeUnit, NativeInteger,
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
-  NativeBinaryPrimitive, NativeCallOperation, NativeCall, NativeDirectCall,
+  NativePrimitiveNegate, NativeNegatePrimitive, NativeBinaryPrimitive,
+  NativeCallOperation, NativeCall, NativeDirectCall,
   NativeHostCall, NativeUnknownCall, NativeHostRead, NativeEffectSet,
   NativeEffect, NativeMayTrap,
-  NativeDivisionByZero, NativeReturn, NativeConditionalBranch,
-  NativeBranch, NativeEdge
+  NativeDivisionByZero, NativeRemainderByZero, NativeExplicitTrap,
+  NativeJump, NativeReturn, NativeTrap,
+  NativeConditionalBranch, NativeBranch, NativeEdge
 }
 use NativeIr.Verify.{verify_module}
 use Backend.Native.Aarch64.MachineIr.{A64SelectionFailure}
@@ -56,14 +62,15 @@ let initializer_function = NativeFunction {
   span: source_span
 }
 
-let binary_function = fn operator -> fn effects -> fn function_name -> NativeFunction {
+let binary_function = fn operator -> fn result_type -> fn effects ->
+  fn function_name -> NativeFunction {
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
     name: ValueName(function_name),
     scope: ModuleValueBinding
   }),
-  result_type: int_type,
+  result_type: result_type,
   entry: NativeBlockId(0),
   blocks: Cons(NativeBlock {
     identity: NativeBlockId(0),
@@ -82,7 +89,7 @@ let binary_function = fn operator -> fn effects -> fn function_name -> NativeFun
       span: source_span
     }, Cons(NativeInstruction {
       result: NativeValueId(2),
-      result_type: int_type,
+      result_type: result_type,
       operation: NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
         operator: operator,
         operand_type: int_type,
@@ -110,8 +117,119 @@ let fixture_module_with_functions = fn functions -> NativeModule {
 let fixture_module = fn function ->
   fixture_module_with_functions (Cons(function, Nil))
 
-let valid_add_function = binary_function (Addition) (NativeEffectSet(Nil)) "sum"
-let effectful_add_function = binary_function (Addition)
+let no_effects = NativeEffectSet(Nil)
+let valid_add_function = binary_function Addition int_type no_effects "sum"
+let negation_function = NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName("negate"),
+    scope: ModuleValueBinding
+  }),
+  result_type: int_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Cons(NativeInstruction {
+      result: NativeValueId(0),
+      result_type: int_type,
+      operation: NativeConstant(NativeInteger(IntegerLiteral("10"))),
+      effects: no_effects,
+      span: source_span
+    }, Cons(NativeInstruction {
+      result: NativeValueId(1),
+      result_type: int_type,
+      operation: NativePrimitiveOperation(NativePrimitiveNegate(NativeNegatePrimitive {
+        operand_type: int_type,
+        operand: NativeValueId(0)
+      })),
+      effects: no_effects,
+      span: source_span
+    }, Nil)),
+    terminator: NativeReturn(NativeValueId(1)),
+    span: source_span
+  }, Nil),
+  span: source_span
+}
+let jump_function = NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName("forward"),
+    scope: ModuleValueBinding
+  }),
+  result_type: int_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Cons(NativeInstruction {
+      result: NativeValueId(0),
+      result_type: int_type,
+      operation: NativeConstant(NativeInteger(IntegerLiteral("10"))),
+      effects: no_effects,
+      span: source_span
+    }, Nil),
+    terminator: NativeJump(NativeEdge {
+      target: NativeBlockId(1),
+      arguments: Cons(NativeValueId(0), Nil)
+    }),
+    span: source_span
+  }, Cons(NativeBlock {
+    identity: NativeBlockId(1),
+    parameters: Cons(NativeBlockParameter {
+      value: NativeValueId(1),
+      checked_type: int_type,
+      span: source_span
+    }, Nil),
+    instructions: Nil,
+    terminator: NativeReturn(NativeValueId(1)),
+    span: source_span
+  }, Nil)),
+  span: source_span
+}
+
+let explicit_trap_function = NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName("explicitly_trap"),
+    scope: ModuleValueBinding
+  }),
+  result_type: int_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Nil,
+    terminator: NativeTrap(NativeExplicitTrap),
+    span: source_span
+  }, Nil),
+  span: source_span
+}
+let valid_subtract_function = binary_function Subtraction int_type
+  no_effects "difference"
+let valid_multiply_function = binary_function Multiplication int_type
+  no_effects "product"
+let valid_equal_function = binary_function Equal bool_type no_effects "integer_equal"
+let valid_not_equal_function = binary_function NotEqual bool_type
+  no_effects "integer_not_equal"
+let valid_less_than_function = binary_function LessThan bool_type
+  no_effects "integer_less_than"
+let valid_less_equal_function = binary_function LessThanOrEqual bool_type
+  no_effects "integer_less_equal"
+let valid_greater_than_function = binary_function GreaterThan bool_type
+  no_effects "integer_greater_than"
+let valid_greater_equal_function = binary_function GreaterThanOrEqual bool_type
+  no_effects "integer_greater_equal"
+let scalar_operations_module = fixture_module_with_functions
+  (Cons(valid_add_function, Cons(valid_subtract_function,
+  Cons(valid_multiply_function, Cons(valid_equal_function,
+  Cons(valid_not_equal_function, Cons(valid_less_than_function,
+  Cons(valid_less_equal_function, Cons(valid_greater_than_function,
+  Cons(valid_greater_equal_function, Cons(negation_function, Nil)))))))))))
+let effectful_add_function = binary_function Addition int_type
   (NativeEffectSet(Cons(NativeHostRead, Nil))) "effectful_sum"
 
 let boolean_comparison_function = fn operator -> fn function_name -> NativeFunction {
@@ -159,8 +277,10 @@ let boolean_comparison_function = fn operator -> fn function_name -> NativeFunct
 let boolean_equality_function = boolean_comparison_function Equal "boolean_equal"
 let boolean_inequality_function = boolean_comparison_function NotEqual "boolean_not_equal"
 
-let division_function = binary_function (Division)
+let division_function = binary_function Division int_type
   (NativeEffectSet(Cons(NativeMayTrap(NativeDivisionByZero), Nil))) "quotient"
+let remainder_function = binary_function Remainder int_type
+  (NativeEffectSet(Cons(NativeMayTrap(NativeRemainderByZero), Nil))) "remainder"
 
 let increment_identity = NativeTopLevelFunction(BindingIdentity {
   source_path: module_name,
@@ -322,16 +442,47 @@ let branch_function = NativeFunction {
   span: source_span
 }
 
-let selection_prints_expected_ir = fn function -> match (select_function function Nil) {
+let selection_prints_negation = fn function -> match (select_function function Nil) {
   | Err(_) -> false
   | Ok(selected) -> equal (print_function selected)
-      ("function fn aarch64-machine-ir-test::sum@0 -> i32 entry .Lbb0 {\n"
+      ("function fn aarch64-machine-ir-test::negate@0 -> i32 entry .Lbb0 {\n"
         + ".Lbb0():\n"
         + "    %v0:i32 = load_i32 10\n"
-        + "    %v1:i32 = load_i32 32\n"
-        + "    %v2:i32 = add_w %v0, %v1\n"
-        + "    return %v2\n}\n")
+        + "    %v1:i32 = neg_w %v0\n"
+        + "    return %v1\n}\n")
 }
+
+let selection_prints_jump_edge = fn function -> match (select_function function Nil) {
+  | Err(_) -> false
+  | Ok(selected) -> equal (print_function selected)
+      ("function fn aarch64-machine-ir-test::forward@0 -> i32 entry .Lbb0 {\n"
+        + ".Lbb0():\n"
+        + "    %v0:i32 = load_i32 10\n"
+        + "    jump .Lbb1(%v0)\n"
+        + ".Lbb1(%v1:i32):\n"
+        + "    return %v1\n}\n")
+}
+
+let selection_prints_explicit_trap = fn function -> match (select_function function Nil) {
+  | Err(_) -> false
+  | Ok(selected) -> equal (print_function selected)
+      ("function fn aarch64-machine-ir-test::explicitly_trap@0 -> i32 entry .Lbb0 {\n"
+        + ".Lbb0():\n"
+        + "    trap explicit_trap\n}\n")
+}
+
+let selection_prints_binary_operation = fn function -> fn function_name ->
+  fn result_type -> fn operation -> match (select_function function Nil) {
+    | Err(_) -> false
+    | Ok(selected) -> equal (print_function selected)
+        ("function fn " + module_name + "::" + function_name + "@0 -> "
+          + result_type + " entry .Lbb0 {\n"
+          + ".Lbb0():\n"
+          + "    %v0:i32 = load_i32 10\n"
+          + "    %v1:i32 = load_i32 32\n"
+          + "    %v2:" + result_type + " = " + operation + " %v0, %v1\n"
+          + "    return %v2\n}\n")
+  }
 
 let selection_prints_boolean_equality = fn function -> match (select_function function Nil) {
   | Err(_) -> false
@@ -399,6 +550,13 @@ let selection_rejects_division_without_trap_lowering = fn function ->
       equal reason "division selection awaits explicit divide-by-zero trap lowering"
   }
 
+let selection_rejects_remainder_without_trap_lowering = fn function ->
+  match (select_function function Nil) {
+    | Ok(_) -> false
+    | Err(A64SelectionFailure { reason, function: _, block: _, span: _ }) ->
+      equal reason "remainder selection awaits explicit remainder-by-zero trap lowering"
+  }
+
 let selection_rejects_unmodeled_effect = fn function ->
   match (select_function function Nil) {
     | Ok(_) -> false
@@ -417,8 +575,13 @@ let all_pass = fn tests -> match tests {
   | Cons(true, remaining) -> all_pass remaining
 }
 
-let run_tests = fn () -> all_pass (Cons(
-  module_verifies (fixture_module valid_add_function),
+let run_tests = fn () -> all_pass (
+  Cons(module_verifies (fixture_module explicit_trap_function),
+  Cons(module_verifies (fixture_module jump_function),
+  Cons(selection_prints_jump_edge jump_function,
+  Cons(selection_prints_negation negation_function,
+  Cons(selection_prints_explicit_trap explicit_trap_function,
+  Cons(module_verifies scalar_operations_module,
   Cons(module_verifies (fixture_module effectful_add_function),
   Cons(module_verifies (fixture_module boolean_equality_function),
   Cons(module_verifies (fixture_module boolean_inequality_function),
@@ -426,7 +589,16 @@ let run_tests = fn () -> all_pass (Cons(
   Cons(module_verifies direct_call_module,
   Cons(module_verifies (fixture_module host_call_function),
   Cons(module_verifies (fixture_module division_function),
-  Cons(selection_prints_expected_ir valid_add_function,
+  Cons(module_verifies (fixture_module remainder_function),
+  Cons(selection_prints_binary_operation valid_add_function "sum" "i32" "add_w",
+  Cons(selection_prints_binary_operation valid_subtract_function "difference" "i32" "sub_w",
+  Cons(selection_prints_binary_operation valid_multiply_function "product" "i32" "mul_w",
+  Cons(selection_prints_binary_operation valid_equal_function "integer_equal" "bool" "cmp_set.eq_w",
+  Cons(selection_prints_binary_operation valid_not_equal_function "integer_not_equal" "bool" "cmp_set.ne_w",
+  Cons(selection_prints_binary_operation valid_less_than_function "integer_less_than" "bool" "cmp_set.slt_w",
+  Cons(selection_prints_binary_operation valid_less_equal_function "integer_less_equal" "bool" "cmp_set.sle_w",
+  Cons(selection_prints_binary_operation valid_greater_than_function "integer_greater_than" "bool" "cmp_set.sgt_w",
+  Cons(selection_prints_binary_operation valid_greater_equal_function "integer_greater_equal" "bool" "cmp_set.sge_w",
   Cons(selection_rejects_unmodeled_effect effectful_add_function,
   Cons(selection_prints_boolean_equality boolean_equality_function,
   Cons(selection_prints_boolean_inequality boolean_inequality_function,
@@ -434,7 +606,8 @@ let run_tests = fn () -> all_pass (Cons(
   Cons(selection_preserves_host_call_and_effect host_call_function,
   Cons(selection_preserves_branch_labels_and_edge_arguments branch_function,
   Cons(selection_rejects_division_without_trap_lowering division_function,
-    Nil)))))))))))))))))
+  Cons(selection_rejects_remainder_without_trap_lowering remainder_function,
+  Nil))))))))))))))))))))))))))))))))
 
 let main = fn () -> match (run_tests ()) {
   | true -> 0
