@@ -32,8 +32,10 @@ NativeIR effects. Runtime division/remainder use explicit helper IDs with
 fixed `i32, i32 -> i32` signatures; `Host.args` uses the typed opaque-pointer
 `rt_native_host_args` bridge. Other calls remain logical until ABI lowering.
 
-Closure creation/calls/captures, string constants, aggregate construction or
-projection, globals, and switches are outside this selection slice. A64 virtual registers preserve NativeIR SSA
+Closure creation/calls/captures, string constants, constructor/tuple/record
+pattern tests, aggregate construction or projection, globals, and switches
+are outside this selection slice. Unsupported pattern shapes report that
+runtime representation lowering is required rather than entering Codegen. A64 virtual registers preserve NativeIR SSA
 IDs, and labels preserve NativeIR block IDs. No physical registers, stack/frame
 layout, object format, assembler, runtime-value layout, or external calling
 convention is selected by MachineIR. `A64Trap` remains a semantic pseudo until

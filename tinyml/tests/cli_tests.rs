@@ -736,6 +736,34 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert!(!unsupported_host_executable.exists());
     assert!(!unsupported_host_assembly.exists());
 
+    let nested_pattern_source = dir.join("unsupported-pattern.ml");
+    fs::write(
+        &nested_pattern_source,
+        "use Host.{args}\nuse Prelude.{Cons, Nil}\nlet main = fn () -> match args () { | Cons(\"run\", Cons(_, Nil)) -> 42 | _ -> 0 }\n",
+    )
+    .unwrap();
+    let nested_pattern_executable = dir.join("unsupported-pattern.native");
+    let nested_pattern_assembly = dir.join("unsupported-pattern.native.aarch64.s");
+    fs::write(&nested_pattern_executable, "stale executable").unwrap();
+    fs::write(&nested_pattern_assembly, "stale assembly").unwrap();
+    let nested_pattern_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&nested_pattern_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&nested_pattern_executable)
+        .output()
+        .unwrap();
+    assert!(!nested_pattern_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&nested_pattern_compile.stderr)
+            .contains("nested constructor patterns require explicit runtime matching")
+    );
+    assert!(!nested_pattern_executable.exists());
+    assert!(!nested_pattern_assembly.exists());
+
     for (fixture_name, source_text, expected_status) in [
         ("arithmetic", "let main = fn () -> 20 + 22\n", 42),
         ("subtraction", "let main = fn () -> 84 - 42\n", 42),

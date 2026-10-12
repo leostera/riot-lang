@@ -21,10 +21,15 @@ with `-O2`:
 
 The C-hosted compiler was built and could execute the CLI, but this command did
 not emit native code and is not evidence of the required self-rebuild chain.
-The 303-second figure includes full import-graph checking and the current
-root-only LambdaIR/NativeIR lowering path; it is not comparable to the baseline
-compiler's JS-to-native or self-rebuild measurements. Clang emitted a benign
-warning about the missing optional MariaDB connector search path during link.
+The 303-second figure includes full import-graph checking and the root-only
+LambdaIR/NativeIR lowering path; it is not comparable to the baseline
+compiler's JS-to-native or self-rebuild measurements. At the time of this
+probe the failure used the generic selector-subset diagnostic. A follow-up
+adds the specific `nested constructor patterns require explicit runtime
+matching` diagnostic and tests that rejection leaves no executable or
+assembly; pattern lowering itself remains unimplemented. Clang emitted a
+benign warning about the missing optional MariaDB connector search path during
+link.
 
 The separately tested C-first bootstrap still emits deterministic C, builds a
 C-hosted compiler, and runs its smoke/negative-input checks with Node excluded

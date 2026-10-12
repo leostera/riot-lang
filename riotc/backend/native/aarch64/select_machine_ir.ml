@@ -15,9 +15,14 @@ use NativeIr.Ir.{
   NativeValueId, NativeInstruction, NativeConstant, NativeUnit, NativeInteger,
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
-  NativeTestValue, NativeValueTest, NativeLiteralTest, NativePatternMatchTest,
-  NativeLiteralPatternTest, NativeCallOperation, NativeCall, NativeDirectCall,
+  NativeTestValue, NativeValueTest, NativeLiteralTest, NativeConstructorTest,
+  NativeTupleArityTest, NativePatternMatchTest,
+  NativeLiteralPatternTest, NativeNestedConstructorPatternTest,
+  NativeTuplePatternTest, NativeNestedRecordPatternTest,
+  NativeCallOperation, NativeCall, NativeDirectCall,
   NativeClosureCall, NativeHostCall, NativeEffectSet, NativeTerminator,
+  NativeCreateClosure, NativeCreateAggregate, NativeProjectAggregate,
+  NativeLoadGlobal, NativeStoreGlobal,
   NativeJump, NativeConditionalBranch,
   NativeBranch, NativeReturn, NativeTrap, NativeUnreachable, NativeSwitchTerminator,
   NativeEdge
@@ -299,7 +304,7 @@ let select_literal_test = fn value -> fn constant -> fn result_type ->
         value: native_register value,
         literal: literal
       }))
-      | _ -> Err("unit and string literal tests are outside the scalar selector")
+      | _ -> Err("string literal tests are outside the scalar selector")
     }
   }
 
@@ -326,6 +331,26 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
   | NativeTestValue(NativeValueTest {
       value, test: NativePatternMatchTest(NativeLiteralPatternTest(constant))
     }) -> select_literal_test value constant result_type substitutions
+  | NativeTestValue(NativeValueTest {
+      value: _, test: NativeConstructorTest(_)
+    }) -> Err("constructor tests require explicit runtime representation lowering")
+  | NativeTestValue(NativeValueTest {
+      value: _, test: NativeTupleArityTest(_)
+    }) -> Err("tuple arity tests require explicit runtime representation lowering")
+  | NativeTestValue(NativeValueTest {
+      value: _, test: NativePatternMatchTest(NativeNestedConstructorPatternTest(_))
+    }) -> Err("nested constructor patterns require explicit runtime matching")
+  | NativeTestValue(NativeValueTest {
+      value: _, test: NativePatternMatchTest(NativeTuplePatternTest(_))
+    }) -> Err("tuple patterns require explicit runtime representation lowering")
+  | NativeTestValue(NativeValueTest {
+      value: _, test: NativePatternMatchTest(NativeNestedRecordPatternTest(_))
+    }) -> Err("record patterns require explicit runtime representation lowering")
+  | NativeProjectAggregate(_) -> Err("aggregate projections are outside the AArch64 selector")
+  | NativeCreateAggregate(_) -> Err("aggregate construction is outside the AArch64 selector")
+  | NativeCreateClosure(_) -> Err("closure creation is outside the AArch64 selector")
+  | NativeLoadGlobal(_) -> Err("module global loads are outside the AArch64 selector")
+  | NativeStoreGlobal(_) -> Err("module global stores are outside the AArch64 selector")
   | NativeCallOperation(NativeCall {
       target, arguments, argument_types, result_type: call_result
     }) -> match (select_call_site target arguments argument_types call_result
