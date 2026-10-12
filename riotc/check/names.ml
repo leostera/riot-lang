@@ -135,8 +135,14 @@ let validate_unique_names = fn names -> fn description ->
 
 let builtin_type_name = fn name ->
   match name {
+    | "i8" -> true
+    | "i16" -> true
     | "i32" -> true
     | "i64" -> true
+    | "u8" -> true
+    | "u16" -> true
+    | "u32" -> true
+    | "u64" -> true
     | "bool" -> true
     | "string" -> true
     | "unit" -> true

@@ -71,8 +71,12 @@ The checker loads the complete reachable source-module graph and performs
 rank-1 Hindley–Milner inference, preserving polymorphic schemes and nominal
 type identities across module boundaries. Local `let` bindings and imported
 values are independently instantiated; constructors and patterns are checked
-against their payload and nominal types. The native entry point must have type
-`unit -> i32`.
+against their payload and nominal types. The checker recognizes the fixed-width
+integer names `i8/i16/i32/i64/u8/u16/u32/u64`; decimal literals are range-
+checked for explicit integer annotations and unannotated literals default to
+checked `i32`. Integer operations and target representations remain a narrower
+supported subset, with unsupported widths rejected before Codegen. The native
+entry point must have type `unit -> i32`.
 
 TypedAST retains resolved binding identities, checked types, and source spans.
 LambdaIR is a typed, target-independent desugared core. NativeIR is typed
@@ -87,9 +91,10 @@ opaque-pointer, and `Host.args` AArch64 MachineIR selection. `aarch64-linear-ir 
 TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice, signed
 `i64` direct-call pass-through, and opaque-pointer pass-through, with explicit
 spill slots, call-register assignments, and linearized control flow. The
-current i64 slice supports explicitly ascribed small integer literals,
-parameters, returns, direct-call arguments/results, and block-edge copies; it
-does not yet support i64 arithmetic, comparisons, or pattern tests.
+current i64 slice supports explicitly ascribed decimal literals within the
+checked signed range, parameters, returns, direct-call arguments/results, and
+block-edge copies; it does not yet support i64 arithmetic, comparisons, or
+pattern tests.
 `aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT` emits and links
 AArch64 assembly for one selected function and writes `OUTPUT.aarch64.s` for
 inspection. This is a function-level Codegen harness, not a whole-module

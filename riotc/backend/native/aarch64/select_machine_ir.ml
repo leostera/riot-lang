@@ -317,7 +317,8 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
   | NativeConstant(NativeInteger(literal)) -> match (native_type result_type substitutions) {
     | Ok(A64I32) -> Ok(A64LoadI32(literal))
     | Ok(A64I64) -> Ok(A64LoadI64(literal))
-    | _ -> Err("integer constant must have type i32 or i64")
+    | Ok(_) -> Err("integer constant must have an integer representation")
+    | Err(message) -> Err("integer constant: " + message)
   }
   | NativeConstant(NativeBoolean(value)) -> match (is_value_type A64Boolean result_type substitutions) {
     | true -> Ok(A64LoadBoolean(value))

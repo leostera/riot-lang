@@ -10,12 +10,11 @@ use Syntax.Ast.{
 }
 use Syntax.Lexer.{Token, TokenInfo, IdentifierToken, IntegerToken, TextToken, SymbolToken, SourceSpan}
 use Syntax.Parser.Common.{
-  ParseStep, valid_i32_literal, take_symbol, reverse_list, is_constructor_name
+  ParseStep, take_symbol, reverse_list, is_constructor_name
 }
 use Syntax.Parser.Types.{parse_type}
 use Syntax.Parser.Literals.{decode_string_literal}
 use Syntax.Parser.PatternParts.{parse_pattern_list, parse_pattern_list_tail}
-use String.{equal}
 
 let token_span = fn token ->
   match token {
@@ -77,29 +76,15 @@ type RecordPatternState = RecordPatternState {
   reversed_fields: List<RecordPatternField>
 }
 
-let parse_integer_pattern = fn digits -> fn remaining ->
-  match (valid_i32_literal digits) {
-    | true -> Ok(ParseStep {
-      value: make_pattern (PatternInteger(IntegerLiteral(digits))),
-      remaining_tokens: remaining
-    })
-    | false -> Err("integer pattern is outside i32 range")
-  }
+let parse_integer_pattern = fn digits -> fn remaining -> Ok(ParseStep {
+  value: make_pattern (PatternInteger(IntegerLiteral(digits))),
+  remaining_tokens: remaining
+})
 
-let parse_negative_pattern = fn digits -> fn remaining ->
-  match (equal digits "2147483648") {
-    | true -> Ok(ParseStep {
-      value: make_pattern (PatternInteger(IntegerLiteral("-2147483648"))),
-      remaining_tokens: remaining
-    })
-    | false -> match (valid_i32_literal digits) {
-      | true -> Ok(ParseStep {
-        value: make_pattern (PatternInteger(IntegerLiteral("-" + digits))),
-        remaining_tokens: remaining
-      })
-      | false -> Err("integer pattern is outside i32 range")
-    }
-  }
+let parse_negative_pattern = fn digits -> fn remaining -> Ok(ParseStep {
+  value: make_pattern (PatternInteger(IntegerLiteral("-" + digits))),
+  remaining_tokens: remaining
+})
 
 let parse_named_pattern = fn parse_nested_pattern -> fn name -> fn tokens ->
   match (is_constructor_name name) {

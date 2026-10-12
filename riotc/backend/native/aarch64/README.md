@@ -20,10 +20,10 @@ span; there is no C fallback from this command.
 The selected subset currently includes typed `unit`, `i32`, and `bool` values
 (`unit` remains visible in MachineIR but has no physical value), signed `i64`
 values, and opaque pointer values for concrete strings, composites, and
-function values. `i64` values support explicitly ascribed literals within the
-parser's existing range, parameters, returns, direct-call arguments/results,
-and block-edge copies; arithmetic, comparisons, and pattern tests remain
-unsupported. Pointer values can be passed through a function unchanged; string
+function values. `i64` values support explicitly ascribed decimal literals
+within the checked `i64` range, parameters, returns, direct-call
+arguments/results, and block-edge copies; arithmetic, comparisons, and pattern
+tests remain unsupported. Pointer values can be passed through a function unchanged; string
 constants and operations that inspect or construct pointed-to values remain
 unsupported. The slice also includes `i32` addition, subtraction,
 multiplication, negation, signed comparisons, and boolean equality/inequality;

@@ -18,6 +18,7 @@ use Check.Inference.{
   BindingIdentity, BindingScope, ModuleValueBinding, LocalValueBinding,
   ConstructorIdentity
 }
+use Check.IntegerLiterals.{integer_type_name}
 use NativeIr.Print.{print_function_id, print_type, block_id, print_constructor_identity}
 use NativeIr.Ir.{
   NativeModule, NativeGlobal, NativeFunctionId, NativeTopLevelFunction,
@@ -1434,15 +1435,22 @@ let verify_native_nominal_aggregate = fn kind -> fn entity -> fn fields ->
     }
   }
 
+let verify_integer_result = fn checked_type -> fn substitutions ->
+  match (apply_substitutions checked_type substitutions) {
+    | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
+        (integer_type_name name) {
+      | true -> Ok(true)
+      | false -> Err("NativeIR verifier: integer constant has a non-integer type")
+    }
+    | _ -> Err("NativeIR verifier: integer constant has a non-integer type")
+  }
+
 let verify_instruction_operation = fn module -> fn (NativeInstruction {
   result: _, result_type, operation, effects: _, span: _
 }) -> fn definitions -> fn substitutions -> match operation {
         | NativeConstant(constant) -> match constant {
           | NativeUnit -> verify_named_result result_type "unit" substitutions
-          | NativeInteger(_) -> match (verify_named_result result_type "i32" substitutions) {
-            | Ok(_) -> Ok(true)
-            | Err(_) -> verify_named_result result_type "i64" substitutions
-          }
+          | NativeInteger(_) -> verify_integer_result result_type substitutions
           | NativeBoolean(_) -> verify_named_result result_type "bool" substitutions
           | NativeString(_) -> verify_named_result result_type "string" substitutions
         }

@@ -100,6 +100,45 @@ fn riotc_native_ir_verifier_fixtures_execute() {
 }
 
 #[test]
+fn riotc_fixed_width_integer_literal_ranges_execute() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let fixture = include_dir.join("check/integer_literals_test.ml");
+    let dir = temp_dir("riotc-integer-literal-ranges");
+    let output_module = dir.join("integer-literals.mjs");
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&output_module)
+        .arg(&fixture)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "Stage 0 compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ main }} from {:?}; const status = main(); if (status !== 0 && status !== 0n) process.exit(1)",
+            output_module.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "integer literal range fixture stderr: {}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
 fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let include_dir = repo.join("riotc");
@@ -725,7 +764,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     let i64_call_source = dir.join("i64-direct-graph.ml");
     fs::write(
         &i64_call_source,
-        "let echo = fn (value: i64) -> value\nlet choose = fn flag -> match flag { | true -> echo (41: i64) | false -> echo (42: i64) }\nlet take_i64 = fn (ignored: i64) -> 42\nlet main = fn () -> take_i64 (choose true)\n",
+        "let echo = fn (value: i64) -> value\nlet choose = fn flag -> match flag { | true -> echo (9223372036854775807: i64) | false -> echo (-9223372036854775808: i64) }\nlet take_i64 = fn (ignored: i64) -> 42\nlet main = fn () -> take_i64 (choose true)\n",
     )
     .unwrap();
     let i64_call_executable = dir.join("i64-direct-graph.native");
@@ -747,7 +786,8 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     let i64_call_assembly =
         fs::read_to_string(i64_call_executable.with_file_name("i64-direct-graph.native.aarch64.s"))
             .unwrap();
-    assert!(i64_call_assembly.contains("ldr x9, =41"));
+    assert!(i64_call_assembly.contains("ldr x9, =9223372036854775807"));
+    assert!(i64_call_assembly.contains("ldr x9, =-9223372036854775808"));
     assert!(i64_call_assembly.contains("    str x1, [sp,#0]\n    ldr x0, [sp,#0]"));
     assert!(i64_call_assembly.contains("ldr x1"));
     assert!(i64_call_assembly.contains("str x0"));
@@ -774,6 +814,87 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert_eq!(i64_call_run.status.code(), i64_call_c_run.status.code());
     assert_eq!(i64_call_run.stdout, i64_call_c_run.stdout);
     assert_eq!(i64_call_run.stderr, i64_call_c_run.stderr);
+
+    let out_of_range_i64_source = dir.join("out-of-range-i64.ml");
+    fs::write(
+        &out_of_range_i64_source,
+        "let main = fn () -> { let ignored = (9223372036854775808: i64); 42 }\n",
+    )
+    .unwrap();
+    let out_of_range_i64_executable = dir.join("out-of-range-i64.native");
+    let out_of_range_i64_assembly = dir.join("out-of-range-i64.native.aarch64.s");
+    fs::write(&out_of_range_i64_executable, "stale executable").unwrap();
+    fs::write(&out_of_range_i64_assembly, "stale assembly").unwrap();
+    let out_of_range_i64_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&out_of_range_i64_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&out_of_range_i64_executable)
+        .output()
+        .unwrap();
+    assert!(!out_of_range_i64_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&out_of_range_i64_compile.stderr)
+            .contains("integer literal is outside i64 range")
+    );
+    assert!(!out_of_range_i64_executable.exists());
+    assert!(!out_of_range_i64_assembly.exists());
+
+    let out_of_range_i32_source = dir.join("out-of-range-i32.ml");
+    fs::write(
+        &out_of_range_i32_source,
+        "let main = fn () -> { let ignored = 2147483648; 42 }\n",
+    )
+    .unwrap();
+    let out_of_range_i32_executable = dir.join("out-of-range-i32.native");
+    fs::write(&out_of_range_i32_executable, "stale executable").unwrap();
+    let out_of_range_i32_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&out_of_range_i32_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&out_of_range_i32_executable)
+        .output()
+        .unwrap();
+    assert!(!out_of_range_i32_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&out_of_range_i32_compile.stderr)
+            .contains("integer literal is outside i32 range")
+    );
+    assert!(!out_of_range_i32_executable.exists());
+
+    let unsupported_i8_source = dir.join("unsupported-i8.ml");
+    fs::write(
+        &unsupported_i8_source,
+        "let take_i8 = fn (value: i8) -> 42\nlet main = fn () -> take_i8 (1: i8)\n",
+    )
+    .unwrap();
+    let unsupported_i8_executable = dir.join("unsupported-i8.native");
+    let unsupported_i8_assembly = dir.join("unsupported-i8.native.aarch64.s");
+    fs::write(&unsupported_i8_executable, "stale executable").unwrap();
+    fs::write(&unsupported_i8_assembly, "stale assembly").unwrap();
+    let unsupported_i8_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&unsupported_i8_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&unsupported_i8_executable)
+        .output()
+        .unwrap();
+    assert!(!unsupported_i8_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&unsupported_i8_compile.stderr)
+            .contains("i8 has no AArch64 representation in this backend slice")
+    );
+    assert!(!unsupported_i8_executable.exists());
+    assert!(!unsupported_i8_assembly.exists());
 
     let global_initializer_source = dir.join("global-initializer.ml");
     fs::write(

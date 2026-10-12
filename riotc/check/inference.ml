@@ -25,6 +25,7 @@ use Syntax.Ast.{
 }
 use Syntax.Lexer.{SourceSpan}
 use Check.Names.{check_source_module_names}
+use Check.IntegerLiterals.{integer_type_name, integer_literal_fits}
 use Modules.{LoadedModule}
 use Host.{read_file}
 
@@ -1052,8 +1053,14 @@ let convert_record_type_fields = fn fields -> fn variables -> fn visible_types -
 
 let builtin_type_name = fn name ->
   match name {
+    | "i8" -> true
+    | "i16" -> true
     | "i32" -> true
     | "i64" -> true
+    | "u8" -> true
+    | "u16" -> true
+    | "u32" -> true
+    | "u64" -> true
     | "bool" -> true
     | "string" -> true
     | "unit" -> true
@@ -2173,9 +2180,12 @@ let infer_pattern_node = fn pattern -> fn expected_type -> fn visible_types -> f
       | Err(message) -> Err(message)
       | Ok(next_state) -> Ok(PatternBindings { bindings: Nil, state: next_state })
     }
-    | PatternInteger(_) -> match (constrain_types expected_type (builtin_inferred_type "i32") state) {
-      | Err(message) -> Err(message)
-      | Ok(next_state) -> Ok(PatternBindings { bindings: Nil, state: next_state })
+    | PatternInteger(IntegerLiteral(value)) -> match (integer_literal_fits value "i32") {
+      | false -> Err("integer pattern is outside i32 range")
+      | true -> match (constrain_types expected_type (builtin_inferred_type "i32") state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> Ok(PatternBindings { bindings: Nil, state: next_state })
+      }
     }
     | PatternBoolean(_) -> match (constrain_types expected_type (builtin_inferred_type "bool") state) {
       | Err(message) -> Err(message)
@@ -2619,9 +2629,35 @@ let validate_boolean_match_arms = fn saw_true -> fn saw_false -> fn arms ->
     }
   }
 
+let ascribed_integer_type = fn checked_type -> match checked_type {
+  | AppliedType(InferredNamedType { name, arguments }) -> match (integer_type_name name) {
+    | false -> None
+    | true -> match arguments {
+      | Nil -> Some(name)
+      | Cons(_, _) -> None
+    }
+  }
+  | _ -> None
+}
+
+let infer_ascribed_expression = fn inner -> fn annotation_type ->
+  fn environment -> fn visible_types -> fn state ->
+  match (infer_expression inner environment visible_types state) {
+    | Err(message) -> Err(message)
+    | Ok(InferenceResult { inferred_type, state: next_state }) ->
+      match (constrain_types inferred_type annotation_type next_state) {
+        | Err(message) -> Err("expression annotation: " + message)
+        | Ok(final_state) -> Ok(make_inference_result
+          (apply_state_substitutions annotation_type final_state) final_state)
+      }
+  }
+
 let infer_expression_node = fn expression -> fn environment -> fn visible_types -> fn state ->
   match (expression_kind expression) {
-    | Integer(_) -> Ok(make_inference_result (builtin_inferred_type "i32") state)
+    | Integer(IntegerLiteral(value)) -> match (integer_literal_fits value "i32") {
+      | true -> Ok(make_inference_result (builtin_inferred_type "i32") state)
+      | false -> Err("integer literal is outside i32 range")
+    }
     | Boolean(_) -> Ok(make_inference_result (builtin_inferred_type "bool") state)
     | StringLiteral(_) -> Ok(make_inference_result (builtin_inferred_type "string") state)
     | Unit -> Ok(make_inference_result (builtin_inferred_type "unit") state)
@@ -2677,31 +2713,20 @@ let infer_expression_node = fn expression -> fn environment -> fn visible_types 
     | Ascription(AscriptionExpression { expression: inner, annotation }) ->
       match (convert_type_expression annotation Nil visible_types Nil) {
         | Err(message) -> Err(message)
-        | Ok(annotation_type) -> match (expression_kind inner) {
-          | Integer(_) -> match annotation_type {
-            | AppliedType(InferredNamedType { name: "i64", arguments: Nil }) -> {
-              let annotated_state = record_expression_annotation inner annotation_type state;
-              Ok(make_inference_result annotation_type annotated_state)
-            }
-            | _ -> match (infer_expression inner environment visible_types state) {
-              | Err(message) -> Err(message)
-              | Ok(InferenceResult { inferred_type, state: next_state }) ->
-                match (constrain_types inferred_type annotation_type next_state) {
-                  | Err(message) -> Err("expression annotation: " + message)
-                  | Ok(final_state) -> Ok(make_inference_result
-                    (apply_state_substitutions annotation_type final_state) final_state)
-                }
-            }
-          }
-          | _ -> match (infer_expression inner environment visible_types state) {
-            | Err(message) -> Err(message)
-            | Ok(InferenceResult { inferred_type, state: next_state }) ->
-              match (constrain_types inferred_type annotation_type next_state) {
-                | Err(message) -> Err("expression annotation: " + message)
-                | Ok(final_state) -> Ok(make_inference_result
-                  (apply_state_substitutions annotation_type final_state) final_state)
+        | Ok(annotation_type) -> match (ascribed_integer_type annotation_type) {
+          | Some(type_name) -> match (expression_kind inner) {
+            | Integer(IntegerLiteral(value)) -> match (integer_literal_fits value type_name) {
+              | false -> Err("integer literal is outside " + type_name + " range")
+              | true -> {
+                let annotated_state = record_expression_annotation inner annotation_type state;
+                Ok(make_inference_result annotation_type annotated_state)
               }
+            }
+            | _ -> infer_ascribed_expression inner annotation_type environment
+              visible_types state
           }
+          | None -> infer_ascribed_expression inner annotation_type environment
+            visible_types state
         }
       }
     | Block(expressions) -> infer_sequence infer_expression expressions

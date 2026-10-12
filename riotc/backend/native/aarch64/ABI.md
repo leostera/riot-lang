@@ -119,10 +119,9 @@ shape while deliberately using an all-spill allocator:
   before Codegen.
 
 This conservative policy validates an initial ABI lowering but is not the full
-native backend. The current LIR slice supports signed `i64` constants only
-when explicitly ascribed and within the parser's existing `i32` literal range,
-plus `i64` parameters, returns, direct-call arguments/results, spill/reload,
-and block-edge copies. It does not support `i64` arithmetic, comparisons, or
+native backend. The current LIR slice supports signed `i64` decimal constants when explicitly
+ascribed and within the checked `i64` range, plus `i64` parameters, returns,
+direct-call arguments/results, spill/reload, and block-edge copies. It does not support `i64` arithmetic, comparisons, or
 pattern tests. `A64Pointer` supports opaque pointer arguments, returns,
 spill/reload, and edge copies; it does not implement string constants, heap
 layouts, constructors, projections, or closure calls. Narrow integer widths,

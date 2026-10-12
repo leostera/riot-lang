@@ -16,7 +16,7 @@ use Syntax.Lexer.{
   SourceSpan
 }
 use Syntax.Parser.Common.{
-  ParseStep, valid_i32_literal, take_symbol, reverse_list, is_constructor_name
+  ParseStep, take_symbol, reverse_list, is_constructor_name
 }
 use Syntax.Parser.Types.{parse_type}
 use Syntax.Parser.Patterns.{parse_pattern}
@@ -459,30 +459,16 @@ let parse_primary = fn parse_nested_expression -> fn tokens ->
     | _ -> Err("expected an expression")
   }
 
-let parse_integer = fn digits -> fn remaining ->
-  match (valid_i32_literal digits) {
-    | true -> Ok(ParseStep {
-      value: make_expression (Integer(IntegerLiteral(digits))),
-      remaining_tokens: remaining
-    })
-    | false -> Err("integer literal is outside i32 range")
-  }
+let parse_integer = fn digits -> fn remaining -> Ok(ParseStep {
+  value: make_expression (Integer(IntegerLiteral(digits))),
+  remaining_tokens: remaining
+})
 
-let parse_negative_integer = fn digits -> fn literal_span -> fn remaining ->
-  match (equal digits "2147483648") {
-    | true -> Ok(ParseStep {
-      value: make_expression (Integer(IntegerLiteral("-2147483648"))),
-      remaining_tokens: remaining
-    })
-    | false -> match (valid_i32_literal digits) {
-      | true -> Ok(ParseStep {
-        value: make_expression (Negate(expression_with_span
-          (make_expression (Integer(IntegerLiteral(digits)))) literal_span)),
-        remaining_tokens: remaining
-      })
-      | false -> Err("integer literal is outside i32 range")
-    }
-  }
+let parse_negative_integer = fn digits -> fn literal_span -> fn remaining -> Ok(ParseStep {
+  value: expression_with_span
+    (make_expression (Integer(IntegerLiteral("-" + digits)))) literal_span,
+  remaining_tokens: remaining
+})
 
 let parse_identifier_expression = fn parse_nested_expression -> fn name -> fn tokens ->
   match (is_constructor_name name) {
