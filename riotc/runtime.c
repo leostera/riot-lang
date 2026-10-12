@@ -527,8 +527,10 @@ static RtValue rt_write_file_contents(RtValue path, RtValue contents) {
   char *text = rt_as_string(contents);
   size_t length = strlen(text);
   size_t written = fwrite(text, 1, length, file);
-  int failed = ferror(file) || written != length || fclose(file) != 0;
-  if (failed) return rt_err(rt_unit(), rt_string("failed to write file"));
+  int write_failed = ferror(file) || written != length;
+  int close_failed = fclose(file) != 0;
+  if (write_failed || close_failed)
+    return rt_err(rt_unit(), rt_string("failed to write file"));
   return rt_ok(rt_unit(), rt_unit());
 }
 
