@@ -25,7 +25,11 @@ The tests cover checker acceptance/rejection, generated JS behavior, and the
 C-first Riotc bootstrap. The test
 `compile_c_first_bootstraps_riotc_without_javascript` emits the compiler graph
 twice, builds the C-hosted compiler, and compiles/runs a smoke program with
-Node excluded from `PATH`.
+Node excluded from `PATH`. On macOS/AArch64,
+`c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript`
+additionally uses that C-hosted compiler to compile and run bounded direct-call
+and recursive AArch64 graphs with Node excluded; this is not native Riotc
+self-rebuild.
 
 ## CLI
 

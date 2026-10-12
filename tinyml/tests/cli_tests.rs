@@ -678,6 +678,50 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert_eq!(direct_graph_run.stdout, direct_graph_c_run.stdout);
     assert_eq!(direct_graph_run.stderr, direct_graph_c_run.stderr);
 
+    let recursive_source = dir.join("recursive-direct-graph.ml");
+    fs::write(
+        &recursive_source,
+        "let countdown = fn (value: i32) -> match value {\n  | 0 -> 42\n  | _ -> countdown (value - 1)\n}\nlet main = fn () -> countdown 10\n",
+    )
+    .unwrap();
+    let recursive_executable = dir.join("recursive-direct-graph.native");
+    let recursive_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&recursive_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&recursive_executable)
+        .output()
+        .unwrap();
+    assert!(
+        recursive_compile.status.success(),
+        "recursive direct-call graph Codegen failed: {}",
+        String::from_utf8_lossy(&recursive_compile.stderr)
+    );
+    let recursive_run = Command::new(&recursive_executable).output().unwrap();
+    assert_eq!(recursive_run.status.code(), Some(42));
+    let recursive_c_executable = dir.join("recursive-direct-graph.c-backend");
+    let recursive_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&recursive_source)
+        .arg("-o")
+        .arg(&recursive_c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        recursive_c_compile.status.success(),
+        "C-backend recursive fixture failed: {}",
+        String::from_utf8_lossy(&recursive_c_compile.stderr)
+    );
+    let recursive_c_run = Command::new(&recursive_c_executable).output().unwrap();
+    assert_eq!(recursive_run.status.code(), recursive_c_run.status.code());
+    assert_eq!(recursive_run.stdout, recursive_c_run.stdout);
+    assert_eq!(recursive_run.stderr, recursive_c_run.stderr);
+
     let global_initializer_source = dir.join("global-initializer.ml");
     fs::write(
         &global_initializer_source,
@@ -3703,6 +3747,35 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .output()
         .unwrap();
     assert_eq!(native_run.status.code(), Some(42));
+
+    let recursive_source = dir.join("recursive-direct-graph.ml");
+    fs::write(
+        &recursive_source,
+        "let countdown = fn (value: i32) -> match value {\n  | 0 -> 42\n  | _ -> countdown (value - 1)\n}\nlet main = fn () -> countdown 10\n",
+    )
+    .unwrap();
+    let recursive_executable = dir.join("recursive-direct-graph.native");
+    let recursive_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&recursive_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&recursive_executable)
+        .output()
+        .unwrap();
+    assert!(
+        recursive_compile.status.success(),
+        "C-hosted compiler failed to produce recursive native code: {}",
+        String::from_utf8_lossy(&recursive_compile.stderr)
+    );
+    let recursive_run = Command::new(&recursive_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(recursive_run.status.code(), Some(42));
 
     let invalid_source = dir.join("invalid-native.ml");
     let invalid_executable = dir.join("invalid-native");

@@ -142,10 +142,11 @@ cargo test -p tinyml --test cli_tests c_hosted_bootstrap_compiles_native_direct_
 That Codegen test compares process status, stdout, and stderr against the
 existing C backend for scalar arithmetic, signed comparisons/branches, wrapped
 integer operations, i32 division/remainder (including zero and `INT32_MIN / -1`
-edge behavior), a two-function direct-call graph, pattern-failure diagnostics,
+edge behavior), two-function and recursive direct-call graphs, pattern-failure diagnostics,
 and a `Host.args` helper call. It also confirms unsupported Host helpers,
 nested constructor patterns, and non-closure global initialization fail before
 Codegen. A separate macOS/AArch64 test builds the C-first C-hosted compiler
-with Node excluded and uses it to compile/run the direct-call graph. These are
+with Node excluded and uses it to compile/run direct-call and recursive
+native graphs. These are
 bounded slices, not evidence that Riotc itself or unsupported string/Host/global
 semantics work through whole-module native Codegen.

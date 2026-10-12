@@ -9,28 +9,32 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes an owned native compiler pipeline for the TinyML-written
+This RFD specifies an owned native compiler pipeline for the TinyML-written
 RiotML compiler: `.ml → AST → TypedAST → LambdaIR → NativeIR → ARM → Codegen`.
 `LambdaIR` is the compiler's typed, desugared core language; `NativeIR` is a
 target-independent SSA control-flow IR; the ARM backend lowers it through
-machine and linear IRs before emitting AArch64 assembly. The compiler pipeline
-and its IRs are to be implemented in the bootstrap-compatible TinyML/RiotML
-source under `riotc/`, not as a Rust Stage 0 backend. Stage 0 remains
-JavaScript-only and RFD0050's bootstrap acceptance
-chain and language contracts remain unchanged. Until this proposal is accepted
-and the new backend passes that chain, the existing C-plus-Clang backend
-remains the working implementation and comparison path.
+machine and linear IRs before emitting AArch64 assembly. An initial
+compiler-pipeline slice is implemented in bootstrap-compatible TinyML/RiotML
+source under `riotc/`, not as a Rust Stage 0 backend; whole-module native
+compilation remains unfinished. RFD0050's
+bootstrap architecture is revised to C-first/no-JavaScript: Rust Stage 0 emits
+C and Clang builds a C-hosted bootstrap compiler. That C is only a bridge; the
+owned RiotML backend must never fall back to generated C. RFD0050's language,
+typechecking, module, integer, string, Host, and failure-safety contracts are
+preserved. The existing C-plus-Clang source backend remains a measured
+behavioral/performance baseline until the owned pipeline passes the complete
+native self-rebuild acceptance chain.
 
 ## Motivation
 [motivation]: #motivation
 
-RFD0050 proved that Stage 0 can compile the RiotML compiler to JavaScript, that
-the JS-hosted compiler can produce a native compiler, and that the native
-compiler can compile and run a program. The current native backend does this by
-emitting C and invoking Clang. That route is useful bootstrap evidence, but
-rebuilding the compiler through generated C and a general-purpose C compiler is
-slow in observed use, and the backend does not yet give Riot ownership of the
-machine-level representations or ARM code generation.
+The earlier RFD0050 proposal used a JavaScript-hosted compiler and C-plus-Clang
+source backend. The measured C-plus-Clang run remains a historical behavioral
+and performance baseline, distinct from the revised bootstrap bridge. The
+current required bootstrap is Rust Stage 0 to C, then Clang to a C-hosted
+compiler; JavaScript/Node are not required. The owned backend does not use
+emitted C for RiotML source modules and is intended to give Riot ownership of
+the machine-level representations and ARM code generation.
 
 Riot ML is intended to own its language and compiler rather than permanently
 rely on a host compiler's intermediate representation and code generator. A
@@ -57,15 +61,16 @@ the backend boundary explicit.
 - Make `NativeIR` a target-independent SSA form with explicit control flow.
 - Make ARM-specific selection, ABI/register handling, and code emission explicit
   stages rather than direct source-to-assembly translation.
-- Preserve RFD0050's source-language, typechecking, host, and bootstrap
-  acceptance contracts.
+- Preserve RFD0050's language/type/Host/failure-safety contracts while revising
+  its bootstrap acceptance chain to C-first/no-JavaScript.
 - Keep each IR printable and validated so failures can be localized to a pass.
 
 ## Non-goals
 
-- Adding a native backend to the Rust Stage 0 TinyML compiler. Stage 0 continues
-  to emit JavaScript for Node.
-- Changing the RFD0050 bootstrap architecture or weakening its acceptance test.
+- Adding a native backend to the Rust Stage 0 TinyML compiler. Its C output
+  is a bootstrap bridge only; RiotML native codegen remains in `riotc/`.
+- Using generated C as a fallback for RiotML source constructs or weakening
+  RFD0050's language/failure-safety contract.
 - Redesigning RiotML syntax, rank-1 HM typing, modules, integers, strings, or
   the Host contract.
 - Implementing actors, distribution, package management, Lean verification,
@@ -122,23 +127,24 @@ contributor can print or stop after any stage instead of debugging only the
 final executable. No later stage silently repairs a type error or accepts a
 malformed earlier IR.
 
-The intended compiler path is:
+The required no-JavaScript compiler path is:
 
 ```text
 Rust Stage 0 TinyML compiler
-        │ compiles the RiotML compiler source to JavaScript
+        │ emits the compiler source graph as C (bootstrap bridge)
         ▼
-JavaScript-hosted RiotML compiler
-        │ compiles that same source through the owned pipeline
+Clang-built C-hosted bootstrap compiler
+        │ compiles Riotc through the owned IR/AArch64 pipeline
         ▼
 Native RiotML compiler
-        │ can rebuild the same source and compile user programs
+        │ rebuilds a successor and compiles the status-42 fixture
         ▼
 AArch64 native executable
 ```
 
 This does not move native code generation into Stage 0. It makes the
-TinyML-written compiler's native path Riot-owned.
+TinyML-written compiler's native path Riot-owned; Stage 0 C is not a source
+backend or fallback.
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -230,10 +236,15 @@ constraints, labels, call forms, and data operations. Target information
 includes an explicit architecture/platform/ABI selection rather than assuming
 that all ARM64 systems share one assembly or calling convention.
 
-The first target is AArch64. The exact OS, object format, and ABI are still an
-acceptance question. Instructions must distinguish integer widths and signed
-operations where the source semantics require them. Unsupported NativeIR
-operations produce diagnostics before assembly output is considered complete.
+The approved first target is macOS AArch64 on Apple Silicon with Mach-O and
+the Apple AArch64 C ABI for declared runtime helpers; Clang assembles and links
+the emitted text. The initial convention is zero-sized `unit`, typed unboxed
+scalars, pointer-shaped composites, a hidden closure environment, and
+specialization at concrete types. This does not approve concrete aggregate
+layouts or every helper call shape; those remain explicitly typed and must be
+verified before use. Instructions must distinguish source widths and signed
+operations. Unsupported NativeIR operations produce diagnostics before
+Codegen.
 
 **Why split this stage from NativeIR:** target selection is where generic
 operations become ISA-specific. It should not infect the typed language core
@@ -290,9 +301,11 @@ All stages preserve these invariants:
 6. **Artifact safety:** a failed parse, check, IR validation, target lowering,
    assembler, or link step returns failure and does not leave a plausible
    executable at the requested output path.
-7. **Stage 0 boundary:** the Rust TinyML compiler remains JavaScript-only; all
-   Riot-owned native IR lowering and code generation lives in the compiler
-   source under `riotc/`.
+7. **Stage 0 boundary:** Rust TinyML emits C for the required bootstrap and
+   Clang builds the C-hosted compiler. JavaScript/Node are not invoked in the
+   acceptance chain. The C output is a bootstrap bridge only; all Riot-owned
+   native IR lowering and code generation lives in compiler source under
+   `riotc/`, with no generated-C fallback.
 
 ### 3. Diagnostics and observability
 
@@ -318,17 +331,20 @@ normal successful compilation.
 ### 4. Runtime and compatibility boundary
 
 This RFD owns the compiler representation pipeline, not a new source-language
-runtime contract. The generated native code must preserve RFD0050's supported
-program behavior and Host operations. Runtime value layout, closure layout,
-allocation policy, and the first platform ABI must be made explicit before the
-native backend can link arbitrary compiler code.
+runtime contract. Generated native code must preserve RFD0050's supported
+program behavior and Host operations. The initial macOS/Mach-O call ABI and
+unit/scalar/pointer convention are approved and recorded in
+`riotc/backend/native/aarch64/ABI.md`; concrete aggregate/string layouts,
+allocation, closure environments, and general helper marshalling remain
+unimplemented. Do not infer those details from ABI documentation or pass
+unsupported values to Codegen without explicit typed lowering.
 
 During bring-up, the existing C backend and runtime provide a behavioral
-reference. The owned backend may call existing C runtime functions through an
-explicit target ABI, but it must not use generated C as an implicit fallback
-for source constructs. The C backend can be retired only after the end-to-end
-acceptance criteria pass on a clean checkout and behavior agrees for the
-supported corpus.
+reference. The owned backend may call existing C runtime functions through
+explicitly declared and tested helper ABIs, but it must not use generated C as
+an implicit fallback for source constructs. Keep the C backend as a measured
+baseline until the full end-to-end acceptance criteria pass from a clean
+checkout and behavior agrees for the supported corpus.
 
 ### 5. Validation and acceptance criteria
 
@@ -340,8 +356,10 @@ The pipeline is ready to replace the current C backend only when:
    the RFD0050 smoke program; unsupported forms are rejected before codegen.
 3. Differential tests compare the existing C backend and owned backend on
    shared fixtures until the C path is retired.
-4. The Stage 0 compiler emits the RiotML compiler to JavaScript; running that
-   compiler produces a native compiler through the owned pipeline.
+4. Rust Stage 0 emits C for the Riotc source graph; Clang builds the
+   C-hosted bootstrap compiler with Node/JavaScript excluded. That compiler
+   produces a native compiler only through the owned pipeline (never C
+   fallback).
 5. That native compiler rebuilds the same compiler source into a successor
    native compiler, and the successor compiles a `main : unit -> i32` fixture
    whose executable exits with status 42.
@@ -354,8 +372,11 @@ The pipeline is ready to replace the current C backend only when:
    This RFD sets no numeric performance target; a threshold must be agreed
    before performance is claimed as a release criterion.
 
-The native self-rebuild criterion extends, rather than weakens, RFD0050's
-existing JS-to-native and native-fixture acceptance chain.
+The C-first chain replaces RFD0050's earlier JavaScript bootstrap proposal
+without changing its language, typechecking, module, integer, string, Host, or
+failure-safety contracts. The native self-rebuild criterion still requires the
+successor compiler and status-42 fixture; the verified direct-call-graph slice
+is progress, not completion.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
@@ -390,15 +411,14 @@ selection from ABI/register allocation. Codegen then emits inspectable assembly.
 This follows the useful separation found in OCaml's native pipeline without
 copying its multiple optimizing middle ends or runtime.
 
-### Keep C plus Clang as the permanent backend
+### Keep C plus Clang as the measured baseline
 
-This is the simplest near-term option and already passes the RFD0050 bootstrap
-acceptance test. It should remain as the reference during implementation. It
-was not selected as the permanent design because it leaves per-source code
-generation and native semantics mediated by generated C and a C compiler,
-rather than by Riot-owned IR and ARM lowering. The observed self-rebuild cost
-also motivates measuring a direct backend, though it does not prove a direct
-backend will be faster.
+This is the simplest existing source backend and provides a behavioral oracle
+during implementation. It is retained until the owned path passes acceptance,
+but is not the permanent native architecture. Per-source generated C mediates
+native semantics through a C compiler rather than Riot-owned IR and ARM
+lowering. The historical self-rebuild measurements motivate measurement of the
+owned path, but do not prove it will be faster.
 
 ### Lower LambdaIR directly to ARM assembly
 
@@ -426,10 +446,10 @@ costs one lowering but establishes a cleaner extension point.
 
 ### Do nothing
 
-The current C backend continues to provide the bootstrap path, but the compiler
-remains dependent on C generation and Clang for every source-program build and
-has no Riot-owned native IR/backend boundary. It remains useful as a baseline,
-but does not deliver the pipeline described here.
+Without the owned pipeline, the existing C backend remains the behavioral
+baseline and cannot provide the required native self-rebuild architecture. The
+C-first Stage 0 bridge only bootstraps the C-hosted compiler; it does not
+replace the Riot-owned IR/AArch64 path.
 
 ## Prior art
 [prior-art]: #prior-art
@@ -440,9 +460,9 @@ but does not deliver the pipeline described here.
   architecture open. This RFD specifies one compiler-pipeline slice of that
   direction.
 - [RFD0050 - TinyML Bootstrap Compiler](RFD0050-tinyml-bootstrap.md) defines
-  the Stage 0 JavaScript host, source-language contract, and end-to-end
-  self-compilation acceptance chain. This RFD preserves those requirements
-  while proposing a future replacement for the C-plus-Clang source backend.
+  the TinyML language/Host contracts and revised C-first/no-JavaScript
+  acceptance chain. This RFD specifies the owned RiotML native pipeline and
+  retains the existing C-plus-Clang source backend as a measured baseline.
 - The Rust Stage 0 experiment at commit
   [`892cf9459`](https://github.com/leostera/riot-lang/commit/892cf9459)
   sketched a block-parameter SSA program, a NativeIR-to-AArch64 selector, and
@@ -464,32 +484,44 @@ but does not deliver the pipeline described here.
 ## Decisions and remaining questions
 [decisions-and-remaining-questions]: #decisions-and-remaining-questions
 
-### Proposal recorded by this RFD
+### Implementation state and decisions
 
-- The compiler implementation remains in TinyML/RiotML source under `riotc/`;
-  the new pipeline is not implemented in Rust Stage 0.
-- LambdaIR is the typed, desugared, target-independent core language.
-- NativeIR is target-independent SSA with explicit basic blocks, terminators,
-  and block arguments.
-- ARM is split into target instruction selection, allocated/linear machine
-  code, and code emission.
-- Initial Codegen emits assembly and delegates object assembly/linking to
-  configured platform tools; direct binary encoding is not required.
-- C-plus-Clang remains the existing path and reference until the proposed path
-  passes the acceptance criteria; this RFD does not itself claim the proposal
-  has been accepted or implemented.
-- RFD0050's Stage 0 architecture, language semantics, and completion bar remain
-  unchanged. The additional native self-rebuild check is additive.
+- An initial pipeline slice is implemented in TinyML/RiotML source under
+  `riotc/`, not in Rust Stage 0. TypedAST, LambdaIR, verified
+  target-independent NativeIR SSA, AArch64 MachineIR/LinearIR, and assembly
+  Codegen have positive/negative tests.
+- LambdaIR is the typed, desugared, target-independent core; NativeIR has
+  explicit blocks, terminators, effects, and block arguments.
+- The approved first target is macOS AArch64/Mach-O using Clang for assembly
+  and linking. `ABI.md` records zero-sized unit, typed unboxed scalars,
+  pointer-shaped composites, hidden closure environment, concrete-type
+  specialization, and explicit helper boundaries.
+- The currently verified native slice covers unit/i32/bool, opaque-pointer
+  pass-through, scalar/control-flow/direct calls, i32 div/rem traps, pattern
+  failure, and the exact `Host.args` bridge. A direct-call-graph harness also
+  compiles a bounded same-module graph and runs status 42 from a clean C-first
+  bootstrap with Node excluded.
+- This is not whole-module Codegen: module initialization/global loads,
+  concrete strings/aggregates/constructors/projections, general Host marshalling,
+  and the compiler-source corpus remain incomplete. Native Riotc self-rebuild
+  and the successor smoke are not established. Unsupported operations fail
+  explicitly before Codegen; the C backend is not a fallback.
+- RFD0050's language and failure-safety contracts remain unchanged; its
+  bootstrap/acceptance architecture is revised to C-first/no-JavaScript.
+  Existing C-plus-Clang source compilation remains the measured baseline.
 
-### Unresolved questions
+### Unresolved representation and release questions
 
-- Which AArch64 platform and object ABI is the first supported target: Apple
-  arm64, Linux AAPCS64, or both?
-- Does the first ARM backend preserve the current tagged `RtValue` runtime
-  representation, call selected C runtime helpers, or define a new runtime ABI
-  in a separate proposal?
-- What minimal set of optimization passes is needed after correctness and
-  before performance measurement? Constant folding and DCE must respect exact
+- The approved ABI settles call shapes and pointer-shaped composites, but not
+  concrete string/aggregate/closure layouts or allocation. Which explicit
+  typed helper boundaries and runtime object representation should implement
+  those operations? Do not infer these details from `void *` shape or the
+  legacy tagged `RtValue` runtime.
+- What additional declared Host/runtime helper bridges are needed for the full
+  compiler-source corpus? Each boundary requires an exact prototype and
+  differential tests.
+- What minimal optimization passes are needed after correctness and before
+  performance measurement? Constant folding and DCE must respect exact
   fixed-width arithmetic and effect/trap behavior.
 - What compile-time and output-size target makes the new compiler
   “reasonable”? No benchmark or numeric threshold is asserted here.

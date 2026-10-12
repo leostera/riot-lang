@@ -36,10 +36,10 @@ link.
 A separate macOS/AArch64 integration test now builds the Stage 0 C-hosted
 compiler with Clang `-O2`, then invokes
 `aarch64-compile-direct-graph` with `PATH=/usr/bin:/bin` and
-`RIOTML_RUNTIME_DIR` set. The compiler emitted a two-function AArch64 program
-through its reachable monomorphic same-module direct-call graph; that native
-program exited 42. The same no-Node path rejected ill-typed input before
-Codegen and removed stale executable/assembly outputs. The direct-graph command
+`RIOTML_RUNTIME_DIR` set. The compiler emitted a two-function AArch64 program and a self-recursive
+countdown program through reachable monomorphic same-module direct-call graphs;
+both native programs exited 42. The same no-Node path rejected ill-typed input
+before Codegen and removed stale executable/assembly outputs. The direct-graph command
 checks that the module initializer is one no-parameter block with a return,
 containing only zero-capture closure creation, global stores, and unit
 constants; it skips that initializer and selected-function global loads fail
