@@ -2,19 +2,23 @@
 use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
 use String.{equal}
 use Syntax.Ast.{
-  ValueName, ConstructorName, BinaryOperator, Addition, Subtraction,
-  Multiplication, Division, Remainder, Equal, NotEqual, LessThan,
-  LessThanOrEqual, GreaterThan, GreaterThanOrEqual
+  ValueName, ConstructorName, TypeName, TypeDeclarationData, TypeAlias,
+  TypeRecord, TypeVariants, TupleVariant, TupleVariantData, RecordVariant,
+  RecordVariantData, RecordTypeField, BinaryOperator, Addition, Subtraction,
+  Multiplication,
+  Division, Remainder, Equal, NotEqual, LessThan, LessThanOrEqual,
+  GreaterThan, GreaterThanOrEqual
 }
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
   InferenceType, FreeVariable, GenericVariable, AppliedType, InferredNamedType,
   FunctionType, InferredFunctionType, InferredTuple, InferredRecord, InferredVariant,
-  InferredRecordField, InferredVariantCase, TypeSubstitution, apply_substitutions,
+  InferredRecordField, InferredVariantCase, TypeSubstitution,
+  TypeVisibility, VisibleType, VisibleTypeData, apply_substitutions,
   BindingIdentity, BindingScope, ModuleValueBinding, LocalValueBinding,
   ConstructorIdentity
 }
-use NativeIr.Print.{print_function_id, print_type, block_id}
+use NativeIr.Print.{print_function_id, print_type, block_id, print_constructor_identity}
 use NativeIr.Ir.{
   NativeModule, NativeGlobal, NativeFunctionId, NativeTopLevelFunction,
   NativeNestedFunction, NativeNestedFunctionId, NativeModuleInitializer,
@@ -70,6 +74,13 @@ type NativeGenericInstantiation = NativeGenericInstantiation {
   variable: i32,
   is_free_variable: bool,
   checked_type: InferenceType
+}
+
+type NativeConstructorShape = NativeConstructorShape {
+  type_identity: string,
+  type_parameter_count: i32,
+  field_count: i32,
+  field_names: List<ValueName>
 }
 
 let both = fn first -> fn second -> match first {
@@ -835,6 +846,21 @@ let list_length = fn values -> match values {
   | Cons(_, remaining) -> 1 + list_length remaining
 }
 
+let aggregate_value_count = fn fields -> match fields {
+  | Nil -> 0
+  | Cons(_, remaining) -> 1 + aggregate_value_count remaining
+}
+
+let inference_type_count = fn types -> match types {
+  | Nil -> 0
+  | Cons(_, remaining) -> 1 + inference_type_count remaining
+}
+
+let value_name_count = fn names -> match names {
+  | Nil -> 0
+  | Cons(_, remaining) -> 1 + value_name_count remaining
+}
+
 let record_field_type = fn name -> fn fields -> match fields {
   | Nil -> None
   | Cons(InferredRecordField { name: field_name, field_type }, remaining) ->
@@ -1271,6 +1297,143 @@ let verify_aggregate_field_keys = fn kind -> fn fields -> fn index -> match fiel
   }
 }
 
+let record_field_count = fn fields -> match fields {
+  | Nil -> 0
+  | Cons(_, remaining) -> 1 + record_field_count remaining
+}
+
+let type_expression_count = fn types -> match types {
+  | Nil -> 0
+  | Cons(_, remaining) -> 1 + type_expression_count remaining
+}
+
+let type_parameter_count = fn parameters -> match parameters {
+  | Nil -> 0
+  | Cons(_, remaining) -> 1 + type_parameter_count remaining
+}
+
+let native_field_names = fn fields -> match fields {
+  | Nil -> Nil
+  | Cons(RecordTypeField { name, field_type: _ }, remaining) ->
+    Cons(name, native_field_names remaining)
+}
+
+let native_record_constructor_shape = fn type_identity -> fn parameter_count -> fn fields ->
+  Ok(NativeConstructorShape {
+    type_identity: type_identity,
+    type_parameter_count: parameter_count,
+    field_count: record_field_count fields,
+    field_names: native_field_names fields
+  })
+
+let find_native_variant_constructor = fn wanted -> fn type_identity ->
+  fn parameter_count -> fn variants -> match variants {
+    | Nil -> Err("constructor is not declared by the nominal type")
+    | Cons(TupleVariant(TupleVariantData { constructor_name, fields }), remaining) ->
+      match (same_constructor_name wanted constructor_name) {
+        | false -> find_native_variant_constructor wanted type_identity parameter_count remaining
+        | true -> Ok(NativeConstructorShape {
+          type_identity: type_identity,
+          type_parameter_count: parameter_count,
+          field_count: type_expression_count fields,
+          field_names: Nil
+        })
+      }
+    | Cons(RecordVariant(RecordVariantData { constructor_name, fields }), remaining) ->
+      match (same_constructor_name wanted constructor_name) {
+        | false -> find_native_variant_constructor wanted type_identity parameter_count remaining
+        | true -> native_record_constructor_shape type_identity parameter_count fields
+      }
+  }
+
+let find_native_constructor_in_type = fn entity -> fn type_visibility -> {
+  let ConstructorIdentity { constructor_name: wanted, type_identity: _ } = entity;
+  match type_visibility {
+    | VisibleType(VisibleTypeData {
+        declaration: TypeDeclarationData { name, parameters, definition, span: _ },
+        type_identity, visible_names: _, available_names: _
+      }) -> match definition {
+      | TypeAlias(_) -> Err("type aliases do not own constructors")
+      | TypeRecord(fields) -> match name {
+        | TypeName(type_name) -> match (same_constructor_name wanted
+            (ConstructorName(type_name))) {
+          | false -> Err("constructor does not belong to this record type")
+          | true -> native_record_constructor_shape type_identity
+              (type_parameter_count parameters) fields
+        }
+      }
+      | TypeVariants(variants) -> find_native_variant_constructor wanted type_identity
+          (type_parameter_count parameters) variants
+    }
+  }
+}
+
+let same_constructor_identity_type = fn (ConstructorIdentity {
+  type_identity: wanted, constructor_name: _
+}) -> fn actual -> equal wanted actual
+
+let find_native_constructor = fn entity -> fn visible_types -> match visible_types {
+  | Nil -> Err("NativeIR verifier: nominal type identity is not visible")
+  | Cons(type_visibility, remaining) -> match type_visibility {
+    | VisibleType(VisibleTypeData {
+        declaration: _, type_identity, visible_names: _, available_names: _
+      }) -> match (same_constructor_identity_type entity type_identity) {
+      | true -> find_native_constructor_in_type entity type_visibility
+      | false -> find_native_constructor entity remaining
+    }
+  }
+}
+
+let find_record_aggregate_value = fn wanted_name -> fn fields -> match fields {
+  | Nil -> None
+  | Cons(NativeAggregateValue { field: NativeRecordField(name), value }, remaining) ->
+    match (same_value_name wanted_name name) {
+      | true -> Some(value)
+      | false -> find_record_aggregate_value wanted_name remaining
+    }
+  | Cons(_, remaining) -> find_record_aggregate_value wanted_name remaining
+}
+
+let verify_record_aggregate_payload = fn names -> fn fields -> match names {
+  | Nil -> Ok(true)
+  | Cons(name, remaining) -> match (find_record_aggregate_value name fields) {
+    | None -> Err("NativeIR verifier: record aggregate is missing a declared field")
+    | Some(_) -> verify_record_aggregate_payload remaining fields
+  }
+}
+
+let verify_native_nominal_aggregate = fn kind -> fn entity -> fn fields ->
+  fn result_type -> fn module -> fn substitutions ->
+  match (find_native_constructor entity (module_nominal_types module)) {
+    | Err(message) -> Err("NativeIR verifier: aggregate references unknown constructor "
+      + print_constructor_identity entity + " in " + module_identity module + ": " + message)
+    | Ok(NativeConstructorShape {
+        type_identity, type_parameter_count, field_count, field_names
+      }) -> match (apply_substitutions result_type substitutions) {
+      | AppliedType(InferredNamedType { name, arguments }) -> match (equal name type_identity) {
+        | false -> Err("NativeIR verifier: aggregate result type does not match its constructor")
+        | true -> match (inference_type_count arguments == type_parameter_count) {
+          | false -> Err("NativeIR verifier: aggregate nominal type argument count mismatch")
+          | true -> match kind {
+            | NativeRecordAggregate(_) -> match (aggregate_value_count fields == field_count) {
+              | false -> Err("NativeIR verifier: record aggregate field count mismatch")
+              | true -> match (value_name_count field_names == field_count) {
+                | false -> Err("NativeIR verifier: record constructor field metadata is inconsistent")
+                | true -> verify_record_aggregate_payload field_names fields
+              }
+            }
+            | NativeVariantAggregate(_) -> match (aggregate_value_count fields == field_count) {
+              | true -> Ok(true)
+              | false -> Err("NativeIR verifier: constructor aggregate arity mismatch")
+            }
+            | NativeTupleAggregate -> Err("NativeIR verifier: tuple aggregate has no nominal constructor")
+          }
+        }
+      }
+      | _ -> Err("NativeIR verifier: nominal aggregate has a non-nominal result type")
+    }
+  }
+
 let verify_instruction_operation = fn module -> fn (NativeInstruction {
   result: _, result_type, operation, effects: _, span: _
 }) -> fn definitions -> fn substitutions -> match operation {
@@ -1331,8 +1494,10 @@ let verify_instruction_operation = fn module -> fn (NativeInstruction {
                     definitions substitutions 0
                 | _ -> Err("NativeIR verifier: tuple aggregate has a non-tuple result type")
               }
-              | NativeRecordAggregate(_) -> Ok(true)
-              | NativeVariantAggregate(_) -> Ok(true)
+              | NativeRecordAggregate(entity) -> verify_native_nominal_aggregate kind
+                  entity fields result_type module substitutions
+              | NativeVariantAggregate(entity) -> verify_native_nominal_aggregate kind
+                  entity fields result_type module substitutions
             }
           }
         | NativeProjectAggregate(NativeProjection { aggregate, field }) ->
@@ -1367,6 +1532,11 @@ let module_functions = fn (NativeModule {
   module_identity: _, nominal_types: _, substitutions: _, globals: _,
   initializer: _, functions
 }) -> functions
+
+let module_nominal_types = fn (NativeModule {
+  module_identity: _, nominal_types, substitutions: _, globals: _,
+  initializer: _, functions: _
+}) -> nominal_types
 
 let module_globals = fn (NativeModule {
   module_identity: _, nominal_types: _, substitutions: _, globals,

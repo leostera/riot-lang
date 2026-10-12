@@ -1,10 +1,15 @@
 // Executable positive and negative fixtures for NativeIR verification.
 use Prelude.{List, Nil, Cons, Result, Ok, Err}
-use Syntax.Ast.{ValueName, IntegerLiteral, Addition, Division}
+use Syntax.Ast.{
+  ValueName, TypeName, ConstructorName, TypeDeclarationData, TypeRecord,
+  RecordTypeField, NamedType, NamedTypeExpression, IntegerLiteral,
+  Addition, Division
+}
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
   InferenceType, AppliedType, InferredNamedType, InferredTuple, BindingIdentity,
-  ModuleValueBinding
+  ModuleValueBinding, ConstructorIdentity, TypeVisibility, VisibleType,
+  VisibleTypeData
 }
 use NativeIr.Ir.{
   NativeModule, NativeGlobal, NativeFunctionId, NativeTopLevelFunction,
@@ -13,7 +18,8 @@ use NativeIr.Ir.{
   NativeConstant, NativeUnit, NativeInteger, NativeBoolean, NativeString,
   NativePrimitiveOperation, NativePrimitiveBinary, NativeBinaryPrimitive,
   NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeTupleAggregate,
-  NativeTupleField, NativeEffectSet, NativeEffect, NativeMayTrap, NativeDivisionByZero,
+  NativeTupleField, NativeRecordAggregate, NativeRecordField, NativeEffectSet,
+  NativeEffect, NativeMayTrap, NativeDivisionByZero,
   NativeAllocate, NativeEdge, NativeJump, NativeConditionalBranch,
   NativeBranch, NativeReturn, NativeTrap, NativePatternFailure,
   NativeTerminator
@@ -62,14 +68,16 @@ let fixture_function = fn result_type -> fn entry -> fn blocks -> NativeFunction
   span: source_span
 }
 
-let fixture_module = fn function -> NativeModule {
+let fixture_module_with_nominal_types = fn nominal_types -> fn function -> NativeModule {
   module_identity: module_name,
-  nominal_types: Nil,
+  nominal_types: nominal_types,
   substitutions: Nil,
   globals: Nil,
   initializer: initializer_id,
   functions: Cons(initializer_function, Cons(function, Nil))
 }
+
+let fixture_module = fn function -> fixture_module_with_nominal_types Nil function
 
 let instruction = fn result -> fn checked_type -> fn operation -> fn effects ->
   NativeInstruction {
@@ -224,6 +232,66 @@ let tuple_aggregate_function = fn first_index -> {
 let valid_tuple_aggregate_function = tuple_aggregate_function 0
 let bad_tuple_aggregate_function = tuple_aggregate_function 1
 
+let pair_identity = module_name + "::Pair"
+let pair_type = AppliedType(InferredNamedType { name: pair_identity, arguments: Nil })
+let pair_constructor = ConstructorIdentity {
+  type_identity: pair_identity,
+  constructor_name: ConstructorName("Pair")
+}
+let pair_fields = Cons(RecordTypeField {
+  name: ValueName("left"),
+  field_type: NamedType(NamedTypeExpression { name: TypeName("i32"), arguments: Nil })
+}, Cons(RecordTypeField {
+  name: ValueName("right"),
+  field_type: NamedType(NamedTypeExpression { name: TypeName("bool"), arguments: Nil })
+}, Nil))
+let pair_visibility = VisibleType(VisibleTypeData {
+  declaration: TypeDeclarationData {
+    name: TypeName("Pair"),
+    parameters: Nil,
+    definition: TypeRecord(pair_fields),
+    span: source_span
+  },
+  type_identity: pair_identity,
+  visible_names: Nil,
+  available_names: Nil
+})
+let pair_nominal_types = Cons(pair_visibility, Nil)
+
+let nominal_record_function = fn aggregate_fields -> fn aggregate_type -> {
+  let first = instruction (NativeValueId(0)) int_type
+    (NativeConstant(NativeInteger(IntegerLiteral("7")))) (NativeEffectSet(Nil));
+  let second = instruction (NativeValueId(1)) bool_type
+    (NativeConstant(NativeBoolean(true))) (NativeEffectSet(Nil));
+  let aggregate = instruction (NativeValueId(2)) aggregate_type
+    (NativeCreateAggregate(NativeAggregate {
+      kind: NativeRecordAggregate(pair_constructor),
+      fields: aggregate_fields
+    })) (NativeEffectSet(Cons(NativeAllocate, Nil)));
+  fixture_function aggregate_type (NativeBlockId(0)) (Cons(block 0 (Nil)
+    (Cons(first, Cons(second, Cons(aggregate, Nil))))
+    (NativeReturn(NativeValueId(2))), Nil))
+}
+
+let valid_pair_record_function = nominal_record_function (Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("left")), value: NativeValueId(0)
+}, Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("right")), value: NativeValueId(1)
+}, Nil))) pair_type
+let missing_pair_field_function = nominal_record_function (Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("left")), value: NativeValueId(0)
+}, Nil)) pair_type
+let unknown_pair_field_function = nominal_record_function (Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("left")), value: NativeValueId(0)
+}, Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("other")), value: NativeValueId(1)
+}, Nil))) pair_type
+let wrong_pair_result_type_function = nominal_record_function (Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("left")), value: NativeValueId(0)
+}, Cons(NativeAggregateValue {
+  field: NativeRecordField(ValueName("right")), value: NativeValueId(1)
+}, Nil))) int_type
+
 let run_existing_tests = fn () -> both
   (expect_ok (verify_module (fixture_module valid_join_function)))
   (both (expect_error (verify_module (fixture_module bad_undefined_function)))
@@ -256,7 +324,15 @@ let run_tests = fn () -> both (run_existing_tests ())
   (both (expect_error (verify_module (fixture_module bad_constant_result_type_function)))
   (both (expect_error (verify_module (fixture_module bad_branch_condition_function)))
   (both (expect_ok (verify_module (fixture_module valid_tuple_aggregate_function)))
-    (expect_error (verify_module (fixture_module bad_tuple_aggregate_function))))))
+  (both (expect_error (verify_module (fixture_module bad_tuple_aggregate_function)))
+  (both (expect_ok (verify_module (fixture_module_with_nominal_types
+      pair_nominal_types valid_pair_record_function)))
+  (both (expect_error (verify_module (fixture_module_with_nominal_types
+      pair_nominal_types missing_pair_field_function)))
+  (both (expect_error (verify_module (fixture_module_with_nominal_types
+      pair_nominal_types unknown_pair_field_function)))
+    (expect_error (verify_module (fixture_module_with_nominal_types
+      pair_nominal_types wrong_pair_result_type_function))))))))))
 
 let both = fn first -> fn second -> match first {
   | false -> false
