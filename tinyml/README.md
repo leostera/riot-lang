@@ -37,6 +37,7 @@ cargo run -p tinyml -- compile path/to/Main.ml --target js -o build/Main.mjs -I 
 node build/Main.mjs
 cargo run -p tinyml -- compile path/to/Main.ml --target c -o build/Main.c -I path/to/modules
 clang -std=gnu11 -I riotc build/Main.c riotc/runtime.c -o build/Main
+RIOTML_RUNTIME_DIR="$PWD/riotc" build/Main
 ```
 
 - `lex` prints tokens and byte spans; `parse` prints the AST.
@@ -54,6 +55,8 @@ clang -std=gnu11 -I riotc build/Main.c riotc/runtime.c -o build/Main
   bindings). It rejects unsupported constructs before writing a C artifact;
   embedded-NUL strings and the complete Riotc compiler graph are not supported
   yet. Link generated C with `riotc/runtime.c` and include `riotc/runtime.h`.
+  Generated programs read `RIOTML_RUNTIME_DIR` at startup to expose the runtime
+  directory through `Host.runtime_directory`.
   Without `-o`, the selected target chooses `.mjs` or `.c` in the invocation
   directory.
 - Errors are reported with a non-zero command status. Type and module failures
