@@ -39,9 +39,9 @@ compiler with Clang `-O2`, then invokes
 `RIOTML_RUNTIME_DIR` set. The compiler emitted a two-function AArch64 program and a self-recursive
 countdown program through reachable monomorphic same-module direct-call graphs;
 both native programs exited 42. The same no-Node path rejected ill-typed input
-before Codegen and removed stale executable/assembly outputs. The direct-graph command
-checks that the module initializer is one no-parameter block with a return,
-containing only zero-capture closure creation, global stores, and unit
+before Codegen and removed stale executable/assembly outputs. The direct-graph
+command checks that the module initializer is one no-parameter block with a
+return, containing only zero-capture closure creation, global stores, and unit
 constants; it skips that initializer and selected-function global loads fail
 in selection. Non-closure initializer work is rejected. This is not a
 whole-module compiler or a native self-rebuild.
@@ -62,3 +62,25 @@ native direct-graph fixture **56,464 bytes**. This is a bounded clean-checkout
 C-first/native slice, not a performance comparison to the baseline and not the
 required native Riotc compiler or successor self-rebuild. The full
 compiler-source corpus remains unimplemented.
+
+## Same-fixture smoke microprobe
+
+Using the C-hosted compiler built from that clean archive, I compiled the same
+`let main = fn () -> 42` fixture five times through each available path, with
+`PATH=/usr/bin:/bin` and the runtime directory fixed:
+
+- Existing C-plus-Clang source backend: median **129.50 ms**, generated C
+  **854 bytes**, executable **56,248 bytes**.
+- Owned AArch64 direct-graph path: median **164.15 ms**, executable
+  **56,400 bytes**.
+
+All ten produced executables exited 42. The latest recorded C-backend
+baseline at `fcd131c20` reports this status-42 smoke at 0.600 s, 872 bytes of C,
+and 55,784 bytes for the executable. The current C backend generated 854 bytes of C (18 bytes less) and a smoke
+executable 464 bytes larger; the owned direct-graph executable is 616 bytes
+larger. These are warm local measurements including compiler process startup
+and Clang linking. The C-hosted compiler was built with `-O2`, unlike the
+historical baseline compiler, so timing differences are not a controlled
+comparison. The small fixture and different compiler revision do not establish
+performance of the full owned compiler or satisfy the final benchmark gate; no
+threshold is asserted.
