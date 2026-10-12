@@ -13,7 +13,9 @@ use NativeIr.Print.{print_function_id, print_binding}
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64I32, A64Boolean, A64Function, A64Block,
   A64BlockParameter, A64Instruction, A64Operation, A64LoadI32, A64LoadBoolean,
-  A64Call, A64CallSite, A64DirectCall, A64HostCall, A64CallArgument,
+  A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
+  A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
+  A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32, A64CompareI32,
   A64EqualBoolean, A64NotEqualBoolean, A64NegateI32,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
@@ -104,6 +106,14 @@ let print_operation = fn operation -> match operation {
     | true -> "load_bool true"
     | false -> "load_bool false"
   }
+  | A64TestI32Literal(A64I32LiteralTest {
+      value, literal: IntegerLiteral(text)
+    }) -> "cmp_set.eq_w " + print_register value + ", #" + text
+  | A64TestBooleanLiteral(A64BooleanLiteralTest { value, literal }) ->
+    "cmp_set.eq_bool " + print_register value + ", " + (match literal {
+      | true -> "true"
+      | false -> "false"
+    })
   | A64Call(A64CallSite { target, arguments, result_type }) ->
     "call " + print_call_target target + "(" + print_call_arguments arguments
       + ") -> " + print_scalar_type result_type

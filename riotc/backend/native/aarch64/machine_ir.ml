@@ -46,6 +46,8 @@ type A64Instruction = A64Instruction {
 type A64Operation =
   | A64LoadI32(IntegerLiteral)
   | A64LoadBoolean(bool)
+  | A64TestI32Literal(A64I32LiteralTest)
+  | A64TestBooleanLiteral(A64BooleanLiteralTest)
   | A64Call(A64CallSite)
   | A64AddI32(A64BinaryOperands)
   | A64SubtractI32(A64BinaryOperands)
@@ -56,6 +58,16 @@ type A64Operation =
   | A64NegateI32(A64VirtualRegister)
 
 // This call pseudo carries typed virtual arguments but assigns no physical ABI registers.
+type A64I32LiteralTest = A64I32LiteralTest {
+  value: A64VirtualRegister,
+  literal: IntegerLiteral
+}
+
+type A64BooleanLiteralTest = A64BooleanLiteralTest {
+  value: A64VirtualRegister,
+  literal: bool
+}
+
 type A64CallSite = A64CallSite {
   target: A64CallTarget,
   arguments: List<A64CallArgument>,

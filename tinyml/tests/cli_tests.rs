@@ -130,7 +130,10 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
     let supported_source = dir.join("supported.ml");
     fs::write(
         &supported_source,
-        "let add = fn x -> x + 1\nlet main = fn () -> 42\n",
+        "let add = fn x -> x + 1\n\
+         let is_ten = fn x -> match x { | 10 -> true | _ -> false }\n\
+         let is_true = fn x -> match x { | true -> 1 | false -> 0 }\n\
+         let main = fn () -> 42\n",
     )
     .unwrap();
     let selected = Command::new("node")
@@ -152,6 +155,44 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         "unexpected MachineIR:\n{printed}"
     );
 
+    let integer_match = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&supported_source)
+        .arg("is_ten")
+        .output()
+        .unwrap();
+    assert!(
+        integer_match.status.success(),
+        "integer literal match selection stderr: {}",
+        String::from_utf8_lossy(&integer_match.stderr)
+    );
+    let integer_machine_ir = String::from_utf8_lossy(&integer_match.stdout);
+    assert!(
+        integer_machine_ir.contains("cmp_set.eq_w %v0, #10"),
+        "unexpected integer-match MachineIR:\n{integer_machine_ir}"
+    );
+
+    let boolean_match = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&supported_source)
+        .arg("is_true")
+        .output()
+        .unwrap();
+    assert!(
+        boolean_match.status.success(),
+        "boolean literal match selection stderr: {}",
+        String::from_utf8_lossy(&boolean_match.stderr)
+    );
+    let boolean_machine_ir = String::from_utf8_lossy(&boolean_match.stdout);
+    assert!(
+        boolean_machine_ir.contains("cmp_set.eq_bool %v0, true"),
+        "unexpected boolean-match MachineIR:\n{boolean_machine_ir}"
+    );
+
     let unsupported_source = dir.join("unsupported.ml");
     fs::write(
         &unsupported_source,
@@ -171,6 +212,35 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
     assert!(
         diagnostic.contains("division selection awaits explicit divide-by-zero trap lowering"),
         "unexpected selection diagnostic: {diagnostic}"
+    );
+
+    let unsupported_value_source = dir.join("unsupported-value.ml");
+    fs::write(
+        &unsupported_value_source,
+        "let concatenate = fn x -> x + \"!\"\nlet main = fn () -> 42\n",
+    )
+    .unwrap();
+    let unsupported_value = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&unsupported_value_source)
+        .arg("concatenate")
+        .output()
+        .unwrap();
+    assert!(
+        !unsupported_value.status.success(),
+        "string representation unexpectedly selected"
+    );
+    assert!(
+        unsupported_value.stdout.is_empty(),
+        "unsupported selection unexpectedly emitted MachineIR"
+    );
+    let unsupported_value_diagnostic = String::from_utf8_lossy(&unsupported_value.stderr);
+    assert!(
+        unsupported_value_diagnostic
+            .contains("only i32 and bool values have an AArch64 scalar representation here"),
+        "unexpected unsupported-value diagnostic: {unsupported_value_diagnostic}"
     );
 }
 

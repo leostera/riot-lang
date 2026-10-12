@@ -17,7 +17,8 @@ use NativeIr.Ir.{
   NativeInstruction, NativeConstant, NativeUnit, NativeInteger,
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeNegatePrimitive, NativeBinaryPrimitive,
-  NativeCallOperation, NativeCall, NativeDirectCall,
+  NativeCallOperation, NativeCall, NativeDirectCall, NativeTestValue,
+  NativeValueTest, NativePatternMatchTest, NativeLiteralPatternTest,
   NativeHostCall, NativeUnknownCall, NativeHostRead, NativeEffectSet,
   NativeEffect, NativeMayTrap,
   NativeDivisionByZero, NativeRemainderByZero, NativeExplicitTrap,
@@ -229,6 +230,78 @@ let scalar_operations_module = fixture_module_with_functions
   Cons(valid_not_equal_function, Cons(valid_less_than_function,
   Cons(valid_less_equal_function, Cons(valid_greater_than_function,
   Cons(valid_greater_equal_function, Cons(negation_function, Nil)))))))))))
+let integer_literal_pattern_function = NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName("is_ten"),
+    scope: ModuleValueBinding
+  }),
+  result_type: bool_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Cons(NativeInstruction {
+      result: NativeValueId(0),
+      result_type: int_type,
+      operation: NativeConstant(NativeInteger(IntegerLiteral("10"))),
+      effects: no_effects,
+      span: source_span
+    }, Cons(NativeInstruction {
+      result: NativeValueId(1),
+      result_type: bool_type,
+      operation: NativeTestValue(NativeValueTest {
+        value: NativeValueId(0),
+        test: NativePatternMatchTest(NativeLiteralPatternTest(
+          NativeInteger(IntegerLiteral("10"))))
+      }),
+      effects: no_effects,
+      span: source_span
+    }, Nil)),
+    terminator: NativeReturn(NativeValueId(1)),
+    span: source_span
+  }, Nil),
+  span: source_span
+}
+
+let boolean_literal_pattern_function = NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName("is_true"),
+    scope: ModuleValueBinding
+  }),
+  result_type: bool_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Cons(NativeInstruction {
+      result: NativeValueId(0),
+      result_type: bool_type,
+      operation: NativeConstant(NativeBoolean(true)),
+      effects: no_effects,
+      span: source_span
+    }, Cons(NativeInstruction {
+      result: NativeValueId(1),
+      result_type: bool_type,
+      operation: NativeTestValue(NativeValueTest {
+        value: NativeValueId(0),
+        test: NativePatternMatchTest(NativeLiteralPatternTest(NativeBoolean(true)))
+      }),
+      effects: no_effects,
+      span: source_span
+    }, Nil)),
+    terminator: NativeReturn(NativeValueId(1)),
+    span: source_span
+  }, Nil),
+  span: source_span
+}
+
+let literal_pattern_module = fixture_module_with_functions
+  (Cons(integer_literal_pattern_function, Cons(boolean_literal_pattern_function, Nil)))
+
 let effectful_add_function = binary_function Addition int_type
   (NativeEffectSet(Cons(NativeHostRead, Nil))) "effectful_sum"
 
@@ -484,6 +557,28 @@ let selection_prints_binary_operation = fn function -> fn function_name ->
           + "    return %v2\n}\n")
   }
 
+let selection_prints_integer_literal_pattern = fn function ->
+  match (select_function function Nil) {
+    | Err(_) -> false
+    | Ok(selected) -> equal (print_function selected)
+        ("function fn aarch64-machine-ir-test::is_ten@0 -> bool entry .Lbb0 {\n"
+          + ".Lbb0():\n"
+          + "    %v0:i32 = load_i32 10\n"
+          + "    %v1:bool = cmp_set.eq_w %v0, #10\n"
+          + "    return %v1\n}\n")
+  }
+
+let selection_prints_boolean_literal_pattern = fn function ->
+  match (select_function function Nil) {
+    | Err(_) -> false
+    | Ok(selected) -> equal (print_function selected)
+        ("function fn aarch64-machine-ir-test::is_true@0 -> bool entry .Lbb0 {\n"
+          + ".Lbb0():\n"
+          + "    %v0:bool = load_bool true\n"
+          + "    %v1:bool = cmp_set.eq_bool %v0, true\n"
+          + "    return %v1\n}\n")
+  }
+
 let selection_prints_boolean_equality = fn function -> match (select_function function Nil) {
   | Err(_) -> false
   | Ok(selected) -> equal (print_function selected)
@@ -582,6 +677,7 @@ let run_tests = fn () -> all_pass (
   Cons(selection_prints_negation negation_function,
   Cons(selection_prints_explicit_trap explicit_trap_function,
   Cons(module_verifies scalar_operations_module,
+  Cons(module_verifies literal_pattern_module,
   Cons(module_verifies (fixture_module effectful_add_function),
   Cons(module_verifies (fixture_module boolean_equality_function),
   Cons(module_verifies (fixture_module boolean_inequality_function),
@@ -599,6 +695,8 @@ let run_tests = fn () -> all_pass (
   Cons(selection_prints_binary_operation valid_less_equal_function "integer_less_equal" "bool" "cmp_set.sle_w",
   Cons(selection_prints_binary_operation valid_greater_than_function "integer_greater_than" "bool" "cmp_set.sgt_w",
   Cons(selection_prints_binary_operation valid_greater_equal_function "integer_greater_equal" "bool" "cmp_set.sge_w",
+  Cons(selection_prints_integer_literal_pattern integer_literal_pattern_function,
+  Cons(selection_prints_boolean_literal_pattern boolean_literal_pattern_function,
   Cons(selection_rejects_unmodeled_effect effectful_add_function,
   Cons(selection_prints_boolean_equality boolean_equality_function,
   Cons(selection_prints_boolean_inequality boolean_inequality_function,
@@ -607,7 +705,7 @@ let run_tests = fn () -> all_pass (
   Cons(selection_preserves_branch_labels_and_edge_arguments branch_function,
   Cons(selection_rejects_division_without_trap_lowering division_function,
   Cons(selection_rejects_remainder_without_trap_lowering remainder_function,
-  Nil))))))))))))))))))))))))))))))))
+  Nil)))))))))))))))))))))))))))))))))))
 
 let main = fn () -> match (run_tests ()) {
   | true -> 0

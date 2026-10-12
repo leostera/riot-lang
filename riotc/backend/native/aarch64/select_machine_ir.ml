@@ -14,7 +14,8 @@ use NativeIr.Ir.{
   NativeValueId, NativeInstruction, NativeConstant, NativeInteger,
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
-  NativeCallOperation, NativeCall, NativeDirectCall,
+  NativeTestValue, NativeValueTest, NativeLiteralTest, NativePatternMatchTest,
+  NativeLiteralPatternTest, NativeCallOperation, NativeCall, NativeDirectCall,
   NativeClosureCall, NativeHostCall, NativeEffectSet, NativeTerminator,
   NativeJump, NativeConditionalBranch,
   NativeBranch, NativeReturn, NativeTrap, NativeUnreachable, NativeSwitchTerminator,
@@ -25,7 +26,9 @@ use Backend.Native.Aarch64.MachineIr.{
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
   A64LoadI32, A64LoadBoolean, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64AddI32, A64SubtractI32, A64MultiplyI32,
-  A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64BinaryOperands,
+  A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
+  A64BooleanLiteralTest, A64CompareI32, A64EqualBoolean, A64NotEqualBoolean,
+  A64BinaryOperands,
   A64IntegerComparison,
   A64Equal, A64NotEqual, A64SignedLessThan, A64SignedLessThanOrEqual,
   A64SignedGreaterThan, A64SignedGreaterThanOrEqual, A64Edge,
@@ -196,6 +199,23 @@ let select_call_site = fn target -> fn arguments -> fn argument_types ->
   }
 }
 
+// The NativeIR verifier guarantees that the tested value matches this literal's type.
+let select_literal_test = fn value -> fn constant -> fn result_type ->
+  fn substitutions -> match (is_scalar_type A64Boolean result_type substitutions) {
+    | false -> Err("literal pattern test must produce bool")
+    | true -> match constant {
+      | NativeInteger(literal) -> Ok(A64TestI32Literal(A64I32LiteralTest {
+        value: native_register value,
+        literal: literal
+      }))
+      | NativeBoolean(literal) -> Ok(A64TestBooleanLiteral(A64BooleanLiteralTest {
+        value: native_register value,
+        literal: literal
+      }))
+      | _ -> Err("unit and string literal tests are outside the scalar selector")
+    }
+  }
+
 let select_operation = fn operation -> fn result_type -> fn substitutions -> match operation {
   | NativeConstant(NativeInteger(literal)) -> match (is_scalar_type A64I32 result_type substitutions) {
     | true -> Ok(A64LoadI32(literal))
@@ -209,6 +229,12 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
       operator, operand_type, left, right
     })) -> select_integer_binary operator operand_type result_type left right substitutions
+  | NativeTestValue(NativeValueTest {
+      value, test: NativeLiteralTest(constant)
+    }) -> select_literal_test value constant result_type substitutions
+  | NativeTestValue(NativeValueTest {
+      value, test: NativePatternMatchTest(NativeLiteralPatternTest(constant))
+    }) -> select_literal_test value constant result_type substitutions
   | NativeCallOperation(NativeCall {
       target, arguments, argument_types, result_type: call_result
     }) -> match (select_call_site target arguments argument_types call_result
