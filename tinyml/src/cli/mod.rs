@@ -51,12 +51,12 @@ enum Command {
         include_dirs: Vec<PathBuf>,
         file: PathBuf,
     },
-    /// Compile a TinyML file to the Stage 0 JavaScript target.
+    /// Compile a TinyML file to a Stage 0 target.
     Compile {
-        /// Compilation target. Only `js` is supported by Stage 0.
+        /// Compilation target (`js` or the bootstrap C source target).
         #[arg(long, default_value = "js")]
         target: String,
-        /// Output path. JavaScript defaults to a `.mjs` module.
+        /// Output path. The selected target chooses the default extension.
         #[arg(short, long)]
         output: Option<PathBuf>,
         /// Search path for imported TinyML source modules.
@@ -205,12 +205,13 @@ fn compile_command(
         }
     }
 
-    if target != "js" {
-        return Err(miette!(
-            "unsupported compile target `{target}`; only `js` is supported"
-        ));
+    match target {
+        "js" => compile_js(file, output, include_dirs),
+        "c" => compile_c(file, output, include_dirs),
+        _ => Err(miette!(
+            "unsupported compile target `{target}`; expected `js` or `c`"
+        )),
     }
-    compile_js(file, output, include_dirs)
 }
 
 fn parse_file(file: &Path) -> Result<parser::Ast> {
@@ -288,6 +289,22 @@ fn compile_js(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> R
         .map(Path::to_path_buf)
         .unwrap_or_else(|| default_compile_output(file).with_extension("mjs"));
     emit_graph_javascript(&checked, &output)
+}
+
+fn compile_c(file: &Path, output: Option<&Path>, include_dirs: &[PathBuf]) -> Result<()> {
+    let checked = checked_pipeline_with_imports(file, include_dirs)?;
+    if checked.modules.len() != 1 {
+        return Err(miette!(
+            "C Stage 0 backend does not yet support imported module graphs"
+        ));
+    }
+    let module = lambda::translate(&checked.root().summary.tir);
+    let generated = backend::c::emit_main_i32(&module)
+        .map_err(|error| miette!("C source emission failed: {error}"))?;
+    let output = output
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| default_compile_output(file).with_extension("c"));
+    fs::write(output, generated).into_diagnostic()
 }
 
 fn emit_graph_javascript(pipeline: &CheckedPipeline, root_output: &Path) -> Result<()> {

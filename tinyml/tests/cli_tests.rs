@@ -2314,6 +2314,69 @@ fn host_io_and_process_failures_return_errors() {
 }
 
 #[test]
+fn compile_c_emits_status_42_executable_without_javascript() {
+    let dir = temp_dir("compile-c-status-42");
+    let source = dir.join("main.ml");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
+    fs::write(&source, "let main = fn () -> 42\n").unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+    let generated = fs::read_to_string(&generated_c).unwrap();
+    assert!(generated.contains("int main(int argc, char **argv)"));
+    assert!(!generated.contains("export {"));
+
+    let clang = Command::new("clang")
+        .arg("-std=c11")
+        .arg(&generated_c)
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable).output().unwrap();
+    assert_eq!(run.status.code(), Some(42));
+}
+
+#[test]
+fn compile_c_rejects_unsupported_input_without_writing_output() {
+    let dir = temp_dir("compile-c-reject");
+    let source = dir.join("main.ml");
+    let output = dir.join("main.c");
+    fs::write(&source, "let main = fn () -> true\n").unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(!compile.status.success());
+    assert!(!output.exists(), "unsupported program left a C artifact");
+    assert!(String::from_utf8_lossy(&compile.stderr).contains("C source emission failed"));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
