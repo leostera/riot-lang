@@ -2822,8 +2822,8 @@ fn compile_c_preserves_host_output_and_exit_status() {
     let executable = dir.join("main");
     fs::write(
         &source,
-        r#"use Host.{write_stdout, write_stderr}
-let main = fn () -> { write_stdout "stdout\\n"; write_stderr "stderr"; 42 }
+        r#"use Host.{write_stdout, write_stderr, current_directory}
+let main = fn () -> { write_stdout (current_directory ()); write_stdout "stdout\\n"; write_stderr "stderr"; 42 }
 "#,
     )
     .unwrap();
@@ -2860,9 +2860,16 @@ let main = fn () -> { write_stdout "stdout\\n"; write_stderr "stderr"; 42 }
         "clang stderr: {}",
         String::from_utf8_lossy(&clang.stderr)
     );
-    let run = Command::new(&executable).output().unwrap();
+    let run = Command::new(&executable)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
     assert_eq!(run.status.code(), Some(42));
-    assert_eq!(run.stdout, b"stdout\\n");
+    let current_directory = fs::canonicalize(&dir).unwrap();
+    assert_eq!(
+        run.stdout,
+        format!("{}stdout\\n", current_directory.display()).as_bytes()
+    );
     assert_eq!(run.stderr, b"stderr");
 }
 
