@@ -158,28 +158,23 @@ let find_root_checked_module = fn (root_path: string) ->
     }
   }
 
+// Keep the C baseline independent; the `native-ir` command owns LambdaIR/NativeIR validation.
 let compile_module_graph_unchecked = fn (source_file: string) ->
   match (load_source_graph source_file
     (Cons(directory_of source_file, Nil): List<string>)) {
     | Err(message) -> Err(compile_error (SourceParsing) message None)
     | Ok(modules) -> match (check_loaded_modules modules Nil) {
       | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-      | Ok(checked_modules) -> match (lower_checked_modules checked_modules) {
-        | Err(message) -> Err(compile_error (LambdaLowering) message None)
-        | Ok(lambda_modules) -> match (verify_native_modules checked_modules lambda_modules) {
-          | Err(message) -> Err(compile_error (NativeIRLowering) message None)
-          | Ok(_) -> match (find_root_checked_module source_file checked_modules) {
+      | Ok(checked_modules) -> match (find_root_checked_module source_file checked_modules) {
         | None -> Err(compile_error (SourceParsing)
           "source graph has no entry module" None)
         | Some(CheckedModuleInterface {
             loaded_module: LoadedModule { source_module, source_path: _, module_path: _ },
-            interface
+            interface, typed_module: _
           }) -> match (validate_native_entry_module source_module interface) {
           | Err(message) -> Err(compile_error (SourceTypechecking) message None)
           | Ok(_) -> Ok(emit_module_program source_file
             (runtime_include_directory source_file) (module_source_pairs modules))
-        }
-        }
         }
       }
     }
