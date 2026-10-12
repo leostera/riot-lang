@@ -100,6 +100,67 @@ fn riotc_native_ir_verifier_fixtures_execute() {
 }
 
 #[test]
+fn riotc_native_ir_command_verifies_and_prints_nominal_aggregates() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let compiler_source = include_dir.join("main.ml");
+    let dir = temp_dir("riotc-native-ir-command");
+    let compiler_js = dir.join("riotc.mjs");
+    let stage0 = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&compiler_js)
+        .arg(&compiler_source)
+        .output()
+        .unwrap();
+    assert!(
+        stage0.status.success(),
+        "Stage 0 compiler stderr: {}",
+        String::from_utf8_lossy(&stage0.stderr)
+    );
+
+    let source = dir.join("main.ml");
+    fs::write(
+        &source,
+        "type User = User { name: string, age: i32 }\ntype Choice = Red | Blue(i32)\nlet person = User { name: \"Riot\", age: 42 }\nlet choice = Blue(42)\nlet main = fn () -> 42\n",
+    )
+    .unwrap();
+    let runner = dir.join("run-compiler.mjs");
+    fs::write(
+        &runner,
+        "import { main } from \"./riotc.mjs\"; process.exitCode = Number(main(undefined));\n",
+    )
+    .unwrap();
+    let output = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("native-ir")
+        .arg(&source)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "NativeIR command stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let printed = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        printed.contains(" = record "),
+        "missing record aggregate in IR:\n{printed}"
+    );
+    assert!(
+        printed.contains(" = variant "),
+        "missing variant aggregate in IR:\n{printed}"
+    );
+    assert!(
+        printed.contains("name=%") && printed.contains("age=%"),
+        "record field identities were not preserved:\n{printed}"
+    );
+}
+
+#[test]
 fn emit_writes_selected_artifacts() {
     let dir = temp_dir("emit");
     let file = write_valid_source(&dir);
