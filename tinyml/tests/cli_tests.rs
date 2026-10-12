@@ -100,7 +100,7 @@ fn riotc_native_ir_verifier_fixtures_execute() {
 }
 
 #[test]
-fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
+fn aarch64_machine_ir_cli_selects_supported_functions_and_typed_division() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let include_dir = repo.join("riotc");
     let compiler_source = include_dir.join("main.ml");
@@ -201,7 +201,7 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         "let divide = fn x -> x / 2\nlet main = fn () -> 42\n",
     )
     .unwrap();
-    let rejected = Command::new("node")
+    let selected_division = Command::new("node")
         .current_dir(repo)
         .arg(&runner)
         .arg("aarch64-mir")
@@ -209,17 +209,14 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         .arg("divide")
         .output()
         .unwrap();
-    assert!(!rejected.status.success(), "division unexpectedly selected");
-    let diagnostic = String::from_utf8_lossy(&rejected.stderr);
     assert!(
-        diagnostic.contains("division selection awaits explicit divide-by-zero trap lowering"),
-        "unexpected selection diagnostic: {diagnostic}"
+        selected_division.status.success(),
+        "typed i32 division was not selected: {}",
+        String::from_utf8_lossy(&selected_division.stderr)
     );
-    assert!(
-        diagnostic.contains("AArch64 selection failed in")
-            && diagnostic.contains("block 0 at codepoints "),
-        "selection failure lost its function/block/source provenance: {diagnostic}"
-    );
+    let division_machine_ir = String::from_utf8_lossy(&selected_division.stdout);
+    assert!(division_machine_ir.contains("call runtime rt_native_i32_div"));
+    assert!(division_machine_ir.contains("trap:division_by_zero"));
 
     let unsupported_value_source = dir.join("unsupported-value.ml");
     fs::write(
@@ -306,7 +303,7 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         "unexpected closure-operation rejection: {closure_diagnostic}"
     );
 
-    let rejected_linear = Command::new("node")
+    let linear_division = Command::new("node")
         .current_dir(repo)
         .arg(&runner)
         .arg("aarch64-linear-ir")
@@ -314,12 +311,15 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
         .arg("divide")
         .output()
         .unwrap();
-    assert!(!rejected_linear.status.success());
-    assert!(rejected_linear.stdout.is_empty());
     assert!(
-        String::from_utf8_lossy(&rejected_linear.stderr)
-            .contains("division selection awaits explicit divide-by-zero trap lowering")
+        linear_division.status.success(),
+        "typed i32 division did not reach LinearIR: {}",
+        String::from_utf8_lossy(&linear_division.stderr)
     );
+    let linear_division_text = String::from_utf8_lossy(&linear_division.stdout);
+    assert!(linear_division_text.contains("bl rt_native_i32_div"));
+    assert!(linear_division_text.contains("ldr w0,"));
+    assert!(linear_division_text.contains("ldr w1,"));
 }
 
 #[test]
@@ -481,6 +481,18 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
             42,
         ),
         ("wrapped-add", "let main = fn () -> 2147483647 + 1\n", 0),
+        ("division", "let main = fn () -> 7 / 2\n", 3),
+        ("remainder", "let main = fn () -> 7 % 2\n", 1),
+        (
+            "division-overflow",
+            "let main = fn () -> (0 - 2147483647 - 1) / (0 - 1)\n",
+            0,
+        ),
+        (
+            "remainder-overflow",
+            "let main = fn () -> (0 - 2147483647 - 1) % (0 - 1)\n",
+            0,
+        ),
     ] {
         let fixture_source = dir.join(format!("{fixture_name}.ml"));
         fs::write(&fixture_source, source_text).unwrap();
@@ -529,6 +541,52 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         assert_eq!(native_run.stderr, c_run.stderr);
     }
 
+    let division_by_zero_source = dir.join("division-by-zero.ml");
+    fs::write(&division_by_zero_source, "let main = fn () -> 1 / 0\n").unwrap();
+    let native_zero = dir.join("division-by-zero.native");
+    let native_zero_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-function")
+        .arg(&division_by_zero_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&native_zero)
+        .output()
+        .unwrap();
+    assert!(
+        native_zero_compile.status.success(),
+        "native division-by-zero fixture failed to link: {}",
+        String::from_utf8_lossy(&native_zero_compile.stderr)
+    );
+    let c_zero = dir.join("division-by-zero.c-backend");
+    let c_zero_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&division_by_zero_source)
+        .arg("-o")
+        .arg(&c_zero)
+        .output()
+        .unwrap();
+    assert!(
+        c_zero_compile.status.success(),
+        "C-backend division-by-zero fixture failed to link: {}",
+        String::from_utf8_lossy(&c_zero_compile.stderr)
+    );
+    let native_zero_run = Command::new(&native_zero)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let c_zero_run = Command::new(&c_zero).current_dir(&dir).output().unwrap();
+    use std::os::unix::process::ExitStatusExt;
+    assert_eq!(native_zero_run.status.signal(), c_zero_run.status.signal());
+    assert_eq!(native_zero_run.stderr, c_zero_run.stderr);
+    assert!(
+        String::from_utf8_lossy(&native_zero_run.stderr)
+            .contains("riotml runtime: division by zero")
+    );
+
     let ill_typed_source = dir.join("ill-typed.ml");
     fs::write(&ill_typed_source, "let main = fn () -> true + 1\n").unwrap();
     let failed_output = dir.join("ill-typed.native");
@@ -564,7 +622,7 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     );
 
     let unsupported_source = dir.join("unsupported.ml");
-    fs::write(&unsupported_source, "let main = fn () -> 7 / 2\n").unwrap();
+    fs::write(&unsupported_source, "let main = fn () -> \"not-native\"\n").unwrap();
     let unsupported_output = dir.join("unsupported.native");
     let unsupported_assembly = dir.join("unsupported.native.aarch64.s");
     fs::write(&unsupported_output, b"stale output must not survive").unwrap();
@@ -581,13 +639,13 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         .unwrap();
     assert!(
         !unsupported.status.success(),
-        "unsupported division unexpectedly compiled"
+        "unsupported string result unexpectedly compiled"
     );
     assert!(!unsupported_output.exists());
     assert!(!unsupported_assembly.exists());
     assert!(
         String::from_utf8_lossy(&unsupported.stderr)
-            .contains("division selection awaits explicit divide-by-zero trap lowering")
+            .contains("only unit, i32 and bool values have an AArch64 representation here")
     );
 
     let fake_bin = dir.join("fake-bin");

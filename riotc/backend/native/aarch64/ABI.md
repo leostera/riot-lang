@@ -104,8 +104,9 @@ shape while deliberately using an all-spill allocator:
 - `emit.ml` lowers this verified slice to AArch64 instructions. A pattern
   failure calls the declared no-argument `rt_pattern_fail` helper from
   `runtime.h`/`runtime.c` under the Apple C ABI, then emits a `brk` fallback;
-  other current trap pseudos use distinct `brk` immediates. This does not yet
-  implement division/remainder lowering or general Host marshalling.
+  other current trap pseudos use distinct `brk` immediates. Typed i32
+  division/remainder lower through the declared `rt_native_i32_div` and
+  `rt_native_i32_rem` C helpers; general Host marshalling is still absent.
 
 This conservative policy validates the first ABI lowering but is not the full
 native backend. Narrow integer widths, pointers/composites, closures, and Host
@@ -159,8 +160,20 @@ results are decoded according to the expected checked Riot type. Dynamic
 closures returned by a helper remain a runtime boundary value until a
 compatible adapter or subsequent declared helper call handles them.
 
-C helper prototypes using `int`, `size_t`, pointers, or other C types use
-those declared types directly under the same C ABI. Host operations retain the
+The owned scalar division/remainder helpers have explicit prototypes:
+
+```c
+int32_t rt_native_i32_div(int32_t numerator, int32_t denominator);
+int32_t rt_native_i32_rem(int32_t numerator, int32_t denominator);
+```
+
+They use the Apple AArch64 C ABI directly: numerator in `w0`, denominator in
+`w1`, result in `w0`, with no hidden environment. They guard `INT32_MIN / -1`
+and `INT32_MIN % -1` before using C operators, and report zero denominators
+with the same diagnostics as Riotc's current C-plus-Clang source backend.
+The original boxed `rt_i32_div`/`rt_i32_rem` helpers keep their own contracts.
+C helper prototypes using `int`, `size_t`, pointers, or other C types use those
+declared types directly under the same C ABI. Host operations retain the
 behavior in `riotc/runtime.c`; the owned compiler adds no generated-C fallback.
 
 ## Reproducible `RtValue` ABI probe

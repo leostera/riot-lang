@@ -666,18 +666,17 @@ let selection_preserves_branch_labels_and_edge_arguments = fn function ->
           + "    return %v3\n}\n")
   }
 
-let selection_rejects_division_without_trap_lowering = fn function ->
-  match (select_function function Nil) {
-    | Ok(_) -> false
-    | Err(A64SelectionFailure { reason, function: _, block: _, span: _ }) ->
-      equal reason "division selection awaits explicit divide-by-zero trap lowering"
-  }
-
-let selection_rejects_remainder_without_trap_lowering = fn function ->
-  match (select_function function Nil) {
-    | Ok(_) -> false
-    | Err(A64SelectionFailure { reason, function: _, block: _, span: _ }) ->
-      equal reason "remainder selection awaits explicit remainder-by-zero trap lowering"
+let selection_preserves_i32_runtime_helper = fn function -> fn function_name ->
+  fn helper_name -> fn trap_kind -> match (select_function function Nil) {
+    | Err(_) -> false
+    | Ok(selected) -> equal (print_function selected)
+      ("function fn " + module_name + "::" + function_name + "@0 -> i32 entry .Lbb0 {\n"
+        + ".Lbb0():\n"
+        + "    %v0:i32 = load_i32 10\n"
+        + "    %v1:i32 = load_i32 32\n"
+        + "    %v2:i32 = call runtime " + helper_name
+        + "(%v0:i32, %v1:i32) -> i32 !{trap:" + trap_kind + "}\n"
+        + "    return %v2\n}\n")
   }
 
 let selection_rejects_unmodeled_effect = fn function ->
@@ -733,8 +732,10 @@ let run_tests = fn () -> all_pass (
   Cons(selection_preserves_direct_call_and_effect direct_call_function,
   Cons(selection_preserves_host_call_and_effect host_call_function,
   Cons(selection_preserves_branch_labels_and_edge_arguments branch_function,
-  Cons(selection_rejects_division_without_trap_lowering division_function,
-  Cons(selection_rejects_remainder_without_trap_lowering remainder_function,
+  Cons(selection_preserves_i32_runtime_helper division_function "quotient"
+    "rt_native_i32_div" "division_by_zero",
+  Cons(selection_preserves_i32_runtime_helper remainder_function "remainder"
+    "rt_native_i32_rem" "remainder_by_zero",
   Nil)))))))))))))))))))))))))))))))))))))
 
 let main = fn () -> match (run_tests ()) {

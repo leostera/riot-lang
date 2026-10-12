@@ -9,6 +9,7 @@ use NativeIr.Ir.{
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
   A64Label, A64Unit, A64I32, A64Boolean, A64Equal, A64NotEqual,
+  A64RuntimeI32Division, A64RuntimeI32Remainder,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual
 }
@@ -17,7 +18,8 @@ use Backend.Native.Aarch64.LinearIr.{
   A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel, A64FalseEdgeLabel,
   A64LinearInstruction, A64MoveZero, A64LoadI32Literal, A64LoadBooleanLiteral,
   A64ReloadSpill, A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW,
-  A64NegateW, A64CompareSetW, A64CallDirect, A64LinearTerminator,
+  A64NegateW, A64CompareSetW, A64CallDirect, A64CallRuntime,
+  A64LinearTerminator,
   A64LinearJump, A64LinearBranch, A64LinearReturn, A64LinearTrap,
   A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
   A64LinearInstructionItem, A64LinearTerminatorItem, A64LinearFunction,
@@ -164,6 +166,8 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
         + print_function_id target)
     | Some(target_symbol) -> Ok("bl " + target_symbol + "\n")
   }
+  | A64CallRuntime(A64RuntimeI32Division) -> Ok("bl _rt_native_i32_div\n")
+  | A64CallRuntime(A64RuntimeI32Remainder) -> Ok("bl _rt_native_i32_rem\n")
 }
 
 let trap_immediate = fn reason -> match reason {

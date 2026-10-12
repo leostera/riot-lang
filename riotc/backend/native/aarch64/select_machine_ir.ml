@@ -25,7 +25,9 @@ use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
   A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
-  A64HostCall, A64CallArgument, A64AddI32, A64SubtractI32, A64MultiplyI32,
+  A64HostCall, A64CallArgument, A64RuntimeCall, A64RuntimeCallSite,
+  A64RuntimeI32Division, A64RuntimeI32Remainder, A64AddI32, A64SubtractI32,
+  A64MultiplyI32,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64CompareI32, A64EqualBoolean, A64NotEqualBoolean,
   A64BinaryOperands,
@@ -82,6 +84,26 @@ let comparison_condition = fn operator -> match operator {
   | _ -> Err("operator is not an integer comparison")
 }
 
+let select_i32_runtime_binary = fn helper -> fn operand_type -> fn result_type ->
+  fn left -> fn right -> fn substitutions ->
+  match (is_scalar_type A64I32 operand_type substitutions) {
+    | false -> Err("runtime i32 helper requires i32 operands")
+    | true -> match (is_scalar_type A64I32 result_type substitutions) {
+      | false -> Err("runtime i32 helper must produce i32")
+      | true -> Ok(A64RuntimeCall(A64RuntimeCallSite {
+        helper: helper,
+        arguments: Cons(A64CallArgument {
+          register: native_register left,
+          value_type: A64I32
+        }, Cons(A64CallArgument {
+          register: native_register right,
+          value_type: A64I32
+        }, Nil)),
+        result_type: A64I32
+      }))
+    }
+  }
+
 let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
   fn left -> fn right -> fn substitutions -> match operator {
     | Addition -> match (is_scalar_type A64I32 operand_type substitutions) {
@@ -114,8 +136,10 @@ let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
         | false -> Err("i32 multiplication must produce i32")
       }
     }
-    | Division -> Err("division selection awaits explicit divide-by-zero trap lowering")
-    | Remainder -> Err("remainder selection awaits explicit remainder-by-zero trap lowering")
+    | Division -> select_i32_runtime_binary A64RuntimeI32Division
+        operand_type result_type left right substitutions
+    | Remainder -> select_i32_runtime_binary A64RuntimeI32Remainder
+        operand_type result_type left right substitutions
     | _ -> match (is_scalar_type A64Boolean operand_type substitutions) {
       | true -> match operator {
         | Equal -> match (is_scalar_type A64Boolean result_type substitutions) {
@@ -263,6 +287,12 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
 
 let operation_is_call = fn operation -> match operation {
   | NativeCallOperation(_) -> true
+  | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
+      operator: Division, operand_type: _, left: _, right: _
+    })) -> true
+  | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
+      operator: Remainder, operand_type: _, left: _, right: _
+    })) -> true
   | _ -> false
 }
 

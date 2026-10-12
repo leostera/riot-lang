@@ -13,7 +13,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadUnit, A64LoadI32, A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
-  A64CallArgument, A64AddI32, A64SubtractI32, A64MultiplyI32,
+  A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64CallArgument,
+  A64AddI32, A64SubtractI32, A64MultiplyI32,
   A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64NegateI32,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
   A64Edge, A64Branch,
@@ -26,7 +27,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64TrueEdgeLabel, A64FalseEdgeLabel, A64LinearInstruction,
   A64MoveZero, A64LoadI32Literal, A64LoadBooleanLiteral, A64ReloadSpill,
   A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW, A64NegateW,
-  A64CompareSetW, A64CallDirect, A64LinearTerminator, A64LinearJump,
+  A64CompareSetW, A64CallDirect, A64CallRuntime, A64LinearTerminator, A64LinearJump,
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
   A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
   A64LinearTerminatorItem, A64LinearFunction, A64LinearFailure,
@@ -211,6 +212,9 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
   | A64Call(A64CallSite { target, arguments, result_type: call_result }) ->
     lower_call function_identity block span destination result_type target arguments
       call_result locations
+  | A64RuntimeCall(A64RuntimeCallSite { helper, arguments, result_type: call_result }) ->
+    lower_runtime_call function_identity block span destination result_type helper
+      arguments call_result locations
   | A64AddI32(A64BinaryOperands { left, right }) ->
     lower_binary function_identity block span destination left right locations A64OpcodeAdd
   | A64SubtractI32(A64BinaryOperands { left, right }) ->
@@ -331,6 +335,46 @@ let lower_call = fn function_identity -> fn block -> fn span ->
         }
       }
     }
+    }
+  }
+}
+
+let lower_runtime_call = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn instruction_type -> fn helper -> fn arguments ->
+  fn call_result -> fn locations -> match (same_value_type instruction_type call_result) {
+  | false -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "runtime call result type differs from its instruction type"
+  })
+  | true -> match call_result {
+    | A64Unit -> Err(A64LinearFailure {
+      function: function_identity, block: block, span: span,
+      reason: "typed i32 runtime helper must return i32"
+    })
+    | A64Boolean -> Err(A64LinearFailure {
+      function: function_identity, block: block, span: span,
+      reason: "typed i32 runtime helper must return i32"
+    })
+    | A64I32 -> match arguments {
+      | Cons(A64CallArgument { register: left, value_type: A64I32 },
+          Cons(A64CallArgument { register: right, value_type: A64I32 }, Nil)) ->
+        match (lookup_slot function_identity block span left locations) {
+          | Err(failure) -> Err(failure)
+          | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
+            | Err(failure) -> Err(failure)
+            | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
+              | Err(failure) -> Err(failure)
+              | Ok(result_slot) -> Ok(append (add_instruction(A64ReloadSpill(w0, left_slot)))
+                (append (add_instruction(A64ReloadSpill(w1, right_slot)))
+                (append (add_instruction(A64CallRuntime(helper)))
+                  (add_instruction(A64SpillRegister(result_slot, w0))))))
+            }
+          }
+        }
+      | _ -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "typed i32 runtime helper requires exactly two i32 arguments"
+      })
     }
   }
 }

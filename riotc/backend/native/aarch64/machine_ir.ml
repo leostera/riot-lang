@@ -51,6 +51,7 @@ type A64Operation =
   | A64TestI32Literal(A64I32LiteralTest)
   | A64TestBooleanLiteral(A64BooleanLiteralTest)
   | A64Call(A64CallSite)
+  | A64RuntimeCall(A64RuntimeCallSite)
   | A64AddI32(A64BinaryOperands)
   | A64SubtractI32(A64BinaryOperands)
   | A64MultiplyI32(A64BinaryOperands)
@@ -83,6 +84,13 @@ type A64CallTarget =
 type A64CallArgument = A64CallArgument {
   register: A64VirtualRegister,
   value_type: A64ValueType
+}
+
+type A64RuntimeHelper = A64RuntimeI32Division | A64RuntimeI32Remainder
+type A64RuntimeCallSite = A64RuntimeCallSite {
+  helper: A64RuntimeHelper,
+  arguments: List<A64CallArgument>,
+  result_type: A64ValueType
 }
 
 type A64BinaryOperands = A64BinaryOperands {

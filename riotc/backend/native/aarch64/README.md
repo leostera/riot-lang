@@ -17,21 +17,20 @@ span; there is no C fallback from this command.
 The selected subset currently includes typed `unit`, `i32`, and `bool` values
 (`unit` remains visible in MachineIR but has no physical value); `i32`
 addition, subtraction, multiplication, negation, signed comparisons, and
-boolean equality/inequality; unit/i32/bool literal-pattern tests; conditional
-and unconditional branches with block arguments; returns, unreachable and
-trap pseudos; plus direct or Host calls whose arguments and result are in this
-value subset. Calls retain their logical target, typed virtual arguments, and
-NativeIR effects, but do not assign physical argument/result registers or name
-runtime symbols.
+boolean equality/inequality; typed i32 division/remainder helper calls; unit/
+i32/bool literal-pattern tests; conditional and unconditional branches with
+block arguments; returns, unreachable and trap pseudos; plus direct or Host
+calls whose arguments and result are in this value subset. Calls retain typed
+virtual arguments and NativeIR effects. Runtime division/remainder use explicit
+helper IDs with fixed `i32, i32 -> i32` signatures; other calls remain logical
+until ABI lowering.
 
-Division/remainder are rejected until their explicit zero-trap behavior is
-lowered. Closure creation/calls/captures, strings, aggregates, globals, and
-switches are outside this selection slice. A64 virtual registers preserve
-NativeIR SSA IDs, and labels preserve NativeIR block IDs. No physical
-registers, stack/frame layout, object format, assembler, runtime-value layout,
-or external calling convention is selected by MachineIR. In particular,
-`A64Trap` remains a semantic pseudo until a concrete trap sequence is selected
-and tested.
+Closure creation/calls/captures, strings, aggregates, globals, and switches
+are outside this selection slice. A64 virtual registers preserve NativeIR SSA
+IDs, and labels preserve NativeIR block IDs. No physical registers, stack/frame
+layout, object format, assembler, runtime-value layout, or external calling
+convention is selected by MachineIR. `A64Trap` remains a semantic pseudo until
+a concrete trap sequence is selected and tested.
 
 ## LinearIR
 
@@ -48,7 +47,9 @@ unboxed four-byte stack slot, unit is erased, local frames are rounded up to
 16 bytes, and `w9`/`w10`/`w11` are the caller-saved scratch registers. Function
 entry scalar arguments arrive in `w1`; direct top-level/module-initializer
 calls set the hidden environment `x0` to null, pass an optional scalar in
-`w1`, and take scalar results from `w0`. Unit arguments/results have no data
+`w1`, and take scalar results from `w0`. Typed runtime division/remainder use
+their declared C helper ABI: `i32` arguments in `w0`/`w1` and an `i32` result in
+`w0`, without a hidden environment. Unit arguments/results have no data
 transfer. Conditional edges are explicit labels with typed spill/reload copies.
 
 The LinearIR verifier checks value/slot ownership, unique non-overlapping
@@ -63,11 +64,13 @@ are not yet selected for this LinearIR.
 `emit.ml` emits textual AArch64 Mach-O assembly from verified LinearIR. It
 lowers spill loads/stores, scalar arithmetic/comparisons, branches, direct
 calls with symbols in the supplied function set, frame prologues/epilogues,
-and trap pseudos. Block labels are function-qualified. Pattern-failure traps
-call the declared no-argument C helper `rt_pattern_fail` and retain a `brk`
-fallback if it returns; the linker includes the existing `runtime.c`. Other
-`NativeTrapKind`s currently become distinct `brk` immediates. Host helpers and
-general `RtValue` marshalling are not implemented.
+and trap pseudos. Block labels are function-qualified. Typed i32
+division/remainder call `_rt_native_i32_div`/`_rt_native_i32_rem`, whose exact
+prototypes are in `runtime.h`; the linker includes the existing `runtime.c`.
+Pattern-failure traps call the declared no-argument helper `rt_pattern_fail`
+and retain a `brk` fallback if it returns. Other `NativeTrapKind`s currently
+become distinct `brk` immediates. Host helpers and general `RtValue`
+marshalling are not implemented.
 
 Exercise the current function-level path with:
 

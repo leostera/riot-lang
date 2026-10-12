@@ -7,7 +7,8 @@ use NativeIr.Ir.{NativeFunctionId, NativeTrapKind}
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64Boolean,
   A64Condition, A64Equal, A64NotEqual, A64SignedLessThan,
-  A64SignedLessThanOrEqual, A64SignedGreaterThan, A64SignedGreaterThanOrEqual
+  A64SignedLessThanOrEqual, A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
+  A64RuntimeHelper, A64RuntimeI32Division, A64RuntimeI32Remainder
 }
 
 type A64RegisterWidth = A64W32 | A64X64
@@ -46,6 +47,7 @@ type A64LinearInstruction =
   | A64CompareSetW(A64Condition, A64PhysicalRegister, A64PhysicalRegister,
       A64PhysicalRegister)
   | A64CallDirect(NativeFunctionId)
+  | A64CallRuntime(A64RuntimeHelper)
 
 type A64LinearTerminator =
   | A64LinearJump(A64LinearLabel)

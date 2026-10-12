@@ -15,10 +15,11 @@ use Backend.Native.Aarch64.LinearIr.{
   A64FalseEdgeLabel, A64LinearInstruction, A64MoveZero, A64LoadI32Literal,
   A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
   A64SubtractW, A64MultiplyW, A64NegateW, A64CompareSetW, A64CallDirect,
+  A64CallRuntime,
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
   A64LinearTrap, A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
   A64LinearInstructionItem, A64LinearTerminatorItem, A64LinearFunction,
-  w9, w10, w11, w1, x0
+  w0, w1, w9, w10, w11, x0
 }
 
 let bool_and = fn first -> fn second -> match first {
@@ -224,6 +225,7 @@ let valid_instruction_registers = fn instruction -> fn values -> match instructi
   | A64CompareSetW(_, destination, left, right) -> bool_and (same_physical destination w11)
       (bool_and (same_physical left w9) (same_physical right w10))
   | A64CallDirect(_) -> true
+  | A64CallRuntime(_) -> true
 }
 
 let contains_label = fn wanted -> fn items -> match items {
@@ -269,6 +271,21 @@ let scalar_argument_setup = fn instruction -> match instruction {
   | A64ReloadSpill(register, _) -> same_physical register w1
   | _ -> false
 }
+let runtime_i32_argument_setup = fn expected -> fn instruction -> match instruction {
+  | A64ReloadSpill(register, slot) -> bool_and (same_physical register expected)
+      (same_type (frame_slot_type slot) A64I32)
+  | _ -> false
+}
+let valid_runtime_call_setup = fn previous -> fn last -> match last {
+  | Some(instruction) -> match (runtime_i32_argument_setup w1 instruction) {
+    | false -> false
+    | true -> match previous {
+      | Some(previous_instruction) -> runtime_i32_argument_setup w0 previous_instruction
+      | None -> false
+    }
+  }
+  | None -> false
+}
 let valid_call_setup = fn previous -> fn last -> match last {
   | Some(instruction) -> match (null_environment_setup instruction) {
     | true -> true
@@ -298,6 +315,11 @@ let verify_call_sequences = fn items -> fn previous -> fn last -> match items {
         | false -> Err("LinearIR direct call is missing its null environment or argument-register setup")
         | true -> verify_call_sequences remaining last (Some(A64CallDirect(target)))
       }
+    }
+  | Cons(A64LinearInstructionItem(A64CallRuntime(helper)), remaining) ->
+    match (valid_runtime_call_setup previous last) {
+      | false -> Err("LinearIR runtime helper call is missing its typed argument-register setup")
+      | true -> verify_call_sequences remaining last (Some(A64CallRuntime(helper)))
     }
   | Cons(A64LinearInstructionItem(instruction), remaining) ->
     verify_call_sequences remaining last (Some(instruction))

@@ -336,6 +336,18 @@ RtValue rt_i32_mul(RtValue left, RtValue right) {
   return rt_int(rt_i32_from_bits(result));
 }
 
+int32_t rt_native_i32_div(int32_t numerator, int32_t denominator) {
+  if (denominator == 0) rt_fail("division by zero");
+  if (numerator == INT32_MIN && denominator == -1) return INT32_MIN;
+  return numerator / denominator;
+}
+
+int32_t rt_native_i32_rem(int32_t numerator, int32_t denominator) {
+  if (denominator == 0) rt_fail("remainder by zero");
+  if (numerator == INT32_MIN && denominator == -1) return 0;
+  return numerator % denominator;
+}
+
 RtValue rt_i32_div(RtValue left, RtValue right) {
   int32_t numerator = (int32_t)rt_as_int(left);
   int32_t denominator = (int32_t)rt_as_int(right);

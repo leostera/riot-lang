@@ -16,7 +16,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
-  A64CallArgument,
+  A64CallArgument, A64RuntimeCall, A64RuntimeCallSite, A64RuntimeI32Division,
+  A64RuntimeI32Remainder,
   A64AddI32, A64SubtractI32, A64MultiplyI32, A64CompareI32,
   A64EqualBoolean, A64NotEqualBoolean, A64NegateI32,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
@@ -71,6 +72,11 @@ let print_call_target = fn target -> match target {
   | A64HostCall(binding) -> "host " + print_binding binding
 }
 
+let print_runtime_helper = fn helper -> match helper {
+  | A64RuntimeI32Division -> "rt_native_i32_div"
+  | A64RuntimeI32Remainder -> "rt_native_i32_rem"
+}
+
 let print_call_arguments = fn arguments -> match arguments {
   | Nil -> ""
   | Cons(A64CallArgument { register, value_type }, Nil) ->
@@ -121,6 +127,9 @@ let print_operation = fn operation -> match operation {
   | A64Call(A64CallSite { target, arguments, result_type }) ->
     "call " + print_call_target target + "(" + print_call_arguments arguments
       + ") -> " + print_scalar_type result_type
+  | A64RuntimeCall(A64RuntimeCallSite { helper, arguments, result_type }) ->
+    "call runtime " + print_runtime_helper helper + "("
+      + print_call_arguments arguments + ") -> " + print_scalar_type result_type
   | A64AddI32(operands) -> "add_w " + print_binary_operands operands
   | A64SubtractI32(operands) -> "sub_w " + print_binary_operands operands
   | A64MultiplyI32(operands) -> "mul_w " + print_binary_operands operands
