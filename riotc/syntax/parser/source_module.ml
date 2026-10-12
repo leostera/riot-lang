@@ -11,7 +11,8 @@ use Syntax.Ast.{
   make_expression, expression_with_span, expression_span, pattern_span
 }
 use Syntax.Lexer.{
-  Token, TokenInfo, IdentifierToken, SymbolToken, UnterminatedString,
+  Token, TokenInfo, IdentifierToken, IntegerToken, TextToken, SymbolToken,
+  UnterminatedString,
   UnterminatedEscape, lex, SourceSpan
 }
 use Syntax.Parser.Common.{
@@ -278,40 +279,84 @@ let parse_type_definition = fn tokens ->
     }
   }
 
+let token_source_span = fn token ->
+  match token {
+    | IdentifierToken(TokenInfo { lexeme: _, span }) -> span
+    | IntegerToken(TokenInfo { lexeme: _, span }) -> span
+    | TextToken(TokenInfo { lexeme: _, span }) -> span
+    | SymbolToken(TokenInfo { lexeme: _, span }) -> span
+  }
+
+let final_source_token_end = fn tokens ->
+  match tokens {
+    | Nil -> 0
+    | Cons(token, Nil) -> {
+      let SourceSpan { start_codepoint: _, end_codepoint } = token_source_span token;
+      end_codepoint
+    }
+    | Cons(_, remaining) -> final_source_token_end remaining
+  }
+
+let source_prefix_end_before = fn tokens -> fn wanted_start -> fn previous_end ->
+  match tokens {
+    | Nil -> previous_end
+    | Cons(token, remaining) -> {
+      let SourceSpan { start_codepoint, end_codepoint } = token_source_span token;
+      match (start_codepoint == wanted_start) {
+        | true -> previous_end
+        | false -> source_prefix_end_before remaining wanted_start end_codepoint
+      }
+    }
+  }
+
+let type_definition_end = fn definition_tokens -> fn remaining_tokens ->
+  fn fallback_end -> match remaining_tokens {
+    | Nil -> final_source_token_end definition_tokens
+    | Cons(first_remaining, _) -> {
+      let SourceSpan { start_codepoint: wanted_start, end_codepoint: _ } =
+        token_source_span first_remaining;
+      source_prefix_end_before definition_tokens wanted_start fallback_end
+    }
+  }
+
+let type_declaration_span = fn declaration_start -> fn definition_tokens ->
+  fn remaining_tokens -> {
+  let SourceSpan { start_codepoint, end_codepoint } = declaration_start;
+  let last_token_end = type_definition_end definition_tokens remaining_tokens end_codepoint;
+  SourceSpan {
+    start_codepoint: start_codepoint,
+    end_codepoint: last_token_end
+  }
+}
+
 let parse_type_declaration = fn declaration_start -> fn tokens ->
   match tokens {
-    | Cons(IdentifierToken(TokenInfo { lexeme: name, span: name_span }), remaining) ->
+    | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
       match (parse_type_parameters remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: parameters, remaining_tokens }) ->
           parse_type_declaration_equals (TypeName(name)) declaration_start
-            name_span parameters remaining_tokens
+            parameters remaining_tokens
       }
     | _ -> Err("expected a type name")
   }
 
 let parse_type_declaration_equals = fn name -> fn declaration_start ->
-  fn name_span -> fn parameters -> fn tokens ->
+  fn parameters -> fn tokens ->
   match tokens {
     | Cons(SymbolToken(TokenInfo { lexeme: "=", span: _ }), definition_tokens) ->
       match (parse_type_definition definition_tokens) {
         | Err(message) -> Err(message)
-        | Ok(ParseStep { value: definition, remaining_tokens }) -> {
-          let SourceSpan { start_codepoint, end_codepoint: _ } = declaration_start;
-          let SourceSpan { start_codepoint: _, end_codepoint } = name_span;
-          Ok(ParseStep {
-            value: TypeDeclaration(TypeDeclarationData {
-              name: name,
-              parameters: parameters,
-              definition: definition,
-              span: SourceSpan {
-                start_codepoint: start_codepoint,
-                end_codepoint: end_codepoint
-              }
-            }),
-            remaining_tokens: remaining_tokens
-          })
-        }
+        | Ok(ParseStep { value: definition, remaining_tokens }) -> Ok(ParseStep {
+          value: TypeDeclaration(TypeDeclarationData {
+            name: name,
+            parameters: parameters,
+            definition: definition,
+            span: type_declaration_span declaration_start
+              definition_tokens remaining_tokens
+          }),
+          remaining_tokens: remaining_tokens
+        })
       }
     | _ -> Err("expected `=` after type declaration")
   }
