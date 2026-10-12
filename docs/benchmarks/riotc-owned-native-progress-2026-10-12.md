@@ -49,5 +49,16 @@ whole-module compiler or a native self-rebuild.
 The separately tested C-first bootstrap still emits deterministic C, builds a
 C-hosted compiler, and runs its legacy `compile`/smoke/negative-input path with
 Node excluded from `PATH`. The C backend and direct-call native graph are
-distinct CLI paths; the required native Riotc compiler, successor rebuild, and
-full compiler-source corpus remain unimplemented.
+distinct CLI paths.
+
+A clean `git archive` of commit `17d6e9d51` was also built on
+`aarch64-apple-darwin25.6.0` with Apple Clang 21.0.0, keeping
+`PATH=/usr/bin:/bin` throughout the Stage 0, Clang, C-hosted, and native
+commands. Stage 0 C emission was deterministic; the C-hosted C-backend smoke
+and owned direct-call-graph smoke both exited 42, and ill-typed input was
+rejected with stale outputs removed. The artifacts were: generated compiler C
+**5,984,852 bytes**, optimized C-hosted compiler **1,783,616 bytes**, and
+native direct-graph fixture **56,464 bytes**. This is a bounded clean-checkout
+C-first/native slice, not a performance comparison to the baseline and not the
+required native Riotc compiler or successor self-rebuild. The full
+compiler-source corpus remains unimplemented.
