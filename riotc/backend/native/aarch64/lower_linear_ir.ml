@@ -19,6 +19,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64RuntimeHostArgs,
   A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32,
+  A64AddI64, A64SubtractI64, A64MultiplyI64,
   A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64NegateI32, A64NegateI64,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
   A64Edge, A64Branch,
@@ -30,12 +31,13 @@ use Backend.Native.Aarch64.LinearIr.{
   A64ValueLocation, A64FrameSlot, A64LinearLabel, A64BasicBlockLabel,
   A64TrueEdgeLabel, A64FalseEdgeLabel, A64LinearInstruction,
   A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill,
-  A64SpillRegister, A64AddW, A64SubtractW, A64MultiplyW, A64NegateW, A64NegateX,
+  A64SpillRegister, A64AddW, A64AddX, A64SubtractW, A64SubtractX,
+  A64MultiplyW, A64MultiplyX, A64NegateW, A64NegateX,
   A64CompareSetW, A64CallDirect, A64CallRuntime, A64LinearTerminator, A64LinearJump,
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
   A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
   A64LinearTerminatorItem, A64LinearFunction, A64LinearFailure,
-  w0, w1, w9, w10, w11, x0, x1, x9, x11, slot_size, slot_alignment,
+  w0, w1, w9, w10, w11, x0, x1, x9, x10, x11, slot_size, slot_alignment,
   align_frame, is_unit
 }
 
@@ -291,6 +293,12 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
     lower_binary function_identity block span destination left right locations A64OpcodeSubtract
   | A64MultiplyI32(A64BinaryOperands { left, right }) ->
     lower_binary function_identity block span destination left right locations A64OpcodeMultiply
+  | A64AddI64(A64BinaryOperands { left, right }) ->
+    lower_binary_x function_identity block span destination left right locations A64OpcodeAdd
+  | A64SubtractI64(A64BinaryOperands { left, right }) ->
+    lower_binary_x function_identity block span destination left right locations A64OpcodeSubtract
+  | A64MultiplyI64(A64BinaryOperands { left, right }) ->
+    lower_binary_x function_identity block span destination left right locations A64OpcodeMultiply
   | A64CompareI32(A64IntegerComparison { condition, left, right }) ->
     lower_comparison function_identity block span destination left right condition locations
   | A64EqualBoolean(A64BinaryOperands { left, right }) ->
@@ -335,6 +343,28 @@ let lower_binary = fn function_identity -> fn block -> fn span ->
           (append_linear_items (add_instruction(A64ReloadSpill(w10, right_slot)))
           (append_linear_items (add_instruction(binary_instruction opcode w11 w9 w10))
             (add_instruction(A64SpillRegister(result_slot, w11))))))
+      }
+    }
+  }
+
+let binary_instruction_x = fn opcode -> fn destination -> fn left -> fn right -> match opcode {
+  | A64OpcodeAdd -> A64AddX(destination, left, right)
+  | A64OpcodeSubtract -> A64SubtractX(destination, left, right)
+  | A64OpcodeMultiply -> A64MultiplyX(destination, left, right)
+}
+
+let lower_binary_x = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn left -> fn right -> fn locations -> fn opcode ->
+  match (lookup_slot function_identity block span left locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
+        | Err(failure) -> Err(failure)
+        | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(x9, left_slot)))
+          (append_linear_items (add_instruction(A64ReloadSpill(x10, right_slot)))
+          (append_linear_items (add_instruction(binary_instruction_x opcode x11 x9 x10))
+            (add_instruction(A64SpillRegister(result_slot, x11))))))
       }
     }
   }

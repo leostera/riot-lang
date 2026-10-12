@@ -33,7 +33,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64RuntimeCall, A64RuntimeCallSite,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64AddI32, A64SubtractI32,
-  A64MultiplyI32,
+  A64MultiplyI32, A64AddI64, A64SubtractI64, A64MultiplyI64,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64CompareI32, A64EqualBoolean, A64NotEqualBoolean,
   A64BinaryOperands,
@@ -172,35 +172,59 @@ let select_i32_runtime_binary = fn helper -> fn operand_type -> fn result_type -
 
 let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
   fn left -> fn right -> fn substitutions -> match operator {
-    | Addition -> match (is_value_type A64I32 operand_type substitutions) {
-      | false -> Err("integer addition requires i32 operands")
-      | true -> match (is_value_type A64I32 result_type substitutions) {
+    | Addition -> match (native_type operand_type substitutions) {
+      | Ok(A64I32) -> match (is_value_type A64I32 result_type substitutions) {
         | true -> Ok(A64AddI32(A64BinaryOperands {
           left: native_register left,
           right: native_register right
         }))
         | false -> Err("i32 addition must produce i32")
       }
+      | Ok(A64I64) -> match (is_value_type A64I64 result_type substitutions) {
+        | true -> Ok(A64AddI64(A64BinaryOperands {
+          left: native_register left,
+          right: native_register right
+        }))
+        | false -> Err("i64 addition must produce i64")
+      }
+      | Ok(_) -> Err("integer addition supports only i32 and i64")
+      | Err(message) -> Err("integer addition: " + message)
     }
-    | Subtraction -> match (is_value_type A64I32 operand_type substitutions) {
-      | false -> Err("integer subtraction requires i32 operands")
-      | true -> match (is_value_type A64I32 result_type substitutions) {
+    | Subtraction -> match (native_type operand_type substitutions) {
+      | Ok(A64I32) -> match (is_value_type A64I32 result_type substitutions) {
         | true -> Ok(A64SubtractI32(A64BinaryOperands {
           left: native_register left,
           right: native_register right
         }))
         | false -> Err("i32 subtraction must produce i32")
       }
+      | Ok(A64I64) -> match (is_value_type A64I64 result_type substitutions) {
+        | true -> Ok(A64SubtractI64(A64BinaryOperands {
+          left: native_register left,
+          right: native_register right
+        }))
+        | false -> Err("i64 subtraction must produce i64")
+      }
+      | Ok(_) -> Err("integer subtraction supports only i32 and i64")
+      | Err(message) -> Err("integer subtraction: " + message)
     }
-    | Multiplication -> match (is_value_type A64I32 operand_type substitutions) {
-      | false -> Err("integer multiplication requires i32 operands")
-      | true -> match (is_value_type A64I32 result_type substitutions) {
+    | Multiplication -> match (native_type operand_type substitutions) {
+      | Ok(A64I32) -> match (is_value_type A64I32 result_type substitutions) {
         | true -> Ok(A64MultiplyI32(A64BinaryOperands {
           left: native_register left,
           right: native_register right
         }))
         | false -> Err("i32 multiplication must produce i32")
       }
+      | Ok(A64I64) -> match (is_value_type A64I64 result_type substitutions) {
+        | true -> Ok(A64MultiplyI64(A64BinaryOperands {
+          left: native_register left,
+          right: native_register right
+        }))
+        | false -> Err("i64 multiplication must produce i64")
+      }
+      | Ok(_) -> Err("integer multiplication supports only i32 and i64")
+      | Err(message) -> Err("integer multiplication: " + message)
     }
     | Division -> select_i32_runtime_binary A64RuntimeI32Division
         operand_type result_type left right substitutions

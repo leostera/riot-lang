@@ -1181,18 +1181,12 @@ let verify_binary_result_type = fn operator -> fn operand_type -> fn result_type
         | true -> Ok(true)
         | false -> Err("NativeIR verifier: string addition result type mismatch")
       }
-      | false -> match (type_is_named operand_type "i32" substitutions) {
-        | false -> Err("NativeIR verifier: addition has an unsupported operand type")
-        | true -> match (type_is_named result_type "i32" substitutions) {
-          | true -> Ok(true)
-          | false -> Err("NativeIR verifier: integer addition result type mismatch")
-        }
-      }
+      | false -> verify_integer_binary_result operand_type result_type substitutions
     }
-    | Subtraction -> verify_integer_binary_result result_type substitutions
-    | Multiplication -> verify_integer_binary_result result_type substitutions
-    | Division -> verify_integer_binary_result result_type substitutions
-    | Remainder -> verify_integer_binary_result result_type substitutions
+    | Subtraction -> verify_integer_binary_result operand_type result_type substitutions
+    | Multiplication -> verify_integer_binary_result operand_type result_type substitutions
+    | Division -> verify_i32_binary_result operand_type result_type substitutions
+    | Remainder -> verify_i32_binary_result operand_type result_type substitutions
     | Equal -> verify_boolean_result result_type substitutions
     | NotEqual -> verify_boolean_result result_type substitutions
     | LessThan -> verify_boolean_result result_type substitutions
@@ -1201,10 +1195,20 @@ let verify_binary_result_type = fn operator -> fn operand_type -> fn result_type
     | GreaterThanOrEqual -> verify_boolean_result result_type substitutions
   }
 
-let verify_integer_binary_result = fn result_type -> fn substitutions ->
-  match (type_is_named result_type "i32" substitutions) {
-    | true -> Ok(true)
-    | false -> Err("NativeIR verifier: integer primitive has a non-i32 result")
+let verify_integer_binary_result = fn operand_type -> fn result_type -> fn substitutions ->
+  match (apply_substitutions operand_type substitutions) {
+    | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
+        (integer_type_name name) {
+      | true -> verify_named_result result_type name substitutions
+      | false -> Err("NativeIR verifier: integer primitive has a non-integer operand")
+    }
+    | _ -> Err("NativeIR verifier: integer primitive has a non-integer operand")
+  }
+
+let verify_i32_binary_result = fn operand_type -> fn result_type -> fn substitutions ->
+  match (verify_named_result operand_type "i32" substitutions) {
+    | Err(message) -> Err(message)
+    | Ok(_) -> verify_named_result result_type "i32" substitutions
   }
 
 let verify_boolean_result = fn result_type -> fn substitutions ->

@@ -2273,61 +2273,74 @@ let generalize_pattern_bindings = fn bindings -> fn environment -> fn state ->
     }
   }
 
+let infer_same_integer_types = fn left_type -> fn right_type -> fn integer_type -> fn state ->
+  match (constrain_types left_type integer_type state) {
+    | Err(message) -> Err("integer arithmetic requires matching integer types: " + message)
+    | Ok(next_state) -> match (constrain_types right_type integer_type next_state) {
+      | Err(message) -> Err("integer arithmetic requires matching integer types: " + message)
+      | Ok(final_state) -> Ok(InferenceResult {
+        inferred_type: integer_type, state: final_state
+      })
+    }
+  }
+
+let infer_integer_binary_types = fn left_type -> fn right_type -> fn state ->
+  match (apply_state_substitutions left_type state) {
+    | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
+        (integer_type_name name) {
+      | true -> infer_same_integer_types left_type right_type
+        (builtin_inferred_type name) state
+      | false -> Err("integer arithmetic requires integer operands")
+    }
+    | FreeVariable(_) -> match (apply_state_substitutions right_type state) {
+      | AppliedType(InferredNamedType { name, arguments: Nil }) -> match
+          (integer_type_name name) {
+        | true -> infer_same_integer_types left_type right_type
+          (builtin_inferred_type name) state
+        | false -> infer_same_integer_types left_type right_type
+          (builtin_inferred_type "i32") state
+      }
+      | _ -> infer_same_integer_types left_type right_type
+        (builtin_inferred_type "i32") state
+    }
+    | _ -> Err("integer arithmetic requires integer operands")
+  }
+
 let infer_addition_types = fn left_type -> fn right_type -> fn state -> {
   let left = apply_state_substitutions left_type state;
   let right = apply_state_substitutions right_type state;
   match left {
     | AppliedType(InferredNamedType { name: "string", arguments: Nil }) ->
-      match (constrain_types left right state) {
-        | Err(message) -> Err("addition requires two strings or two i32 operands: " + message)
+      match (constrain_types left_type right_type state) {
+        | Err(message) -> Err("addition requires two strings or matching integer types: " + message)
         | Ok(next_state) -> Ok(InferenceResult {
           inferred_type: builtin_inferred_type "string", state: next_state
         })
       }
-    | AppliedType(InferredNamedType { name: "i32", arguments: Nil }) ->
-      match (constrain_types left right state) {
-        | Err(message) -> Err("addition requires two strings or two i32 operands: " + message)
-        | Ok(next_state) -> Ok(InferenceResult {
-          inferred_type: builtin_inferred_type "i32", state: next_state
-        })
-      }
     | FreeVariable(_) -> match right {
       | AppliedType(InferredNamedType { name: "string", arguments: Nil }) ->
-        match (constrain_types left right state) {
+        match (constrain_types left_type right_type state) {
           | Err(message) -> Err(message)
           | Ok(next_state) -> Ok(InferenceResult {
             inferred_type: builtin_inferred_type "string", state: next_state
           })
         }
-      | _ -> match (constrain_types left (builtin_inferred_type "i32") state) {
-        | Err(message) -> Err(message)
-        | Ok(next_state) -> match (constrain_types right (builtin_inferred_type "i32") next_state) {
-          | Err(_) -> Err("addition requires two strings or two i32 operands")
-          | Ok(final_state) -> Ok(InferenceResult {
-            inferred_type: builtin_inferred_type "i32", state: final_state
-          })
-        }
-      }
+      | _ -> infer_integer_binary_types left_type right_type state
     }
-    | _ -> Err("addition requires two strings or two i32 operands")
+    | _ -> infer_integer_binary_types left_type right_type state
   }
 }
+
+let infer_i32_binary_types = fn left_type -> fn right_type -> fn state ->
+  infer_same_integer_types left_type right_type (builtin_inferred_type "i32") state
 
 let infer_binary_types = fn operator -> fn left_type -> fn right_type -> fn state ->
   match operator {
     | Addition -> infer_addition_types left_type right_type state
-    | Subtraction -> match (constrain_types left_type (builtin_inferred_type "i32") state) {
-      | Err(message) -> Err("integer arithmetic requires i32 values: " + message)
-      | Ok(next_state) -> match (constrain_types right_type (builtin_inferred_type "i32") next_state) {
-        | Err(message) -> Err("integer arithmetic requires i32 values: " + message)
-        | Ok(final_state) -> Ok(InferenceResult {
-          inferred_type: builtin_inferred_type "i32", state: final_state
-        })
-      }
-    }
-    | Multiplication -> infer_binary_types Subtraction left_type right_type state
-    | Division -> infer_binary_types Subtraction left_type right_type state
-    | Remainder -> infer_binary_types Subtraction left_type right_type state
+    | Subtraction -> infer_integer_binary_types left_type right_type state
+    | Multiplication -> infer_integer_binary_types left_type right_type state
+    | Division -> infer_i32_binary_types left_type right_type state
+    | Remainder -> infer_i32_binary_types left_type right_type state
     | Equal -> infer_comparison_types left_type right_type state
     | NotEqual -> infer_comparison_types left_type right_type state
     | LessThan -> infer_comparison_types left_type right_type state

@@ -4,16 +4,25 @@ use Host.{
   args, current_directory, runtime_directory, read_file, write_file, write_stderr,
   write_stdout, run_process
 }
-use Syntax.Ast.{ValueName}
+use Syntax.Ast.{
+  ValueName, SourceModule, Declaration, ValueDeclaration, ValueDeclarationData,
+  RecordExpression, RecordExpressionField, Binary, BinaryExpression, Addition,
+  TypeDeclaration,
+  Function, FunctionExpression, Apply, ApplicationExpression, Let, LetExpression,
+  Match, MatchExpression, MatchArm, ConstructorExpr, ConstructorExpression,
+  Negate,
+  Ascription, AscriptionExpression, Block, TupleExpr, RecordExpr, expression_kind
+}
 use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
 use Check.Inference.{
   CheckedModuleInterface, InferredModuleInterface, TypedModule,
   SchemeBinding, BindingIdentity, ModuleValueBinding, LocalValueBinding,
+  InferredNamedType, AppliedType, apply_substitutions,
   infer_source_module, validate_native_entry_module
 }
 use Codegen.C.Emit.{emit_module_program}
 use Lambda.Ir.{LambdaModule}
-use Lambda.Lower.{lower_checked_module}
+use Lambda.Lower.{lower_checked_module, expression_type}
 use NativeIr.Lower.{lower_module}
 use NativeIr.Verify.{verify_module}
 use NativeIr.Ir.{
@@ -176,13 +185,140 @@ let find_root_checked_module = fn (root_path: string) ->
   }
 
 // Keep the C baseline independent; the `native-ir` command owns LambdaIR/NativeIR validation.
+let c_checked_type_name = fn expression -> fn typed_module -> {
+  let TypedModule { source_module: _, expression_types: _, pattern_types: _,
+    nominal_types: _, substitutions, bindings: _, value_references: _,
+    constructor_references: _ } = typed_module;
+  match (expression_type expression typed_module) {
+    | Err(message) -> Err(message)
+    | Ok(inferred_type) -> match (apply_substitutions inferred_type substitutions) {
+      | AppliedType(InferredNamedType { name, arguments: Nil }) -> Ok(name)
+      | _ -> Err("C backend: integer operation has no concrete operand type")
+    }
+  }
+}
+
+let validate_c_operand_type = fn operation -> fn allow_string ->
+  fn expression -> fn typed_module -> match (c_checked_type_name expression typed_module) {
+    | Err(message) -> Err(message)
+    | Ok("i32") -> Ok(true)
+    | Ok("string") -> match allow_string {
+      | true -> Ok(true)
+      | false -> Err("C backend does not support string " + operation)
+    }
+    | Ok(name) -> Err("C backend does not support " + operation + " on `" + name + "`")
+  }
+
+let validate_c_binary = fn operator -> fn left -> fn typed_module ->
+  match operator {
+    | Addition -> validate_c_operand_type "addition" true left typed_module
+    | _ -> validate_c_operand_type "integer arithmetic" false left typed_module
+  }
+
+let validate_c_expressions = fn expressions -> fn typed_module -> match expressions {
+  | Nil -> Ok(true)
+  | Cons(expression, remaining) -> match (validate_c_expression expression typed_module) {
+    | Err(message) -> Err(message)
+    | Ok(_) -> validate_c_expressions remaining typed_module
+  }
+}
+
+let validate_c_record_fields = fn fields -> fn typed_module -> match fields {
+  | Nil -> Ok(true)
+  | Cons(RecordExpressionField { name: _, value }, remaining) ->
+    match (validate_c_expression value typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_record_fields remaining typed_module
+    }
+}
+
+let validate_c_match_arms = fn arms -> fn typed_module -> match arms {
+  | Nil -> Ok(true)
+  | Cons(MatchArm { pattern: _, body }, remaining) ->
+    match (validate_c_expression body typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_match_arms remaining typed_module
+    }
+}
+
+let validate_c_expression = fn expression -> fn typed_module ->
+  match (expression_kind expression) {
+    | Binary(BinaryExpression { operator, left, right }) -> match
+        (validate_c_binary operator left typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> match (validate_c_expression left typed_module) {
+        | Err(message) -> Err(message)
+        | Ok(_) -> validate_c_expression right typed_module
+      }
+    }
+    | Negate(operand) -> match (validate_c_operand_type "negation" false operand typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_expression operand typed_module
+    }
+    | TupleExpr(items) -> validate_c_expressions items typed_module
+    | RecordExpr(RecordExpression { constructor_name: _, fields }) ->
+      validate_c_record_fields fields typed_module
+    | Function(FunctionExpression { parameter: _, body }) ->
+      validate_c_expression body typed_module
+    | Apply(ApplicationExpression { callee, argument }) -> match
+        (validate_c_expression callee typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_expression argument typed_module
+    }
+    | Let(LetExpression { pattern: _, annotation: _, value, body }) -> match
+        (validate_c_expression value typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_expression body typed_module
+    }
+    | Match(MatchExpression { scrutinee, arms }) -> match
+        (validate_c_expression scrutinee typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_match_arms arms typed_module
+    }
+    | ConstructorExpr(ConstructorExpression { constructor_name: _, arguments }) ->
+      validate_c_expressions arguments typed_module
+    | Ascription(AscriptionExpression { expression: inner, annotation: _ }) ->
+      validate_c_expression inner typed_module
+    | Block(items) -> validate_c_expressions items typed_module
+    | _ -> Ok(true)
+  }
+
+let validate_c_declarations = fn declarations -> fn typed_module -> match declarations {
+  | Nil -> Ok(true)
+  | Cons(ValueDeclaration(ValueDeclarationData { name: _, body, span: _ }), remaining) ->
+    match (validate_c_expression body typed_module) {
+      | Err(message) -> Err(message)
+      | Ok(_) -> validate_c_declarations remaining typed_module
+    }
+  | Cons(TypeDeclaration(_), remaining) -> validate_c_declarations remaining typed_module
+}
+
+let validate_c_backend_modules = fn checked_modules -> match checked_modules {
+  | Nil -> Ok(true)
+  | Cons(CheckedModuleInterface {
+      loaded_module: _, interface: _, typed_module
+    }, remaining) -> {
+      let TypedModule {
+        source_module: SourceModule { imports: _, declarations },
+        expression_types: _, pattern_types: _, nominal_types: _, substitutions: _,
+        bindings: _, value_references: _, constructor_references: _
+      } = typed_module;
+      match (validate_c_declarations declarations typed_module) {
+        | Err(message) -> Err(message)
+        | Ok(_) -> validate_c_backend_modules remaining
+      }
+    }
+}
+
 let compile_module_graph_unchecked = fn (source_file: string) ->
   match (load_source_graph source_file
     (Cons(directory_of source_file, Nil): List<string>)) {
     | Err(message) -> Err(compile_error (SourceParsing) message None)
     | Ok(modules) -> match (check_loaded_modules modules Nil) {
       | Err(message) -> Err(compile_error (SourceTypechecking) message None)
-      | Ok(checked_modules) -> match (find_root_checked_module source_file checked_modules) {
+      | Ok(checked_modules) -> match (validate_c_backend_modules checked_modules) {
+        | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+        | Ok(_) -> match (find_root_checked_module source_file checked_modules) {
         | None -> Err(compile_error (SourceParsing)
           "source graph has no entry module" None)
         | Some(CheckedModuleInterface {
@@ -192,6 +328,7 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
           | Err(message) -> Err(compile_error (SourceTypechecking) message None)
           | Ok(_) -> Ok(emit_module_program source_file
             (runtime_include_directory source_file) (module_source_pairs modules))
+        }
         }
       }
     }

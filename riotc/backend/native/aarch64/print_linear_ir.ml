@@ -16,8 +16,9 @@ use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64ValueLocation,
   A64FrameSlot, A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel,
   A64FalseEdgeLabel, A64LinearInstruction, A64MoveZero, A64LoadI32Literal,
-  A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister, A64AddW,
-  A64SubtractW, A64MultiplyW, A64NegateW, A64NegateX, A64CompareSetW, A64CallDirect,
+  A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister,
+  A64AddW, A64AddX, A64SubtractW, A64SubtractX, A64MultiplyW, A64MultiplyX,
+  A64NegateW, A64NegateX, A64CompareSetW, A64CallDirect,
   A64CallRuntime,
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
   A64LinearTrap, A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
@@ -88,8 +89,11 @@ let print_instruction = fn instruction -> match instruction {
   | A64ReloadSpill(destination, slot) -> "  ldr " + register_text destination + ", " + print_slot slot + "\n"
   | A64SpillRegister(slot, source) -> "  str " + register_text source + ", " + print_slot slot + "\n"
   | A64AddW(destination, left, right) -> "  add " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
+  | A64AddX(destination, left, right) -> "  add " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
   | A64SubtractW(destination, left, right) -> "  sub " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
+  | A64SubtractX(destination, left, right) -> "  sub " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
   | A64MultiplyW(destination, left, right) -> "  mul " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
+  | A64MultiplyX(destination, left, right) -> "  mul " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
   | A64NegateW(destination, operand) -> "  neg " + register_text destination + ", " + register_text operand + "\n"
   | A64NegateX(destination, operand) -> "  neg " + register_text destination + ", " + register_text operand + "\n"
   | A64CompareSetW(condition, destination, left, right) -> "  cmp_set." + condition_text condition + " "

@@ -42,8 +42,11 @@ type A64LinearInstruction =
   | A64ReloadSpill(A64PhysicalRegister, A64FrameSlot)
   | A64SpillRegister(A64FrameSlot, A64PhysicalRegister)
   | A64AddW(A64PhysicalRegister, A64PhysicalRegister, A64PhysicalRegister)
+  | A64AddX(A64PhysicalRegister, A64PhysicalRegister, A64PhysicalRegister)
   | A64SubtractW(A64PhysicalRegister, A64PhysicalRegister, A64PhysicalRegister)
+  | A64SubtractX(A64PhysicalRegister, A64PhysicalRegister, A64PhysicalRegister)
   | A64MultiplyW(A64PhysicalRegister, A64PhysicalRegister, A64PhysicalRegister)
+  | A64MultiplyX(A64PhysicalRegister, A64PhysicalRegister, A64PhysicalRegister)
   | A64NegateW(A64PhysicalRegister, A64PhysicalRegister)
   | A64NegateX(A64PhysicalRegister, A64PhysicalRegister)
   | A64CompareSetW(A64Condition, A64PhysicalRegister, A64PhysicalRegister,

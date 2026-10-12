@@ -853,18 +853,60 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         .arg(&i64_negation_c_executable)
         .output()
         .unwrap();
+    assert!(!i64_negation_c_compile.status.success());
     assert!(
-        i64_negation_c_compile.status.success(),
-        "C-backend i64 negation fixture failed: {}",
         String::from_utf8_lossy(&i64_negation_c_compile.stderr)
+            .contains("C backend does not support negation on `i64`")
     );
-    let i64_negation_c_run = Command::new(&i64_negation_c_executable).output().unwrap();
-    assert_eq!(
-        i64_negation_run.status.code(),
-        i64_negation_c_run.status.code()
+    assert!(!i64_negation_c_executable.exists());
+
+    let i64_arithmetic_source = dir.join("i64-arithmetic.ml");
+    fs::write(
+        &i64_arithmetic_source,
+        "let calculate = fn (value: i64) -> value + (1: i64) - (2: i64) * (3: i64)\nlet take_i64 = fn (ignored: i64) -> 42\nlet main = fn () -> take_i64 (calculate (10: i64))\n",
+    )
+    .unwrap();
+    let i64_arithmetic_executable = dir.join("i64-arithmetic.native");
+    let i64_arithmetic_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_arithmetic_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_arithmetic_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_arithmetic_compile.status.success(),
+        "i64 arithmetic graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_arithmetic_compile.stderr)
     );
-    assert_eq!(i64_negation_run.stdout, i64_negation_c_run.stdout);
-    assert_eq!(i64_negation_run.stderr, i64_negation_c_run.stderr);
+    let i64_arithmetic_assembly = fs::read_to_string(
+        i64_arithmetic_executable.with_file_name("i64-arithmetic.native.aarch64.s"),
+    )
+    .unwrap();
+    assert!(i64_arithmetic_assembly.contains("add x11, x9, x10"));
+    assert!(i64_arithmetic_assembly.contains("sub x11, x9, x10"));
+    assert!(i64_arithmetic_assembly.contains("mul x11, x9, x10"));
+    let i64_arithmetic_run = Command::new(&i64_arithmetic_executable).output().unwrap();
+    assert_eq!(i64_arithmetic_run.status.code(), Some(42));
+    let i64_arithmetic_c_executable = dir.join("i64-arithmetic.c-backend");
+    let i64_arithmetic_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&i64_arithmetic_source)
+        .arg("-o")
+        .arg(&i64_arithmetic_c_executable)
+        .output()
+        .unwrap();
+    assert!(!i64_arithmetic_c_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&i64_arithmetic_c_compile.stderr)
+            .contains("C backend does not support integer arithmetic on `i64`")
+    );
+    assert!(!i64_arithmetic_c_executable.exists());
 
     let out_of_range_i64_source = dir.join("out-of-range-i64.ml");
     fs::write(
@@ -2308,7 +2350,10 @@ let main = fn () -> {
         .output()
         .unwrap();
     assert!(!native_rejected.status.success());
-    assert!(String::from_utf8_lossy(&native_rejected.stderr).contains("two i32 operands"));
+    assert!(
+        String::from_utf8_lossy(&native_rejected.stderr)
+            .contains("integer arithmetic requires matching integer types")
+    );
     assert!(!native_invalid_output.exists());
 
     let native_unknown_source = dir.join("native_compiler_unknown_name.ml");
@@ -2817,7 +2862,7 @@ let main = fn () -> {
         .output()
         .unwrap();
     assert!(!rejected.status.success());
-    assert!(String::from_utf8_lossy(&rejected.stderr).contains("two i32 operands"));
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("typechecking"));
     assert!(!invalid_output.exists());
 
     let dynamic_invalid_source = dir.join("dynamic_ill_typed.ml");
@@ -2837,7 +2882,7 @@ let main = fn () -> {
         .output()
         .unwrap();
     assert!(!dynamic_rejected.status.success());
-    assert!(String::from_utf8_lossy(&dynamic_rejected.stderr).contains("addition requires"));
+    assert!(String::from_utf8_lossy(&dynamic_rejected.stderr).contains("typechecking"));
     assert!(!dynamic_invalid_output.exists());
 
     let out_of_range_source = dir.join("out_of_range.ml");
