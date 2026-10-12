@@ -2489,6 +2489,32 @@ fn compile_c_rejects_unsupported_input_without_writing_output() {
 }
 
 #[test]
+fn compile_c_rejects_embedded_nul_strings_without_writing_output() {
+    let dir = temp_dir("compile-c-nul-string");
+    let source = dir.join("main.ml");
+    let output = dir.join("main.c");
+    fs::write(
+        &source,
+        r#"let main = fn () -> match "\0" { | "\0" -> 42 | _ -> 0 }
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .output()
+        .unwrap();
+    assert!(!compile.status.success());
+    assert!(!output.exists(), "unsupported NUL string left a C artifact");
+    assert!(String::from_utf8_lossy(&compile.stderr).contains("embedded NUL byte"));
+}
+
+#[test]
 fn compile_rejects_unsupported_target() {
     let dir = temp_dir("compile-target");
     let file = write_valid_source(&dir);
