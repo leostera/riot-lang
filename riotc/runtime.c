@@ -255,6 +255,7 @@ char *rt_as_string(RtValue value) {
   return value.as.string;
 }
 
+/* Decode modulo-2^32 results without implementation-defined unsigned-to-signed casts. */
 static int32_t rt_i32_from_bits(uint32_t bits) {
   uint32_t sign_bit = (uint32_t)INT32_MAX + UINT32_C(1);
   if (bits < sign_bit) return (int32_t)bits;
