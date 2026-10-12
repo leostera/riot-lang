@@ -242,6 +242,23 @@ fn aarch64_machine_ir_cli_selects_supported_functions_and_rejects_division() {
             .contains("only i32 and bool values have an AArch64 scalar representation here"),
         "unexpected unsupported-value diagnostic: {unsupported_value_diagnostic}"
     );
+
+    let unit_entry = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-mir")
+        .arg(&supported_source)
+        .arg("main")
+        .output()
+        .unwrap();
+    assert!(
+        !unit_entry.status.success(),
+        "unit-valued entry parameter unexpectedly selected"
+    );
+    assert!(
+        unit_entry.stdout.is_empty(),
+        "unsupported unit entry unexpectedly emitted MachineIR"
+    );
 }
 
 #[test]
