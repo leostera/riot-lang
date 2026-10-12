@@ -6,9 +6,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <spawn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+extern char **environ;
 
 static int rt_argc;
 static char **rt_argv;
@@ -574,15 +577,11 @@ static RtValue rt_process_args(RtValue program, RtValue list) {
     argv[index + 1] = rt_as_string(rt_field(cursor, 0));
     cursor = rt_field(cursor, 1);
   }
-  pid_t child = fork();
-  if (child == -1) {
+  pid_t child;
+  int spawn_error = posix_spawnp(&child, argv[0], NULL, NULL, argv, environ);
+  if (spawn_error != 0) {
     free(argv);
-    return rt_err(rt_unit(), rt_string(strerror(errno)));
-  }
-  if (child == 0) {
-    execvp(argv[0], argv);
-    fprintf(stderr, "riotml: cannot execute %s: %s\n", argv[0], strerror(errno));
-    _exit(127);
+    return rt_err(rt_unit(), rt_string(strerror(spawn_error)));
   }
   int status;
   while (waitpid(child, &status, 0) == -1) {
