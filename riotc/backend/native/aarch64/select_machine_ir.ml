@@ -56,13 +56,15 @@ let is_scalar_type = fn expected -> fn checked_type -> fn substitutions ->
     | Ok(actual) -> same_scalar_type expected actual
   }
 
-let fail_selection = fn function_identity -> fn block_identity -> fn span ->
-  fn reason -> Err(A64SelectionFailure {
+// Keep this helper's result concrete: module-level values remain monomorphic
+// while Riotc checks the module, so callers must wrap the failure in `Err`.
+let selection_failure = fn function_identity -> fn block_identity -> fn span ->
+  fn reason -> A64SelectionFailure {
     function: function_identity,
     block: block_identity,
     span: span,
     reason: reason
-  })
+  }
 
 let comparison_condition = fn operator -> match operator {
   | Equal -> Ok(A64Equal)
@@ -215,10 +217,10 @@ let select_instruction = fn function_identity -> fn block_identity ->
   fn substitutions -> fn (NativeInstruction {
     result, result_type, operation, effects: NativeEffectSet(effects), span
   }) -> match (select_operation operation result_type substitutions) {
-    | Err(reason) -> fail_selection function_identity block_identity span reason
+    | Err(reason) -> Err(selection_failure function_identity block_identity span reason)
     | Ok(machine_operation) -> match (operation_is_call operation) {
       | true -> match (scalar_type result_type substitutions) {
-        | Err(reason) -> fail_selection function_identity block_identity span reason
+        | Err(reason) -> Err(selection_failure function_identity block_identity span reason)
         | Ok(machine_type) -> Ok(A64Instruction {
           destination: native_register result,
           result_type: machine_type,
@@ -229,7 +231,7 @@ let select_instruction = fn function_identity -> fn block_identity ->
       }
       | false -> match effects {
         | Nil -> match (scalar_type result_type substitutions) {
-        | Err(reason) -> fail_selection function_identity block_identity span reason
+        | Err(reason) -> Err(selection_failure function_identity block_identity span reason)
         | Ok(machine_type) -> Ok(A64Instruction {
           destination: native_register result,
           result_type: machine_type,
@@ -238,19 +240,19 @@ let select_instruction = fn function_identity -> fn block_identity ->
           span: span
         })
         }
-        | _ -> fail_selection function_identity block_identity span
-            "selection would discard an explicit NativeIR effect"
+        | _ -> Err(selection_failure function_identity block_identity span
+            "selection would discard an explicit NativeIR effect")
       }
     }
   }
 
-let select_parameters = fn function_identity -> fn block_identity ->
+let select_block_parameters = fn function_identity -> fn block_identity ->
   fn substitutions -> fn parameters -> match parameters {
     | Nil -> Ok(Nil)
     | Cons(NativeBlockParameter { value, checked_type, span }, remaining) ->
       match (scalar_type checked_type substitutions) {
-        | Err(reason) -> fail_selection function_identity block_identity span reason
-        | Ok(value_type) -> match (select_parameters function_identity block_identity
+        | Err(reason) -> Err(selection_failure function_identity block_identity span reason)
+        | Ok(value_type) -> match (select_block_parameters function_identity block_identity
             substitutions remaining) {
           | Err(failure) -> Err(failure)
           | Ok(rest) -> Ok(Cons(A64BlockParameter {
@@ -298,13 +300,13 @@ let select_terminator = fn function_identity -> fn block_identity ->
     | NativeReturn(value) -> Ok(A64Return(native_register value))
     | NativeTrap(reason) -> Ok(A64Trap(reason))
     | NativeUnreachable -> Ok(A64Unreachable)
-    | NativeSwitchTerminator(_) -> fail_selection function_identity block_identity span
-        "switch terminators are not in the AArch64 scalar selector subset"
+    | NativeSwitchTerminator(_) -> Err(selection_failure function_identity block_identity span
+        "switch terminators are not in the AArch64 scalar selector subset")
   }
 
 let select_block = fn function_identity -> fn substitutions ->
   fn (NativeBlock { identity, parameters, instructions, terminator, span }) ->
-  match (select_parameters function_identity identity substitutions parameters) {
+  match (select_block_parameters function_identity identity substitutions parameters) {
     | Err(failure) -> Err(failure)
     | Ok(machine_parameters) -> match (select_instructions function_identity identity
         substitutions instructions) {
@@ -341,7 +343,7 @@ let select_function = fn (NativeFunction {
 }) -> fn substitutions -> match (scalar_type result_type substitutions) {
   | Err(reason) -> match blocks {
     | Cons(NativeBlock { identity: block, span: block_span, parameters: _, instructions: _,
-        terminator: _ }, _) -> fail_selection identity block block_span reason
+        terminator: _ }, _) -> Err(selection_failure identity block block_span reason)
     | Nil -> Err(A64SelectionFailure {
       function: identity, block: NativeBlockId(0), span: span, reason: reason
     })
