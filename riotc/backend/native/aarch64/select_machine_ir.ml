@@ -25,7 +25,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
   A64LoadI32, A64LoadBoolean, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64AddI32, A64SubtractI32, A64MultiplyI32,
-  A64CompareI32, A64BinaryOperands, A64IntegerComparison,
+  A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64BinaryOperands,
+  A64IntegerComparison,
   A64Equal, A64NotEqual, A64SignedLessThan, A64SignedLessThanOrEqual,
   A64SignedGreaterThan, A64SignedGreaterThanOrEqual, A64Edge,
   A64Branch, A64Terminator, A64Jump, A64ConditionalBranch, A64Return,
@@ -110,17 +111,36 @@ let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
     }
     | Division -> Err("division selection awaits explicit divide-by-zero trap lowering")
     | Remainder -> Err("remainder selection awaits explicit remainder-by-zero trap lowering")
-    | _ -> match (comparison_condition operator) {
-      | Err(message) -> Err(message)
-      | Ok(condition) -> match (is_scalar_type A64I32 operand_type substitutions) {
-        | false -> Err("integer comparison requires i32 operands")
-        | true -> match (is_scalar_type A64Boolean result_type substitutions) {
-          | true -> Ok(A64CompareI32(A64IntegerComparison {
-            condition: condition,
+    | _ -> match (is_scalar_type A64Boolean operand_type substitutions) {
+      | true -> match operator {
+        | Equal -> match (is_scalar_type A64Boolean result_type substitutions) {
+          | true -> Ok(A64EqualBoolean(A64BinaryOperands {
             left: native_register left,
             right: native_register right
           }))
-          | false -> Err("integer comparison must produce bool")
+          | false -> Err("boolean equality must produce bool")
+        }
+        | NotEqual -> match (is_scalar_type A64Boolean result_type substitutions) {
+          | true -> Ok(A64NotEqualBoolean(A64BinaryOperands {
+            left: native_register left,
+            right: native_register right
+          }))
+          | false -> Err("boolean inequality must produce bool")
+        }
+        | _ -> Err("boolean values only support equality comparisons")
+      }
+      | false -> match (comparison_condition operator) {
+        | Err(message) -> Err(message)
+        | Ok(condition) -> match (is_scalar_type A64I32 operand_type substitutions) {
+          | false -> Err("integer comparison requires i32 operands")
+          | true -> match (is_scalar_type A64Boolean result_type substitutions) {
+            | true -> Ok(A64CompareI32(A64IntegerComparison {
+              condition: condition,
+              left: native_register left,
+              right: native_register right
+            }))
+            | false -> Err("integer comparison must produce bool")
+          }
         }
       }
     }

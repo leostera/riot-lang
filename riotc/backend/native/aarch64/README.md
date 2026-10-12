@@ -15,8 +15,8 @@ Unsupported instructions return a diagnostic with function, block, and source
 span; there is no C fallback from this command.
 
 The selected subset currently includes `i32`/`bool` constants; `i32`
-addition, subtraction, multiplication, negation, and signed comparisons;
-conditional branches, block arguments, returns and trap pseudos; plus direct or
+addition, subtraction, multiplication, negation, signed comparisons, and boolean
+equality/inequality; conditional branches, block arguments, returns and trap pseudos; plus direct or
 Host calls whose arguments and result are scalar. Calls retain their logical
 target, typed virtual arguments, and NativeIR effects, but do not assign
 physical argument/result registers or name runtime symbols.

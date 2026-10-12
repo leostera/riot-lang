@@ -1,7 +1,7 @@
 // Positive/negative fixtures for ABI-free AArch64 scalar selection.
 use Prelude.{List, Nil, Cons, Result, Ok, Err}
 use String.{equal}
-use Syntax.Ast.{ValueName, IntegerLiteral, Addition, Division}
+use Syntax.Ast.{ValueName, IntegerLiteral, Addition, Division, Equal, NotEqual}
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
   InferenceType, AppliedType, InferredNamedType, BindingIdentity,
@@ -27,6 +27,7 @@ let module_name = "aarch64-machine-ir-test"
 let source_span = SourceSpan { start_codepoint: 0, end_codepoint: 1 }
 let unit_type = AppliedType(InferredNamedType { name: "unit", arguments: Nil })
 let int_type = AppliedType(InferredNamedType { name: "i32", arguments: Nil })
+let bool_type = AppliedType(InferredNamedType { name: "bool", arguments: Nil })
 let initializer_identity = NativeModuleInitializer(module_name)
 let test_binding = BindingIdentity {
   source_path: module_name,
@@ -110,6 +111,52 @@ let fixture_module = fn function ->
   fixture_module_with_functions (Cons(function, Nil))
 
 let valid_add_function = binary_function (Addition) (NativeEffectSet(Nil)) "sum"
+
+let boolean_comparison_function = fn operator -> fn function_name -> NativeFunction {
+  identity: NativeTopLevelFunction(BindingIdentity {
+    source_path: module_name,
+    declaration_span: source_span,
+    name: ValueName(function_name),
+    scope: ModuleValueBinding
+  }),
+  result_type: bool_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(NativeBlock {
+    identity: NativeBlockId(0),
+    parameters: Nil,
+    instructions: Cons(NativeInstruction {
+      result: NativeValueId(0),
+      result_type: bool_type,
+      operation: NativeConstant(NativeBoolean(true)),
+      effects: NativeEffectSet(Nil),
+      span: source_span
+    }, Cons(NativeInstruction {
+      result: NativeValueId(1),
+      result_type: bool_type,
+      operation: NativeConstant(NativeBoolean(false)),
+      effects: NativeEffectSet(Nil),
+      span: source_span
+    }, Cons(NativeInstruction {
+      result: NativeValueId(2),
+      result_type: bool_type,
+      operation: NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
+        operator: operator,
+        operand_type: bool_type,
+        left: NativeValueId(0),
+        right: NativeValueId(1)
+      })),
+      effects: NativeEffectSet(Nil),
+      span: source_span
+    }, Nil))),
+    terminator: NativeReturn(NativeValueId(2)),
+    span: source_span
+  }, Nil),
+  span: source_span
+}
+
+let boolean_equality_function = boolean_comparison_function Equal "boolean_equal"
+let boolean_inequality_function = boolean_comparison_function NotEqual "boolean_not_equal"
+
 let division_function = binary_function (Division)
   (NativeEffectSet(Cons(NativeMayTrap(NativeDivisionByZero), Nil))) "quotient"
 
@@ -284,6 +331,28 @@ let selection_prints_expected_ir = fn function -> match (select_function functio
         + "    return %v2\n}\n")
 }
 
+let selection_prints_boolean_equality = fn function -> match (select_function function Nil) {
+  | Err(_) -> false
+  | Ok(selected) -> equal (print_function selected)
+      ("function fn aarch64-machine-ir-test::boolean_equal@0 -> bool entry .Lbb0 {\n"
+        + ".Lbb0():\n"
+        + "    %v0:bool = load_bool true\n"
+        + "    %v1:bool = load_bool false\n"
+        + "    %v2:bool = cmp_set.eq_bool %v0, %v1\n"
+        + "    return %v2\n}\n")
+}
+
+let selection_prints_boolean_inequality = fn function -> match (select_function function Nil) {
+  | Err(_) -> false
+  | Ok(selected) -> equal (print_function selected)
+      ("function fn aarch64-machine-ir-test::boolean_not_equal@0 -> bool entry .Lbb0 {\n"
+        + ".Lbb0():\n"
+        + "    %v0:bool = load_bool true\n"
+        + "    %v1:bool = load_bool false\n"
+        + "    %v2:bool = cmp_set.ne_bool %v0, %v1\n"
+        + "    return %v2\n}\n")
+}
+
 let selection_preserves_direct_call_and_effect = fn function ->
   match (select_function function Nil) {
     | Err(_) -> false
@@ -328,34 +397,33 @@ let selection_rejects_division_without_trap_lowering = fn function ->
       equal reason "division selection awaits explicit divide-by-zero trap lowering"
   }
 
-let run_tests = fn () -> match (verify_module (fixture_module valid_add_function)) {
+let module_verifies = fn native_module -> match (verify_module native_module) {
   | Err(_) -> false
-  | Ok(_) -> match (verify_module (fixture_module branch_function)) {
-    | Err(_) -> false
-    | Ok(_) -> match (verify_module direct_call_module) {
-      | Err(_) -> false
-      | Ok(_) -> match (verify_module (fixture_module host_call_function)) {
-        | Err(_) -> false
-        | Ok(_) -> match (verify_module (fixture_module division_function)) {
-          | Err(_) -> false
-          | Ok(_) -> match (selection_prints_expected_ir valid_add_function) {
-            | false -> false
-            | true -> match (selection_preserves_direct_call_and_effect direct_call_function) {
-              | false -> false
-              | true -> match (selection_preserves_host_call_and_effect host_call_function) {
-                | false -> false
-                | true -> match (selection_preserves_branch_labels_and_edge_arguments branch_function) {
-                  | false -> false
-                  | true -> selection_rejects_division_without_trap_lowering division_function
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+  | Ok(_) -> true
 }
+
+let all_pass = fn tests -> match tests {
+  | Nil -> true
+  | Cons(false, _) -> false
+  | Cons(true, remaining) -> all_pass remaining
+}
+
+let run_tests = fn () -> all_pass (Cons(
+  module_verifies (fixture_module valid_add_function),
+  Cons(module_verifies (fixture_module boolean_equality_function),
+  Cons(module_verifies (fixture_module boolean_inequality_function),
+  Cons(module_verifies (fixture_module branch_function),
+  Cons(module_verifies direct_call_module,
+  Cons(module_verifies (fixture_module host_call_function),
+  Cons(module_verifies (fixture_module division_function),
+  Cons(selection_prints_expected_ir valid_add_function,
+  Cons(selection_prints_boolean_equality boolean_equality_function,
+  Cons(selection_prints_boolean_inequality boolean_inequality_function,
+  Cons(selection_preserves_direct_call_and_effect direct_call_function,
+  Cons(selection_preserves_host_call_and_effect host_call_function,
+  Cons(selection_preserves_branch_labels_and_edge_arguments branch_function,
+  Cons(selection_rejects_division_without_trap_lowering division_function,
+    Nil)))))))))))))))
 
 let main = fn () -> match (run_tests ()) {
   | true -> 0
