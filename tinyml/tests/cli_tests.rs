@@ -2677,6 +2677,124 @@ let main = fn () -> match (map (fn x -> x + 22) (Cons(20, Nil))) { | Cons(result
 }
 
 #[test]
+fn compile_c_first_bootstraps_riotc_without_javascript() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let riotc_dir = repo.join("riotc");
+    let source = riotc_dir.join("main.ml");
+    let dir = temp_dir("compile-c-first-bootstrap");
+    let first_c = dir.join("riotml-compiler-first.c");
+    let second_c = dir.join("riotml-compiler-second.c");
+    let bootstrap_compiler = dir.join("riotml-compiler");
+    let no_node_path = "/usr/bin:/bin";
+
+    for output in [&first_c, &second_c] {
+        let compile = Command::new(tinyml())
+            .current_dir(repo)
+            .env("PATH", no_node_path)
+            .arg("compile")
+            .arg("--target")
+            .arg("c")
+            .arg("-I")
+            .arg("riotc")
+            .arg(&source)
+            .arg("-o")
+            .arg(output)
+            .output()
+            .unwrap();
+        assert!(
+            compile.status.success(),
+            "Stage 0 C emission failed: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+    }
+    assert_eq!(
+        fs::read(&first_c).unwrap(),
+        fs::read(&second_c).unwrap(),
+        "Riotc Stage 0 C output was not deterministic"
+    );
+
+    let clang = Command::new("clang")
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&riotc_dir)
+        .arg(&first_c)
+        .arg(riotc_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&bootstrap_compiler)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "Clang failed to build the C-hosted compiler: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+
+    let smoke_source = dir.join("smoke.ml");
+    let smoke_executable = dir.join("smoke");
+    fs::write(
+        &smoke_source,
+        r#"use String.{concat, length, get, slice, equal}
+use Prelude.{Some}
+let main = fn () -> {
+  let text = "A\0B";
+  let joined = concat "A\0" "B";
+  match (length text, get text 1, slice text 1 2, equal text joined) {
+    | (3, Some(0), "\0", true) -> 42
+    | _ -> 0
+  }
+}
+"#,
+    )
+    .unwrap();
+    let runtime_directory = riotc_dir.to_str().unwrap();
+    let compile_smoke = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("compile")
+        .arg(&smoke_source)
+        .arg("-o")
+        .arg(&smoke_executable)
+        .output()
+        .unwrap();
+    assert!(
+        compile_smoke.status.success(),
+        "C-hosted compiler failed to compile the smoke program: {}",
+        String::from_utf8_lossy(&compile_smoke.stderr)
+    );
+    let smoke = Command::new(&smoke_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(smoke.status.code(), Some(42));
+
+    let invalid_source = dir.join("invalid.ml");
+    let invalid_executable = dir.join("invalid");
+    let invalid_c = dir.join("invalid.c");
+    fs::write(&invalid_source, "let main = fn () -> 1 + true\n").unwrap();
+    let invalid = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("compile")
+        .arg(&invalid_source)
+        .arg("-o")
+        .arg(&invalid_executable)
+        .output()
+        .unwrap();
+    assert!(!invalid.status.success());
+    assert!(
+        String::from_utf8_lossy(&invalid.stderr).contains("typechecking"),
+        "unexpected invalid-source diagnostic: {}",
+        String::from_utf8_lossy(&invalid.stderr)
+    );
+    assert!(!invalid_executable.exists());
+    assert!(!invalid_c.exists());
+}
+
+#[test]
 fn compile_c_uses_the_host_runtime_without_javascript() {
     let dir = temp_dir("compile-c-host-args");
     let source = dir.join("main.ml");

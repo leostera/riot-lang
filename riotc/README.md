@@ -93,7 +93,11 @@ Text-file I/O uses strict UTF-8 validation. Clang is launched through
 `Host.run_process`; runtime discovery uses `RIOTML_RUNTIME_DIR`, the current
 working directory, and the source/runtime directories. The existing
 integration tests exercise Host files, arguments, directories, processes,
-errors, output, and exit status.
+errors, output, and exit status. The `compile_c_first_bootstraps_riotc_without_javascript`
+integration test emits the complete Riotc graph twice, checks deterministic C,
+builds the C-hosted compiler, runs the NUL-string status-42 smoke with Node
+excluded from `PATH`, and checks that an ill-typed program leaves no executable
+or C output.
 
 The existing C-plus-Clang source-backend and self-rebuild baseline is recorded
 in [`../docs/benchmarks/riotc-c-bootstrap-baseline-2026-10-12.md`](../docs/benchmarks/riotc-c-bootstrap-baseline-2026-10-12.md).
