@@ -197,10 +197,10 @@ explicitly typed `void *rt_native_host_args(void)` helper; the helper invokes
 the existing `rt_host_args` implementation, validates the returned `RtValue`
 is a variant box, and returns only its opaque pointer payload in `x0`. Native
 code does not inspect or depend on `RtBox` layout, and no `RtValue` crosses the
-native-to-C call boundary for this helper. The selected-function test adapter
-does not currently initialize `argc`/`argv`, so this bridge sees the runtime's
-empty argument list in that harness; full process argument setup remains part
-of the unimplemented whole-program entry adapter. Aliases and all other Host
+native-to-C call boundary for this helper. The selected-function test adapter passes the OS `argc`/`argv` to
+`rt_set_args`, so this bridge observes the same `argv[1..]` process-argument
+list as the runtime. Runtime-directory setup, module globals, and module
+initializers remain part of the unimplemented whole-program entry adapter. Aliases and all other Host
 operations retain closure/global behavior and are explicitly unsupported by
 this LIR slice.
 
@@ -208,7 +208,9 @@ this LIR slice.
 
 [`rtvalue_abi_probe.c`](rtvalue_abi_probe.c) uses only C declarations and
 static layout assertions. It checks the C runtime boundary; it does not
-implement or select the native Riot ABI.
+implement or select the native Riot ABI. The companion
+[`host_args_abi_probe.c`](host_args_abi_probe.c) runs the typed Host pointer
+bridge with two process arguments and verifies the returned list contents.
 
 On the recorded host it was inspected with:
 

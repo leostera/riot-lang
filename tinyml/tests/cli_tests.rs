@@ -686,6 +686,30 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert_eq!(host_args_run.stdout, host_args_c_run.stdout);
     assert_eq!(host_args_run.stderr, host_args_c_run.stderr);
 
+    let host_args_probe = include_dir.join("backend/native/aarch64/host_args_abi_probe.c");
+    let host_args_probe_executable = dir.join("host-args-abi-probe");
+    let host_args_probe_compile = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg(&host_args_probe)
+        .arg(include_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&host_args_probe_executable)
+        .output()
+        .unwrap();
+    assert!(
+        host_args_probe_compile.status.success(),
+        "Host.args ABI probe failed to compile: {}",
+        String::from_utf8_lossy(&host_args_probe_compile.stderr)
+    );
+    let host_args_probe_run = Command::new(&host_args_probe_executable)
+        .arg("alpha")
+        .arg("beta")
+        .output()
+        .unwrap();
+    assert_eq!(host_args_probe_run.status.code(), Some(0));
+
     let unsupported_host_source = dir.join("unsupported-host.ml");
     fs::write(
         &unsupported_host_source,
@@ -3427,6 +3451,7 @@ fn compile_c_first_bootstraps_riotc_without_javascript() {
     let clang = Command::new("clang")
         .current_dir(repo)
         .env("PATH", no_node_path)
+        .arg("-O2")
         .arg("-std=gnu11")
         .arg("-I")
         .arg(&riotc_dir)

@@ -28,7 +28,7 @@ PATH=/usr/bin:/bin target/debug/tinyml compile --target c -I riotc \
 PATH=/usr/bin:/bin target/debug/tinyml compile --target c -I riotc \
   riotc/main.ml -o "$work/riotml-compiler-again.c"
 cmp "$work/riotml-compiler.c" "$work/riotml-compiler-again.c"
-PATH=/usr/bin:/bin clang -std=gnu11 -I riotc \
+PATH=/usr/bin:/bin clang -O2 -std=gnu11 -I riotc \
   "$work/riotml-compiler.c" riotc/runtime.c \
   -o "$work/riotml-compiler"
 ```
