@@ -21,7 +21,7 @@ use Syntax.Ast.{
   PatternInteger, PatternBoolean, PatternString, TuplePattern,
   ConstructorPattern, ConstructorPatternData, RecordPattern,
   RecordPatternData, RecordPatternField, AscribedPattern, AscribedPatternData,
-  ModulePath
+  ModulePath, expression_kind, pattern_kind
 }
 use Check.Names.{check_source_module_names}
 use Modules.{LoadedModule}
@@ -1679,7 +1679,7 @@ let infer_record_pattern_fields = fn infer_child -> fn fields -> fn field_names 
   }
 
 let infer_pattern = fn pattern -> fn expected_type -> fn visible_types -> fn state ->
-  match pattern {
+  match (pattern_kind pattern) {
     | Variable(name) -> Ok(PatternBindings {
       bindings: Cons(SchemeBinding(name,
         TypeScheme { quantified_variables: Nil, body: expected_type }
@@ -2102,7 +2102,7 @@ let validate_boolean_match_arms = fn saw_true -> fn saw_false -> fn arms ->
         | true -> Ok(())
       }
     }
-    | Cons(MatchArm { pattern, body: _ }, remaining) -> match pattern {
+    | Cons(MatchArm { pattern, body: _ }, remaining) -> match (pattern_kind pattern) {
       | PatternBoolean(true) -> match saw_true {
         | true -> Err("duplicate `true` match arm")
         | false -> validate_boolean_match_arms true saw_false remaining
@@ -2116,7 +2116,7 @@ let validate_boolean_match_arms = fn saw_true -> fn saw_false -> fn arms ->
   }
 
 let infer_expression = fn expression -> fn environment -> fn visible_types -> fn state ->
-  match expression {
+  match (expression_kind expression) {
     | Integer(_) -> Ok(make_inference_result (builtin_inferred_type "i32") state)
     | Boolean(_) -> Ok(make_inference_result (builtin_inferred_type "bool") state)
     | StringLiteral(_) -> Ok(make_inference_result (builtin_inferred_type "string") state)
@@ -2341,8 +2341,14 @@ let has_native_entry = fn declarations ->
     | Nil -> false
     | Cons(ValueDeclaration(ValueDeclarationData {
         name: ValueName("main"),
-        body: Function(FunctionExpression { parameter: PatternUnit, body: _ })
-      }), _) -> true
+        body
+      }), _) -> match (expression_kind body) {
+      | Function(FunctionExpression { parameter, body: _ }) -> match (pattern_kind parameter) {
+        | PatternUnit -> true
+        | _ -> false
+      }
+      | _ -> false
+    }
     | Cons(ValueDeclaration(_), remaining) -> has_native_entry remaining
     | Cons(TypeDeclaration(_), remaining) -> has_native_entry remaining
   }

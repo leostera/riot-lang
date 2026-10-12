@@ -16,6 +16,7 @@ use Syntax.Ast.{
   PatternString, TuplePattern, ConstructorPattern, ConstructorPatternData,
   RecordPattern, RecordPatternData, RecordPatternField, AscribedPattern,
   AscribedPatternData, NamedType, NamedTypeExpression, ArrowType,
+  expression_kind, pattern_kind,
   ArrowTypeExpression, TupleType, RecordType, VariantType, TypeVariable
 }
 
@@ -249,7 +250,7 @@ let validate_declaration_types = fn declarations -> fn visible_names ->
   }
 
 let bound_pattern_names = fn pattern ->
-  match pattern {
+  match (pattern_kind pattern) {
     | Variable(ValueName(name)) -> Cons(name, Nil)
     | Wildcard -> Nil
     | PatternUnit -> Nil
@@ -323,7 +324,7 @@ let validate_record_pattern_fields = fn fields -> fn module_names ->
   }
 
 let validate_pattern = fn pattern -> fn module_names ->
-  match pattern {
+  match (pattern_kind pattern) {
     | Variable(_) -> Ok(())
     | Wildcard -> Ok(())
     | PatternUnit -> Ok(())
@@ -394,7 +395,7 @@ let validate_match_arms = fn arms -> fn local_names -> fn module_names ->
   }
 
 let validate_expression = fn expression -> fn local_names -> fn module_names ->
-  match expression {
+  match (expression_kind expression) {
     | Integer(_) -> Ok(())
     | Boolean(_) -> Ok(())
     | StringLiteral(_) -> Ok(())

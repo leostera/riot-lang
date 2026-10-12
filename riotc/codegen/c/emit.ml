@@ -15,7 +15,7 @@ use Syntax.Ast.{
   ValueDeclaration, ValueDeclarationData, TypeDeclaration,
   ConstructorPattern, ConstructorPatternData, RecordPattern,
   RecordPatternData, RecordPatternField, AscribedPattern,
-  AscribedPatternData
+  AscribedPatternData, expression_kind, pattern_kind
 }
 use String.{equal, get, length, slice}
 use Modules.{module_path_relative}
@@ -177,7 +177,7 @@ let append_string_initializer_item = fn first -> fn remaining -> fn remaining_co
   }
 
 let emit_pattern_condition = fn pattern -> fn value ->
-  match pattern {
+  match (pattern_kind pattern) {
     | Variable(_) -> "1"
     | Wildcard -> "1"
     | PatternUnit -> "rt_is_unit(" + value + ")"
@@ -220,7 +220,7 @@ let emit_record_pattern_condition = fn fields -> fn value ->
   }
 
 let emit_pattern_bindings = fn pattern -> fn value -> fn environment ->
-  match pattern {
+  match (pattern_kind pattern) {
     | Variable(ValueName(name)) -> "rt_environment_bind(" + environment + ","
       + c_string_literal name + "," + value + ");\n"
     | Wildcard -> ""
@@ -279,7 +279,7 @@ let emit_match_arms = fn path -> fn environment -> fn scrutinee -> fn arms -> fn
   }
 
 let emit_source_expression = fn path -> fn environment -> fn expression ->
-  match expression {
+  match (expression_kind expression) {
     | Integer(IntegerLiteral(value)) -> GeneratedCode {
       expression: "rt_int(" + value + ")",
       functions: ""

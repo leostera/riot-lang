@@ -2,7 +2,7 @@
 use Prelude.{List, Nil, Cons, Result, Ok, Err}
 use Syntax.Ast.{
   Expr, ValueName, ConstructorName, RecordExpr, RecordExpression,
-  RecordExpressionField, VariableExpr
+  RecordExpressionField, VariableExpr, make_expression, expression_with_span
 }
 use Syntax.Lexer.{Token, TokenInfo, IdentifierToken, SymbolToken}
 use Syntax.Parser.Common.{ParseStep, take_symbol, reverse_list}
@@ -38,10 +38,10 @@ let finish_record_expression = fn (RecordExpressionState {
   reversed_fields
 }) -> fn remaining ->
   Ok(ParseStep {
-    value: RecordExpr(RecordExpression {
+    value: make_expression (RecordExpr(RecordExpression {
       constructor_name: constructor_name,
       fields: reverse_list reversed_fields
-    }),
+    })),
     remaining_tokens: remaining
   })
 
@@ -53,7 +53,7 @@ let parse_record_expression_fields = fn parse_expression -> fn
         constructor_name: constructor_name,
         reversed_fields: reversed_fields
       }) remaining
-    | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
+    | Cons(IdentifierToken(TokenInfo { lexeme: name, span }), remaining) ->
       match (take_symbol ":" remaining) {
         | Ok(value_tokens) -> match (parse_expression value_tokens) {
           | Err(message) -> Err(message)
@@ -78,7 +78,7 @@ let parse_record_expression_fields = fn parse_expression -> fn
         | Err(_) -> {
           let next_fields = Cons(RecordExpressionField {
             name: ValueName(name),
-            value: VariableExpr(ValueName(name))
+            value: expression_with_span (make_expression (VariableExpr(ValueName(name)))) span
           }, reversed_fields);
           let next_state = RecordExpressionState {
             constructor_name: constructor_name,

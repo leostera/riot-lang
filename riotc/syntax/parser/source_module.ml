@@ -7,11 +7,12 @@ use Syntax.Ast.{
   TypeVariants, RecordTypeField, VariantDeclaration, TupleVariant,
   TupleVariantData, RecordVariant, RecordVariantData, TypeExpr, ValueName, Pattern,
   ConstructorName,
-  Function, FunctionExpression, Ascription, AscriptionExpression
+  Function, FunctionExpression, Ascription, AscriptionExpression,
+  make_expression, expression_with_span, expression_span, pattern_span
 }
 use Syntax.Lexer.{
   Token, TokenInfo, IdentifierToken, SymbolToken, UnterminatedString,
-  UnterminatedEscape, lex
+  UnterminatedEscape, lex, SourceSpan
 }
 use Syntax.Parser.Common.{
   ParseStep, reverse_list, is_constructor_name, parser_error_from_lexer,
@@ -327,40 +328,60 @@ let parse_value_parameters = fn (ValueParametersState {
 let wrap_value_parameters = fn parameters -> fn body ->
   match parameters {
     | Nil -> body
-    | Cons(parameter, remaining) -> Function(FunctionExpression {
-      parameter: parameter,
-      body: wrap_value_parameters remaining body
-    })
+    | Cons(parameter, remaining) -> {
+      let parameter_span = pattern_span parameter;
+      let body_span = expression_span body;
+      let SourceSpan { start_codepoint, end_codepoint: _ } = parameter_span;
+      let SourceSpan { start_codepoint: _, end_codepoint } = body_span;
+      expression_with_span (make_expression (Function(FunctionExpression {
+        parameter: parameter,
+        body: wrap_value_parameters remaining body
+      }))) (SourceSpan {
+        start_codepoint: start_codepoint,
+        end_codepoint: end_codepoint
+      })
+    }
   }
 
-let apply_value_annotation = fn annotation -> fn body ->
+let annotation_span_for_body = fn annotation_span -> fn body ->
+  match annotation_span {
+    | None -> expression_span body
+    | Some(SourceSpan { start_codepoint, end_codepoint: _ }) -> {
+      let SourceSpan { start_codepoint: _, end_codepoint } = expression_span body;
+      SourceSpan { start_codepoint: start_codepoint, end_codepoint: end_codepoint }
+    }
+  }
+
+let apply_value_annotation = fn annotation -> fn annotation_span -> fn body ->
   match annotation {
     | None -> body
-    | Some(type_expression) -> Ascription(AscriptionExpression {
-      expression: body,
-      annotation: type_expression
-    })
+    | Some(type_expression) -> expression_with_span
+      (make_expression (Ascription(AscriptionExpression {
+        expression: body,
+        annotation: type_expression
+      }))) (annotation_span_for_body annotation_span body)
   }
 
 let parse_value_declaration = fn tokens ->
   match tokens {
     | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
-      parse_value_declaration_annotation (ValueName(name)) None remaining
+      parse_value_declaration_annotation (ValueName(name)) None None remaining
     | _ -> Err("expected a value name after `let`")
   }
 
-let parse_value_declaration_annotation = fn name -> fn annotation -> fn tokens ->
+let parse_value_declaration_annotation = fn name -> fn annotation -> fn annotation_span -> fn tokens ->
   match tokens {
-    | Cons(SymbolToken(TokenInfo { lexeme: ":", span: _ }), remaining) ->
+    | Cons(SymbolToken(TokenInfo { lexeme: ":", span }), remaining) ->
       match (parse_type remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: type_expression, remaining_tokens }) ->
-          parse_value_declaration_parameters name (Some(type_expression)) remaining_tokens
+          parse_value_declaration_parameters name (Some(type_expression))
+            (Some(span)) remaining_tokens
       }
-    | _ -> parse_value_declaration_parameters name annotation tokens
+    | _ -> parse_value_declaration_parameters name annotation annotation_span tokens
   }
 
-let parse_value_declaration_parameters = fn name -> fn annotation -> fn tokens ->
+let parse_value_declaration_parameters = fn name -> fn annotation -> fn annotation_span -> fn tokens ->
   match (parse_value_parameters (ValueParametersState {
     reversed_parameters: Nil,
     remaining_tokens: tokens
@@ -372,7 +393,8 @@ let parse_value_declaration_parameters = fn name -> fn annotation -> fn tokens -
         | Ok(ParseStep { value: body, remaining_tokens }) -> Ok(ParseStep {
           value: ValueDeclaration(ValueDeclarationData {
             name: name,
-            body: apply_value_annotation annotation (wrap_value_parameters parameters body)
+            body: apply_value_annotation annotation annotation_span
+              (wrap_value_parameters parameters body)
           }),
           remaining_tokens: remaining_tokens
         })

@@ -2,6 +2,7 @@
 use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
 use Syntax.Ast.{
   Expr, Pattern, ValueName, ConstructorName, IntegerLiteral, TextLiteral,
+  make_expression, expression_with_span, expression_span,
   BinaryOperator, Addition, Subtraction, Multiplication, Division, Remainder,
   Equal, NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
   Integer, Boolean, StringLiteral, Unit, VariableExpr, TupleExpr,
@@ -11,7 +12,8 @@ use Syntax.Ast.{
   AscriptionExpression, Block
 }
 use Syntax.Lexer.{
-  Token, TokenInfo, IdentifierToken, IntegerToken, TextToken, SymbolToken
+  Token, TokenInfo, IdentifierToken, IntegerToken, TextToken, SymbolToken,
+  SourceSpan
 }
 use Syntax.Parser.Common.{
   ParseStep, valid_i32_literal, take_symbol, reverse_list, is_constructor_name
@@ -47,6 +49,61 @@ type MatchParseState = MatchParseState {
   reversed_arms: List<MatchArm>
 }
 
+let token_span = fn token ->
+  match token {
+    | IdentifierToken(TokenInfo { lexeme: _, span }) -> span
+    | IntegerToken(TokenInfo { lexeme: _, span }) -> span
+    | TextToken(TokenInfo { lexeme: _, span }) -> span
+    | SymbolToken(TokenInfo { lexeme: _, span }) -> span
+  }
+
+let same_token_position = fn first -> fn second -> {
+  let SourceSpan { start_codepoint: first_start, end_codepoint: first_end } = token_span first;
+  let SourceSpan { start_codepoint: second_start, end_codepoint: second_end } = token_span second;
+  match (first_start == second_start) {
+    | false -> false
+    | true -> first_end == second_end
+  }
+}
+
+let token_before_suffix = fn suffix_token -> fn tokens -> fn previous_token ->
+  match tokens {
+    | Nil -> previous_token
+    | Cons(token, remaining) -> match (same_token_position token suffix_token) {
+      | true -> previous_token
+      | false -> token_before_suffix suffix_token remaining (Some(token))
+    }
+  }
+
+let last_token = fn tokens ->
+  match tokens {
+    | Nil -> None
+    | Cons(token, Nil) -> Some(token)
+    | Cons(_, remaining) -> last_token remaining
+  }
+
+let span_from_first_and_last = fn first_token -> fn last_token -> {
+  let SourceSpan { start_codepoint, end_codepoint: _ } = token_span first_token;
+  let SourceSpan { start_codepoint: _, end_codepoint } = token_span last_token;
+  SourceSpan { start_codepoint: start_codepoint, end_codepoint: end_codepoint }
+}
+
+let span_of_consumed_tokens = fn tokens -> fn remaining_tokens ->
+  match tokens {
+    | Nil -> SourceSpan { start_codepoint: 0, end_codepoint: 0 }
+    | Cons(first_token, _) -> match remaining_tokens {
+      | Nil -> match (last_token tokens) {
+        | None -> SourceSpan { start_codepoint: 0, end_codepoint: 0 }
+        | Some(last) -> span_from_first_and_last first_token last
+      }
+      | Cons(first_remaining, _) -> match (token_before_suffix
+          first_remaining tokens None) {
+        | None -> SourceSpan { start_codepoint: 0, end_codepoint: 0 }
+        | Some(last) -> span_from_first_and_last first_token last
+      }
+    }
+  }
+
 let parse_function_expression = fn parse_nested_expression -> fn tokens ->
   match (parse_pattern tokens) {
     | Err(message) -> Err(message)
@@ -60,10 +117,10 @@ let parse_function_arrow = fn parse_nested_expression -> fn parameter -> fn toke
     | Ok(body_tokens) -> match (parse_nested_expression body_tokens) {
       | Err(message) -> Err(message)
       | Ok(ParseStep { value: body, remaining_tokens }) -> Ok(ParseStep {
-        value: Function(FunctionExpression {
+        value: make_expression (Function(FunctionExpression {
           parameter: parameter,
           body: body
-        }),
+        })),
         remaining_tokens: remaining_tokens
       })
     }
@@ -103,12 +160,12 @@ let parse_let_body = fn parse_nested_expression -> fn pattern -> fn annotation -
     | Ok(body_tokens) -> match (parse_nested_expression body_tokens) {
       | Err(message) -> Err(message)
       | Ok(ParseStep { value: body, remaining_tokens }) -> Ok(ParseStep {
-        value: Let(LetExpression {
+        value: make_expression (Let(LetExpression {
           pattern: pattern,
           annotation: annotation,
           value: value,
           body: body
-        }),
+        })),
         remaining_tokens: remaining_tokens
       })
     }
@@ -117,7 +174,7 @@ let parse_let_body = fn parse_nested_expression -> fn pattern -> fn annotation -
 let parse_block_expression = fn parse_nested_expression -> fn tokens ->
   match tokens {
     | Cons(SymbolToken(TokenInfo { lexeme: "}", span: _ }), remaining) ->
-      Ok(ParseStep { value: Block(Nil), remaining_tokens: remaining })
+      Ok(ParseStep { value: make_expression (Block(Nil)), remaining_tokens: remaining })
     | _ -> parse_block_items parse_nested_expression tokens Nil
   }
 
@@ -133,7 +190,7 @@ let parse_block_item_end = fn parse_nested_expression -> fn expression -> fn rev
     | Cons(SymbolToken(TokenInfo { lexeme: ";", span: _ }), remaining) ->
       parse_block_items parse_nested_expression remaining (Cons(expression, reversed_items))
     | Cons(SymbolToken(TokenInfo { lexeme: "}", span: _ }), remaining) -> Ok(ParseStep {
-      value: Block(reverse_list (Cons(expression, reversed_items))),
+      value: make_expression (Block(reverse_list (Cons(expression, reversed_items)))),
       remaining_tokens: remaining
     })
     | _ -> Err("expected `;` or `}` after a block expression")
@@ -186,10 +243,10 @@ let finish_match_arm = fn parse_nested_expression -> fn (MatchParseState { scrut
     match remaining_tokens {
       | Cons(SymbolToken(TokenInfo { lexeme: "}", span: _ }), rest) ->
         Ok(ParseStep {
-          value: Match(MatchExpression {
+          value: make_expression (Match(MatchExpression {
             scrutinee: scrutinee,
             arms: reverse_list arms_in_reverse_order
-          }),
+          })),
           remaining_tokens: rest
         })
       | Cons(SymbolToken(TokenInfo { lexeme: "|", span: _ }), _) ->
@@ -299,7 +356,9 @@ let parse_term_tail = fn parse_nested_expression -> fn (ParseStep { value: left_
   }
 
 let make_binary_expression = fn (operator: BinaryOperator) -> fn (left: Expr) -> fn (right: Expr) ->
-  Binary(BinaryExpression { operator: operator, left: left, right: right })
+  expression_with_span
+    (make_expression (Binary(BinaryExpression { operator: operator, left: left, right: right })))
+    (expression_span_from_children left right)
 
 let parse_application = fn parse_nested_expression -> fn tokens ->
   (match (parse_prefix parse_nested_expression tokens) {
@@ -308,16 +367,24 @@ let parse_application = fn parse_nested_expression -> fn tokens ->
       parse_application_tail parse_nested_expression expression remaining_tokens
   }: Result<ParseStep<Expr>, string>)
 
+let expression_span_from_children = fn left -> fn right -> {
+  let SourceSpan { start_codepoint, end_codepoint: _ } = expression_span left;
+  let SourceSpan { start_codepoint: _, end_codepoint } = expression_span right;
+  SourceSpan { start_codepoint: start_codepoint, end_codepoint: end_codepoint }
+}
+
 let parse_application_tail = fn parse_nested_expression -> fn expression -> fn tokens ->
   match (starts_expression tokens) {
     | false -> Ok(ParseStep { value: expression, remaining_tokens: tokens })
     | true -> match (parse_prefix parse_nested_expression tokens) {
       | Err(message) -> Err(message)
-      | Ok(ParseStep { value: argument, remaining_tokens }) ->
-        parse_application_tail parse_nested_expression (Apply(ApplicationExpression {
+      | Ok(ParseStep { value: argument, remaining_tokens }) -> {
+        let applied = expression_with_span (make_expression (Apply(ApplicationExpression {
           callee: expression,
           argument: argument
-        })) remaining_tokens
+        }))) (expression_span_from_children expression argument);
+        parse_application_tail parse_nested_expression applied remaining_tokens
+      }
     }
   }
 
@@ -338,7 +405,7 @@ let starts_expression = fn tokens ->
     | _ -> false
   }
 
-let parse_prefix = fn parse_nested_expression -> fn tokens ->
+let parse_prefix_node = fn parse_nested_expression -> fn tokens ->
   match tokens {
     | Cons(IdentifierToken(TokenInfo { lexeme: "fn", span: _ }), remaining) ->
       parse_function_expression parse_nested_expression remaining
@@ -348,17 +415,26 @@ let parse_prefix = fn parse_nested_expression -> fn tokens ->
       parse_match_expression parse_nested_expression remaining
     | Cons(SymbolToken(TokenInfo { lexeme: "{", span: _ }), remaining) ->
       parse_block_expression parse_nested_expression remaining
-    | Cons(SymbolToken(TokenInfo { lexeme: "-", span: _ }), Cons(IntegerToken(TokenInfo { lexeme: digits, span: _ }), remaining)) ->
-      parse_negative_integer digits remaining
+    | Cons(SymbolToken(TokenInfo { lexeme: "-", span: _ }), Cons(IntegerToken(TokenInfo { lexeme: digits, span: literal_span }), remaining)) ->
+      parse_negative_integer digits literal_span remaining
     | Cons(SymbolToken(TokenInfo { lexeme: "-", span: _ }), remaining) ->
       match (parse_primary parse_nested_expression remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: operand, remaining_tokens }) -> Ok(ParseStep {
-          value: Negate(operand),
+          value: make_expression (Negate(operand)),
           remaining_tokens: remaining_tokens
         })
       }
     | _ -> parse_primary parse_nested_expression tokens
+  }
+
+let parse_prefix = fn parse_nested_expression -> fn tokens ->
+  match (parse_prefix_node parse_nested_expression tokens) {
+    | Err(message) -> Err(message)
+    | Ok(ParseStep { value, remaining_tokens }) -> Ok(ParseStep {
+      value: expression_with_span value (span_of_consumed_tokens tokens remaining_tokens),
+      remaining_tokens: remaining_tokens
+    })
   }
 
 let parse_primary = fn parse_nested_expression -> fn tokens ->
@@ -367,13 +443,13 @@ let parse_primary = fn parse_nested_expression -> fn tokens ->
       parse_integer digits remaining
     | Cons(TextToken(TokenInfo { lexeme, span: _ }), remaining) ->
       Ok(ParseStep {
-        value: StringLiteral(TextLiteral(decode_string_literal lexeme)),
+        value: make_expression (StringLiteral(TextLiteral(decode_string_literal lexeme))),
         remaining_tokens: remaining
       })
     | Cons(IdentifierToken(TokenInfo { lexeme: "true", span: _ }), remaining) ->
-      Ok(ParseStep { value: Boolean(true), remaining_tokens: remaining })
+      Ok(ParseStep { value: make_expression (Boolean(true)), remaining_tokens: remaining })
     | Cons(IdentifierToken(TokenInfo { lexeme: "false", span: _ }), remaining) ->
-      Ok(ParseStep { value: Boolean(false), remaining_tokens: remaining })
+      Ok(ParseStep { value: make_expression (Boolean(false)), remaining_tokens: remaining })
     | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
       parse_identifier_expression parse_nested_expression name remaining
     | Cons(SymbolToken(TokenInfo { lexeme: "(", span: _ }), remaining) ->
@@ -386,21 +462,22 @@ let parse_primary = fn parse_nested_expression -> fn tokens ->
 let parse_integer = fn digits -> fn remaining ->
   match (valid_i32_literal digits) {
     | true -> Ok(ParseStep {
-      value: Integer(IntegerLiteral(digits)),
+      value: make_expression (Integer(IntegerLiteral(digits))),
       remaining_tokens: remaining
     })
     | false -> Err("integer literal is outside i32 range")
   }
 
-let parse_negative_integer = fn digits -> fn remaining ->
+let parse_negative_integer = fn digits -> fn literal_span -> fn remaining ->
   match (equal digits "2147483648") {
     | true -> Ok(ParseStep {
-      value: Integer(IntegerLiteral("-2147483648")),
+      value: make_expression (Integer(IntegerLiteral("-2147483648"))),
       remaining_tokens: remaining
     })
     | false -> match (valid_i32_literal digits) {
       | true -> Ok(ParseStep {
-        value: Negate(Integer(IntegerLiteral(digits))),
+        value: make_expression (Negate(expression_with_span
+          (make_expression (Integer(IntegerLiteral(digits)))) literal_span)),
         remaining_tokens: remaining
       })
       | false -> Err("integer literal is outside i32 range")
@@ -411,7 +488,7 @@ let parse_identifier_expression = fn parse_nested_expression -> fn name -> fn to
   match (is_constructor_name name) {
     | true -> parse_constructor_expression parse_nested_expression name tokens
     | false -> Ok(ParseStep {
-      value: VariableExpr(ValueName(name)),
+      value: make_expression (VariableExpr(ValueName(name))),
       remaining_tokens: tokens
     })
   }
@@ -428,10 +505,10 @@ let parse_constructor_expression = fn parse_nested_expression -> fn name -> fn t
     | Cons(SymbolToken(TokenInfo { lexeme: "(", span: _ }), remaining) ->
       parse_constructor_arguments parse_expression name remaining
     | _ -> Ok(ParseStep {
-      value: ConstructorExpr(ConstructorExpression {
+      value: make_expression (ConstructorExpr(ConstructorExpression {
         constructor_name: ConstructorName(name),
         arguments: Nil
-      }),
+      })),
       remaining_tokens: tokens
     })
   }
@@ -443,10 +520,10 @@ let parse_constructor_arguments = fn parse_nested_expression -> fn name -> fn to
   match tokens {
     | Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), remaining) ->
       Ok(ParseStep {
-        value: ConstructorExpr(ConstructorExpression {
+        value: make_expression (ConstructorExpr(ConstructorExpression {
           constructor_name: ConstructorName(name),
           arguments: Nil
-        }),
+        })),
         remaining_tokens: remaining
       })
     | _ -> match (parse_expression_list parse_expression tokens) {
@@ -455,10 +532,10 @@ let parse_constructor_arguments = fn parse_nested_expression -> fn name -> fn to
           value: arguments,
           remaining_tokens: Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), remaining)
         }) -> Ok(ParseStep {
-        value: ConstructorExpr(ConstructorExpression {
+        value: make_expression (ConstructorExpr(ConstructorExpression {
           constructor_name: ConstructorName(name),
           arguments: arguments
-        }),
+        })),
         remaining_tokens: remaining
       })
       | _ -> Err("expected `)` after constructor arguments")
@@ -469,7 +546,7 @@ let parse_constructor_arguments = fn parse_nested_expression -> fn name -> fn to
 let parse_parenthesized_expression = fn parse_nested_expression -> fn tokens ->
   match tokens {
     | Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), remaining) ->
-      Ok(ParseStep { value: Unit, remaining_tokens: remaining })
+      Ok(ParseStep { value: make_expression Unit, remaining_tokens: remaining })
     | _ -> match (parse_nested_expression tokens) {
       | Err(message) -> Err(message)
       | Ok(ParseStep { value: first, remaining_tokens }) ->
@@ -484,10 +561,10 @@ let parse_parenthesized_tail = fn parse_nested_expression -> fn first -> fn toke
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: annotation, remaining_tokens: Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), rest) }) ->
           Ok(ParseStep {
-            value: Ascription(AscriptionExpression {
+            value: make_expression (Ascription(AscriptionExpression {
               expression: first,
               annotation: annotation
-            }),
+            })),
             remaining_tokens: rest
           })
         | _ -> Err("expected `)` after expression annotation")
@@ -499,7 +576,7 @@ let parse_parenthesized_tail = fn parse_nested_expression -> fn first -> fn toke
             value: items,
             remaining_tokens: Cons(SymbolToken(TokenInfo { lexeme: ")", span: _ }), rest)
           }) -> Ok(ParseStep {
-          value: TupleExpr(items),
+          value: make_expression (TupleExpr(items)),
           remaining_tokens: rest
         })
         | _ -> Err("expected `)` after tuple expression")

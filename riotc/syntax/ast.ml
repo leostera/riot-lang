@@ -1,5 +1,6 @@
 // RiotML source syntax shared by the frontend and later compiler phases.
 use Prelude.{List, Option}
+use Syntax.Lexer.{SourceSpan}
 
 type ValueName = ValueName(string)
 type TypeName = TypeName(string)
@@ -67,7 +68,12 @@ type TypeDeclarationData = TypeDeclarationData {
   definition: TypeDefinition
 }
 
-type Pattern =
+type Pattern = Pattern {
+  node: PatternKind,
+  span: SourceSpan
+}
+
+type PatternKind =
   | Variable(ValueName)
   | PatternUnit
   | Wildcard
@@ -112,7 +118,12 @@ type BinaryOperator =
   | GreaterThan
   | GreaterThanOrEqual
 
-type Expr =
+type Expr = Expr {
+  node: ExprKind,
+  span: SourceSpan
+}
+
+type ExprKind =
   | Integer(IntegerLiteral)
   | Boolean(bool)
   | StringLiteral(TextLiteral)
@@ -195,4 +206,26 @@ type Declaration =
 type SourceModule = SourceModule {
   imports: List<Import>,
   declarations: List<Declaration>
+}
+
+let expression_kind = fn (Expr { node, span: _ }) -> node
+let expression_span = fn (Expr { node: _, span }) -> span
+let expression_with_span = fn (Expr { node, span: _ }) -> fn span -> Expr {
+  node: node,
+  span: span
+}
+let make_expression = fn node -> Expr {
+  node: node,
+  span: SourceSpan { start_codepoint: 0, end_codepoint: 0 }
+}
+
+let pattern_kind = fn (Pattern { node, span: _ }) -> node
+let pattern_span = fn (Pattern { node: _, span }) -> span
+let pattern_with_span = fn (Pattern { node, span: _ }) -> fn span -> Pattern {
+  node: node,
+  span: span
+}
+let make_pattern = fn node -> Pattern {
+  node: node,
+  span: SourceSpan { start_codepoint: 0, end_codepoint: 0 }
 }
