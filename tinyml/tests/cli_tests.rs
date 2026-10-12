@@ -1157,7 +1157,22 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     let native_smoke_source = dir.join("native_compiler_smoke.ml");
     fs::write(
         &native_smoke_source,
-        "type Maybe = None | Some(i32)\nlet main = fn () -> {\n  let item = Some(42);\n  match item { | None -> 0 | Some(value) -> value }\n}\n",
+        r#"type Maybe = None | Some(i32)
+let negate = fn (value: i32) -> -value
+let main = fn () -> {
+  let item = Some(42);
+  let wrapped_add = ((2147483647: i32) + 1) == (-2147483648: i32);
+  let wrapped_sub = ((-2147483648: i32) - 1) == (2147483647: i32);
+  let wrapped_mul = ((65536: i32) * 65536) == 0;
+  let wrapped_neg = negate (-2147483648: i32) == (-2147483648: i32);
+  let wrapped_div = ((-2147483648: i32) / (-1)) == (-2147483648: i32);
+  let wrapped_rem = ((-2147483648: i32) % (-1)) == 0;
+  match (wrapped_add, wrapped_sub, wrapped_mul, wrapped_neg, wrapped_div, wrapped_rem, item) {
+    | (true, true, true, true, true, true, Some(value)) -> value
+    | _ -> 0
+  }
+}
+"#,
     )
     .unwrap();
     let native_smoke_output = dir.join("native_compiler_smoke.native");
