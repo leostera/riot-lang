@@ -64,9 +64,10 @@ RIOTML_RUNTIME_DIR="$PWD/riotc" build/Main
 
 Module paths follow the RFD0050 naming and search rules: the importing
 file's directory, ordered `-I` roots, bundled `tinyml/lib/`, then bundled
-`tinyml/lib/std/`. `Host` is a compiler-provided intrinsic with Node
-implementations for arguments, UTF-8 file reads/writes, stdout/stderr, and
-safe process invocation (argument vectors, no shell interpolation).
+`tinyml/lib/std/`. `Host` is a compiler-provided intrinsic with JavaScript/Node
+implementations for arguments, UTF-8 file reads/writes, stdout/stderr, and safe
+process invocation (argument vectors, no shell interpolation). The experimental
+C runtime provides a subset of those operations for the no-JavaScript bridge.
 
 ## Current language boundary
 
@@ -81,7 +82,9 @@ string cases. `string + string` concatenates in both backends where supported.
 The bundled `String` module also provides `concat`, `length`,
 `get`, `slice`, and `equal`; indices count Unicode scalar values, and `get`
 returns `Option<i32>` containing a code point. Host text-file I/O uses strict
-UTF-8 decoding and encoding. Floating point, general FFI, actors, distribution,
+UTF-8 decoding and encoding. Until the C runtime uses length-aware strings, its
+`Host.read_file` also rejects files containing embedded NUL bytes. Floating
+point, general FFI, actors, distribution,
 package management, WASM, and native code generation by Stage 0 are
 unsupported. Unsupported or ill-typed input must be rejected rather than
 treated as successful output.

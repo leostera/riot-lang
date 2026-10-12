@@ -521,6 +521,10 @@ RtValue rt_read_file(RtValue ignored, RtValue path) {
     free(contents);
     return rt_err(rt_unit(), rt_string("failed to read file"));
   }
+  if (memchr(contents, '\0', read_count) != NULL) {
+    free(contents);
+    return rt_err(rt_unit(), rt_string("file contains an embedded NUL byte"));
+  }
   if (!rt_utf8_valid(contents, read_count)) {
     free(contents);
     return rt_err(rt_unit(), rt_string("file is not valid UTF-8"));
