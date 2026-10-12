@@ -2326,6 +2326,7 @@ fn compile_c_emits_status_42_executable_without_javascript() {
     .unwrap();
 
     let compile = Command::new(tinyml())
+        .env("PATH", &dir)
         .arg("compile")
         .arg("--target")
         .arg("c")
@@ -2343,6 +2344,7 @@ fn compile_c_emits_status_42_executable_without_javascript() {
     assert!(generated.contains("int main(int argc, char **argv)"));
     assert!(generated.contains("rt_environment_get(module_environment_0, \"main\")"));
     assert!(!generated.contains("export {"));
+    assert!(!generated.contains("node"));
 
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let runtime_dir = repo.join("riotc");
