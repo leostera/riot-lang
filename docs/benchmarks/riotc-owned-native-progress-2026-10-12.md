@@ -63,6 +63,22 @@ C-first/native slice, not a performance comparison to the baseline and not the
 required native Riotc compiler or successor self-rebuild. The full
 compiler-source corpus remains unimplemented.
 
+## Clean-archive scalar ABI extension
+
+A clean archive of `043f06c2cd` was built on Apple Silicon (`arm64`, macOS
+26.6.2, Apple Clang 21.0.0). The Rust Stage 0 compiler emitted deterministic
+C twice; Clang built the C-hosted compiler. With `PATH=/usr/bin:/bin` and
+`RIOTML_RUNTIME_DIR` set to the archive's `riotc/`, the C-hosted compiler
+compiled and ran the status-42 C-backend smoke and an owned native direct-call
+graph exercising explicitly ascribed `i64` literals, typed `i64` arguments and
+results, and `i64` block-edge copies; both exited 42. The same restricted-PATH
+run rejected an ill-typed source before Codegen and left neither executable nor
+C output. Generated C was **6,030,980 bytes**, and the C-hosted compiler was
+**1,800,128 bytes**. This validates only the bounded scalar ABI slice and
+C-first bridge, not whole-module Codegen, native self-rebuild, or a comparable
+performance measurement. Clang printed the existing optional MariaDB library
+search-path warning during linking.
+
 ## Same-fixture smoke microprobe
 
 Using the C-hosted compiler built from that clean archive, I compiled the same
