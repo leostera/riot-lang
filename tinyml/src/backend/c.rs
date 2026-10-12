@@ -577,13 +577,15 @@ impl CEmitter {
                 Ok(format!("rt_is_unit({value})"))
             }
             lambda_ir::PatternKind::Constant(lambda_ir::Constant::Literal(Literal::Bool(
-                value,
+                expected,
             ))) => Ok(format!(
                 "(rt_is_bool({value}) && rt_as_bool({value}) == {})",
-                i32::from(*value)
+                i32::from(*expected)
             )),
-            lambda_ir::PatternKind::Constant(lambda_ir::Constant::Literal(Literal::Int(value))) => {
-                let Some(literal) = integer_literal_as_decimal(value) else {
+            lambda_ir::PatternKind::Constant(lambda_ir::Constant::Literal(Literal::Int(
+                expected,
+            ))) => {
+                let Some(literal) = integer_literal_as_decimal(expected) else {
                     return Err(unsupported("an invalid integer pattern", pattern.span));
                 };
                 let Some(literal) = literal.parse::<i64>().ok() else {
@@ -597,10 +599,10 @@ impl CEmitter {
                 ))
             }
             lambda_ir::PatternKind::Constant(lambda_ir::Constant::Literal(Literal::String(
-                value,
+                expected,
             ))) => {
-                let value = decode_string_literal(value);
-                if value.contains('\0') {
+                let expected = decode_string_literal(expected);
+                if expected.contains('\0') {
                     return Err(unsupported(
                         "a string pattern containing an embedded NUL byte",
                         pattern.span,
@@ -608,7 +610,7 @@ impl CEmitter {
                 }
                 Ok(format!(
                     "(rt_is_string({value}) && rt_as_bool(rt_string_equal_to({value}, {})))",
-                    c_string(&value)
+                    c_string(&expected)
                 ))
             }
             lambda_ir::PatternKind::Constant(lambda_ir::Constant::Literal(Literal::Float(_))) => {
