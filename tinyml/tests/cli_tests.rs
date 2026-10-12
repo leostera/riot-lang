@@ -843,6 +843,28 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert!(i64_negation_assembly.contains("neg x11, x9"));
     let i64_negation_run = Command::new(&i64_negation_executable).output().unwrap();
     assert_eq!(i64_negation_run.status.code(), Some(42));
+    let i64_negation_c_executable = dir.join("i64-negation.c-backend");
+    let i64_negation_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&i64_negation_source)
+        .arg("-o")
+        .arg(&i64_negation_c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_negation_c_compile.status.success(),
+        "C-backend i64 negation fixture failed: {}",
+        String::from_utf8_lossy(&i64_negation_c_compile.stderr)
+    );
+    let i64_negation_c_run = Command::new(&i64_negation_c_executable).output().unwrap();
+    assert_eq!(
+        i64_negation_run.status.code(),
+        i64_negation_c_run.status.code()
+    );
+    assert_eq!(i64_negation_run.stdout, i64_negation_c_run.stdout);
+    assert_eq!(i64_negation_run.stderr, i64_negation_c_run.stderr);
 
     let out_of_range_i64_source = dir.join("out-of-range-i64.ml");
     fs::write(
