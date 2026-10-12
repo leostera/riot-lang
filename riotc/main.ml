@@ -1,7 +1,8 @@
 // RiotML compiler orchestration and command-line entry point.
 use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
 use Host.{
-  args, current_directory, runtime_directory, read_file, write_file, write_stderr, run_process
+  args, current_directory, runtime_directory, read_file, write_file, write_stderr,
+  write_stdout, run_process
 }
 use Syntax.Lexer.{SourceSpan, lex, UnterminatedString, UnterminatedEscape}
 use Check.Inference.{
@@ -10,6 +11,10 @@ use Check.Inference.{
 use Codegen.C.Emit.{emit_module_program}
 use Lambda.Ir.{LambdaModule}
 use Lambda.Lower.{lower_checked_module}
+use NativeIr.Lower.{lower_module}
+use NativeIr.Verify.{verify_module}
+use NativeIr.Ir.{NativeModule}
+use NativeIr.Print.{print_native_module}
 use Modules.{
   LoadedModule, load_source_graph, module_source_pairs,
   directory_of, join_path
@@ -29,6 +34,7 @@ type CompilationStage =
   | SourceParsing
   | SourceTypechecking
   | LambdaLowering
+  | NativeIRLowering
   | COutputWrite
   | ClangLaunch
   | ClangCompilation
@@ -81,14 +87,51 @@ let check_loaded_modules = fn (modules: List<LoadedModule>) ->
     }
   }
 
-let lower_checked_modules = fn checked_modules ->
-  match checked_modules {
-    | Nil -> Ok(Nil)
-    | Cons(checked_module, remaining) -> match (lower_checked_module checked_module) {
+let lower_checked_modules = fn checked_modules -> match checked_modules {
+  | Nil -> Ok(Nil)
+  | Cons(CheckedModuleInterface {
+      loaded_module: LoadedModule { module_path, source_path, source_module },
+      interface, typed_module
+    }, remaining) -> {
+    let checked_module = CheckedModuleInterface {
+      loaded_module: LoadedModule {
+        module_path: module_path,
+        source_path: source_path,
+        source_module: source_module
+      },
+      interface: interface,
+      typed_module: typed_module
+    };
+    match (lower_checked_module checked_module) {
       | Err(message) -> Err(message)
       | Ok(lambda_module) -> match (lower_checked_modules remaining) {
         | Err(message) -> Err(message)
         | Ok(lambda_modules) -> Ok(Cons((lambda_module: LambdaModule), lambda_modules))
+      }
+    }
+  }
+}
+
+let verify_native_modules = fn checked_modules -> fn lambda_modules ->
+  match checked_modules {
+    | Nil -> match lambda_modules {
+      | Nil -> Ok(Nil)
+      | _ -> Err("NativeIR lowering: checked module count mismatch")
+    }
+    | Cons(CheckedModuleInterface {
+        loaded_module: LoadedModule { module_path: _, source_path, source_module: _ },
+        interface: _, typed_module: _
+      }, remaining_checked) -> match lambda_modules {
+      | Nil -> Err("NativeIR lowering: checked module count mismatch")
+      | Cons(lambda_module, remaining_lambda) -> match (lower_module source_path lambda_module) {
+        | Err(message) -> Err("NativeIR lowering failed for " + source_path + ": " + message)
+        | Ok(native_module) -> match (verify_module native_module) {
+          | Err(message) -> Err("NativeIR verification failed for " + source_path + ": " + message)
+          | Ok(_) -> match (verify_native_modules remaining_checked remaining_lambda) {
+            | Err(message) -> Err(message)
+            | Ok(modules) -> Ok(Cons(native_module, modules))
+          }
+        }
       }
     }
   }
@@ -123,7 +166,9 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
       | Err(message) -> Err(compile_error (SourceTypechecking) message None)
       | Ok(checked_modules) -> match (lower_checked_modules checked_modules) {
         | Err(message) -> Err(compile_error (LambdaLowering) message None)
-        | Ok(_) -> match (find_root_checked_module source_file checked_modules) {
+        | Ok(lambda_modules) -> match (verify_native_modules checked_modules lambda_modules) {
+          | Err(message) -> Err(compile_error (NativeIRLowering) message None)
+          | Ok(_) -> match (find_root_checked_module source_file checked_modules) {
         | None -> Err(compile_error (SourceParsing)
           "source graph has no entry module" None)
         | Some(CheckedModuleInterface {
@@ -133,6 +178,7 @@ let compile_module_graph_unchecked = fn (source_file: string) ->
           | Err(message) -> Err(compile_error (SourceTypechecking) message None)
           | Ok(_) -> Ok(emit_module_program source_file
             (runtime_include_directory source_file) (module_source_pairs modules))
+        }
         }
         }
       }
@@ -213,6 +259,7 @@ let compilation_stage_name = fn stage ->
     | SourceParsing -> "source parsing"
     | SourceTypechecking -> "typechecking"
     | LambdaLowering -> "LambdaIR lowering"
+    | NativeIRLowering -> "NativeIR lowering and verification"
     | COutputWrite -> "C output"
     | ClangLaunch -> "Clang launch"
     | ClangCompilation -> "Clang compilation"
@@ -251,6 +298,46 @@ let report_error = fn (CompileError { stage, message, source_span }) -> {
   1
 }
 
+let native_ir_modules_for_file = fn source_file -> match (read_file source_file) {
+  | Err(message) -> Err(compile_error (SourceRead)
+      ("cannot read " + source_file + ": " + message) None)
+  | Ok(source) -> match (lex source) {
+    | Err(UnterminatedString(span)) -> Err(compile_error (SourceParsing)
+      "unterminated string literal" (Some(span)))
+    | Err(UnterminatedEscape(span)) -> Err(compile_error (SourceParsing)
+      "unterminated escape in string literal" (Some(span)))
+    | Ok(_) -> match (load_source_graph source_file
+        (Cons(directory_of source_file, Nil))) {
+      | Err(message) -> Err(compile_error (SourceParsing) message None)
+      | Ok(modules) -> match (check_loaded_modules modules Nil) {
+        | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+        | Ok(checked_modules) -> match (lower_checked_modules checked_modules) {
+          | Err(message) -> Err(compile_error (LambdaLowering) message None)
+          | Ok(lambda_modules) -> match (verify_native_modules checked_modules lambda_modules) {
+            | Err(message) -> Err(compile_error (NativeIRLowering) message None)
+            | Ok(native_modules) -> Ok(native_modules)
+          }
+        }
+      }
+    }
+  }
+}
+
+let print_native_modules = fn modules -> match modules {
+  | Nil -> ""
+  | Cons(native_module, remaining) ->
+    print_native_module native_module + "\n" + print_native_modules remaining
+}
+
+let run_native_ir_command = fn source_file ->
+  match (native_ir_modules_for_file source_file) {
+    | Err(error) -> report_error error
+    | Ok(native_modules) -> {
+      write_stdout (print_native_modules native_modules);
+      0
+    }
+  }
+
 let parse_compile_request = fn arguments ->
   match arguments {
     | Cons("compile", Cons(source, Cons("-o", Cons(output, Nil)))) ->
@@ -261,8 +348,9 @@ let parse_compile_request = fn arguments ->
     | _ -> Err("usage: riotml compile SOURCE -o OUTPUT")
   }
 
-let main = fn () ->
-  match (parse_compile_request (args ())) {
+let main = fn () -> match (args ()) {
+  | Cons("native-ir", Cons(source_file, Nil)) -> run_native_ir_command source_file
+  | arguments -> match (parse_compile_request arguments) {
     | Err(message) -> {
       write_stderr ("riotml: " + message + "\n");
       1
@@ -272,3 +360,4 @@ let main = fn () ->
       | Err(error) -> report_error error
     }
   }
+}

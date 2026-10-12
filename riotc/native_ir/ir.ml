@@ -3,7 +3,7 @@ use Prelude.{List}
 use Syntax.Ast.{BinaryOperator, IntegerLiteral, TextLiteral, ValueName}
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
-  InferenceType, TypeSubstitution, TypeVisibility, BindingIdentity,
+  InferenceType, TypeScheme, TypeSubstitution, TypeVisibility, BindingIdentity,
   ConstructorIdentity
 }
 
@@ -14,12 +14,13 @@ type NativeModule = NativeModule {
   nominal_types: List<TypeVisibility>,
   substitutions: List<TypeSubstitution>,
   globals: List<NativeGlobal>,
+  initializer: NativeFunctionId,
   functions: List<NativeFunction>
 }
 
 type NativeGlobal = NativeGlobal {
   binding: BindingIdentity,
-  checked_type: InferenceType,
+  scheme: TypeScheme,
   span: SourceSpan
 }
 
@@ -150,6 +151,29 @@ type NativeTest =
   | NativeLiteralTest(NativeConstant)
   | NativeConstructorTest(ConstructorIdentity)
   | NativeTupleArityTest(i32)
+  | NativePatternMatchTest(NativePatternTest)
+
+type NativePatternTest =
+  | NativeAnyPatternTest
+  | NativeLiteralPatternTest(NativeConstant)
+  | NativeNestedConstructorPatternTest(NativeConstructorPatternTest)
+  | NativeTuplePatternTest(List<NativePatternTest>)
+  | NativeNestedRecordPatternTest(NativeRecordPatternTest)
+
+type NativeConstructorPatternTest = NativeConstructorPatternTest {
+  entity: ConstructorIdentity,
+  arguments: List<NativePatternTest>
+}
+
+type NativeRecordPatternTest = NativeRecordPatternTest {
+  entity: ConstructorIdentity,
+  fields: List<NativeRecordPatternFieldTest>
+}
+
+type NativeRecordPatternFieldTest = NativeRecordPatternFieldTest {
+  name: ValueName,
+  pattern: NativePatternTest
+}
 
 type NativeGlobalStore = NativeGlobalStore {
   binding: BindingIdentity,

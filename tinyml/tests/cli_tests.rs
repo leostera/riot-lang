@@ -61,6 +61,45 @@ fn check_prints_ok() {
 }
 
 #[test]
+fn riotc_native_ir_verifier_fixtures_execute() {
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let include_dir = repo.join("riotc");
+    let fixture = include_dir.join("native_ir/verify_test.ml");
+    let dir = temp_dir("riotc-native-ir-verify");
+    let output_module = dir.join("verify.mjs");
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg(&fixture)
+        .arg("-o")
+        .arg(&output_module)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let node = Command::new("node")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(format!(
+            "import {{ main }} from {:?}; const status = main(); if (status !== 0 && status !== 0n) process.exit(1)",
+            output_module.to_str().unwrap()
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        node.status.success(),
+        "fixture stderr: {}",
+        String::from_utf8_lossy(&node.stderr)
+    );
+}
+
+#[test]
 fn emit_writes_selected_artifacts() {
     let dir = temp_dir("emit");
     let file = write_valid_source(&dir);
