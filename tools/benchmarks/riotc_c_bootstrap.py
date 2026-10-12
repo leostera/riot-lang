@@ -66,11 +66,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iterations", type=int, default=3, help="sequential samples (default: 3)")
     parser.add_argument("--output-dir", type=Path, help="new directory for logs and artifacts")
+    parser.add_argument("--root", type=Path, help="clean checkout to benchmark (default: script's repository)")
     args = parser.parse_args()
     if args.iterations < 1:
         parser.error("--iterations must be at least 1")
 
-    root = Path(__file__).resolve().parents[2]
+    root = (args.root or Path(__file__).resolve().parents[2]).resolve()
     dirty = git_output(root, "status", "--porcelain", "--untracked-files=all")
     if dirty:
         parser.error("run from a clean checkout; git status is not clean")
@@ -81,6 +82,7 @@ def main() -> int:
         output_root = args.output_dir.resolve()
         output_root.mkdir(parents=True, exist_ok=False)
 
+    print(f"artifacts: {output_root}")
     build_log = output_root / "stage0-build.log"
     build_result = run(["cargo", "build", "-p", "tinyml"], cwd=root, log=build_log)
     require_success(build_result, "building Stage 0")
