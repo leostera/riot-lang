@@ -231,7 +231,7 @@ let variant_export_names = fn variants ->
 let declaration_export_names = fn declarations ->
   match declarations {
     | Nil -> Nil
-    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body: _ }), remaining) ->
+    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body: _, span: _ }), remaining) ->
       Cons(name, declaration_export_names remaining)
     | Cons(TypeDeclaration(TypeDeclarationData {
         name: TypeName(name),

@@ -43,7 +43,7 @@ let selected_names_list = fn names ->
 let declared_value_names = fn declarations ->
   match declarations {
     | Nil -> Nil
-    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body: _ }), remaining) ->
+    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body: _, span: _ }), remaining) ->
       Cons(name, declared_value_names remaining)
     | Cons(TypeDeclaration(_), remaining) -> declared_value_names remaining
   }
@@ -459,7 +459,7 @@ let validate_expression = fn expression -> fn local_names -> fn module_names ->
 let validate_declaration_values = fn declarations -> fn module_names ->
   match declarations {
     | Nil -> Ok(())
-    | Cons(ValueDeclaration(ValueDeclarationData { name: _, body }), remaining) ->
+    | Cons(ValueDeclaration(ValueDeclarationData { name: _, body, span: _ }), remaining) ->
       match (validate_expression body Nil module_names) {
         | Err(message) -> Err(message)
         | Ok(_) -> validate_declaration_values remaining module_names

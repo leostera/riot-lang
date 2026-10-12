@@ -469,7 +469,8 @@ let module_exports_value = fn wanted_name -> fn declarations ->
     | Nil -> false
     | Cons(ValueDeclaration(ValueDeclarationData {
         name: ValueName(declared_name),
-        body: _
+        body: _,
+        span: _
       }), remaining) -> match (equal wanted_name declared_name) {
       | true -> true
       | false -> module_exports_value wanted_name remaining
@@ -526,7 +527,7 @@ let emit_string_bindings = fn environment ->
 let emit_module_value_declarations = fn index -> fn environment -> fn declarations -> fn declaration_index ->
   match declarations {
     | Nil -> GeneratedInitialization { statements: "", functions: "" }
-    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body }), remaining) -> {
+    | Cons(ValueDeclaration(ValueDeclarationData { name: ValueName(name), body, span: _ }), remaining) -> {
       let emitted_value = emit_source_expression
         ("module" + decimal_text index + "_value" + decimal_text declaration_index)
         environment body;

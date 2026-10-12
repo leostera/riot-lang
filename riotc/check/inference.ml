@@ -21,8 +21,9 @@ use Syntax.Ast.{
   PatternInteger, PatternBoolean, PatternString, TuplePattern,
   ConstructorPattern, ConstructorPatternData, RecordPattern,
   RecordPatternData, RecordPatternField, AscribedPattern, AscribedPatternData,
-  ModulePath, expression_kind, pattern_kind
+  ModulePath, expression_kind, pattern_kind, expression_span, pattern_span
 }
+use Syntax.Lexer.{SourceSpan}
 use Check.Names.{check_source_module_names}
 use Modules.{LoadedModule}
 use Host.{read_file}
@@ -61,9 +62,73 @@ type TypeSubstitution = TypeSubstitution {
   replacement: InferenceType
 }
 
+type ExpressionTypeAnnotation = ExpressionTypeAnnotation {
+  span: SourceSpan,
+  inferred_type: InferenceType
+}
+
+type PatternTypeAnnotation = PatternTypeAnnotation {
+  span: SourceSpan,
+  inferred_type: InferenceType
+}
+
+type BindingScope = ModuleValueBinding | LocalValueBinding
+
+type BindingIdentity = BindingIdentity {
+  source_path: string,
+  declaration_span: SourceSpan,
+  name: ValueName,
+  scope: BindingScope
+}
+
+type ResolvedValueReference = ResolvedValueReference {
+  reference_span: SourceSpan,
+  binding: BindingIdentity
+}
+
+type ConstructorIdentity = ConstructorIdentity {
+  type_identity: string,
+  constructor_name: ConstructorName
+}
+
+type ResolvedConstructorReference = ResolvedConstructorReference {
+  reference_span: SourceSpan,
+  entity: ConstructorIdentity
+}
+
+// Annotation variables are interpreted through the final module substitution table.
+type TypedModule = TypedModule {
+  source_module: SourceModule,
+  expression_types: List<ExpressionTypeAnnotation>,
+  pattern_types: List<PatternTypeAnnotation>,
+  nominal_types: List<TypeVisibility>,
+  substitutions: List<TypeSubstitution>,
+  bindings: List<BindingIdentity>,
+  value_references: List<ResolvedValueReference>,
+  constructor_references: List<ResolvedConstructorReference>
+}
+
+type BindingEnvironmentEntry = BindingEnvironmentEntry {
+  name: ValueName,
+  binding: BindingIdentity
+}
+
+type BindingResolution = BindingResolution {
+  bindings: List<BindingIdentity>,
+  value_references: List<ResolvedValueReference>,
+  constructor_references: List<ResolvedConstructorReference>
+}
+
+type PatternResolution = PatternResolution {
+  environment: List<BindingEnvironmentEntry>,
+  state: BindingResolution
+}
+
 type InferenceState = InferenceState {
   next_variable: i32,
-  substitutions: List<TypeSubstitution>
+  substitutions: List<TypeSubstitution>,
+  expression_annotations: List<ExpressionTypeAnnotation>,
+  pattern_annotations: List<PatternTypeAnnotation>
 }
 
 type TypeScheme = TypeScheme {
@@ -106,7 +171,8 @@ type InferredModuleInterface = InferredModuleInterface {
 
 type CheckedModuleInterface = CheckedModuleInterface {
   loaded_module: LoadedModule,
-  interface: InferredModuleInterface
+  interface: InferredModuleInterface,
+  typed_module: TypedModule
 }
 
 type PreparedValues = PreparedValues {
@@ -169,7 +235,9 @@ type InferenceArgumentState = InferenceArgumentState {
 
 let initial_inference_state = fn () -> InferenceState {
   next_variable: 0,
-  substitutions: Nil
+  substitutions: Nil,
+  expression_annotations: Nil,
+  pattern_annotations: Nil
 }
 
 let lookup_substitution = fn variable -> fn substitutions ->
@@ -280,22 +348,29 @@ let type_list_occurs = fn wanted_variable -> fn types -> fn substitutions ->
     }
   }
 
-let fresh_type_variable = fn (InferenceState { next_variable, substitutions }) ->
-  FreshInference(
-    FreeVariable(next_variable),
-    InferenceState {
-      next_variable: next_variable + 1,
-      substitutions: substitutions
-    }
-  )
+let fresh_type_variable = fn (InferenceState {
+  next_variable, substitutions, expression_annotations, pattern_annotations
+}) -> FreshInference(
+  FreeVariable(next_variable),
+  InferenceState {
+    next_variable: next_variable + 1,
+    substitutions: substitutions,
+    expression_annotations: expression_annotations,
+    pattern_annotations: pattern_annotations
+  }
+)
 
 let add_type_substitution = fn variable -> fn replacement ->
-  fn (InferenceState { next_variable, substitutions }) -> InferenceState {
+  fn (InferenceState {
+    next_variable, substitutions, expression_annotations, pattern_annotations
+  }) -> InferenceState {
     next_variable: next_variable,
     substitutions: Cons(TypeSubstitution {
       variable: variable,
       replacement: replacement
-    }, substitutions)
+    }, substitutions),
+    expression_annotations: expression_annotations,
+    pattern_annotations: pattern_annotations
   }
 
 let unify_type_lists = fn expected -> fn actual -> fn state ->
@@ -315,10 +390,14 @@ let unify_type_lists = fn expected -> fn actual -> fn state ->
   }
 
 let bind_free_type_variable = fn variable -> fn replacement ->
-  fn (InferenceState { next_variable, substitutions }) -> {
+  fn (InferenceState {
+    next_variable, substitutions, expression_annotations, pattern_annotations
+  }) -> {
   let state = InferenceState {
     next_variable: next_variable,
-    substitutions: substitutions
+    substitutions: substitutions,
+    expression_annotations: expression_annotations,
+    pattern_annotations: pattern_annotations
   };
   match (type_occurs variable replacement substitutions) {
     | true -> Err("recursive type")
@@ -328,11 +407,15 @@ let bind_free_type_variable = fn variable -> fn replacement ->
 
 let unify_types = fn expected -> fn actual -> fn (InferenceState {
   next_variable,
-  substitutions
+  substitutions,
+  expression_annotations,
+  pattern_annotations
 }) -> {
   let state = InferenceState {
     next_variable: next_variable,
-    substitutions: substitutions
+    substitutions: substitutions,
+    expression_annotations: expression_annotations,
+    pattern_annotations: pattern_annotations
   };
   let expected_resolved = apply_substitutions expected substitutions;
   let actual_resolved = apply_substitutions actual substitutions;
@@ -728,18 +811,27 @@ let replace_scheme_type_list = fn inferred_types -> fn quantified -> fn mappings
 
 let create_fresh_mappings = fn variables -> fn (InferenceState {
   next_variable,
-  substitutions
+  substitutions,
+  expression_annotations,
+  pattern_annotations
 }) ->
   match variables {
     | Nil -> Ok(FreshMappings {
       mappings: Nil,
-      state: InferenceState { next_variable: next_variable, substitutions: substitutions }
+      state: InferenceState {
+        next_variable: next_variable,
+        substitutions: substitutions,
+        expression_annotations: expression_annotations,
+        pattern_annotations: pattern_annotations
+      }
     })
     | Cons(variable, remaining) -> {
       let inferred_type = FreeVariable(next_variable);
       let next_state = InferenceState {
         next_variable: next_variable + 1,
-        substitutions: substitutions
+        substitutions: substitutions,
+        expression_annotations: expression_annotations,
+        pattern_annotations: pattern_annotations
       };
       match (create_fresh_mappings remaining next_state) {
         | Err(message) -> Err(message)
@@ -836,7 +928,7 @@ let find_visible_type_visibility = fn wanted_name -> fn visible_types ->
     | Nil -> None
     | Cons(VisibleType(VisibleTypeData {
         declaration: TypeDeclarationData {
-          name: TypeName(name), parameters, definition
+          name: TypeName(name), parameters, definition, span
         },
         type_identity,
         visible_names,
@@ -846,7 +938,8 @@ let find_visible_type_visibility = fn wanted_name -> fn visible_types ->
       | true -> match (contains_text name visible_names) {
         | true -> Some(VisibleType(VisibleTypeData {
           declaration: TypeDeclarationData {
-            name: TypeName(name), parameters: parameters, definition: definition
+            name: TypeName(name), parameters: parameters, definition: definition,
+            span: span
           },
           type_identity: type_identity,
           visible_names: visible_names,
@@ -862,7 +955,7 @@ let find_available_type_visibility = fn wanted_name -> fn visible_types ->
     | Nil -> None
     | Cons(VisibleType(VisibleTypeData {
         declaration: TypeDeclarationData {
-          name: TypeName(name), parameters, definition
+          name: TypeName(name), parameters, definition, span
         },
         type_identity,
         visible_names,
@@ -872,7 +965,8 @@ let find_available_type_visibility = fn wanted_name -> fn visible_types ->
       | true -> match (contains_text name available_names) {
         | true -> Some(VisibleType(VisibleTypeData {
           declaration: TypeDeclarationData {
-            name: TypeName(name), parameters: parameters, definition: definition
+            name: TypeName(name), parameters: parameters, definition: definition,
+            span: span
           },
           type_identity: type_identity,
           visible_names: visible_names,
@@ -1314,7 +1408,8 @@ let lookup_checked_module = fn wanted_path -> fn checked_modules ->
         loaded_module: LoadedModule {
           module_path: Some(module_path), source_path, source_module: _
         },
-        interface
+        interface,
+        typed_module
       }, remaining) -> match (same_module_path wanted_path module_path) {
       | true -> Some(CheckedModuleInterface {
         loaded_module: LoadedModule {
@@ -1322,7 +1417,8 @@ let lookup_checked_module = fn wanted_path -> fn checked_modules ->
           source_path: source_path,
           source_module: SourceModule { imports: Nil, declarations: Nil }
         },
-        interface: interface
+        interface: interface,
+        typed_module: typed_module
       })
       | false -> lookup_checked_module wanted_path remaining
     }
@@ -1371,6 +1467,389 @@ let imported_values_for_imports = fn (imports: List<Import>) ->
 
 let interface_values = fn (InferredModuleInterface { values, types: _ }) -> values
 let interface_types = fn (InferredModuleInterface { values: _, types }) -> types
+
+let binding_name = fn (BindingIdentity { source_path: _, declaration_span: _, name, scope: _ }) -> name
+
+let binding_environment_entry = fn binding -> BindingEnvironmentEntry {
+  name: binding_name binding,
+  binding: binding
+}
+
+let append_binding_environments = fn first -> fn second ->
+  match first {
+    | Nil -> second
+    | Cons(entry, remaining) ->
+      Cons(entry, append_binding_environments remaining second)
+  }
+
+let module_binding_identities = fn module_path -> fn declarations ->
+  match declarations {
+    | Nil -> Nil
+    | Cons(ValueDeclaration(ValueDeclarationData {
+        name, body: _, span
+      }), remaining) -> Cons(BindingIdentity {
+        source_path: module_path,
+        declaration_span: span,
+        name: name,
+        scope: ModuleValueBinding
+      }, module_binding_identities module_path remaining)
+    | Cons(TypeDeclaration(_), remaining) ->
+      module_binding_identities module_path remaining
+  }
+
+let binding_environment_for = fn bindings ->
+  match bindings {
+    | Nil -> Nil
+    | Cons(binding, remaining) -> Cons(binding_environment_entry binding,
+      binding_environment_for remaining)
+  }
+
+let find_module_binding = fn wanted_name -> fn bindings ->
+  match bindings {
+    | Nil -> None
+    | Cons(BindingIdentity {
+        name: ValueName(name), scope, source_path, declaration_span
+      }, remaining) -> match (equal name wanted_name) {
+        | false -> find_module_binding wanted_name remaining
+        | true -> match scope {
+          | ModuleValueBinding -> Some(BindingIdentity {
+            source_path: source_path,
+            declaration_span: declaration_span,
+            name: ValueName(name),
+            scope: ModuleValueBinding
+          })
+          | LocalValueBinding -> find_module_binding wanted_name remaining
+        }
+      }
+  }
+
+let select_imported_bindings = fn selected_names -> fn bindings ->
+  match selected_names {
+    | Nil -> Nil
+    | Cons(ImportedName(MemberName(name)), remaining) ->
+      match (find_module_binding name bindings) {
+        | None -> select_imported_bindings remaining bindings
+        | Some(binding) -> Cons(binding_environment_entry binding,
+          select_imported_bindings remaining bindings)
+      }
+  }
+
+let imported_binding_environment = fn imports -> fn checked_modules ->
+  match imports {
+    | Nil -> Nil
+    | Cons(Import { module_path, selected_names }, remaining) -> {
+      let selected_bindings = match (lookup_checked_module module_path checked_modules) {
+        | None -> Nil
+        | Some(CheckedModuleInterface {
+            loaded_module: _, interface: _,
+            typed_module: TypedModule {
+              source_module: _, expression_types: _, pattern_types: _,
+              nominal_types: _, substitutions: _, bindings, value_references: _,
+              constructor_references: _
+            }
+          }) -> select_imported_bindings selected_names bindings
+      };
+      append_binding_environments selected_bindings
+        (imported_binding_environment remaining checked_modules)
+    }
+  }
+
+let lookup_binding_identity = fn wanted_name -> fn environment ->
+  match environment {
+    | Nil -> None
+    | Cons(BindingEnvironmentEntry { name: ValueName(name), binding }, remaining) ->
+      match (equal wanted_name name) {
+        | true -> Some(binding)
+        | false -> lookup_binding_identity wanted_name remaining
+      }
+  }
+
+let prepend_binding_identity = fn binding -> fn (BindingResolution {
+  bindings, value_references, constructor_references
+}) -> BindingResolution {
+  bindings: Cons(binding, bindings),
+  value_references: value_references,
+  constructor_references: constructor_references
+}
+
+let prepend_value_reference = fn reference -> fn (BindingResolution {
+  bindings, value_references, constructor_references
+}) -> BindingResolution {
+  bindings: bindings,
+  value_references: Cons(reference, value_references),
+  constructor_references: constructor_references
+}
+
+let prepend_constructor_reference = fn reference -> fn (BindingResolution {
+  bindings, value_references, constructor_references
+}) -> BindingResolution {
+  bindings: bindings,
+  value_references: value_references,
+  constructor_references: Cons(reference, constructor_references)
+}
+
+let constructor_result_type = fn inferred_type ->
+  match inferred_type {
+    | FunctionType(InferredFunctionType { argument: _, result }) ->
+      constructor_result_type result
+    | _ -> inferred_type
+  }
+
+let constructor_identity_for = fn wanted_name -> fn visible_types ->
+  match (find_constructor wanted_name visible_types) {
+    | Err(message) -> Err(message)
+    | Ok(InferredConstructor {
+        name,
+        scheme: TypeScheme { quantified_variables: _, body },
+        field_names: _
+      }) -> {
+      let result_type = constructor_result_type body;
+      match result_type {
+        | AppliedType(InferredNamedType { name: type_identity, arguments: _ }) ->
+          Ok(ConstructorIdentity {
+            type_identity: type_identity,
+            constructor_name: name
+          })
+        | _ -> Err("constructor `" + wanted_name
+          + "` does not resolve to a nominal result type")
+      }
+    }
+  }
+
+let resolve_pattern_list = fn patterns -> fn module_path -> fn visible_types ->
+  fn state -> match patterns {
+    | Nil -> Ok(PatternResolution { environment: Nil, state: state })
+    | Cons(pattern, remaining) -> match (resolve_pattern pattern module_path
+        visible_types state) {
+      | Err(message) -> Err(message)
+      | Ok(PatternResolution { environment: first_environment, state: next_state }) ->
+        match (resolve_pattern_list remaining module_path visible_types next_state) {
+          | Err(message) -> Err(message)
+          | Ok(PatternResolution { environment: remaining_environment, state: final_state }) ->
+            Ok(PatternResolution {
+              environment: append_binding_environments first_environment remaining_environment,
+              state: final_state
+            })
+        }
+    }
+  }
+
+let resolve_record_pattern_fields = fn fields -> fn module_path -> fn visible_types ->
+  fn state -> match fields {
+    | Nil -> Ok(PatternResolution { environment: Nil, state: state })
+    | Cons(RecordPatternField { name: _, pattern }, remaining) ->
+      match (resolve_pattern pattern module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(PatternResolution { environment: first_environment, state: next_state }) ->
+          match (resolve_record_pattern_fields remaining module_path visible_types next_state) {
+            | Err(message) -> Err(message)
+            | Ok(PatternResolution {
+                environment: remaining_environment, state: final_state
+              }) -> Ok(PatternResolution {
+                environment: append_binding_environments first_environment remaining_environment,
+                state: final_state
+              })
+          }
+      }
+  }
+
+let resolve_constructor_pattern = fn pattern -> fn constructor_name -> fn arguments ->
+  fn module_path -> fn visible_types -> fn state ->
+  match (constructor_identity_for constructor_name visible_types) {
+    | Err(message) -> Err("TypedAST constructor resolution: " + message)
+    | Ok(entity) -> {
+      let with_constructor = prepend_constructor_reference
+        (ResolvedConstructorReference {
+          reference_span: pattern_span pattern,
+          entity: entity
+        }) state;
+      resolve_pattern_list arguments module_path visible_types with_constructor
+    }
+  }
+
+let resolve_pattern = fn pattern -> fn module_path -> fn visible_types -> fn state ->
+  match (pattern_kind pattern) {
+    | Variable(name) -> {
+      let binding = BindingIdentity {
+        source_path: module_path,
+        declaration_span: pattern_span pattern,
+        name: name,
+        scope: LocalValueBinding
+      };
+      Ok(PatternResolution {
+        environment: Cons(binding_environment_entry binding, Nil),
+        state: prepend_binding_identity binding state
+      })
+    }
+    | PatternUnit -> Ok(PatternResolution { environment: Nil, state: state })
+    | Wildcard -> Ok(PatternResolution { environment: Nil, state: state })
+    | PatternInteger(_) -> Ok(PatternResolution { environment: Nil, state: state })
+    | PatternBoolean(_) -> Ok(PatternResolution { environment: Nil, state: state })
+    | PatternString(_) -> Ok(PatternResolution { environment: Nil, state: state })
+    | TuplePattern(patterns) -> resolve_pattern_list patterns
+      module_path visible_types state
+    | ConstructorPattern(ConstructorPatternData { constructor_name: ConstructorName(name), arguments }) ->
+      resolve_constructor_pattern pattern name arguments module_path visible_types state
+    | RecordPattern(RecordPatternData {
+        constructor_name: ConstructorName(name), fields
+      }) -> match (resolve_constructor_pattern pattern name Nil
+          module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(PatternResolution { environment: _, state: constructor_state }) ->
+          resolve_record_pattern_fields fields module_path visible_types constructor_state
+      }
+    | AscribedPattern(AscribedPatternData { pattern: inner, annotation: _ }) ->
+      resolve_pattern inner module_path visible_types state
+  }
+
+let resolve_expression_list = fn expressions -> fn environment -> fn module_path ->
+  fn visible_types -> fn state -> match expressions {
+    | Nil -> Ok(state)
+    | Cons(expression, remaining) -> match (resolve_expression expression environment
+        module_path visible_types state) {
+      | Err(message) -> Err(message)
+      | Ok(next_state) -> resolve_expression_list remaining environment
+        module_path visible_types next_state
+    }
+  }
+
+let resolve_record_expression_fields = fn fields -> fn environment -> fn module_path ->
+  fn visible_types -> fn state -> match fields {
+    | Nil -> Ok(state)
+    | Cons(RecordExpressionField { name: _, value }, remaining) ->
+      match (resolve_expression value environment module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_record_expression_fields remaining environment
+          module_path visible_types next_state
+      }
+  }
+
+let resolve_match_arms = fn arms -> fn environment -> fn module_path ->
+  fn visible_types -> fn state -> match arms {
+    | Nil -> Ok(state)
+    | Cons(MatchArm { pattern, body }, remaining) ->
+      match (resolve_pattern pattern module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(PatternResolution { environment: arm_bindings, state: next_state }) ->
+          match (resolve_expression body
+              (append_binding_environments arm_bindings environment)
+              module_path visible_types next_state) {
+            | Err(message) -> Err(message)
+            | Ok(arm_state) -> resolve_match_arms remaining environment
+              module_path visible_types arm_state
+          }
+      }
+  }
+
+let resolve_constructor_expression = fn expression -> fn constructor_name ->
+  fn visible_types -> fn state ->
+  match (constructor_identity_for constructor_name visible_types) {
+    | Err(message) -> Err("TypedAST constructor resolution: " + message)
+    | Ok(entity) -> Ok(prepend_constructor_reference (ResolvedConstructorReference {
+      reference_span: expression_span expression,
+      entity: entity
+    }) state)
+  }
+
+let resolve_expression = fn expression -> fn environment -> fn module_path ->
+  fn visible_types -> fn state -> match (expression_kind expression) {
+    | Integer(_) -> Ok(state)
+    | Boolean(_) -> Ok(state)
+    | StringLiteral(_) -> Ok(state)
+    | Unit -> Ok(state)
+    | VariableExpr(ValueName(name)) -> match (lookup_binding_identity name environment) {
+      | None -> Err("TypedAST unresolved value reference `" + name + "`")
+      | Some(binding) -> Ok(prepend_value_reference (ResolvedValueReference {
+        reference_span: expression_span expression,
+        binding: binding
+      }) state)
+    }
+    | TupleExpr(items) -> resolve_expression_list items environment
+      module_path visible_types state
+    | RecordExpr(RecordExpression {
+        constructor_name: ConstructorName(name), fields
+      }) -> match (resolve_constructor_expression expression name visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_record_expression_fields fields environment
+          module_path visible_types next_state
+      }
+    | Binary(BinaryExpression { operator: _, left, right }) ->
+      match (resolve_expression left environment module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_expression right environment module_path
+          visible_types next_state
+      }
+    | Negate(operand) -> resolve_expression operand environment module_path
+      visible_types state
+    | Function(FunctionExpression { parameter, body }) ->
+      match (resolve_pattern parameter module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(PatternResolution { environment: parameter_bindings, state: next_state }) ->
+          resolve_expression body (append_binding_environments parameter_bindings environment)
+            module_path visible_types next_state
+      }
+    | Apply(ApplicationExpression { callee, argument }) ->
+      match (resolve_expression callee environment module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_expression argument environment module_path
+          visible_types next_state
+      }
+    | Let(LetExpression { pattern, annotation: _, value, body }) ->
+      match (resolve_expression value environment module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(value_state) -> match (resolve_pattern pattern module_path visible_types value_state) {
+          | Err(message) -> Err(message)
+          | Ok(PatternResolution { environment: local_bindings, state: pattern_state }) ->
+            resolve_expression body (append_binding_environments local_bindings environment)
+              module_path visible_types pattern_state
+        }
+      }
+    | Match(MatchExpression { scrutinee, arms }) ->
+      match (resolve_expression scrutinee environment module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_match_arms arms environment module_path
+          visible_types next_state
+      }
+    | ConstructorExpr(ConstructorExpression {
+        constructor_name: ConstructorName(name), arguments
+      }) -> match (resolve_constructor_expression expression name visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_expression_list arguments environment
+          module_path visible_types next_state
+      }
+    | Ascription(AscriptionExpression { expression: inner, annotation: _ }) ->
+      resolve_expression inner environment module_path visible_types state
+    | Block(items) -> resolve_expression_list items environment
+      module_path visible_types state
+  }
+
+let resolve_module_value_bodies = fn declarations -> fn environment -> fn module_path ->
+  fn visible_types -> fn state -> match declarations {
+    | Nil -> Ok(state)
+    | Cons(ValueDeclaration(ValueDeclarationData { name: _, body, span: _ }), remaining) ->
+      match (resolve_expression body environment module_path visible_types state) {
+        | Err(message) -> Err(message)
+        | Ok(next_state) -> resolve_module_value_bodies remaining environment
+          module_path visible_types next_state
+      }
+    | Cons(TypeDeclaration(_), remaining) -> resolve_module_value_bodies remaining
+      environment module_path visible_types state
+  }
+
+let resolve_module_bindings = fn module_path -> fn imports -> fn declarations ->
+  fn checked_modules -> fn visible_types -> {
+  let module_bindings = module_binding_identities module_path declarations;
+  let imported_bindings = imported_binding_environment imports checked_modules;
+  let module_environment = append_binding_environments
+    (binding_environment_for module_bindings) imported_bindings;
+  let initial_state = BindingResolution {
+    bindings: module_bindings,
+    value_references: Nil,
+    constructor_references: Nil
+  };
+  resolve_module_value_bodies declarations module_environment module_path
+    visible_types initial_state
+}
 
 let selected_export_names = fn exported_names -> fn selected_names ->
   match selected_names {
@@ -1519,7 +1998,9 @@ let source_value_declarations = fn declarations ->
 let environment_with_bindings = fn new_bindings -> fn environment ->
   append_value_schemes new_bindings environment
 
-let module_state_substitutions = fn (InferenceState { next_variable: _, substitutions }) ->
+let module_state_substitutions = fn (InferenceState {
+  next_variable: _, substitutions, expression_annotations: _, pattern_annotations: _
+}) ->
   substitutions
 
 let apply_state_substitutions = fn inferred_type -> fn state ->
@@ -1678,7 +2159,7 @@ let infer_record_pattern_fields = fn infer_child -> fn fields -> fn field_names 
       }
   }
 
-let infer_pattern = fn pattern -> fn expected_type -> fn visible_types -> fn state ->
+let infer_pattern_node = fn pattern -> fn expected_type -> fn visible_types -> fn state ->
   match (pattern_kind pattern) {
     | Variable(name) -> Ok(PatternBindings {
       bindings: Cons(SchemeBinding(name,
@@ -1744,6 +2225,28 @@ let infer_pattern = fn pattern -> fn expected_type -> fn visible_types -> fn sta
             }
           }
       }
+  }
+
+let record_pattern_annotation = fn pattern -> fn inferred_type -> fn (InferenceState {
+  next_variable, substitutions, expression_annotations, pattern_annotations
+}) -> InferenceState {
+  next_variable: next_variable,
+  substitutions: substitutions,
+  expression_annotations: expression_annotations,
+  pattern_annotations: Cons(PatternTypeAnnotation {
+    span: pattern_span pattern,
+    inferred_type: inferred_type
+  }, pattern_annotations)
+}
+
+let infer_pattern = fn pattern -> fn expected_type -> fn visible_types -> fn state ->
+  match (infer_pattern_node pattern expected_type visible_types state) {
+    | Err(message) -> Err(message)
+    | Ok(PatternBindings { bindings, state: next_state }) -> Ok(PatternBindings {
+      bindings: bindings,
+      state: record_pattern_annotation pattern
+        (apply_state_substitutions expected_type next_state) next_state
+    })
   }
 
 let generalize_pattern_bindings = fn bindings -> fn environment -> fn state ->
@@ -2115,7 +2618,7 @@ let validate_boolean_match_arms = fn saw_true -> fn saw_false -> fn arms ->
     }
   }
 
-let infer_expression = fn expression -> fn environment -> fn visible_types -> fn state ->
+let infer_expression_node = fn expression -> fn environment -> fn visible_types -> fn state ->
   match (expression_kind expression) {
     | Integer(_) -> Ok(make_inference_result (builtin_inferred_type "i32") state)
     | Boolean(_) -> Ok(make_inference_result (builtin_inferred_type "bool") state)
@@ -2187,6 +2690,218 @@ let infer_expression = fn expression -> fn environment -> fn visible_types -> fn
       environment visible_types state
   }
 
+let record_expression_annotation = fn expression -> fn inferred_type -> fn (InferenceState {
+  next_variable, substitutions, expression_annotations, pattern_annotations
+}) -> InferenceState {
+  next_variable: next_variable,
+  substitutions: substitutions,
+  expression_annotations: Cons(ExpressionTypeAnnotation {
+    span: expression_span expression,
+    inferred_type: inferred_type
+  }, expression_annotations),
+  pattern_annotations: pattern_annotations
+}
+
+let infer_expression = fn expression -> fn environment -> fn visible_types -> fn state ->
+  match (infer_expression_node expression environment visible_types state) {
+    | Err(message) -> Err(message)
+    | Ok(InferenceResult { inferred_type, state: next_state }) -> {
+      let resolved_type = apply_state_substitutions inferred_type next_state;
+      Ok(make_inference_result resolved_type
+        (record_expression_annotation expression resolved_type next_state))
+    }
+  }
+
+let count_expression_list = fn expressions ->
+  match expressions {
+    | Nil -> 0
+    | Cons(expression, remaining) ->
+      count_expression_nodes expression + count_expression_list remaining
+  }
+
+let count_pattern_list = fn patterns ->
+  match patterns {
+    | Nil -> 0
+    | Cons(pattern, remaining) -> count_pattern_nodes pattern + count_pattern_list remaining
+  }
+
+let count_ast_record_expression_fields = fn fields ->
+  match fields {
+    | Nil -> 0
+    | Cons(RecordExpressionField { name: _, value }, remaining) ->
+      count_expression_nodes value + count_ast_record_expression_fields remaining
+  }
+
+let count_record_pattern_fields = fn fields ->
+  match fields {
+    | Nil -> 0
+    | Cons(RecordPatternField { name: _, pattern }, remaining) ->
+      count_pattern_nodes pattern + count_record_pattern_fields remaining
+  }
+
+let count_match_arms = fn arms ->
+  match arms {
+    | Nil -> 0
+    | Cons(MatchArm { pattern: _, body }, remaining) ->
+      count_expression_nodes body + count_match_arms remaining
+  }
+
+let count_expression_nodes = fn expression ->
+  match (expression_kind expression) {
+    | Integer(_) -> 1
+    | Boolean(_) -> 1
+    | StringLiteral(_) -> 1
+    | Unit -> 1
+    | VariableExpr(_) -> 1
+    | TupleExpr(items) -> 1 + count_expression_list items
+    | RecordExpr(RecordExpression { constructor_name: _, fields }) ->
+      1 + count_ast_record_expression_fields fields
+    | Binary(BinaryExpression { operator: _, left, right }) ->
+      1 + count_expression_nodes left + count_expression_nodes right
+    | Negate(operand) -> 1 + count_expression_nodes operand
+    | Function(FunctionExpression { parameter: _, body }) ->
+      1 + count_expression_nodes body
+    | Apply(ApplicationExpression { callee, argument }) ->
+      1 + count_expression_nodes callee + count_expression_nodes argument
+    | Let(LetExpression { pattern: _, annotation: _, value, body }) ->
+      1 + count_expression_nodes value + count_expression_nodes body
+    | Match(MatchExpression { scrutinee, arms }) ->
+      1 + count_expression_nodes scrutinee + count_match_arms arms
+    | ConstructorExpr(ConstructorExpression { constructor_name: _, arguments }) ->
+      1 + count_expression_list arguments
+    | Ascription(AscriptionExpression { expression: inner, annotation: _ }) ->
+      1 + count_expression_nodes inner
+    | Block(items) -> 1 + count_expression_list items
+  }
+
+let count_pattern_nodes = fn pattern ->
+  match (pattern_kind pattern) {
+    | Variable(_) -> 1
+    | PatternUnit -> 1
+    | Wildcard -> 1
+    | PatternInteger(_) -> 1
+    | PatternBoolean(_) -> 1
+    | PatternString(_) -> 1
+    | TuplePattern(patterns) -> 1 + count_pattern_list patterns
+    | ConstructorPattern(ConstructorPatternData { constructor_name: _, arguments }) ->
+      1 + count_pattern_list arguments
+    | RecordPattern(RecordPatternData { constructor_name: _, fields }) ->
+      1 + count_record_pattern_fields fields
+    | AscribedPattern(AscribedPatternData { pattern: inner, annotation: _ }) ->
+      1 + count_pattern_nodes inner
+  }
+
+let count_source_expression_nodes = fn declarations ->
+  match declarations {
+    | Nil -> 0
+    | Cons(ValueDeclaration(ValueDeclarationData { name: _, body, span: _ }), remaining) ->
+      count_expression_nodes body + count_source_expression_nodes remaining
+    | Cons(TypeDeclaration(_), remaining) -> count_source_expression_nodes remaining
+  }
+
+let count_expression_annotations = fn annotations ->
+  match annotations {
+    | Nil -> 0
+    | Cons(_, remaining) -> 1 + count_expression_annotations remaining
+  }
+
+let count_pattern_annotations = fn annotations ->
+  match annotations {
+    | Nil -> 0
+    | Cons(_, remaining) -> 1 + count_pattern_annotations remaining
+  }
+
+let count_pattern_nodes_in_expression_list = fn expressions ->
+  match expressions {
+    | Nil -> 0
+    | Cons(expression, remaining) ->
+      count_pattern_nodes_in_expression expression
+        + count_pattern_nodes_in_expression_list remaining
+  }
+
+let count_pattern_nodes_in_match_arms = fn arms ->
+  match arms {
+    | Nil -> 0
+    | Cons(MatchArm { pattern, body }, remaining) ->
+      count_pattern_nodes pattern + count_pattern_nodes_in_expression body
+        + count_pattern_nodes_in_match_arms remaining
+  }
+
+let count_pattern_nodes_in_expression = fn expression ->
+  match (expression_kind expression) {
+    | Integer(_) -> 0
+    | Boolean(_) -> 0
+    | StringLiteral(_) -> 0
+    | Unit -> 0
+    | VariableExpr(_) -> 0
+    | TupleExpr(items) -> count_pattern_nodes_in_expression_list items
+    | RecordExpr(RecordExpression { constructor_name: _, fields }) ->
+      count_pattern_nodes_in_record_fields fields
+    | Binary(BinaryExpression { operator: _, left, right }) ->
+      count_pattern_nodes_in_expression left + count_pattern_nodes_in_expression right
+    | Negate(operand) -> count_pattern_nodes_in_expression operand
+    | Function(FunctionExpression { parameter, body }) ->
+      count_pattern_nodes parameter + count_pattern_nodes_in_expression body
+    | Apply(ApplicationExpression { callee, argument }) ->
+      count_pattern_nodes_in_expression callee + count_pattern_nodes_in_expression argument
+    | Let(LetExpression { pattern, annotation: _, value, body }) ->
+      count_pattern_nodes pattern + count_pattern_nodes_in_expression value
+        + count_pattern_nodes_in_expression body
+    | Match(MatchExpression { scrutinee, arms }) ->
+      count_pattern_nodes_in_expression scrutinee + count_pattern_nodes_in_match_arms arms
+    | ConstructorExpr(ConstructorExpression { constructor_name: _, arguments }) ->
+      count_pattern_nodes_in_expression_list arguments
+    | Ascription(AscriptionExpression { expression: inner, annotation: _ }) ->
+      count_pattern_nodes_in_expression inner
+    | Block(items) -> count_pattern_nodes_in_expression_list items
+  }
+
+let count_pattern_nodes_in_record_fields = fn fields ->
+  match fields {
+    | Nil -> 0
+    | Cons(RecordExpressionField { name: _, value }, remaining) ->
+      count_pattern_nodes_in_expression value + count_pattern_nodes_in_record_fields remaining
+  }
+
+let count_source_pattern_nodes = fn declarations ->
+  match declarations {
+    | Nil -> 0
+    | Cons(ValueDeclaration(ValueDeclarationData { name: _, body, span: _ }), remaining) ->
+      count_pattern_nodes_in_expression body + count_source_pattern_nodes remaining
+    | Cons(TypeDeclaration(_), remaining) -> count_source_pattern_nodes remaining
+  }
+
+let annotation_count_digit = fn value ->
+  match value {
+    | 0 -> "0" | 1 -> "1" | 2 -> "2" | 3 -> "3" | 4 -> "4"
+    | 5 -> "5" | 6 -> "6" | 7 -> "7" | 8 -> "8" | _ -> "9"
+  }
+
+let annotation_count_text = fn value ->
+  match (value < 10) {
+    | true -> annotation_count_digit value
+    | false -> annotation_count_text (value / 10) + annotation_count_digit (value % 10)
+  }
+
+let typed_ast_annotation_error = fn declarations -> fn expression_annotations ->
+  fn pattern_annotations -> {
+  let expected_expressions = count_source_expression_nodes declarations;
+  let actual_expressions = count_expression_annotations expression_annotations;
+  let expected_patterns = count_source_pattern_nodes declarations;
+  let actual_patterns = count_pattern_annotations pattern_annotations;
+  match (expected_expressions == actual_expressions) {
+    | false -> "expression annotation count mismatch: expected "
+      + annotation_count_text expected_expressions + ", got "
+      + annotation_count_text actual_expressions
+    | true -> match (expected_patterns == actual_patterns) {
+      | false -> "pattern annotation count mismatch: expected "
+        + annotation_count_text expected_patterns + ", got "
+        + annotation_count_text actual_patterns
+      | true -> ""
+    }
+  }
+}
+
 // Keep all recursive module bindings monomorphic while checking their bodies.
 let validate_source_type_declarations = fn declarations -> fn visible_types ->
   match declarations {
@@ -2221,7 +2936,7 @@ let validate_source_type_declarations = fn declarations -> fn visible_types ->
 let prepare_source_values = fn declarations -> fn state ->
   match declarations {
     | Nil -> Ok(PreparedValues { bindings: Nil, state: state })
-    | Cons(ValueDeclaration(ValueDeclarationData { name, body: _ }), remaining) ->
+    | Cons(ValueDeclaration(ValueDeclarationData { name, body: _, span: _ }), remaining) ->
       match (fresh_type_variable state) {
         | FreshInference(inferred_type, next_state) -> match (prepare_source_values
             remaining next_state) {
@@ -2244,7 +2959,7 @@ let infer_source_value_bodies = fn declarations -> fn local_bindings ->
   match declarations {
     | Nil -> Ok(state)
     | Cons(ValueDeclaration(ValueDeclarationData {
-        name: ValueName(name), body
+        name: ValueName(name), body, span: _
       }), remaining) -> match (lookup_value_scheme name local_bindings) {
       | None -> Err("missing recursive type variable for value `" + name + "`")
       | Some(TypeScheme { quantified_variables: _, body: declared_type }) ->
@@ -2321,13 +3036,43 @@ let infer_source_module = fn (LoadedModule {
                   | Ok(final_state) -> {
                     let values = generalize_source_values local_bindings
                       imported_values final_state;
-                    Ok(CheckedModuleInterface {
-                      loaded_module: loaded_module,
-                      interface: InferredModuleInterface {
-                        values: values,
-                        types: interface_type_metadata
+                    let InferenceState {
+                      next_variable: _,
+                      substitutions,
+                      expression_annotations,
+                      pattern_annotations
+                    } = final_state;
+                    let annotation_error = typed_ast_annotation_error declarations
+                      expression_annotations pattern_annotations;
+                    match (equal annotation_error "") {
+                      | false -> Err("internal error: TypedAST " + annotation_error)
+                      | true -> match (resolve_module_bindings source_path imports
+                          declarations checked_modules visible_types) {
+                        | Err(message) -> Err("internal error: " + message)
+                        | Ok(BindingResolution {
+                            bindings, value_references, constructor_references
+                          }) -> {
+                          let typed_module = TypedModule {
+                            source_module: source_module,
+                            expression_types: expression_annotations,
+                            pattern_types: pattern_annotations,
+                            nominal_types: visible_types,
+                            substitutions: substitutions,
+                            bindings: bindings,
+                            value_references: value_references,
+                            constructor_references: constructor_references
+                          };
+                          Ok(CheckedModuleInterface {
+                            loaded_module: loaded_module,
+                            interface: InferredModuleInterface {
+                              values: values,
+                              types: interface_type_metadata
+                            },
+                            typed_module: typed_module
+                          })
+                        }
                       }
-                    })
+                    }
                   }
                 }
             }
@@ -2341,7 +3086,8 @@ let has_native_entry = fn declarations ->
     | Nil -> false
     | Cons(ValueDeclaration(ValueDeclarationData {
         name: ValueName("main"),
-        body
+        body,
+        span: _
       }), _) -> match (expression_kind body) {
       | Function(FunctionExpression { parameter, body: _ }) -> match (pattern_kind parameter) {
         | PatternUnit -> true

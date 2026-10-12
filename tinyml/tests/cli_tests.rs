@@ -851,7 +851,11 @@ fn riotml_compiler_emits_native_smoke_program_and_rejects_bad_types() {
     );
 
     let native_smoke_source = dir.join("native_compiler_smoke.ml");
-    fs::write(&native_smoke_source, "let main = fn () -> 42\n").unwrap();
+    fs::write(
+        &native_smoke_source,
+        "type Maybe = None | Some(i32)\nlet main = fn () -> {\n  let item = Some(42);\n  match item { | None -> 0 | Some(value) -> value }\n}\n",
+    )
+    .unwrap();
     let native_smoke_output = dir.join("native_compiler_smoke.native");
     let native_compile = Command::new(&native_compiler_source)
         .current_dir(&unrelated_working_directory)

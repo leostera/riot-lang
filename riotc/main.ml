@@ -84,7 +84,8 @@ let find_root_checked_module = fn (root_path: string) ->
     | Nil -> None
     | Cons(CheckedModuleInterface {
         loaded_module: LoadedModule { module_path, source_path, source_module },
-        interface
+        interface,
+        typed_module
       }, remaining) -> match (equal root_path source_path) {
       | true -> Some(CheckedModuleInterface {
         loaded_module: LoadedModule {
@@ -92,7 +93,8 @@ let find_root_checked_module = fn (root_path: string) ->
           source_path: source_path,
           source_module: source_module
         },
-        interface: interface
+        interface: interface,
+        typed_module: typed_module
       })
       | false -> find_root_checked_module root_path remaining
     }

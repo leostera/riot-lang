@@ -65,7 +65,8 @@ type TypeDefinition =
 type TypeDeclarationData = TypeDeclarationData {
   name: TypeName,
   parameters: List<TypeVariableName>,
-  definition: TypeDefinition
+  definition: TypeDefinition,
+  span: SourceSpan
 }
 
 type Pattern = Pattern {
@@ -196,7 +197,8 @@ type AscriptionExpression = AscriptionExpression {
 
 type ValueDeclarationData = ValueDeclarationData {
   name: ValueName,
-  body: Expr
+  body: Expr,
+  span: SourceSpan
 }
 
 type Declaration =

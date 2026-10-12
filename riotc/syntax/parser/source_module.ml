@@ -278,30 +278,40 @@ let parse_type_definition = fn tokens ->
     }
   }
 
-let parse_type_declaration = fn tokens ->
+let parse_type_declaration = fn declaration_start -> fn tokens ->
   match tokens {
-    | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
+    | Cons(IdentifierToken(TokenInfo { lexeme: name, span: name_span }), remaining) ->
       match (parse_type_parameters remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: parameters, remaining_tokens }) ->
-          parse_type_declaration_equals (TypeName(name)) parameters remaining_tokens
+          parse_type_declaration_equals (TypeName(name)) declaration_start
+            name_span parameters remaining_tokens
       }
     | _ -> Err("expected a type name")
   }
 
-let parse_type_declaration_equals = fn name -> fn parameters -> fn tokens ->
+let parse_type_declaration_equals = fn name -> fn declaration_start ->
+  fn name_span -> fn parameters -> fn tokens ->
   match tokens {
     | Cons(SymbolToken(TokenInfo { lexeme: "=", span: _ }), definition_tokens) ->
       match (parse_type_definition definition_tokens) {
         | Err(message) -> Err(message)
-        | Ok(ParseStep { value: definition, remaining_tokens }) -> Ok(ParseStep {
-          value: TypeDeclaration(TypeDeclarationData {
-            name: name,
-            parameters: parameters,
-            definition: definition
-          }),
-          remaining_tokens: remaining_tokens
-        })
+        | Ok(ParseStep { value: definition, remaining_tokens }) -> {
+          let SourceSpan { start_codepoint, end_codepoint: _ } = declaration_start;
+          let SourceSpan { start_codepoint: _, end_codepoint } = name_span;
+          Ok(ParseStep {
+            value: TypeDeclaration(TypeDeclarationData {
+              name: name,
+              parameters: parameters,
+              definition: definition,
+              span: SourceSpan {
+                start_codepoint: start_codepoint,
+                end_codepoint: end_codepoint
+              }
+            }),
+            remaining_tokens: remaining_tokens
+          })
+        }
       }
     | _ -> Err("expected `=` after type declaration")
   }
@@ -362,26 +372,30 @@ let apply_value_annotation = fn annotation -> fn annotation_span -> fn body ->
       }))) (annotation_span_for_body annotation_span body)
   }
 
-let parse_value_declaration = fn tokens ->
+let parse_value_declaration = fn declaration_start -> fn tokens ->
   match tokens {
     | Cons(IdentifierToken(TokenInfo { lexeme: name, span: _ }), remaining) ->
-      parse_value_declaration_annotation (ValueName(name)) None None remaining
+      parse_value_declaration_annotation (ValueName(name)) declaration_start
+        None None remaining
     | _ -> Err("expected a value name after `let`")
   }
 
-let parse_value_declaration_annotation = fn name -> fn annotation -> fn annotation_span -> fn tokens ->
+let parse_value_declaration_annotation = fn name -> fn declaration_start ->
+  fn annotation -> fn annotation_span -> fn tokens ->
   match tokens {
     | Cons(SymbolToken(TokenInfo { lexeme: ":", span }), remaining) ->
       match (parse_type remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: type_expression, remaining_tokens }) ->
-          parse_value_declaration_parameters name (Some(type_expression))
-            (Some(span)) remaining_tokens
+          parse_value_declaration_parameters name declaration_start
+            (Some(type_expression)) (Some(span)) remaining_tokens
       }
-    | _ -> parse_value_declaration_parameters name annotation annotation_span tokens
+    | _ -> parse_value_declaration_parameters name declaration_start
+      annotation annotation_span tokens
   }
 
-let parse_value_declaration_parameters = fn name -> fn annotation -> fn annotation_span -> fn tokens ->
+let parse_value_declaration_parameters = fn name -> fn declaration_start ->
+  fn annotation -> fn annotation_span -> fn tokens ->
   match (parse_value_parameters (ValueParametersState {
     reversed_parameters: Nil,
     remaining_tokens: tokens
@@ -390,14 +404,23 @@ let parse_value_declaration_parameters = fn name -> fn annotation -> fn annotati
     | Ok(ParseStep { value: parameters, remaining_tokens }) ->
       match (parse_expression remaining_tokens) {
         | Err(message) -> Err(message)
-        | Ok(ParseStep { value: body, remaining_tokens }) -> Ok(ParseStep {
-          value: ValueDeclaration(ValueDeclarationData {
-            name: name,
-            body: apply_value_annotation annotation annotation_span
-              (wrap_value_parameters parameters body)
-          }),
-          remaining_tokens: remaining_tokens
-        })
+        | Ok(ParseStep { value: body, remaining_tokens }) -> {
+          let declared_body = apply_value_annotation annotation annotation_span
+            (wrap_value_parameters parameters body);
+          let SourceSpan { start_codepoint, end_codepoint: _ } = declaration_start;
+          let SourceSpan { start_codepoint: _, end_codepoint } = expression_span declared_body;
+          Ok(ParseStep {
+            value: ValueDeclaration(ValueDeclarationData {
+              name: name,
+              body: declared_body,
+              span: SourceSpan {
+                start_codepoint: start_codepoint,
+                end_codepoint: end_codepoint
+              }
+            }),
+            remaining_tokens: remaining_tokens
+          })
+        }
       }
   }
 
@@ -419,8 +442,8 @@ let parse_module_items = fn (ModuleParseState {
             reversed_declarations: reversed_declarations
           }) remaining_tokens
       }
-    | Cons(IdentifierToken(TokenInfo { lexeme: "type", span: _ }), remaining) ->
-      match (parse_type_declaration remaining) {
+    | Cons(IdentifierToken(TokenInfo { lexeme: "type", span }), remaining) ->
+      match (parse_type_declaration span remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: declaration, remaining_tokens }) ->
           parse_module_items (ModuleParseState {
@@ -428,8 +451,8 @@ let parse_module_items = fn (ModuleParseState {
             reversed_declarations: Cons(declaration, reversed_declarations)
           }) remaining_tokens
       }
-    | Cons(IdentifierToken(TokenInfo { lexeme: "let", span: _ }), remaining) ->
-      match (parse_value_declaration remaining) {
+    | Cons(IdentifierToken(TokenInfo { lexeme: "let", span }), remaining) ->
+      match (parse_value_declaration span remaining) {
         | Err(message) -> Err(message)
         | Ok(ParseStep { value: declaration, remaining_tokens }) ->
           parse_module_items (ModuleParseState {
