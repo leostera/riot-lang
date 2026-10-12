@@ -63,6 +63,23 @@ C-first/native slice, not a performance comparison to the baseline and not the
 required native Riotc compiler or successor self-rebuild. The full
 compiler-source corpus remains unimplemented.
 
+## C-first C-backend self-rebuild probe
+
+From the same clean archive of `043f06c2cd` on Apple Silicon/macOS 26.6.2
+with Apple Clang 21.0.0, the Stage 0 C-hosted compiler compiled `riotc/main.ml`
+through the existing Riotc C-plus-Clang source backend. With `PATH=/usr/bin:/bin`
+(and no `node` executable on that path), this source-backend self-rebuild took
+**286.96 s real** (**276.04 s user**, **10.43 s system**). It emitted
+**5,186,508 bytes** of C and a **2,528,136-byte** executable. Repeated C output
+was byte-identical. The rebuilt successor compiled and ran the status-42 smoke;
+it also rejected the ill-typed fixture without leaving an executable or C
+output. Clang again printed the optional MariaDB search-path warning.
+
+This is a C-first, no-Node check of the existing source-backend baseline. It is
+not the required owned-native compiler build/rebuild chain, and its timing and
+artifact sizes are not directly comparable to the historical JS-to-native
+baseline or the Stage 0 TinyML-to-C bridge.
+
 ## Clean-archive scalar ABI extension
 
 A clean archive of `043f06c2cd` was built on Apple Silicon (`arm64`, macOS
