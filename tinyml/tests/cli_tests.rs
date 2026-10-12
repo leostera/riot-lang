@@ -2712,6 +2712,59 @@ let main = fn () -> match (args ()) {
 }
 
 #[test]
+fn compile_c_reads_runtime_directory_from_the_environment() {
+    let dir = temp_dir("compile-c-runtime-directory");
+    let source = dir.join("main.ml");
+    let generated_c = dir.join("main.c");
+    let executable = dir.join("main");
+    fs::write(
+        &source,
+        r#"use Host.{runtime_directory}
+let main = fn () -> match (runtime_directory ()) { | "stage0-runtime-root" -> 42 | _ -> 0 }
+"#,
+    )
+    .unwrap();
+
+    let compile = Command::new(tinyml())
+        .arg("compile")
+        .arg("--target")
+        .arg("c")
+        .arg(&source)
+        .arg("-o")
+        .arg(&generated_c)
+        .output()
+        .unwrap();
+    assert!(
+        compile.status.success(),
+        "compiler stderr: {}",
+        String::from_utf8_lossy(&compile.stderr)
+    );
+
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let runtime_dir = repo.join("riotc");
+    let clang = Command::new("clang")
+        .arg("-std=gnu11")
+        .arg("-I")
+        .arg(&runtime_dir)
+        .arg(&generated_c)
+        .arg(runtime_dir.join("runtime.c"))
+        .arg("-o")
+        .arg(&executable)
+        .output()
+        .unwrap();
+    assert!(
+        clang.status.success(),
+        "clang stderr: {}",
+        String::from_utf8_lossy(&clang.stderr)
+    );
+    let run = Command::new(&executable)
+        .env("RIOTML_RUNTIME_DIR", "stage0-runtime-root")
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(42));
+}
+
+#[test]
 fn compile_c_preserves_host_output_and_exit_status() {
     let dir = temp_dir("compile-c-host-output");
     let source = dir.join("main.ml");
