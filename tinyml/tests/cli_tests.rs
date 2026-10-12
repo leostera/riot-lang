@@ -2417,6 +2417,40 @@ let main = fn () -> match (map (fn x -> x + 22) (Cons(20, Nil))) { | Cons(result
 }
 
 #[test]
+fn compile_c_module_graph_output_is_deterministic() {
+    let dir = temp_dir("compile-c-deterministic");
+    let source = dir.join("main.ml");
+    let first = dir.join("first.c");
+    let second = dir.join("second.c");
+    fs::write(
+        &source,
+        r#"use Std.List.{map}
+use Prelude.{Cons, Nil}
+let main = fn () -> match (map (fn x -> x + 22) (Cons(20, Nil))) { | Cons(result, Nil) -> result | _ -> 0 }
+"#,
+    )
+    .unwrap();
+
+    for output in [&first, &second] {
+        let compile = Command::new(tinyml())
+            .arg("compile")
+            .arg("--target")
+            .arg("c")
+            .arg(&source)
+            .arg("-o")
+            .arg(output)
+            .output()
+            .unwrap();
+        assert!(
+            compile.status.success(),
+            "compiler stderr: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+    }
+    assert_eq!(fs::read(first).unwrap(), fs::read(second).unwrap());
+}
+
+#[test]
 fn compile_c_uses_the_host_runtime_without_javascript() {
     let dir = temp_dir("compile-c-host-args");
     let source = dir.join("main.ml");
