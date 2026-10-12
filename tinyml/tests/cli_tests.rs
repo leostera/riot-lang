@@ -475,9 +475,42 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
 
     for (fixture_name, source_text, expected_status) in [
         ("arithmetic", "let main = fn () -> 20 + 22\n", 42),
+        ("subtraction", "let main = fn () -> 84 - 42\n", 42),
+        ("multiplication", "let main = fn () -> 6 * 7\n", 42),
+        ("negation", "let main = fn () -> -42\n", 214),
         (
             "boolean-branch",
             "let main = fn () -> match true { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        (
+            "comparison-equal",
+            "let main = fn () -> match (20 == 20) { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        (
+            "comparison-not-equal",
+            "let main = fn () -> match (20 != 21) { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        (
+            "comparison-less",
+            "let main = fn () -> match (20 < 21) { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        (
+            "comparison-less-equal",
+            "let main = fn () -> match (20 <= 20) { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        (
+            "comparison-greater",
+            "let main = fn () -> match (21 > 20) { | true -> 42 | false -> 41 }\n",
+            42,
+        ),
+        (
+            "comparison-greater-equal",
+            "let main = fn () -> match (20 >= 20) { | true -> 42 | false -> 41 }\n",
             42,
         ),
         ("wrapped-add", "let main = fn () -> 2147483647 + 1\n", 0),
@@ -541,51 +574,74 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         assert_eq!(native_run.stderr, c_run.stderr);
     }
 
-    let division_by_zero_source = dir.join("division-by-zero.ml");
-    fs::write(&division_by_zero_source, "let main = fn () -> 1 / 0\n").unwrap();
-    let native_zero = dir.join("division-by-zero.native");
-    let native_zero_compile = Command::new("node")
-        .current_dir(repo)
-        .arg(&runner)
-        .arg("aarch64-compile-function")
-        .arg(&division_by_zero_source)
-        .arg("main")
-        .arg("-o")
-        .arg(&native_zero)
-        .output()
-        .unwrap();
-    assert!(
-        native_zero_compile.status.success(),
-        "native division-by-zero fixture failed to link: {}",
-        String::from_utf8_lossy(&native_zero_compile.stderr)
-    );
-    let c_zero = dir.join("division-by-zero.c-backend");
-    let c_zero_compile = Command::new("node")
-        .current_dir(repo)
-        .arg(&runner)
-        .arg("compile")
-        .arg(&division_by_zero_source)
-        .arg("-o")
-        .arg(&c_zero)
-        .output()
-        .unwrap();
-    assert!(
-        c_zero_compile.status.success(),
-        "C-backend division-by-zero fixture failed to link: {}",
-        String::from_utf8_lossy(&c_zero_compile.stderr)
-    );
-    let native_zero_run = Command::new(&native_zero)
-        .current_dir(&dir)
-        .output()
-        .unwrap();
-    let c_zero_run = Command::new(&c_zero).current_dir(&dir).output().unwrap();
     use std::os::unix::process::ExitStatusExt;
-    assert_eq!(native_zero_run.status.signal(), c_zero_run.status.signal());
-    assert_eq!(native_zero_run.stderr, c_zero_run.stderr);
-    assert!(
-        String::from_utf8_lossy(&native_zero_run.stderr)
-            .contains("riotml runtime: division by zero")
-    );
+    for (fixture_name, source_text, diagnostic) in [
+        (
+            "division-by-zero",
+            "let main = fn () -> 1 / 0\n",
+            "riotml runtime: division by zero",
+        ),
+        (
+            "remainder-by-zero",
+            "let main = fn () -> 1 % 0\n",
+            "riotml runtime: remainder by zero",
+        ),
+        (
+            "pattern-failure",
+            "let main = fn () -> match 0 { | 1 -> 42 }\n",
+            "riotml runtime: RiotML pattern match failed",
+        ),
+    ] {
+        let fixture_source = dir.join(format!("{fixture_name}.ml"));
+        fs::write(&fixture_source, source_text).unwrap();
+        let native_executable = dir.join(format!("{fixture_name}.native"));
+        let native_compile = Command::new("node")
+            .current_dir(repo)
+            .arg(&runner)
+            .arg("aarch64-compile-function")
+            .arg(&fixture_source)
+            .arg("main")
+            .arg("-o")
+            .arg(&native_executable)
+            .output()
+            .unwrap();
+        assert!(
+            native_compile.status.success(),
+            "native {fixture_name} fixture failed to link: {}",
+            String::from_utf8_lossy(&native_compile.stderr)
+        );
+        let c_executable = dir.join(format!("{fixture_name}.c-backend"));
+        let c_compile = Command::new("node")
+            .current_dir(repo)
+            .arg(&runner)
+            .arg("compile")
+            .arg(&fixture_source)
+            .arg("-o")
+            .arg(&c_executable)
+            .output()
+            .unwrap();
+        assert!(
+            c_compile.status.success(),
+            "C-backend {fixture_name} fixture failed to link: {}",
+            String::from_utf8_lossy(&c_compile.stderr)
+        );
+        let native_run = Command::new(&native_executable)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        let c_run = Command::new(&c_executable)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert_eq!(native_run.status.signal(), c_run.status.signal());
+        assert_eq!(native_run.stdout, c_run.stdout);
+        assert_eq!(native_run.stderr, c_run.stderr);
+        assert!(
+            String::from_utf8_lossy(&native_run.stderr).contains(diagnostic),
+            "unexpected {fixture_name} diagnostic: {}",
+            String::from_utf8_lossy(&native_run.stderr)
+        );
+    }
 
     let ill_typed_source = dir.join("ill-typed.ml");
     fs::write(&ill_typed_source, "let main = fn () -> true + 1\n").unwrap();

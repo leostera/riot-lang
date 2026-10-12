@@ -113,3 +113,10 @@ cargo test -p tinyml --test cli_tests aarch64_machine_ir
 cargo test -p tinyml --test cli_tests aarch64_linear_ir_abi_and_control_flow_fixtures_execute
 cargo test -p tinyml --test cli_tests aarch64_codegen_assembles_links_and_removes_failed_outputs
 ```
+
+That Codegen test compares process status, stdout, and stderr against the
+existing C backend for scalar arithmetic, signed comparisons/branches, wrapped
+integer operations, i32 division/remainder (including zero and `INT32_MIN / -1`
+edge behavior), and pattern-failure diagnostics. This is a bounded differential
+slice, not evidence that unsupported strings, Host APIs, globals, or whole-
+module initialization behave natively.
