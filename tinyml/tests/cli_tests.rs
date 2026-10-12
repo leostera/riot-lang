@@ -2608,7 +2608,10 @@ fn compile_c_preserves_host_file_and_process_behavior() {
         &source,
         r#"use Host.{args, write_file, read_file, run_process}
 use Prelude.{Cons, Nil, Ok}
-let check_process = fn () -> match (run_process "/usr/bin/true" Nil) { | Ok(0) -> 42 | _ -> 0 }
+let check_process = fn () -> match (run_process "/usr/bin/true" Nil) {
+  | Ok(0) -> match (run_process "/usr/bin/false" Nil) { | Ok(1) -> 42 | _ -> 0 }
+  | _ -> 0
+}
 let main = fn () -> match (args ()) {
   | Cons(path, Nil) -> match (write_file path "✓") {
       | Ok(_) -> match (read_file path) { | Ok("✓") -> check_process () | _ -> 0 }
