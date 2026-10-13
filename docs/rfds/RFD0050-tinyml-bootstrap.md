@@ -296,25 +296,32 @@ owned AArch64 command must also compile supported fixtures and return status
 rejected before Codegen. The production acceptance path requires native
 compiler self-rebuild, not just this small fixture.
 
-**Current implementation status (2026-10-12):** Rust TinyML Stage 0 emits
+**Current implementation status (2026-10-13):** Rust TinyML Stage 0 emits
 deterministic C for the complete Riotc source graph; Clang builds a working
-C-hosted compiler. From a clean git archive, with `PATH=/usr/bin:/bin`, the
-C-hosted C-backend status-42 smoke and an owned two-function AArch64
-direct-call-graph smoke both pass; ill-typed input is rejected before Codegen
-and stale executable/assembly outputs are removed. The owned path also has
-verified TypedAST, LambdaIR, NativeIR SSA, AArch64 MachineIR/LinearIR, assembly
-Codegen, scalar/control-flow/direct-call differential tests, and an explicit
-`Host.args` bridge. It is not yet a whole-module compiler: module initialization,
-globals, concrete string/aggregate operations, general Host marshalling, and
-native self-rebuild remain incomplete. Unsupported operations fail explicitly;
-there is no generated-C fallback. `Check.Inference` checks the complete
-source-module graph with rank-1 HM inference, independently instantiates local
-`let` and imported value schemes, and preserves nominal type/constructor
-identities and payload constraints across modules. Its type-error tests cover
-local/imported polymorphism, nominal mismatches, invalid primitive operations,
-bad calls, unknown names/types, and incompatible patterns. The C-first
-Stage 0-to-C-hosted bridge is validated, but the required native compiler,
-successor self-rebuild, and full status-42 acceptance chain have not passed.
+C-hosted compiler. A clean source archive at `2214839a8`, using the existing
+local Rust Stage 0 binary and `PATH=/usr/bin:/bin`, passed a C-hosted owned
+AArch64 closure smoke (status 42). The no-Node integration test also covers
+recursive/direct calls, signed i64 operations, escaping closures with mixed
+width captures, zero-capture closures, and inspectable NativeIR capture
+metadata. String constants and aggregate construction fail before Codegen;
+unsupported `Host.current_directory` marshalling fails during LinearIR
+lowering; each rejection removes stale artifacts. Ill-typed input likewise
+fails without an executable. The verified native slice includes TypedAST,
+LambdaIR, target-independent NativeIR SSA, AArch64 MachineIR/LinearIR and
+assembly Codegen, but is not a whole-module compiler. A clean-archive attempt
+to compile `riotc/main.ml` through the owned backend currently fails before
+Codegen on a string constant in `clang_arguments`; native Riotc generation,
+successor self-rebuild, and full acceptance are not established. Module
+globals/initialization, concrete string/aggregate operations, and general Host
+marshalling remain unsupported, with no generated-C fallback. `Host.args` is
+only the explicit typed opaque-pointer bridge, not general list/string
+marshalling. `Check.Inference` checks the complete source-module graph with
+rank-1 HM inference, independently instantiates local `let` and imported value
+schemes, and preserves nominal type/constructor identities and payload
+constraints across modules. The full workspace suite and formatting/whitespace
+checks pass. C-first bridge and C-plus-Clang baseline measurements are reported
+separately in the benchmark notes; the legacy baseline uses the old
+JavaScript-hosted route and is not the acceptance chain.
 
 ### 6. Validation-focused CLI
 
@@ -365,15 +372,18 @@ hold:
 ### 8. Current progress and remaining work
 
 The TinyML language, module loader, compiler-focused library, and Host
-contracts have positive and negative coverage. On 2026-10-12, Stage 0 emitted
-deterministic C for the Riotc graph; Clang built the C-hosted compiler; and a
-clean archive tested with `PATH=/usr/bin:/bin` passed both the existing
-C-backend smoke and a bounded owned AArch64 direct-call-graph smoke (status 42).
-Ill-typed input was rejected with stale output cleanup. The full workspace
-suite and formatting checks pass. The native Riotc compiler, whole-module
-globals/initialization, full compiler-source corpus, successor self-rebuild,
-and final native acceptance chain are still incomplete. Keep the removed LSP,
-pending WASM output, and any Rust Stage 0 native backend out of this design.
+contracts have positive and negative coverage. As of 2026-10-13, the clean
+C-first Stage 0 → C-hosted compiler bridge and no-Node owned-native closure
+slice are validated, including explicit pre-Codegen rejection and artifact
+cleanup for unsupported strings/aggregates. The latest compiler-source attempt
+still stops on a string constant before Codegen; the native Riotc compiler,
+whole-module globals/initialization, full compiler-source corpus, successor
+self-rebuild, and final native acceptance chain are incomplete. The separate
+legacy C-plus-Clang baseline is measured in `docs/benchmarks/riotc-c-bootstrap-baseline-2026-10-12.md`;
+owned-native progress and clean-archive evidence are in
+`docs/benchmarks/riotc-owned-native-progress-2026-10-12.md`. Keep the removed
+LSP, pending WASM output, and any Rust Stage 0 native backend out of this
+design.
 
 ## Drawbacks
 [drawbacks]: #drawbacks
