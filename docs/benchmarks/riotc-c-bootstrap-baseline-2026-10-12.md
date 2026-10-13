@@ -201,5 +201,35 @@ and the status-42/ill-typed checks after this separation.
 This command split is not a generated-C fallback for an owned backend. The C
 path remains the existing behavioral reference while NativeIR and the
 ABI-free AArch64 MachineIR slice are inspected separately. ABI lowering,
-LinearIR and Codegen remain unimplemented pending an approved target/runtime
-boundary.
+LinearIR and Codegen were unimplemented at this historical revision, pending
+an approved target/runtime boundary.
+
+## Current C-backend baseline at `84a823a86` (single sample)
+
+A clean worktree at `84a823a862249f4c73c7cf9a9aec1b673c1b45d1` was measured on
+2026-10-13 using the same script, host, and tools as the previous series. This
+remains the **legacy C-plus-Clang source-backend baseline**: it uses the
+Stage 0 -> JavaScript -> JS-hosted compiler route for the measurements below.
+It is separate from the new C-first Stage 0 bridge and no-JavaScript acceptance
+chain. This is one sequential sample, not a controlled comparison or a
+performance threshold.
+
+| Stage (seconds) | Sample 1 |
+|---|---:|
+| Stage 0 -> JS | 2.099 |
+| JS-hosted compiler -> native compiler | 189.264 |
+| Standalone Clang of generated C | 3.401 |
+| Native compiler self-rebuild | 787.611 |
+| Successor compiles the smoke program | 0.872 |
+
+The Stage 0 Rust build, excluded from these sample timings, took 11.967 s.
+Artifacts: Stage 0 JavaScript 81,871 bytes; generated C 5,898,406 bytes for
+both first build and self-rebuild; native compiler and successor 2,842,888
+bytes each; smoke C 923 bytes; smoke executable 56,392 bytes. The smoke exited
+42; ill-typed input returned 1 and left neither an executable nor `.c` file.
+This later compiler source is substantially larger than the historical C
+baseline. The single sample must not be interpreted as a controlled regression
+or as evidence about the owned backend's eventual performance.
+
+The benchmark JSON and per-command logs are retained at
+`/var/folders/qy/3zl3lsrj0s9fwtjgjs6dx6vr0000gn/T/riotc-c-bootstrap-baseline-lwivpvh7`.

@@ -247,3 +247,12 @@ string failure only: Stage 0 is the existing local Rust binary, and neither
 native compiler generation nor successor self-rebuild has succeeded. These
 sizes and the 7-second C-host bootstrap are not a controlled comparison to the
 existing C-plus-Clang full compiler baseline.
+
+For scale, a separate single-sample run of the legacy C-plus-Clang baseline at
+clean commit `84a823a86` took 189.264 s for JS-hosted compiler-to-native, 3.401 s
+for standalone Clang, and 787.611 s for the native C-backend self-rebuild; its
+generated C was 5,898,406 bytes and the executable 2,842,888 bytes. That
+benchmark intentionally uses the legacy JavaScript-hosted route and is not the
+new C-first/no-JavaScript acceptance chain or a comparison against a completed
+owned native compiler. Full host/tool details and logs are in
+`riotc-c-bootstrap-baseline-2026-10-12.md`.
