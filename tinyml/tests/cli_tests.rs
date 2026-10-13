@@ -4266,6 +4266,24 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         "let make = fn (base: i32) -> fn (amount: i32) -> base + amount\nlet main = fn () -> { let add = make 40; add 2 }\n",
     )
     .unwrap();
+    let native_ir = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("native-ir")
+        .arg(&closure_source)
+        .output()
+        .unwrap();
+    assert!(
+        native_ir.status.success(),
+        "C-hosted NativeIR printing failed: {}",
+        String::from_utf8_lossy(&native_ir.stderr)
+    );
+    let native_ir_text = String::from_utf8_lossy(&native_ir.stdout);
+    assert!(native_ir_text.contains("closure fn nested"));
+    assert!(native_ir_text.contains("captures [base@"));
+    assert!(native_ir_text.contains("load-capture 0"));
+
     let closure_executable = dir.join("closure-native");
     let closure_compile = Command::new(&bootstrap_compiler)
         .current_dir(repo)
