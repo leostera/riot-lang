@@ -4458,6 +4458,40 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .unwrap();
     assert_eq!(unit_pointer_capture_run.status.code(), Some(42));
 
+    let bool_capture_source = dir.join("closure-bool-capture.ml");
+    fs::write(
+        &bool_capture_source,
+        "let make = fn (flag: bool) -> fn (base: i32) -> match flag { | true -> base | false -> 0 }\nlet main = fn () -> { let apply = make true; apply 42 }\n",
+    )
+    .unwrap();
+    let bool_capture_executable = dir.join("closure-bool-capture.native");
+    let bool_capture_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&bool_capture_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&bool_capture_executable)
+        .output()
+        .unwrap();
+    assert!(
+        bool_capture_compile.status.success(),
+        "C-hosted compiler failed to lower a bool capture: {}",
+        String::from_utf8_lossy(&bool_capture_compile.stderr)
+    );
+    let bool_capture_assembly = fs::read_to_string(
+        bool_capture_executable.with_file_name("closure-bool-capture.native.aarch64.s"),
+    )
+    .unwrap();
+    assert!(bool_capture_assembly.contains("str w10, [x9,#8]"));
+    let bool_capture_run = Command::new(&bool_capture_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(bool_capture_run.status.code(), Some(42));
+
     let unsupported_programs = [
         (
             "string",

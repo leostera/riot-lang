@@ -228,7 +228,8 @@ captures an `i32` at offset 8 and an `i64` at offset 16; the executable returns
 42. It also exercises a zero-capture closure with an 8-byte code-pointer-only
 record, and a closure capturing a zero-sized `unit` plus a function pointer;
 NativeIR preserves both captures and the native record stores the pointer at
-offset 8 in a 16-byte allocation.
+offset 8 in a 16-byte allocation. A separate fixture captures a `bool` in the
+four-byte slot at offset 8.
 
 ## 2026-10-13 clean-archive closure slice
 
