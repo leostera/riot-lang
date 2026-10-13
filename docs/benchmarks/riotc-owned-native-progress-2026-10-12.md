@@ -117,3 +117,21 @@ historical baseline compiler, so timing differences are not a controlled
 comparison. The small fixture and different compiler revision do not establish
 performance of the full owned compiler or satisfy the final benchmark gate; no
 threshold is asserted.
+
+## 2026-10-13 entry-specific compiler-source attempt
+
+From the current working tree, Rust TinyML emitted C for `riotc/main.ml` and
+Clang built the C-hosted compiler with `PATH=/usr/bin:/bin`; neither step
+invoked Node. Generated C was **6,340,590 bytes** and the C-hosted compiler
+**1,870,248 bytes**. The build took 6 seconds in the integer-second shell
+timing. The no-Node C-hosted compiler then ran
+`aarch64-compile-direct-graph riotc/main.ml main`; after 362 seconds it exited
+1 before Codegen with `closure creation is outside the AArch64 selector` in
+`riotc/main.ml::run_clang` (source codepoints `3230..3576`). No native executable
+or assembly remained. Entry-specific NativeIR lowering now follows only
+reachable same-module direct-call targets and conservatively refuses
+non-function module initializers; this probe still reaches curried function
+closures and does not demonstrate native compiler generation or self-rebuild.
+The timing includes full import checking and this entry graph lowering and is
+not comparable to the baseline measurements or a controlled performance
+comparison.

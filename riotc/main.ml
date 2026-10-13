@@ -23,7 +23,7 @@ use Check.Inference.{
 use Codegen.C.Emit.{emit_module_program}
 use Lambda.Ir.{LambdaModule}
 use Lambda.Lower.{lower_checked_module, expression_type}
-use NativeIr.Lower.{lower_module}
+use NativeIr.Lower.{lower_module, lower_module_for_entry}
 use NativeIr.Verify.{verify_module}
 use NativeIr.Ir.{
   NativeModule, NativeGlobal, NativeFunction, NativeFunctionId,
@@ -585,6 +585,60 @@ let native_ir_root_modules_for_file = fn source_file -> match (read_file source_
   }
 }
 
+let native_ir_root_graph_for_entry_file = fn source_file -> fn entry_name ->
+  match (read_file source_file) {
+    | Err(message) -> Err(compile_error (SourceRead)
+        ("cannot read " + source_file + ": " + message) None)
+    | Ok(source) -> match (lex source) {
+      | Err(UnterminatedString(span)) -> Err(compile_error (SourceParsing)
+        "unterminated string literal" (Some(span)))
+      | Err(UnterminatedEscape(span)) -> Err(compile_error (SourceParsing)
+        "unterminated escape in string literal" (Some(span)))
+      | Ok(_) -> match (load_source_graph source_file
+          (Cons(directory_of source_file, Nil))) {
+        | Err(message) -> Err(compile_error (SourceParsing) message None)
+        | Ok(modules) -> match (check_loaded_modules modules Nil) {
+          | Err(message) -> Err(compile_error (SourceTypechecking) message None)
+          | Ok(checked_modules) -> match (find_root_checked_module source_file checked_modules) {
+            | None -> Err(compile_error (LambdaLowering)
+              "source graph has no root checked module" None)
+            | Some(checked_module) -> match (lower_checked_module checked_module) {
+              | Err(message) -> Err(compile_error (LambdaLowering)
+                ("LambdaIR lowering failed for " + source_file + ": " + message) None)
+              | Ok(lambda_module) -> match (lower_module_for_entry source_file
+                  lambda_module entry_name) {
+                | Err(message) -> Err(compile_error (NativeIRLowering)
+                  ("NativeIR graph lowering failed for " + source_file + ": " + message) None)
+                | Ok(root_module) -> match (native_globals_from_checked_modules checked_modules) {
+                  | Err(message) -> Err(compile_error (NativeIRLowering) message None)
+                  | Ok(globals) -> {
+                    let NativeModule {
+                      module_identity, nominal_types, substitutions, globals: _,
+                      initializer, functions
+                    } = root_module;
+                    let native_module = NativeModule {
+                      module_identity: module_identity,
+                      nominal_types: nominal_types,
+                      substitutions: substitutions,
+                      globals: globals,
+                      initializer: initializer,
+                      functions: functions
+                    };
+                    match (verify_module native_module) {
+                      | Err(message) -> Err(compile_error (NativeIRLowering)
+                        ("NativeIR verification failed for " + source_file + ": " + message) None)
+                      | Ok(_) -> Ok(Cons(native_module, Nil))
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
 let print_native_modules = fn modules -> match modules {
   | Nil -> ""
   | Cons(native_module, remaining) ->
@@ -1044,7 +1098,7 @@ let run_aarch64_compile_direct_graph_command = fn source_file ->
           write_stderr ("riotml: AArch64 Codegen: " + message + "\n");
           1
         }
-        | Ok(_) -> match (native_ir_root_modules_for_file source_file) {
+        | Ok(_) -> match (native_ir_root_graph_for_entry_file source_file function_name) {
           | Err(error) -> report_error error
           | Ok(native_modules) -> match (find_native_module source_file native_modules) {
             | None -> {

@@ -1396,3 +1396,161 @@ let lower_module = fn module_identity ->
     }
   }
 }
+
+let binding_is_in = fn wanted -> fn bindings -> match bindings {
+  | Nil -> false
+  | Cons(binding, remaining) -> match (same_binding wanted binding) {
+    | true -> true
+    | false -> binding_is_in wanted remaining
+  }
+}
+
+let find_direct_binding_by_name = fn wanted_name -> fn bindings -> match bindings {
+  | Nil -> None
+  | Cons(binding, remaining) -> {
+    let BindingIdentity { name: ValueName(name), source_path: _,
+      declaration_span: _, scope: _ } = binding;
+    match (equal wanted_name name) {
+      | true -> Some(binding)
+      | false -> find_direct_binding_by_name wanted_name remaining
+    }
+  }
+}
+
+let find_top_level_lambda = fn wanted -> fn declarations -> match declarations {
+  | Nil -> None
+  | Cons(LambdaValueDeclaration {
+      binding, scheme: _,
+      body: LambdaExpression { checked_type, kind: LambdaFunction(function_expression), span },
+      span: _
+    }, remaining) -> match (same_binding wanted binding) {
+    | true -> Some((function_expression, checked_type, span))
+    | false -> find_top_level_lambda wanted remaining
+  }
+  | Cons(_, remaining) -> find_top_level_lambda wanted remaining
+}
+
+let native_direct_target = fn operation -> match operation {
+  | NativeCallOperation(NativeCall {
+      target: NativeDirectCall(NativeTopLevelFunction(binding)), arguments: _,
+      argument_types: _, result_type: _
+    }) -> Some(binding)
+  | _ -> None
+}
+
+let native_instruction_targets = fn instructions -> match instructions {
+  | Nil -> Nil
+  | Cons(NativeInstruction { operation, result: _, result_type: _, effects: _, span: _ },
+      remaining) -> match (native_direct_target operation) {
+    | None -> native_instruction_targets remaining
+    | Some(binding) -> Cons(binding, native_instruction_targets remaining)
+  }
+}
+
+let append_binding_ids = fn first -> fn second -> match first {
+  | Nil -> second
+  | Cons(binding, remaining) -> Cons(binding, append_binding_ids remaining second)
+}
+
+let native_block_targets = fn blocks -> match blocks {
+  | Nil -> Nil
+  | Cons(NativeBlock { instructions, identity: _, parameters: _, terminator: _, span: _ },
+      remaining) -> append_binding_ids (native_instruction_targets instructions)
+      (native_block_targets remaining)
+}
+
+let native_function_targets = fn functions -> match functions {
+  | Nil -> Nil
+  | Cons(NativeFunction { blocks, identity: _, result_type: _, entry: _, span: _ }, remaining) ->
+    append_binding_ids (native_block_targets blocks) (native_function_targets remaining)
+}
+
+let append_unseen_direct_targets = fn targets -> fn direct_functions ->
+  fn compiled_bindings -> fn pending -> match targets {
+  | Nil -> pending
+  | Cons(binding, remaining) -> match (binding_is_in binding direct_functions) {
+    | false -> append_unseen_direct_targets remaining direct_functions compiled_bindings pending
+    | true -> match (binding_is_in binding compiled_bindings) {
+      | true -> append_unseen_direct_targets remaining direct_functions compiled_bindings pending
+      | false -> match (binding_is_in binding pending) {
+        | true -> append_unseen_direct_targets remaining direct_functions compiled_bindings pending
+        | false -> append_unseen_direct_targets remaining direct_functions compiled_bindings
+          (Cons(binding, pending))
+      }
+    }
+  }
+}
+
+let lower_reachable_functions = fn pending -> fn declarations ->
+  fn direct_functions -> fn substitutions -> fn compiled_bindings ->
+  fn accumulated_functions -> match pending {
+  | Nil -> Ok(accumulated_functions)
+  | Cons(binding, remaining) -> match (binding_is_in binding compiled_bindings) {
+    | true -> lower_reachable_functions remaining declarations direct_functions
+        substitutions compiled_bindings accumulated_functions
+    | false -> match (find_top_level_lambda binding declarations) {
+      | None -> Err("NativeIR: direct-call target has no top-level lambda declaration")
+      | Some((function_expression, checked_type, span)) ->
+        match (compile_function_body (NativeTopLevelFunction(binding)) binding
+            direct_functions substitutions function_expression checked_type span Nil) {
+          | Err(message) -> Err(message)
+          | Ok(NativeCompiledFunction {
+              function: _, nested_functions, captures: _
+            }) -> {
+            let next_compiled = Cons(binding, compiled_bindings);
+            let next_pending = append_unseen_direct_targets
+              (native_function_targets nested_functions) direct_functions
+              next_compiled remaining;
+            lower_reachable_functions next_pending declarations direct_functions
+              substitutions next_compiled
+              (append_native_functions accumulated_functions nested_functions)
+          }
+        }
+    }
+  }
+}
+
+let module_values_have_closure_only_initialization = fn declarations -> match declarations {
+  | Nil -> true
+  | Cons(LambdaValueDeclaration {
+      binding: _, scheme: _, span: _,
+      body: LambdaExpression { kind: LambdaFunction(_), checked_type: _, span: _ }
+    }, remaining) -> module_values_have_closure_only_initialization remaining
+  | _ -> false
+}
+
+let lower_module_for_entry = fn module_identity ->
+  fn (LambdaModule { nominal_types, substitutions, recursive_values }) ->
+  fn entry_name -> match (module_values_have_closure_only_initialization recursive_values) {
+  | false -> Err("NativeIR: module initializer has non-closure work; direct-call graph mode cannot omit it")
+  | true -> {
+    let direct_functions = direct_function_bindings recursive_values;
+    match (find_direct_binding_by_name entry_name direct_functions) {
+      | None -> Err("NativeIR: entry is not a monomorphic top-level function")
+      | Some(entry_binding) -> match (lower_reachable_functions
+          (Cons(entry_binding, Nil)) recursive_values direct_functions substitutions
+          Nil Nil) {
+        | Err(message) -> Err(message)
+        | Ok(lowered_functions) -> match (lower_module module_identity
+            (LambdaModule {
+              nominal_types: nominal_types,
+              substitutions: substitutions,
+              recursive_values: Nil
+            })) {
+          | Err(message) -> Err(message)
+          | Ok(NativeModule {
+              module_identity: _, nominal_types: _, substitutions: _, globals: _,
+              initializer, functions: initializer_functions
+            }) -> Ok(NativeModule {
+              module_identity: module_identity,
+              nominal_types: nominal_types,
+              substitutions: substitutions,
+              globals: lower_native_globals recursive_values,
+              initializer: initializer,
+              functions: append_native_functions initializer_functions lowered_functions
+            })
+        }
+      }
+    }
+  }
+}

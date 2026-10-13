@@ -108,10 +108,11 @@ before Codegen rather than being emitted as C. The full compiler must similarly 
 constructs; it must not use this harness as a fallback.
 
 `aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT` emits and links the
-reachable same-module direct-call graph for an entry. It accepts only a
-single-block, no-parameter initializer with a return terminator and only
-zero-capture closure creation, global stores, and unit constants; it verifies
-that shape and skips the initializer. Selected functions must not rely on
+reachable same-module direct-call graph for an entry. Entry-specific lowering
+conservatively requires every root value declaration to be a top-level
+function, then verifies the resulting single-block, no-parameter initializer
+with a return terminator and only zero-capture closure creation, global stores,
+and unit constants before skipping it. Selected functions must not rely on
 global loads. This is a larger Codegen set, not whole-module/global
 initialization support.
 
