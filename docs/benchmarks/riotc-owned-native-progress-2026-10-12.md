@@ -218,4 +218,28 @@ corpus tests, 1 module test, and 1 pipeline API test). `cargo fmt --all --
 Node-dependent tests; the acceptance-specific Stage 0 → C-hosted compiler →
 native closure test separately runs with `PATH=/usr/bin:/bin`. That test also
 confirms a string literal, still unsupported by the owned selector, fails
-before Codegen and removes stale executable/assembly artifacts.
+before Codegen and removes stale executable/assembly artifacts. The focused
+no-Node acceptance regression also exercises a nested escaping closure that
+captures an `i32` at offset 8 and an `i64` at offset 16; the executable returns
+42.
+
+## 2026-10-13 clean-archive closure slice
+
+A clean `git archive` of `2214839a8` on arm64 macOS 26.6.2 with Apple Clang
+21.0.0 was built with `PATH=/usr/bin:/bin`. The existing local Rust Stage 0
+compiler emitted **6,866,267 bytes** of C, and Clang built a **2,009,808-byte**
+C-hosted compiler in 7 seconds of integer-second shell timing. With Node excluded,
+that compiler compiled a fixture where `make 40` returns an escaping captured
+closure and the caller invokes it with `2`; the native executable exited 42
+(**56,704 bytes**, with **1,748 bytes** of inspectable AArch64 assembly).
+
+The same clean-archive compiler then attempted
+`aarch64-compile-direct-graph riotc/main.ml main`. It exited 1 before Codegen
+while selecting `nested(riotc/main.ml::clang_arguments@3002,3061,3061)` with
+`string constants are outside the scalar selector` at source codepoints
+`3085..3097`. No native executable or assembly remained. This is reproducible
+clean-source-archive evidence for the closure slice and explicit unsupported
+string failure only: Stage 0 is the existing local Rust binary, and neither
+native compiler generation nor successor self-rebuild has succeeded. These
+sizes and the 7-second C-host bootstrap are not a controlled comparison to the
+existing C-plus-Clang full compiler baseline.

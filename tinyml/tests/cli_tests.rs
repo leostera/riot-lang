@@ -4317,6 +4317,41 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
     assert_eq!(closure_run.stdout, closure_c_run.stdout);
     assert_eq!(closure_run.stderr, closure_c_run.stderr);
 
+    let multi_capture_source = dir.join("closure-multiple-captures.ml");
+    fs::write(
+        &multi_capture_source,
+        "let make = fn (large: i64) -> fn (small: i32) -> fn (ignored: unit) -> match (large > (0: i64)) { | true -> small | false -> small }\nlet main = fn () -> { let apply = make (2: i64) 42; apply () }\n",
+    )
+    .unwrap();
+    let multi_capture_executable = dir.join("closure-multiple-captures.native");
+    let multi_capture_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&multi_capture_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&multi_capture_executable)
+        .output()
+        .unwrap();
+    assert!(
+        multi_capture_compile.status.success(),
+        "C-hosted compiler failed to lower mixed-width captures: {}",
+        String::from_utf8_lossy(&multi_capture_compile.stderr)
+    );
+    let multi_capture_assembly = fs::read_to_string(
+        multi_capture_executable.with_file_name("closure-multiple-captures.native.aarch64.s"),
+    )
+    .unwrap();
+    assert!(multi_capture_assembly.contains("str w10, [x9,#8]"));
+    assert!(multi_capture_assembly.contains("str x10, [x9,#16]"));
+    let multi_capture_run = Command::new(&multi_capture_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(multi_capture_run.status.code(), Some(42));
+
     let unsupported_string_source = dir.join("unsupported-string-native.ml");
     let unsupported_string_executable = dir.join("unsupported-string-native");
     let unsupported_string_assembly = dir.join("unsupported-string-native.aarch64.s");
