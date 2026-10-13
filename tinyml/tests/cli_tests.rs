@@ -4405,6 +4405,59 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .unwrap();
     assert_eq!(empty_capture_run.status.code(), Some(42));
 
+    let unit_pointer_capture_source = dir.join("closure-unit-pointer-captures.ml");
+    fs::write(
+        &unit_pointer_capture_source,
+        "let make = fn (proof: unit) -> fn (function_value: i32 -> i32) -> fn (ignored: unit) -> match proof { | () -> function_value 42 }\nlet main = fn () -> { let identity = fn (value: i32) -> value; let apply = make () identity; apply () }\n",
+    )
+    .unwrap();
+    let unit_pointer_native_ir = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("native-ir")
+        .arg(&unit_pointer_capture_source)
+        .output()
+        .unwrap();
+    assert!(
+        unit_pointer_native_ir.status.success(),
+        "NativeIR printing failed for unit/pointer captures: {}",
+        String::from_utf8_lossy(&unit_pointer_native_ir.stderr)
+    );
+    let unit_pointer_native_ir_text = String::from_utf8_lossy(&unit_pointer_native_ir.stdout);
+    assert!(unit_pointer_native_ir_text.contains("captures [proof@"));
+    assert!(unit_pointer_native_ir_text.contains("captures [function_value@"));
+
+    let unit_pointer_capture_executable = dir.join("closure-unit-pointer-captures.native");
+    let unit_pointer_capture_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&unit_pointer_capture_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&unit_pointer_capture_executable)
+        .output()
+        .unwrap();
+    assert!(
+        unit_pointer_capture_compile.status.success(),
+        "C-hosted compiler failed to lower unit/pointer captures: {}",
+        String::from_utf8_lossy(&unit_pointer_capture_compile.stderr)
+    );
+    let unit_pointer_capture_assembly = fs::read_to_string(
+        unit_pointer_capture_executable
+            .with_file_name("closure-unit-pointer-captures.native.aarch64.s"),
+    )
+    .unwrap();
+    assert!(unit_pointer_capture_assembly.contains("ldr x0, =16"));
+    assert!(unit_pointer_capture_assembly.contains("str x10, [x9,#8]"));
+    let unit_pointer_capture_run = Command::new(&unit_pointer_capture_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(unit_pointer_capture_run.status.code(), Some(42));
+
     let unsupported_programs = [
         (
             "string",
