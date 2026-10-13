@@ -153,3 +153,16 @@ trapping and `INT64_MIN / -1` plus `INT64_MIN % -1` wrap behavior. The existing
 C backend rejects these i64 operations, so this is not a C/native behavioral
 differential. These are working-tree tests, not a clean-archive native compiler
 or self-rebuild, and no compile-size or timing comparison is claimed.
+
+## 2026-10-13 clean-archive i64 graph slice
+
+A `git archive` of commit `9f379b7fd` was extracted to a fresh temporary
+folder. The existing Rust Stage 0 binary emitted C for the archived
+`riotc/main.ml`, and Clang built its C-hosted compiler with `PATH=/usr/bin:/bin`
+(no Node invocation). The generated C was **6,442,070 bytes**, the C-hosted
+compiler **1,905,376 bytes**, and the status-42 i64 division/remainder and
+equality direct-graph executable **56,904 bytes**. An ill-typed program was
+rejected with status 1 and neither its stale executable nor assembly remained.
+This is a clean-source-archive, bounded no-JavaScript bootstrap/native feature
+check, but Stage 0 itself was the existing local Rust binary; it does not prove
+that the native compiler or its successor can be generated.
