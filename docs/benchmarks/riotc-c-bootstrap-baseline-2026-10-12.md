@@ -233,3 +233,14 @@ or as evidence about the owned backend's eventual performance.
 
 The benchmark JSON and per-command logs are retained at
 `/var/folders/qy/3zl3lsrj0s9fwtjgjs6dx6vr0000gn/T/riotc-c-bootstrap-baseline-lwivpvh7`.
+Reproduce this legacy-baseline measurement from a clean checkout of the
+recorded commit with:
+
+```sh
+git worktree add --detach ../riot-lang-worktrees/owned-closure-c-baseline-84a823a86 84a823a86
+python3 tools/benchmarks/riotc_c_bootstrap.py \
+  --root ../riot-lang-worktrees/owned-closure-c-baseline-84a823a86 --iterations 1
+```
+
+The script intentionally invokes the historical JavaScript-hosted path for
+this baseline. It is not the C-first/no-JavaScript acceptance command.
