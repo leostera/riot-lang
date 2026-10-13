@@ -256,6 +256,17 @@ native compiler generation nor successor self-rebuild has succeeded. These
 sizes and the 7-second C-host bootstrap are not a controlled comparison to the
 existing C-plus-Clang full compiler baseline.
 
+A bounded same-fixture comparison used a C-hosted compiler built from the clean
+archive at `2214839a8`, with `PATH=/usr/bin:/bin`. The escaping-closure fixture
+was compiled three times through the existing C backend and three times through
+the owned AArch64 graph command; all six executables exited 42. Median compile
+time was **0.124231 s** for C emission plus Clang (2,476 generated-C bytes,
+56,504-byte executable) and **0.140665 s** for owned AArch64 selection plus
+Clang (1,748-byte assembly, 56,704-byte executable). These sequential
+microfixture samples are not controlled full-compiler measurements or an
+acceptance threshold; the owned native compiler still cannot compile Riotc
+itself.
+
 For scale, a separate single-sample run of the legacy C-plus-Clang baseline at
 clean commit `84a823a86` took 189.264 s for JS-hosted compiler-to-native, 3.401 s
 for standalone Clang, and 787.611 s for the native C-backend self-rebuild; its
