@@ -213,10 +213,11 @@ unsupported. The attempt is not a self-rebuild or a benchmark comparison.
 After integrating the closure lowering, verifier fixtures, and no-Node escaping
 closure test, `cargo test --workspace` passed on the working tree (75 library
 unit tests, 2 CLI unit tests, 21 checker tests, 59 CLI integration tests, 50
-corpus tests, 1 module test, and 1 pipeline API test). `cargo fmt --all --
---check` and `git diff --check` also passed. The CLI suite includes existing
-Node-dependent tests; the acceptance-specific Stage 0 → C-hosted compiler →
-native closure test separately runs with `PATH=/usr/bin:/bin`. That test also
+corpus tests, 1 module test, and 1 pipeline API test). The same full suite also
+passed from the clean worktree at `84a823a86`. `cargo fmt --all -- --check` and
+`git diff --check` passed on the active source tree. The CLI suite includes
+existing Node-dependent tests; the acceptance-specific Stage 0 → C-hosted
+compiler → native closure test separately runs with `PATH=/usr/bin:/bin`. That test also
 confirms a string literal and tuple construction, still unsupported by the
 owned selector, fail before Codegen; it also confirms an unsupported
 `Host.current_directory` call is rejected during LinearIR lowering. Each case
