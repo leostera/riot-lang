@@ -4317,6 +4317,35 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
     assert_eq!(closure_run.stdout, closure_c_run.stdout);
     assert_eq!(closure_run.stderr, closure_c_run.stderr);
 
+    let unsupported_string_source = dir.join("unsupported-string-native.ml");
+    let unsupported_string_executable = dir.join("unsupported-string-native");
+    let unsupported_string_assembly = dir.join("unsupported-string-native.aarch64.s");
+    fs::write(
+        &unsupported_string_source,
+        "let main = fn () -> { let message = \"native\"; 42 }\n",
+    )
+    .unwrap();
+    fs::write(&unsupported_string_executable, "stale executable").unwrap();
+    fs::write(&unsupported_string_assembly, "stale assembly").unwrap();
+    let unsupported_string_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&unsupported_string_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&unsupported_string_executable)
+        .output()
+        .unwrap();
+    assert!(!unsupported_string_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&unsupported_string_compile.stderr)
+            .contains("string constants are outside the scalar selector")
+    );
+    assert!(!unsupported_string_executable.exists());
+    assert!(!unsupported_string_assembly.exists());
+
     let invalid_source = dir.join("invalid-native.ml");
     let invalid_executable = dir.join("invalid-native");
     let invalid_assembly = dir.join("invalid-native.aarch64.s");
