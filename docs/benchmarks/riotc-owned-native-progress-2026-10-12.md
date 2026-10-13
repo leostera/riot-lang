@@ -237,6 +237,14 @@ that compiler compiled a fixture where `make 40` returns an escaping captured
 closure and the caller invokes it with `2`; the native executable exited 42
 (**56,704 bytes**, with **1,748 bytes** of inspectable AArch64 assembly).
 
+The no-Node `c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript`
+integration regression also passed from the clean worktree at `84a823a86`. It builds
+Stage 0 and the C-hosted compiler from that checkout, inspects NativeIR closure
+capture metadata, executes direct/recursive/zero-capture/mixed-width escaping
+closure programs, and checks ill-typed/string/aggregate/unsupported-Host
+rejection plus output cleanup. This verifies only the bounded smoke surface,
+not full native compiler generation.
+
 The same clean-archive compiler then attempted
 `aarch64-compile-direct-graph riotc/main.ml main`. It exited 1 before Codegen
 while selecting `nested(riotc/main.ml::clang_arguments@3002,3061,3061)` with
