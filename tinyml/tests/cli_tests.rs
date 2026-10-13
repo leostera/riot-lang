@@ -4228,6 +4228,35 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .unwrap();
     assert_eq!(recursive_run.status.code(), Some(42));
 
+    let i64_source = dir.join("i64-native.ml");
+    fs::write(
+        &i64_source,
+        "let calculate = fn (value: i64) -> (value / (2: i64)) + (value % (5: i64))\nlet main = fn () -> { let ignored = calculate (85: i64); 42 }\n",
+    )
+    .unwrap();
+    let i64_executable = dir.join("i64-native.native");
+    let i64_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_compile.status.success(),
+        "C-hosted compiler failed to produce i64 native code: {}",
+        String::from_utf8_lossy(&i64_compile.stderr)
+    );
+    let i64_run = Command::new(&i64_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(i64_run.status.code(), Some(42));
+
     let invalid_source = dir.join("invalid-native.ml");
     let invalid_executable = dir.join("invalid-native");
     let invalid_assembly = dir.join("invalid-native.aarch64.s");

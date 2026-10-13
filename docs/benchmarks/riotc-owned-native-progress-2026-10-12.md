@@ -135,3 +135,21 @@ closures and does not demonstrate native compiler generation or self-rebuild.
 The timing includes full import checking and this entry graph lowering and is
 not comparable to the baseline measurements or a controlled performance
 comparison.
+
+The later selector diagnostic identifies this as
+`closure creation requires a concrete native closure layout`; the AArch64
+Codegen test asserts that closure creation fails before leaving executable or
+assembly artifacts.
+
+## 2026-10-13 C-hosted i64 runtime-helper smoke
+
+The focused `c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript`
+integration test builds Stage 0 C and the C-hosted compiler with
+`PATH=/usr/bin:/bin`, then compiles and runs a direct-call graph exercising
+signed i64 division and remainder through `rt_native_i64_div` and
+`rt_native_i64_rem`. The executable exits 42; Node is absent from the commands
+used by this test. The AArch64 Codegen test also checks i64 divide-by-zero
+trapping and `INT64_MIN / -1` plus `INT64_MIN % -1` wrap behavior. The existing
+C backend rejects these i64 operations, so this is not a C/native behavioral
+differential. These are working-tree tests, not a clean-archive native compiler
+or self-rebuild, and no compile-size or timing comparison is claimed.
