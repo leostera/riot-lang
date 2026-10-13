@@ -4370,6 +4370,41 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .unwrap();
     assert_eq!(multi_capture_run.status.code(), Some(42));
 
+    let empty_capture_source = dir.join("closure-empty-captures.ml");
+    fs::write(
+        &empty_capture_source,
+        "let make = fn () -> fn (value: i32) -> value\nlet main = fn () -> { let identity = make (); identity 42 }\n",
+    )
+    .unwrap();
+    let empty_capture_executable = dir.join("closure-empty-captures.native");
+    let empty_capture_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&empty_capture_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&empty_capture_executable)
+        .output()
+        .unwrap();
+    assert!(
+        empty_capture_compile.status.success(),
+        "C-hosted compiler failed to lower a zero-capture closure: {}",
+        String::from_utf8_lossy(&empty_capture_compile.stderr)
+    );
+    let empty_capture_assembly = fs::read_to_string(
+        empty_capture_executable.with_file_name("closure-empty-captures.native.aarch64.s"),
+    )
+    .unwrap();
+    assert!(empty_capture_assembly.contains("ldr x0, =8"));
+    assert!(empty_capture_assembly.contains("str x10, [x9,#0]"));
+    let empty_capture_run = Command::new(&empty_capture_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(empty_capture_run.status.code(), Some(42));
+
     let unsupported_programs = [
         (
             "string",

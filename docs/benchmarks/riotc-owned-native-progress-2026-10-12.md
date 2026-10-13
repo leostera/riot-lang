@@ -224,7 +224,8 @@ removes stale executable/assembly artifacts. The no-Node test invokes
 `native-ir` and checks closure creation/capture-load metadata, then exercises a
 nested escaping closure that
 captures an `i32` at offset 8 and an `i64` at offset 16; the executable returns
-42.
+42. It also exercises a zero-capture closure with an 8-byte code-pointer-only
+record.
 
 ## 2026-10-13 clean-archive closure slice
 
