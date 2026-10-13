@@ -166,3 +166,14 @@ rejected with status 1 and neither its stale executable nor assembly remained.
 This is a clean-source-archive, bounded no-JavaScript bootstrap/native feature
 check, but Stage 0 itself was the existing local Rust binary; it does not prove
 that the native compiler or its successor can be generated.
+
+## 2026-10-13 clean-archive native compiler-source attempt
+
+Using the C-hosted compiler built from that archive, with `PATH=/usr/bin:/bin`,
+`aarch64-compile-direct-graph riotc/main.ml main` took **368 seconds** and
+exited 1 before Codegen. The specific diagnostic was
+`closure creation requires a concrete native closure layout` in
+`riotc/main.ml::run_clang` (source codepoints `3309..3655`). Stale executable
+and assembly outputs were removed. This reproduces the closure-layout blocker
+from archived sources with Node excluded; it is not native compiler generation,
+a self-rebuild, or a comparable performance measurement.
