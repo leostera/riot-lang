@@ -7,13 +7,17 @@ use Syntax.Ast.{
 }
 use Syntax.Lexer.{SourceSpan}
 use Check.Inference.{
-  InferenceType, AppliedType, InferredNamedType, InferredTuple, BindingIdentity,
-  ModuleValueBinding, ConstructorIdentity, TypeVisibility, VisibleType,
-  VisibleTypeData
+  InferenceType, AppliedType, InferredNamedType, InferredFunctionType,
+  FunctionType, InferredTuple, BindingIdentity,
+  ModuleValueBinding, LocalValueBinding, ConstructorIdentity, TypeVisibility,
+  VisibleType, VisibleTypeData
 }
 use NativeIr.Ir.{
   NativeModule, NativeGlobal, NativeFunctionId, NativeTopLevelFunction,
-  NativeModuleInitializer, NativeFunction, NativeBlockId, NativeValueId,
+  NativeModuleInitializer, NativeFunction, NativeNestedFunction,
+  NativeNestedFunctionId, NativeCapture, NativeClosure, NativeClosureCapture,
+  NativeCreateClosure, NativeLoadCapture,
+  NativeBlockId, NativeValueId,
   NativeBlock, NativeBlockParameter, NativeInstruction, NativeOperation,
   NativeConstant, NativeUnit, NativeInteger, NativeBoolean, NativeString,
   NativePrimitiveOperation, NativePrimitiveBinary, NativeBinaryPrimitive,
@@ -32,6 +36,9 @@ let unit_type = AppliedType(InferredNamedType { name: "unit", arguments: Nil })
 let int_type = AppliedType(InferredNamedType { name: "i32", arguments: Nil })
 let bool_type = AppliedType(InferredNamedType { name: "bool", arguments: Nil })
 let tuple_type = InferredTuple(Cons(int_type, Cons(bool_type, Nil)))
+let closure_type = FunctionType(InferredFunctionType {
+  argument: int_type, result: int_type
+})
 let initializer_id = NativeModuleInitializer(module_name)
 let test_binding = BindingIdentity {
   source_path: module_name,
@@ -41,6 +48,7 @@ let test_binding = BindingIdentity {
 }
 
 let initializer_function = NativeFunction {
+  captures: Nil,
   identity: initializer_id,
   result_type: unit_type,
   entry: NativeBlockId(0),
@@ -61,6 +69,7 @@ let initializer_function = NativeFunction {
 }
 
 let fixture_function = fn result_type -> fn entry -> fn blocks -> NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(test_binding),
   result_type: result_type,
   entry: entry,
@@ -68,6 +77,20 @@ let fixture_function = fn result_type -> fn entry -> fn blocks -> NativeFunction
   span: source_span
 }
 
+let capture_binding = BindingIdentity {
+  source_path: module_name,
+  declaration_span: source_span,
+  name: ValueName("captured_value"),
+  scope: LocalValueBinding
+}
+let nested_capture_identity = NativeNestedFunction(NativeNestedFunctionId {
+  parent: test_binding,
+  source_span: source_span,
+  ordinal: 0
+})
+let one_integer_capture = Cons(NativeCapture {
+  binding: capture_binding, checked_type: int_type, span: source_span
+}, Nil)
 let fixture_module_with_nominal_types = fn nominal_types -> fn function -> NativeModule {
   module_identity: module_name,
   nominal_types: nominal_types,
@@ -94,6 +117,72 @@ let block = fn id -> fn parameters -> fn instructions -> fn terminator -> Native
   instructions: instructions,
   terminator: terminator,
   span: source_span
+}
+
+let capture_load_function = fn capture_index -> fn capture_type -> NativeFunction {
+  identity: nested_capture_identity,
+  captures: one_integer_capture,
+  result_type: int_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(
+    block 0 (Cons(NativeBlockParameter {
+        value: NativeValueId(0), checked_type: int_type, span: source_span
+      }, Nil))
+      (Cons(instruction (NativeValueId(1)) capture_type
+        (NativeLoadCapture(capture_index)) (NativeEffectSet(Nil)), Nil))
+      (NativeReturn(NativeValueId(1))),
+    Nil
+  ),
+  span: source_span
+}
+
+let mismatched_capture_binding = BindingIdentity {
+  source_path: module_name,
+  declaration_span: source_span,
+  name: ValueName("different_capture"),
+  scope: LocalValueBinding
+}
+let valid_closure_captures = Cons(NativeClosureCapture {
+  capture: NativeCapture {
+    binding: capture_binding, checked_type: int_type, span: source_span
+  },
+  value: NativeValueId(0)
+}, Nil)
+let wrong_identity_closure_captures = Cons(NativeClosureCapture {
+  capture: NativeCapture {
+    binding: mismatched_capture_binding, checked_type: int_type, span: source_span
+  },
+  value: NativeValueId(0)
+}, Nil)
+let closure_creator = fn captures -> NativeFunction {
+  identity: NativeTopLevelFunction(test_binding),
+  captures: Nil,
+  result_type: closure_type,
+  entry: NativeBlockId(0),
+  blocks: Cons(
+    block 0 (Nil)
+      (Cons(
+        instruction (NativeValueId(0)) int_type
+          (NativeConstant(NativeInteger(IntegerLiteral("40")))) (NativeEffectSet(Nil)),
+        Cons(instruction (NativeValueId(1)) closure_type
+          (NativeCreateClosure(NativeClosure {
+            function: nested_capture_identity, captures: captures
+          })) (NativeEffectSet(Cons(NativeAllocate, Nil))), Nil)
+      ))
+      (NativeReturn(NativeValueId(1))),
+    Nil
+  ),
+  span: source_span
+}
+let closure_test_module = fn captures -> NativeModule {
+  module_identity: module_name,
+  nominal_types: Nil,
+  substitutions: Nil,
+  globals: Nil,
+  initializer: initializer_id,
+  functions: Cons(initializer_function,
+    Cons(closure_creator captures,
+      Cons(capture_load_function 0 int_type, Nil)))
 }
 
 let expect_ok = fn result -> match result {
@@ -320,9 +409,19 @@ let bad_branch_condition_function = fixture_function int_type (NativeBlockId(0))
   Cons(block 1 (Nil) (Nil) (NativeReturn(NativeValueId(0))),
   Cons(block 2 (Nil) (Nil) (NativeReturn(NativeValueId(0))), Nil))))
 
+let run_capture_tests = fn () -> both
+  (expect_ok (verify_module (fixture_module (capture_load_function 0 int_type))))
+  (both (expect_error (verify_module (fixture_module (capture_load_function 1 int_type))))
+  (both (expect_error (verify_module (fixture_module (capture_load_function 0 bool_type))))
+  (both (expect_ok (verify_module (closure_test_module valid_closure_captures)))
+  (both (expect_error (verify_module
+      (closure_test_module wrong_identity_closure_captures)))
+    (expect_error (verify_module (closure_test_module Nil)))))))
+
 let run_tests = fn () -> both (run_existing_tests ())
   (both (expect_error (verify_module (fixture_module bad_constant_result_type_function)))
   (both (expect_error (verify_module (fixture_module bad_branch_condition_function)))
+  (both (run_capture_tests ())
   (both (expect_ok (verify_module (fixture_module valid_tuple_aggregate_function)))
   (both (expect_error (verify_module (fixture_module bad_tuple_aggregate_function)))
   (both (expect_ok (verify_module (fixture_module_with_nominal_types
@@ -332,7 +431,7 @@ let run_tests = fn () -> both (run_existing_tests ())
   (both (expect_error (verify_module (fixture_module_with_nominal_types
       pair_nominal_types unknown_pair_field_function)))
     (expect_error (verify_module (fixture_module_with_nominal_types
-      pair_nominal_types wrong_pair_result_type_function))))))))))
+      pair_nominal_types wrong_pair_result_type_function)))))))))))
 
 let both = fn first -> fn second -> match first {
   | false -> false

@@ -30,8 +30,8 @@ use Lambda.Ir.{
 use NativeIr.Ir.{
   NativeModule, NativeGlobal, NativeFunctionId, NativeTopLevelFunction,
   NativeNestedFunction, NativeNestedFunctionId, NativeModuleInitializer,
-  NativeBlockId, NativeValueId, NativeFunction, NativeBlock,
-  NativeBlockParameter, NativeInstruction, NativeOperation,
+  NativeBlockId, NativeValueId, NativeFunction, NativeCapture,
+  NativeClosureCapture, NativeBlock, NativeBlockParameter, NativeInstruction, NativeOperation,
   NativeConstant, NativeUnit, NativeInteger, NativeBoolean, NativeString,
   NativePrimitive, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
@@ -584,7 +584,7 @@ let finish_native_blocks = fn builders -> match builders {
   }
 }
 
-let finish_function_builder = fn (NativeFunctionBuilder {
+let finish_function_builder = fn captures -> fn (NativeFunctionBuilder {
   identity, result_type, entry, blocks, generated_functions: _, span,
   owner: _, direct_functions: _, substitutions: _, current: _, next_block: _, next_value: _, environment: _
 }) -> match (finish_native_blocks
@@ -592,6 +592,7 @@ let finish_function_builder = fn (NativeFunctionBuilder {
   | Err(message) -> Err(message)
   | Ok(final_blocks) -> Ok(NativeFunction {
     identity: identity,
+    captures: captures,
     result_type: result_type,
     entry: entry,
     blocks: final_blocks,
@@ -767,7 +768,7 @@ type NativeCapturedBindings = NativeCapturedBindings {
 type NativeCompiledFunction = NativeCompiledFunction {
   function: NativeFunction,
   nested_functions: List<NativeFunction>,
-  captures: List<NativeValueId>
+  captures: List<NativeClosureCapture>
 }
 
 let append_native_values = fn first -> fn second -> match first {
@@ -843,12 +844,6 @@ let builder_generated_functions = fn (NativeFunctionBuilder {
   next_block: _, next_value: _, environment: _, generated_functions, span: _
 }) -> generated_functions
 
-let captured_binding_values = fn bindings -> match bindings {
-  | Nil -> Nil
-  | Cons(NativeBindingValue { value, binding: _, checked_type: _ }, remaining) ->
-    Cons(value, captured_binding_values remaining)
-}
-
 let compile_capture_bindings = fn bindings -> fn index -> fn builder -> match bindings {
   | Nil -> Ok(NativeCapturedBindings { values: Nil, builder: builder })
   | Cons(NativeBindingValue { binding, value: _, checked_type }, remaining) ->
@@ -872,6 +867,29 @@ let binding_declaration_span = fn (BindingIdentity {
   source_path: _, declaration_span, name: _, scope: _
 }) -> declaration_span
 
+let native_capture_metadata = fn bindings -> match bindings {
+  | Nil -> Nil
+  | Cons(NativeBindingValue { binding, checked_type, value: _ }, remaining) ->
+    Cons(NativeCapture {
+      binding: binding,
+      checked_type: checked_type,
+      span: binding_declaration_span binding
+    }, native_capture_metadata remaining)
+}
+
+let closure_capture_values = fn bindings -> match bindings {
+  | Nil -> Nil
+  | Cons(NativeBindingValue { binding, checked_type, value }, remaining) ->
+    Cons(NativeClosureCapture {
+      capture: NativeCapture {
+        binding: binding,
+        checked_type: checked_type,
+        span: binding_declaration_span binding
+      },
+      value: value
+    }, closure_capture_values remaining)
+}
+
 let compile_function_body = fn identity -> fn owner -> fn direct_functions -> fn substitutions ->
   fn (LambdaFunctionExpression { parameter, body }) ->
   fn checked_type -> fn span -> fn captured_bindings ->
@@ -883,7 +901,7 @@ let compile_function_body = fn identity -> fn owner -> fn direct_functions -> fn
       match (compile_capture_bindings captured_bindings 0 initial_builder) {
         | Err(message) -> Err(message)
         | Ok(NativeCapturedBindings {
-            values: captures, builder: with_captures
+            values: _, builder: with_captures
           }) -> match (create_block_parameter argument span with_captures) {
               | Err(message) -> Err(message)
               | Ok(NativeLoweredValue {
@@ -899,13 +917,15 @@ let compile_function_body = fn identity -> fn owner -> fn direct_functions -> fn
                     | Err(message) -> Err(message)
                     | Ok(terminated_builder) -> {
                       let nested_functions = builder_generated_functions terminated_builder;
-                      match (finish_function_builder terminated_builder) {
+                      match (finish_function_builder
+                          (native_capture_metadata captured_bindings)
+                          terminated_builder) {
                         | Err(message) -> Err(message)
                         | Ok(native_function) -> Ok(NativeCompiledFunction {
                           function: native_function,
                           nested_functions: append_native_functions
                             (Cons(native_function, Nil)) nested_functions,
-                          captures: captured_binding_values captured_bindings
+                          captures: closure_capture_values captured_bindings
                         })
                       }
                     }
@@ -1379,7 +1399,7 @@ let lower_module = fn module_identity ->
           | Err(message) -> Err(message)
           | Ok(terminated_builder) -> {
             let generated_functions = builder_generated_functions terminated_builder;
-            match (finish_function_builder terminated_builder) {
+            match (finish_function_builder Nil terminated_builder) {
               | Err(message) -> Err(message)
               | Ok(initializer_function) -> Ok(NativeModule {
                 module_identity: module_identity,

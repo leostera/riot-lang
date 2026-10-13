@@ -177,3 +177,43 @@ exited 1 before Codegen. The specific diagnostic was
 and assembly outputs were removed. This reproduces the closure-layout blocker
 from archived sources with Node excluded; it is not native compiler generation,
 a self-rebuild, or a comparable performance measurement.
+
+## 2026-10-13 owned closure-capture slice
+
+The C-hosted compiler now lowers closure creation and capture loads through
+Riot-owned MachineIR, LinearIR, and AArch64 Codegen. The record stores an
+8-byte code pointer followed by naturally aligned typed captures, uses
+`rt_native_alloc(size_t)` only for raw storage, copies capture values so the
+closure can outlive its creator, and passes the record pointer as hidden `x0`
+on indirect calls. LinearIR verifies capture layout, hidden-environment spill,
+runtime allocation, and closure-call register setup. The reachable code graph
+includes functions referenced by closure creation as well as direct calls.
+
+On `aarch64-apple-darwin`, the focused C-hosted no-JavaScript integration test
+passes: Stage 0 emits C, Clang builds the compiler, and with
+`PATH=/usr/bin:/bin` that compiler produces a native program where `make 40`
+returns a capturing closure and the caller invokes it with `2`; the executable
+exits 42. The same source compiled through Riotc's separate C backend also
+exits 42 with matching stdout/stderr. A direct probe confirmed the emitted
+assembly allocates a 16-byte record, stores the code pointer at offset 0 and
+captured `i32` at offset 8, reloads the closure code/environment, and executes
+`blr x16`. The closure is returned across the creator's stack frame, so this
+also exercises the copy-based escape-safety policy. This is still a bounded
+feature test, not whole-module Codegen or native self-rebuild.
+
+With closure graph reachability in place, the next C-hosted compiler-source
+attempt (`aarch64-compile-direct-graph riotc/main.ml main`, `PATH=/usr/bin:/bin`)
+no longer stops at the former closure-layout diagnostic. It now fails before
+Codegen while selecting `nested(riotc/main.ml::clang_arguments@3002,3061,3061)`:
+`string constants are outside the scalar selector`. This establishes progress
+past the previous closure blocker, but the owned compiler still cannot build
+itself; concrete strings and additional compiler-source operations remain
+unsupported. The attempt is not a self-rebuild or a benchmark comparison.
+
+After integrating the closure lowering, verifier fixtures, and no-Node escaping
+closure test, `cargo test --workspace` passed on the working tree (75 library
+unit tests, 2 CLI unit tests, 21 checker tests, 59 CLI integration tests, 50
+corpus tests, 1 module test, and 1 pipeline API test). `cargo fmt --all --
+--check` and `git diff --check` also passed. The CLI suite includes existing
+Node-dependent tests; the acceptance-specific Stage 0 → C-hosted compiler →
+native closure test separately runs with `PATH=/usr/bin:/bin`.

@@ -4,20 +4,22 @@ use Syntax.Lexer.{SourceSpan}
 use Syntax.Ast.{IntegerLiteral}
 use NativeIr.Ir.{NativeBlockId, NativeDivisionByZero, NativeRemainderByZero,
   NativeArithmeticOverflow, NativePatternFailure, NativeExplicitTrap}
-use NativeIr.Print.{print_function_id}
+use NativeIr.Print.{print_function_id, print_binding}
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer, A64Condition,
   A64Equal, A64NotEqual,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual, A64RuntimeI32Division, A64RuntimeI32Remainder,
-  A64RuntimeI64Division, A64RuntimeI64Remainder, A64RuntimeHostArgs
+  A64RuntimeI64Division, A64RuntimeI64Remainder, A64RuntimeHostArgs,
+  A64RuntimeAllocate, A64ClosureLayout, A64CaptureField
 }
 use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64ValueLocation,
-  A64FrameSlot, A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel,
+  A64FrameSlot, A64EnvironmentSlot, A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel,
   A64FalseEdgeLabel, A64LinearInstruction, A64MoveZero, A64LoadI32Literal,
   A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill, A64SpillRegister,
-  A64AddW, A64AddX, A64SubtractW, A64SubtractX, A64MultiplyW, A64MultiplyX,
+  A64LoadMemory, A64StoreMemory, A64LoadFunctionAddress, A64ReloadEnvironment,
+  A64SpillEnvironment, A64CallIndirect, A64AddW, A64AddX, A64SubtractW, A64SubtractX, A64MultiplyW, A64MultiplyX,
   A64NegateW, A64NegateX, A64CompareSetW, A64CompareSetX, A64CallDirect,
   A64CallRuntime,
   A64LinearTerminator, A64LinearJump, A64LinearBranch, A64LinearReturn,
@@ -65,6 +67,20 @@ let condition_text = fn condition -> match condition {
 let print_slot = fn (A64FrameSlot { value, offset, value_type }) ->
   "[sp,#" + decimal_text offset + "] (" + value_type_text value_type + " "
     + virtual_text value + ")"
+let print_environment_slot = fn (A64EnvironmentSlot { offset }) ->
+  "[sp,#" + decimal_text offset + "] (closure-env ptr)"
+
+let print_capture_field = fn (A64CaptureField {
+  index, binding, value_type, offset, size: _, alignment: _, span: _
+}) -> "#" + decimal_text index + " " + print_binding binding + "@+"
+  + decimal_text offset + ":" + value_type_text value_type
+
+let print_capture_fields = fn fields -> match fields {
+  | Nil -> ""
+  | Cons(field, Nil) -> print_capture_field field
+  | Cons(field, remaining) -> print_capture_field field + ", " + print_capture_fields remaining
+}
+
 let print_location = fn (A64ValueLocation { value, value_type, slot }) -> match slot {
   | None -> "  " + virtual_text value + ":" + value_type_text value_type + " = erased\n"
   | Some(frame_slot) -> "  " + virtual_text value + ":" + value_type_text value_type
@@ -88,6 +104,17 @@ let print_instruction = fn instruction -> match instruction {
   | A64LoadBooleanLiteral(destination, value) -> "  mov " + register_text destination + ", #" + (match value { | true -> "1" | false -> "0" }) + "\n"
   | A64ReloadSpill(destination, slot) -> "  ldr " + register_text destination + ", " + print_slot slot + "\n"
   | A64SpillRegister(slot, source) -> "  str " + register_text source + ", " + print_slot slot + "\n"
+  | A64LoadMemory(destination, base, offset) -> "  ldr " + register_text destination
+      + ", [" + register_text base + ",#" + decimal_text offset + "]\n"
+  | A64StoreMemory(base, offset, source) -> "  str " + register_text source
+      + ", [" + register_text base + ",#" + decimal_text offset + "]\n"
+  | A64LoadFunctionAddress(destination, target) -> "  address " + register_text destination
+      + ", " + print_function_id target + "\n"
+  | A64ReloadEnvironment(destination, slot) -> "  ldr " + register_text destination
+      + ", " + print_environment_slot slot + "\n"
+  | A64SpillEnvironment(slot, source) -> "  str " + register_text source
+      + ", " + print_environment_slot slot + "\n"
+  | A64CallIndirect(target) -> "  blr " + register_text target + "\n"
   | A64AddW(destination, left, right) -> "  add " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
   | A64AddX(destination, left, right) -> "  add " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
   | A64SubtractW(destination, left, right) -> "  sub " + register_text destination + ", " + register_text left + ", " + register_text right + "\n"
@@ -106,6 +133,7 @@ let print_instruction = fn instruction -> match instruction {
   | A64CallRuntime(A64RuntimeI64Division) -> "  bl rt_native_i64_div\n"
   | A64CallRuntime(A64RuntimeI64Remainder) -> "  bl rt_native_i64_rem\n"
   | A64CallRuntime(A64RuntimeHostArgs) -> "  bl rt_native_host_args\n"
+  | A64CallRuntime(A64RuntimeAllocate) -> "  bl rt_native_alloc\n"
 }
 let print_terminator = fn terminator -> match terminator {
   | A64LinearJump(target) -> "  b " + label_text target + "\n"
@@ -135,9 +163,22 @@ let print_failure = fn (A64LinearFailure {
 let print_linear_failure = fn failure -> print_failure failure
 
 let print_function = fn (A64LinearFunction {
-  identity, result_type, entry, values, frame_size, items, span: _
-}) -> "function " + print_function_id identity + " -> " + value_type_text result_type
-  + " entry " + label_text entry + " frame " + decimal_text frame_size + " {\n"
-  + print_locations values + print_items items + "}\n"
+  identity, result_type,
+  capture_layout: A64ClosureLayout { fields, environment_size: _, allocation_size: _ },
+  environment_slot, entry, values, frame_size, items, span: _
+}) -> {
+  let capture_suffix = match fields {
+    | Nil -> ""
+    | _ -> " captures [" + print_capture_fields fields + "]"
+  };
+  let environment_suffix = match environment_slot {
+    | None -> ""
+    | Some(slot) -> " env " + print_environment_slot slot
+  };
+  "function " + print_function_id identity + " -> " + value_type_text result_type
+    + capture_suffix + " entry " + label_text entry + " frame "
+    + decimal_text frame_size + environment_suffix + " {\n"
+    + print_locations values + print_items items + "}\n"
+}
 
 let print_linear_function = fn linear_function -> print_function linear_function

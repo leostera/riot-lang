@@ -88,11 +88,13 @@ and positive/negative tests. Same-module, monomorphic top-level function
 references become direct-call candidates by binding identity during NativeIR
 lowering; aliases, imported values, and generalized functions retain closure
 semantics. The `native-ir SOURCE` command prints this IR.
-`aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current ABI-free scalar,
-opaque-pointer, and `Host.args` AArch64 MachineIR selection. `aarch64-linear-ir SOURCE
-TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice, signed
-`i64` direct-call pass-through, and opaque-pointer pass-through, with explicit
-spill slots, call-register assignments, and linearized control flow. The
+`aarch64-mir SOURCE TOP_LEVEL_FUNCTION` inspects the current AArch64 MachineIR
+selection for scalars, opaque pointers, closures, and `Host.args`; closure
+capture identities and the Riot-owned aligned record layout remain explicit.
+`aarch64-linear-ir SOURCE TOP_LEVEL_FUNCTION` lowers and verifies the
+unit/i32/bool ABI slice, signed `i64` direct-call pass-through, opaque-pointer
+pass-through, and closure record/call lowering, with explicit spill slots,
+call-register assignments, and linearized control flow. The
 current i64 slice supports explicitly ascribed decimal literals within the
 checked signed range, parameters, returns, direct-call arguments/results,
 block-edge copies, addition, subtraction, multiplication, unary negation,
@@ -101,21 +103,23 @@ helpers; i64 pattern tests remain unsupported.
 `aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT` emits and links
 AArch64 assembly for one selected function and writes `OUTPUT.aarch64.s` for
 inspection. This is a function-level Codegen harness, not a whole-module
-compiler: it omits module initializers and globals, closure construction,
-general runtime/Host helper marshalling, and unselected functions. A direct-call target
-must be in the supplied Codegen set, so the one-function CLI explicitly rejects
-calls to other functions. Unsupported operations in the selected function fail
-before Codegen rather than being emitted as C. The full compiler must similarly reject unsupported module
-constructs; it must not use this harness as a fallback.
+compiler: it omits module initializers and globals, general runtime/Host helper
+marshalling, and unselected functions. Direct-call and closure-creation targets
+must be in the supplied Codegen set, so the one-function CLI rejects
+out-of-set references. Unsupported operations in the selected function fail
+before Codegen rather than being emitted as C. The full compiler must similarly
+reject unsupported module constructs; it must not use this harness as a
+fallback.
 
 `aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT` emits and links the
-reachable same-module direct-call graph for an entry. Entry-specific lowering
-conservatively requires every root value declaration to be a top-level
-function, then verifies the resulting single-block, no-parameter initializer
-with a return terminator and only zero-capture closure creation, global stores,
-and unit constants before skipping it. Selected functions must not rely on
-global loads. This is a larger Codegen set, not whole-module/global
-initialization support.
+reachable same-module graph of direct calls and closure-creation targets for an
+entry. Entry-specific lowering conservatively requires every root value
+declaration to be a top-level function, then verifies the resulting
+single-block, no-parameter initializer with a return terminator and only
+zero-capture closure creation, global stores, and unit constants before
+skipping it. Selected functions must not rely on global loads. This graph
+supports Riot-owned closures and escaping captures, but is not
+whole-module/global initialization support.
 
 The existing source compiler still goes through `codegen/c/emit.ml` and
 Clang. Its supported subset includes functions and closures, local bindings,
@@ -151,11 +155,11 @@ Those measurements are distinct from the Rust TinyML Stage 0 to C bridge.
   reporting, and cycle detection.
 - `lambda/` and `native_ir/`: typed core lowering, SSA lowering, printing, and
   verification.
-- `backend/native/aarch64/`: virtual-register MachineIR, initial ABI lowering,
-  verified LinearIR, assembly Codegen, a selected-function harness, and a
-  reachable direct-call-graph link mode; whole-module Codegen and general
-  runtime/Host marshalling remain future work; only `Host.args` has an explicit
-  typed native bridge.
+- `backend/native/aarch64/`: virtual-register MachineIR, closure layout and
+  capture selection, initial ABI lowering, verified LinearIR, assembly
+  Codegen, a selected-function harness, and reachable direct-call/closure
+  graph linking; whole-module Codegen and general runtime/Host marshalling
+  remain future work; only `Host.args` has an explicit typed native bridge.
 - `codegen/c/emit.ml`: existing C-plus-Clang source-backend baseline.
 - `runtime.h`, `runtime.c`: tagged values, closures, module environments, and
   the C-hosted runtime linked by Clang.

@@ -360,6 +360,13 @@ int64_t rt_native_i64_rem(int64_t numerator, int64_t denominator) {
   return numerator % denominator;
 }
 
+void *rt_native_alloc(size_t size) {
+  if (size == 0) rt_fail("zero-size native allocation");
+  void *allocation = malloc(size);
+  if (allocation == NULL) rt_fail("out of memory");
+  return allocation;
+}
+
 RtValue rt_i32_div(RtValue left, RtValue right) {
   int32_t numerator = (int32_t)rt_as_int(left);
   int32_t denominator = (int32_t)rt_as_int(right);

@@ -9,7 +9,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64Condition, A64Equal, A64NotEqual, A64SignedLessThan,
   A64SignedLessThanOrEqual, A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
   A64RuntimeHelper, A64RuntimeI32Division, A64RuntimeI32Remainder,
-  A64RuntimeI64Division, A64RuntimeI64Remainder
+  A64RuntimeI64Division, A64RuntimeI64Remainder, A64RuntimeAllocate,
+  A64ClosureLayout, A64CaptureField
 }
 
 type A64RegisterWidth = A64W32 | A64X64
@@ -29,6 +30,8 @@ type A64FrameSlot = A64FrameSlot {
   offset: i32,
   value_type: A64ValueType
 }
+
+type A64EnvironmentSlot = A64EnvironmentSlot { offset: i32 }
 
 type A64LinearLabel =
   | A64BasicBlockLabel(A64Label)
@@ -54,7 +57,13 @@ type A64LinearInstruction =
       A64PhysicalRegister)
   | A64CompareSetX(A64Condition, A64PhysicalRegister, A64PhysicalRegister,
       A64PhysicalRegister)
+  | A64LoadMemory(A64PhysicalRegister, A64PhysicalRegister, i32)
+  | A64StoreMemory(A64PhysicalRegister, i32, A64PhysicalRegister)
+  | A64LoadFunctionAddress(A64PhysicalRegister, NativeFunctionId)
+  | A64ReloadEnvironment(A64PhysicalRegister, A64EnvironmentSlot)
+  | A64SpillEnvironment(A64EnvironmentSlot, A64PhysicalRegister)
   | A64CallDirect(NativeFunctionId)
+  | A64CallIndirect(A64PhysicalRegister)
   | A64CallRuntime(A64RuntimeHelper)
 
 type A64LinearTerminator =
@@ -72,6 +81,8 @@ type A64LinearItem =
 type A64LinearFunction = A64LinearFunction {
   identity: NativeFunctionId,
   result_type: A64ValueType,
+  capture_layout: A64ClosureLayout,
+  environment_slot: Option<A64EnvironmentSlot>,
   entry: A64LinearLabel,
   values: List<A64ValueLocation>,
   frame_size: i32,
@@ -105,6 +116,7 @@ let w11 = A64PhysicalRegister { number: 11, width: A64W32 }
 let x9 = A64PhysicalRegister { number: 9, width: A64X64 }
 let x10 = A64PhysicalRegister { number: 10, width: A64X64 }
 let x11 = A64PhysicalRegister { number: 11, width: A64X64 }
+let x16 = A64PhysicalRegister { number: 16, width: A64X64 }
 let x0 = A64PhysicalRegister { number: 0, width: A64X64 }
 
 let slot_size = fn value_type -> match value_type {

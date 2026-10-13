@@ -788,42 +788,47 @@ let append_native_function_ids = fn first -> fn second -> match first {
     Cons(identity, append_native_function_ids remaining second)
 }
 
-let direct_call_targets_in_instructions = fn instructions -> match instructions {
+let native_function_targets_in_instructions = fn instructions -> match instructions {
   | Nil -> Nil
   | Cons(NativeInstruction {
       result: _, result_type: _,
       operation: NativeCallOperation(NativeCall {
         target: NativeDirectCall(callee), arguments: _, argument_types: _, result_type: _
       }), effects: _, span: _
-    }, remaining) -> Cons(callee, direct_call_targets_in_instructions remaining)
+    }, remaining) -> Cons(callee, native_function_targets_in_instructions remaining)
+  | Cons(NativeInstruction {
+      result: _, result_type: _,
+      operation: NativeCreateClosure(NativeClosure { function, captures: _ }),
+      effects: _, span: _
+    }, remaining) -> Cons(function, native_function_targets_in_instructions remaining)
   | Cons(NativeInstruction { result: _, result_type: _, operation: _, effects: _, span: _ },
-      remaining) -> direct_call_targets_in_instructions remaining
+      remaining) -> native_function_targets_in_instructions remaining
 }
 
-let direct_call_targets_in_blocks = fn blocks -> match blocks {
+let native_function_targets_in_blocks = fn blocks -> match blocks {
   | Nil -> Nil
   | Cons(NativeBlock {
       identity: _, parameters: _, instructions, terminator: _, span: _
     }, remaining) -> append_native_function_ids
-      (direct_call_targets_in_instructions instructions)
-      (direct_call_targets_in_blocks remaining)
+      (native_function_targets_in_instructions instructions)
+      (native_function_targets_in_blocks remaining)
 }
 
-let direct_call_targets_in_function = fn (NativeFunction {
+let native_function_targets_in_function = fn (NativeFunction {
   identity: _, result_type: _, entry: _, blocks, span: _
-}) -> direct_call_targets_in_blocks blocks
+}) -> native_function_targets_in_blocks blocks
 
-let collect_native_direct_call_graph = fn pending -> fn selected -> fn available ->
+let collect_native_function_graph = fn pending -> fn selected -> fn available ->
   match pending {
     | Nil -> Ok(selected)
     | Cons(wanted, remaining) -> match (native_function_id_is_in_functions wanted selected) {
-      | true -> collect_native_direct_call_graph remaining selected available
+      | true -> collect_native_function_graph remaining selected available
       | false -> match (find_native_function_by_id wanted available) {
-        | None -> Err("direct-call target is absent from the root NativeIR function set: "
+        | None -> Err("reachable function target is absent from the root NativeIR function set: "
           + print_function_id wanted)
         | Some(function) -> {
-          let targets = direct_call_targets_in_function function;
-          collect_native_direct_call_graph
+          let targets = native_function_targets_in_function function;
+          collect_native_function_graph
             (append_native_function_ids targets remaining)
             (Cons(function, selected)) available
         }
@@ -1131,7 +1136,7 @@ let run_aarch64_compile_direct_graph_command = fn source_file ->
                   let NativeFunction {
                     identity: entry_identity, result_type: _, entry: _, blocks: _, span: _
                   } = entry_function;
-                  match (collect_native_direct_call_graph
+                  match (collect_native_function_graph
                       (Cons(entry_identity, Nil)) Nil functions) {
                     | Err(message) -> {
                       write_stderr ("riotml: AArch64 Codegen: " + message + "\n");

@@ -30,7 +30,7 @@ use NativeIr.Ir.{
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeCallOperation, NativeCall, NativeClosureCall, NativeCallTarget,
   NativeDirectCall, NativeHostCall, NativeCreateClosure, NativeClosure,
-  NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeAggregateKind,
+  NativeCapture, NativeClosureCapture, NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeAggregateKind,
   NativeTupleAggregate, NativeRecordAggregate, NativeVariantAggregate,
   NativeProjectAggregate, NativeProjection, NativeAggregateField,
   NativeTupleField, NativeRecordField, NativeConstructorField,
@@ -601,6 +601,12 @@ let aggregate_operand_values = fn fields -> match fields {
     Cons(value, aggregate_operand_values remaining)
 }
 
+let closure_capture_values = fn captures -> match captures {
+  | Nil -> Nil
+  | Cons(NativeClosureCapture { capture: _, value }, remaining) ->
+    Cons(value, closure_capture_values remaining)
+}
+
 let operation_operands = fn operation -> match operation {
   | NativeConstant(_) -> Nil
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
@@ -615,7 +621,8 @@ let operation_operands = fn operation -> match operation {
       | NativeDirectCall(_) -> arguments
       | NativeHostCall(_) -> arguments
     }
-  | NativeCreateClosure(NativeClosure { function: _, captures }) -> captures
+  | NativeCreateClosure(NativeClosure { function: _, captures }) ->
+    closure_capture_values captures
   | NativeCreateAggregate(NativeAggregate { kind: _, fields }) ->
     aggregate_operand_values fields
   | NativeProjectAggregate(NativeProjection { aggregate, field: _ }) -> Cons(aggregate, Nil)
@@ -902,8 +909,12 @@ let verify_tuple_aggregate_fields = fn fields -> fn types -> fn definitions ->
   }
 
 let function_result_type = fn (NativeFunction {
-  identity: _, result_type, entry: _, blocks: _, span: _
+  identity: _, captures: _, result_type, entry: _, blocks: _, span: _
 }) -> result_type
+
+let function_captures = fn (NativeFunction {
+  identity: _, captures, result_type: _, entry: _, blocks: _, span: _
+}) -> captures
 
 let function_entry = fn (NativeFunction {
   identity: _, result_type: _, entry, blocks: _, span: _
@@ -1230,14 +1241,26 @@ let verify_boolean_result = fn result_type -> fn substitutions ->
     | false -> Err("NativeIR verifier: comparison primitive has a non-bool result")
   }
 
+let capture_at = fn index -> fn captures -> match captures {
+  | Nil -> None
+  | Cons(capture, remaining) -> match (index == 0) {
+    | true -> Some(capture)
+    | false -> capture_at (index - 1) remaining
+  }
+}
+
 let verify_capture_instruction = fn (NativeInstruction {
   result: _, result_type, operation, effects: _, span: _
 }) -> fn captures -> fn definitions -> fn substitutions -> match operation {
   | NativeLoadCapture(index) -> match (index < 0) {
     | true -> Err("NativeIR verifier: capture index is negative")
-    | false -> match (value_at index captures) {
-      | None -> Err("NativeIR verifier: closure omits a required capture")
-      | Some(value) -> same_value_type value result_type definitions substitutions
+    | false -> match (capture_at index captures) {
+      | None -> Err("NativeIR verifier: capture load is absent from the function capture layout")
+      | Some(NativeCapture { binding: _, checked_type, span: _ }) -> match
+          (same_checked_type checked_type result_type substitutions) {
+        | true -> Ok(true)
+        | false -> Err("NativeIR verifier: capture load type disagrees with its capture layout")
+      }
     }
   }
   | _ -> Ok(true)
@@ -1262,6 +1285,31 @@ let verify_function_captures = fn blocks -> fn captures -> fn definitions ->
         | Ok(_) -> verify_function_captures remaining captures definitions substitutions
       }
   }
+
+let verify_closure_captures = fn expected -> fn actual -> fn definitions ->
+  fn substitutions -> match expected {
+  | Nil -> match actual {
+    | Nil -> Ok(true)
+    | _ -> Err("NativeIR verifier: closure has more values than its function capture layout")
+  }
+  | Cons(NativeCapture { binding: expected_binding, checked_type: expected_type,
+      span: _ }, remaining_expected) -> match actual {
+    | Nil -> Err("NativeIR verifier: closure omits a required capture")
+    | Cons(NativeClosureCapture {
+        capture: NativeCapture { binding, checked_type, span: _ }, value
+      }, remaining_actual) -> match (same_binding expected_binding binding) {
+      | false -> Err("NativeIR verifier: closure capture identity/order disagrees with its function")
+      | true -> match (same_checked_type expected_type checked_type substitutions) {
+        | false -> Err("NativeIR verifier: closure capture type disagrees with its function")
+        | true -> match (same_value_type value checked_type definitions substitutions) {
+          | Err(message) -> Err(message)
+          | Ok(_) -> verify_closure_captures remaining_expected remaining_actual
+              definitions substitutions
+        }
+      }
+    }
+  }
+}
 
 let verify_projection_type = fn aggregate -> fn field -> fn result_type ->
   fn definitions -> fn substitutions -> match (definition_checked_type aggregate definitions) {
@@ -1513,8 +1561,8 @@ let verify_instruction_operation = fn module -> fn (NativeInstruction {
             | Err(message) -> Err(message)
             | Ok(_) -> match (find_function function (module_functions module)) {
               | None -> Err("NativeIR verifier: closure code function is not defined")
-              | Some(target_function) -> match (verify_function_captures
-                  (function_blocks target_function) captures definitions substitutions) {
+              | Some(target_function) -> match (verify_closure_captures
+                  (function_captures target_function) captures definitions substitutions) {
                 | Err(message) -> Err(message)
                 | Ok(_) -> Ok(true)
               }
@@ -1632,7 +1680,7 @@ let verify_unique_block_ids = fn ids -> fn seen -> match ids {
 }
 
 let verify_function = fn (NativeFunction {
-  identity: _, result_type, entry, blocks, span: _
+  identity: _, captures, result_type, entry, blocks, span: _
 }) -> fn module -> {
   let identities = block_ids blocks;
   match (find_block entry blocks) {
@@ -1650,11 +1698,15 @@ let verify_function = fn (NativeFunction {
               | Ok(definitions) -> match (verify_block_edges blocks definitions
                   dominance (module_substitutions module)) {
                 | Err(message) -> Err(message)
-                | Ok(_) -> match (verify_block_terminators blocks blocks result_type
-                    definitions dominance (module_substitutions module)) {
+                | Ok(_) -> match (verify_function_captures blocks captures definitions
+                    (module_substitutions module)) {
                   | Err(message) -> Err(message)
-                  | Ok(_) -> verify_function_instructions blocks module definitions
-                      (module_substitutions module)
+                  | Ok(_) -> match (verify_block_terminators blocks blocks result_type
+                      definitions dominance (module_substitutions module)) {
+                    | Err(message) -> Err(message)
+                    | Ok(_) -> verify_function_instructions blocks module definitions
+                        (module_substitutions module)
+                  }
                 }
               }
             }

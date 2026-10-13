@@ -24,9 +24,8 @@ function values. `i64` values support explicitly ascribed decimal literals
 within the checked `i64` range, parameters, returns, direct-call
 arguments/results, and block-edge copies; addition/subtraction/multiplication,
 unary negation, signed comparisons, and division/remainder are supported, but
-pattern tests remain unsupported. Pointer values can be passed through a function unchanged; string
-constants and operations that inspect or construct pointed-to values remain
-unsupported. The slice also includes `i32` addition, subtraction,
+pattern tests remain unsupported. Pointer values can be passed through a
+function unchanged. The slice also includes `i32` addition, subtraction,
 multiplication, negation, signed comparisons, and boolean equality/inequality;
 typed i32/i64 division/remainder helper calls; unit/i32/bool literal-pattern tests;
 conditional and unconditional branches with block arguments; returns,
@@ -37,14 +36,17 @@ NativeIR effects. Runtime division/remainder use explicit helper IDs with
 opaque-pointer `rt_native_host_args` bridge. Other calls remain logical until
 ABI lowering.
 
-Closure creation/calls/captures, string constants, constructor/tuple/record
-pattern tests, aggregate construction or projection, globals, and switches
-are outside this selection slice. Unsupported pattern shapes report that
-runtime representation lowering is required rather than entering Codegen. A64
-virtual registers preserve NativeIR SSA IDs, and labels preserve NativeIR
-block IDs. No physical registers, stack/frame layout, object format, assembler,
-runtime-value layout, or external calling convention is selected by MachineIR. `A64Trap` remains a semantic pseudo until
-a concrete trap sequence is selected and tested.
+Closure creation, calls, and capture loads are selected with typed capture
+identity and explicit code-pointer-plus-aligned-capture layout metadata. String
+constants, constructor/tuple/record pattern tests, aggregate construction or
+projection outside closure records, globals, and switches remain outside this
+selection slice. Unsupported pattern shapes report that runtime
+representation lowering is required rather than entering Codegen. A64 virtual
+registers preserve NativeIR SSA IDs, and labels preserve NativeIR block IDs.
+MachineIR selects the approved closure record layout but introduces no
+physical registers, stack/frame layout, object format, assembler, `RtValue`
+layout, or external calling convention. `A64Trap` remains a semantic pseudo
+until a concrete trap sequence is selected and tested.
 
 ## LinearIR
 
@@ -70,21 +72,26 @@ their declared C helper ABI without a hidden environment: `i32` arguments in
 transfer. Conditional edges are explicit labels with typed spill/reload copies.
 
 The LinearIR verifier checks value/slot ownership, unique non-overlapping
-slots, stack-frame bounds/alignment, the physical-register assignment,
-terminated labeled blocks, and branch targets. Nested direct calls that need a
-closure environment and Host helpers without an explicit typed bridge are
-rejected before Codegen. `Host.args` erases its unit argument and returns an
-opaque pointer in `x0`; concrete composite layouts/operations and `i8`/`i16`/
-unsigned integer widths are not yet supported by this LinearIR.
+slots, stack-frame bounds/alignment, physical-register assignment, terminated
+labeled blocks, branch targets, capture layout and bounds, closure-environment
+preservation, and the allocation and indirect-call setup sequences. Closure
+records use the layout specified in `ABI.md`, are allocated through the typed
+`rt_native_alloc` raw-storage helper, and copy captures so they can escape the
+creator's frame. Host helpers without an explicit typed bridge are rejected
+before Codegen. `Host.args` erases its unit argument and returns an opaque
+pointer in `x0`; string and aggregate layouts/operations outside closure
+records and `i8`/`i16`/unsigned integer widths are not yet supported by this
+LinearIR.
 
 ## Codegen
 
 `emit.ml` emits textual AArch64 Mach-O assembly from verified LinearIR. It
 lowers spill loads/stores, i32 arithmetic/comparisons, i64 pass-through values,
 i64 addition/subtraction/multiplication/negation and signed comparisons,
-branches, direct calls with
-symbols in the supplied function set, frame
-prologues/epilogues, and trap pseudos. Block labels are function-qualified.
+branches, direct calls with symbols in the supplied function set, closure
+code addresses, typed capture loads/stores, raw allocation, indirect closure
+calls, frame prologues/epilogues, and trap pseudos. Block labels are
+function-qualified.
 Typed i32 and i64 division/remainder call the declared
 `rt_native_i32_div`, `rt_native_i32_rem`, `rt_native_i64_div`, and
 `rt_native_i64_rem` helpers; their exact prototypes are in `runtime.h`, and
@@ -112,20 +119,20 @@ removes any partial executable.
 
 This command is deliberately a **single-function Codegen harness**, not a
 whole-module native compiler. It selects and verifies only the named function;
-it does not emit module initializers, globals, closure creation, general
-runtime/Host helper marshalling, or other functions. Direct calls fail unless
-their target is present in the Codegen function set (currently one function
-for this CLI).
+it does not emit module initializers, globals, general runtime/Host helper
+marshalling, or other functions. Direct-call and closure-creation targets fail
+unless present in the Codegen function set (currently one function for this
+CLI); use direct-graph mode for the supported reachable same-module graph.
 
 `aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT` expands the Codegen set
-to the entry's reachable same-module `NativeDirectCall` targets. Entry-specific
-lowering conservatively requires every root value declaration to be a top-level
-function, then accepts only a single-block, no-parameter initializer with a
-return terminator and instructions limited to zero-capture closure creation,
-global stores, and unit constants; it verifies and skips that initializer.
-Selected functions that load globals fail in selection. Closure creation in a
-selected function fails explicitly because no concrete native closure layout
-has been selected. It does not include unrelated functions,
+to the entry's reachable same-module direct-call and closure-creation targets.
+Entry-specific lowering conservatively requires every root value declaration
+to be a top-level function, then accepts only a single-block, no-parameter
+initializer with a return terminator and instructions limited to zero-capture
+closure creation, global stores, and unit constants; it verifies and skips that
+initializer. Selected functions that load globals fail in selection. Closure
+creation and calls in selected functions use the approved Riot-owned record
+layout and `rt_native_alloc` helper. It does not include unrelated functions,
 imported closure targets, or general module initialization, so it is not a
 whole-module compiler.
 
@@ -162,6 +169,8 @@ and block-edge pass-through, pattern-failure diagnostics,
 and a `Host.args` helper call. It also confirms unsupported Host helpers,
 nested constructor patterns, and non-closure global initialization fail before
 Codegen. A separate macOS/AArch64 test builds the C-first C-hosted compiler
-with Node excluded and uses it to compile/run direct-call and recursive
-native graphs. These are bounded slices, not evidence that Riotc itself or unsupported
-string/Host/global semantics work through whole-module native Codegen.
+with Node excluded and uses it to compile/run direct-call, recursive, and
+escaping closure-capture native graphs; the closure fixture is compared against
+the existing C backend. These are bounded slices, not evidence that Riotc
+itself or unsupported string/Host/global semantics work through whole-module
+native Codegen.

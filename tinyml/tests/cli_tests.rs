@@ -1189,13 +1189,16 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
         .arg(&closure_executable)
         .output()
         .unwrap();
-    assert!(!closure_compile.status.success());
     assert!(
+        closure_compile.status.success(),
+        "closure Codegen failed: {}",
         String::from_utf8_lossy(&closure_compile.stderr)
-            .contains("closure creation requires a concrete native closure layout")
     );
-    assert!(!closure_executable.exists());
-    assert!(!closure_assembly.exists());
+    let closure_assembly_text = fs::read_to_string(&closure_assembly).unwrap();
+    assert!(closure_assembly_text.contains("bl _rt_native_alloc"));
+    assert!(closure_assembly_text.contains("blr x16"));
+    let closure_run = Command::new(&closure_executable).output().unwrap();
+    assert_eq!(closure_run.status.code(), Some(42));
 
     let host_args_source = dir.join("host-args.ml");
     fs::write(
@@ -4256,6 +4259,63 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .output()
         .unwrap();
     assert_eq!(i64_run.status.code(), Some(42));
+
+    let closure_source = dir.join("closure-native.ml");
+    fs::write(
+        &closure_source,
+        "let make = fn (base: i32) -> fn (amount: i32) -> base + amount\nlet main = fn () -> { let add = make 40; add 2 }\n",
+    )
+    .unwrap();
+    let closure_executable = dir.join("closure-native");
+    let closure_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&closure_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&closure_executable)
+        .output()
+        .unwrap();
+    assert!(
+        closure_compile.status.success(),
+        "C-hosted compiler failed to produce closure-capturing native code: {}",
+        String::from_utf8_lossy(&closure_compile.stderr)
+    );
+    let closure_assembly =
+        fs::read_to_string(closure_executable.with_file_name("closure-native.aarch64.s")).unwrap();
+    assert!(closure_assembly.contains("bl _rt_native_alloc"));
+    assert!(closure_assembly.contains("blr x16"));
+    let closure_run = Command::new(&closure_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(closure_run.status.code(), Some(42));
+
+    let closure_c_executable = dir.join("closure-c-backend");
+    let closure_c_compile = Command::new(&bootstrap_compiler)
+        .current_dir(repo)
+        .env("PATH", no_node_path)
+        .env("RIOTML_RUNTIME_DIR", runtime_directory)
+        .arg("compile")
+        .arg(&closure_source)
+        .arg("-o")
+        .arg(&closure_c_executable)
+        .output()
+        .unwrap();
+    assert!(
+        closure_c_compile.status.success(),
+        "C-backend closure differential fixture failed: {}",
+        String::from_utf8_lossy(&closure_c_compile.stderr)
+    );
+    let closure_c_run = Command::new(&closure_c_executable)
+        .env("PATH", no_node_path)
+        .output()
+        .unwrap();
+    assert_eq!(closure_run.status.code(), closure_c_run.status.code());
+    assert_eq!(closure_run.stdout, closure_c_run.stdout);
+    assert_eq!(closure_run.stderr, closure_c_run.stderr);
 
     let invalid_source = dir.join("invalid-native.ml");
     let invalid_executable = dir.join("invalid-native");

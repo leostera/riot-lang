@@ -45,6 +45,7 @@ let test_binding = BindingIdentity {
 }
 
 let initializer_function = NativeFunction {
+  captures: Nil,
   identity: initializer_identity,
   result_type: unit_type,
   entry: NativeBlockId(0),
@@ -66,6 +67,7 @@ let initializer_function = NativeFunction {
 
 let binary_function = fn operator -> fn result_type -> fn effects ->
   fn function_name -> NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -122,6 +124,7 @@ let fixture_module = fn function ->
 let no_effects = NativeEffectSet(Nil)
 let valid_add_function = binary_function Addition int_type no_effects "sum"
 let negation_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -155,6 +158,7 @@ let negation_function = NativeFunction {
   span: source_span
 }
 let jump_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -193,6 +197,7 @@ let jump_function = NativeFunction {
 }
 
 let unreachable_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -212,6 +217,7 @@ let unreachable_function = NativeFunction {
 }
 
 let explicit_trap_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -251,6 +257,7 @@ let scalar_operations_module = fixture_module_with_functions
   Cons(valid_less_equal_function, Cons(valid_greater_than_function,
   Cons(valid_greater_equal_function, Cons(negation_function, Nil)))))))))))
 let integer_literal_pattern_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -285,6 +292,7 @@ let integer_literal_pattern_function = NativeFunction {
 }
 
 let boolean_literal_pattern_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -325,6 +333,7 @@ let effectful_add_function = binary_function Addition int_type
   (NativeEffectSet(Cons(NativeHostRead, Nil))) "effectful_sum"
 
 let boolean_comparison_function = fn operator -> fn function_name -> NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -382,6 +391,7 @@ let increment_identity = NativeTopLevelFunction(BindingIdentity {
 })
 
 let increment_function = NativeFunction {
+  captures: Nil,
   identity: increment_identity,
   result_type: int_type,
   entry: NativeBlockId(0),
@@ -398,6 +408,7 @@ let increment_function = NativeFunction {
 }
 
 let direct_call_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -444,6 +455,7 @@ let host_binding = BindingIdentity {
 }
 
 let host_call_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,
@@ -480,6 +492,7 @@ let host_call_function = NativeFunction {
 }
 
 let branch_function = NativeFunction {
+  captures: Nil,
   identity: NativeTopLevelFunction(BindingIdentity {
     source_path: module_name,
     declaration_span: source_span,

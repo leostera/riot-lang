@@ -116,6 +116,8 @@ int32_t rt_native_i32_rem(int32_t numerator, int32_t denominator);
 /* Typed C-ABI helpers used by native i64 division/remainder lowering. */
 int64_t rt_native_i64_div(int64_t numerator, int64_t denominator);
 int64_t rt_native_i64_rem(int64_t numerator, int64_t denominator);
+/* Raw, max-aligned storage for Riotc-owned native object layouts. */
+void *rt_native_alloc(size_t size);
 RtValue rt_i32_equal(RtValue left, RtValue right);
 RtValue rt_i32_not_equal(RtValue left, RtValue right);
 RtValue rt_i32_less(RtValue left, RtValue right);

@@ -13,9 +13,48 @@ type A64Label = A64Label(NativeBlockId)
 
 type A64ValueType = A64Unit | A64I32 | A64I64 | A64Boolean | A64Pointer
 
+type A64CallArgument = A64CallArgument {
+  register: A64VirtualRegister,
+  value_type: A64ValueType
+}
+
+type A64CaptureField = A64CaptureField {
+  index: i32,
+  binding: BindingIdentity,
+  value_type: A64ValueType,
+  offset: i32,
+  size: i32,
+  alignment: i32,
+  span: SourceSpan
+}
+
+type A64ClosureLayout = A64ClosureLayout {
+  fields: List<A64CaptureField>,
+  environment_size: i32,
+  allocation_size: i32
+}
+
+type A64ClosureCaptureValue = A64ClosureCaptureValue {
+  field: A64CaptureField,
+  register: A64VirtualRegister
+}
+
+type A64ClosureAllocation = A64ClosureAllocation {
+  function: NativeFunctionId,
+  layout: A64ClosureLayout,
+  captures: List<A64ClosureCaptureValue>
+}
+
+type A64ClosureCallSite = A64ClosureCallSite {
+  closure: A64VirtualRegister,
+  arguments: List<A64CallArgument>,
+  result_type: A64ValueType
+}
+
 type A64Function = A64Function {
   identity: NativeFunctionId,
   result_type: A64ValueType,
+  capture_layout: A64ClosureLayout,
   entry: A64Label,
   blocks: List<A64Block>,
   span: SourceSpan
@@ -52,6 +91,9 @@ type A64Operation =
   | A64TestI32Literal(A64I32LiteralTest)
   | A64TestBooleanLiteral(A64BooleanLiteralTest)
   | A64Call(A64CallSite)
+  | A64ClosureCall(A64ClosureCallSite)
+  | A64CreateClosure(A64ClosureAllocation)
+  | A64LoadCapture(A64CaptureField)
   | A64RuntimeCall(A64RuntimeCallSite)
   | A64AddI32(A64BinaryOperands)
   | A64SubtractI32(A64BinaryOperands)
@@ -87,17 +129,13 @@ type A64CallTarget =
   | A64DirectCall(NativeFunctionId)
   | A64HostCall(BindingIdentity)
 
-type A64CallArgument = A64CallArgument {
-  register: A64VirtualRegister,
-  value_type: A64ValueType
-}
-
 type A64RuntimeHelper =
   | A64RuntimeI32Division
   | A64RuntimeI32Remainder
   | A64RuntimeI64Division
   | A64RuntimeI64Remainder
   | A64RuntimeHostArgs
+  | A64RuntimeAllocate
 type A64RuntimeCallSite = A64RuntimeCallSite {
   helper: A64RuntimeHelper,
   arguments: List<A64CallArgument>,
@@ -149,5 +187,6 @@ type A64SelectionFailure = A64SelectionFailure {
   reason: string
 }
 
-// Before LinearIR this IR deliberately has only semantic virtual registers.
-// Closure representation, aggregate layout, and runtime value representation are not modeled.
+// MachineIR retains virtual SSA registers while carrying Riotc's selected
+// closure-record layout as typed metadata. Spill slots and physical registers
+// are introduced only in LinearIR; aggregate and RtValue layouts remain out of scope.

@@ -40,8 +40,15 @@ type NativeNestedFunctionId = NativeNestedFunctionId {
 type NativeBlockId = NativeBlockId(i32)
 type NativeValueId = NativeValueId(i32)
 
+type NativeCapture = NativeCapture {
+  binding: BindingIdentity,
+  checked_type: InferenceType,
+  span: SourceSpan
+}
+
 type NativeFunction = NativeFunction {
   identity: NativeFunctionId,
+  captures: List<NativeCapture>,
   result_type: InferenceType,
   entry: NativeBlockId,
   blocks: List<NativeBlock>,
@@ -117,9 +124,14 @@ type NativeCallTarget =
   | NativeClosureCall(NativeValueId)
   | NativeHostCall(BindingIdentity)
 
+type NativeClosureCapture = NativeClosureCapture {
+  capture: NativeCapture,
+  value: NativeValueId
+}
+
 type NativeClosure = NativeClosure {
   function: NativeFunctionId,
-  captures: List<NativeValueId>
+  captures: List<NativeClosureCapture>
 }
 
 type NativeAggregate = NativeAggregate {

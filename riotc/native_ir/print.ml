@@ -23,7 +23,7 @@ use NativeIr.Ir.{
   NativePrimitiveBinary, NativePrimitiveNegate, NativeBinaryPrimitive,
   NativeNegatePrimitive, NativeCallOperation, NativeCall, NativeClosureCall,
   NativeDirectCall, NativeHostCall, NativeCreateClosure, NativeClosure,
-  NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeTupleAggregate,
+  NativeCapture, NativeClosureCapture, NativeCreateAggregate, NativeAggregate, NativeAggregateValue, NativeTupleAggregate,
   NativeRecordAggregate, NativeVariantAggregate, NativeProjectAggregate,
   NativeProjection, NativeTupleField, NativeRecordField, NativeConstructorField,
   NativeTestValue, NativeValueTest, NativeTest, NativeLiteralTest,
@@ -246,6 +246,28 @@ let print_aggregate_fields = fn fields -> match fields {
   }
 }
 
+let print_capture = fn (NativeCapture { binding, checked_type, span: _ }) ->
+  print_binding binding + ":" + print_type checked_type
+
+let print_closure_capture = fn (NativeClosureCapture { capture, value }) ->
+  print_capture capture + "=" + value_id value
+
+let print_closure_captures = fn captures -> match captures {
+  | Nil -> ""
+  | Cons(capture, remaining) -> match remaining {
+    | Nil -> print_closure_capture capture
+    | _ -> print_closure_capture capture + ", " + print_closure_captures remaining
+  }
+}
+
+let print_function_captures = fn captures -> match captures {
+  | Nil -> ""
+  | Cons(capture, remaining) -> match remaining {
+    | Nil -> print_capture capture
+    | _ -> print_capture capture + ", " + print_function_captures remaining
+  }
+}
+
 let print_operation = fn operation -> match operation {
   | NativeConstant(constant) -> "const " + print_constant constant
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
@@ -259,7 +281,7 @@ let print_operation = fn operation -> match operation {
     "call " + print_target target + "(" + print_typed_values arguments argument_types
       + ") -> " + print_type result_type
   | NativeCreateClosure(NativeClosure { function, captures }) -> "closure "
-    + print_function_id function + " captures [" + print_values captures + "]"
+    + print_function_id function + " captures [" + print_closure_captures captures + "]"
   | NativeCreateAggregate(NativeAggregate { kind, fields }) -> print_aggregate_kind kind
     + " [" + print_aggregate_fields fields + "]"
   | NativeProjectAggregate(NativeProjection { aggregate, field }) -> "project "
@@ -360,9 +382,9 @@ let print_blocks = fn blocks -> match blocks {
 }
 
 let print_function = fn (NativeFunction {
-  identity, result_type, entry, blocks, span: SourceSpan { start_codepoint, end_codepoint }
-}) -> print_function_id identity + " -> " + print_type result_type
-  + " entry " + block_id entry + " @" + decimal start_codepoint + ".."
+  identity, captures, result_type, entry, blocks, span: SourceSpan { start_codepoint, end_codepoint }
+}) -> print_function_id identity + " captures [" + print_function_captures captures + "] -> "
+  + print_type result_type + " entry " + block_id entry + " @" + decimal start_codepoint + ".."
   + decimal end_codepoint + " {\n" + print_blocks blocks + "}\n"
 
 let print_functions = fn functions -> match functions {

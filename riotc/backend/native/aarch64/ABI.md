@@ -2,10 +2,10 @@
 
 **Status:** approved for the first owned-native implementation on 2026-10-12.
 
-This records the user's selected initial representation policy and target. It
-is intentionally smaller than OxCaml's layout lattice or rustc's full target
-ABI classification. It does not select an allocator/GC or freeze every object
-field layout.
+This records the user's selected initial representation policy and target,
+including Riotc's initial owned closure representation and allocation policy.
+It is intentionally smaller than OxCaml's layout lattice or rustc's full
+target ABI classification; it does not freeze string or aggregate layouts.
 
 ## Target and object ABI
 
@@ -76,6 +76,44 @@ runtime's declared `rt_set_args` helper before calling it. The whole-program
 adapter remains incomplete: it does not set the runtime directory, initialize
 module globals, or call module initializers.
 
+## Initial Riot-owned closure representation (2026-10-13)
+
+This layout belongs to Riotc; the C runtime does not inspect closure records or
+interpret capture types. The runtime supplies only a checked raw-allocation
+primitive, so closure construction, field layout, call dispatch, and capture
+loads remain explicit in the Riot-owned IR and AArch64 backend.
+
+- A native closure value is one pointer to an owned heap record. Byte offset 0
+  contains the 8-byte native code pointer. Captures begin at byte offset 8 and
+  are stored in the function's stable lexical capture order, each at its
+  natural alignment: `i32`/`bool` are 4-byte size/alignment, `i64`/opaque
+  pointers are 8-byte size/alignment, and `unit` occupies zero bytes. The whole
+  allocation is padded to an 8-byte size. Unsupported capture representations
+  fail before Codegen.
+- Capture values are copied into the record; they never refer to the creating
+  function's spill slots. This lets a closure escape its creator without
+  dangling stack references. The generated function's hidden environment
+  argument is the closure-record pointer; `NativeLoadCapture` reads the typed
+  field at its compiler-computed absolute record offset. Direct top-level calls
+  continue to pass null.
+- A closure call loads its code pointer from offset 0, passes the
+  closure-record pointer in hidden `x0`, and passes the optional non-unit
+  source argument in `w1`/`x1`. `unit` arguments are erased. This is the Riot internal ABI, not
+  `RtFunction`; native closures are never passed to `rt_apply` or stored as
+  runtime callbacks without a separately specified adapter.
+- Closure records are allocated with `rt_native_alloc(size_t)`, a typed C-ABI
+  runtime helper that returns max-aligned raw storage. It aborts through the
+  runtime's existing `out of memory` failure path if allocation fails; no
+  partially initialized closure is published. Objects are process-lifetime:
+  this initial backend has no GC or deallocation and never frees closure
+  records before process exit. Allocation remains an explicit `NativeAllocate`
+  effect. The C helper knows only size and raw memory; it owns no closure
+  representation decisions.
+
+These are the initial implementation decisions, not a claim that closure
+allocation is space-efficient for unbounded processes. Any future reclamation
+or alternate layout must preserve escape safety and revise this contract.
+
 ## Implemented LinearIR subset (2026-10-12)
 
 The first MachineIR-to-LinearIR implementation keeps this approved signature
@@ -105,10 +143,12 @@ shape while deliberately using an all-spill allocator:
   argument is erased.
 - The current LIR verifier checks slot ownership/uniqueness, frame alignment
   and bounds, physical scratch-register assignment, terminated block
-  structure, and all branch labels. Unsupported closure-environment calls and
-  Host helpers without an explicit bridge fail before Codegen. `Host.args` is
-  the one typed Host bridge in this slice; general Host marshalling is not
-  implemented.
+  structure, branch labels, capture-field size/alignment/offsets, hidden
+  environment preservation, runtime allocation argument/result setup, and
+  closure-call code/environment/typed-argument setup. `rt_native_alloc` is the
+  declared raw allocation helper. Host helpers without an explicit bridge fail
+  before Codegen. `Host.args` is the one typed Host bridge in this slice;
+  general Host marshalling is not implemented.
 - `emit.ml` lowers this verified slice to AArch64 instructions. A pattern
   failure calls the declared no-argument `rt_pattern_fail` helper from
   `runtime.h`/`runtime.c` under the Apple C ABI, then emits a `brk` fallback;
@@ -125,13 +165,17 @@ direct-call arguments/results, spill/reload, block-edge copies, addition,
 subtraction, multiplication, unary negation, signed comparisons, and
 trap-preserving division/remainder through typed i64 runtime helpers. Pattern
 tests remain unsupported for `i64`. `A64Pointer` supports opaque pointer arguments, returns,
-spill/reload, and edge copies; it does not implement string constants, heap
-layouts, constructors, projections, or closure calls. Narrow integer widths,
-closure environments, and general Host helper marshalling remain outside the
-current LIR slice. The selected-function harness rejects pointer-argument or
-pointer-result entry adapters, assembles and links only supported `unit -> i32`
-entries with Clang for the approved target, and is not the whole-module entry
-adapter described above.
+spill/reload, edge copies, and the owned closure-record operations. Closure
+records use the documented code-pointer-plus-aligned-captures layout; typed
+captures are copied to runtime-allocated process-lifetime records, loaded from
+the saved hidden environment, and invoked through a checked indirect-call
+sequence. The no-JavaScript C-hosted regression includes a closure returned
+from its creator and then called (exit status 42). This does not implement
+string or aggregate layouts, constructors/projections for those values, narrow
+integer widths, or general Host helper marshalling. The selected-function
+harness rejects pointer-argument or pointer-result entry adapters, assembles
+and links only supported `unit -> i32` entries with Clang for the approved
+target, and is not the whole-module entry adapter described above.
 
 The native closure code-pointer convention is distinct from the C runtime's
 legacy `RtFunction` type. Native closure values must not be passed to
@@ -210,9 +254,9 @@ code does not inspect or depend on `RtBox` layout, and no `RtValue` crosses the
 native-to-C call boundary for this helper. The selected-function test adapter passes the OS `argc`/`argv` to
 `rt_set_args`, so this bridge observes the same `argv[1..]` process-argument
 list as the runtime. Runtime-directory setup, module globals, and module
-initializers remain part of the unimplemented whole-program entry adapter. Aliases and all other Host
-operations retain closure/global behavior and are explicitly unsupported by
-this LIR slice.
+initializers remain part of the unimplemented whole-program entry adapter.
+Aliases and all other Host operations preserve their existing source and C-backend
+semantics but are explicitly unsupported by this LIR slice.
 
 ## Reproducible `RtValue` ABI probe
 

@@ -1,5 +1,5 @@
 // Lower AArch64 virtual-register MachineIR to an all-spill, physical-register LinearIR.
-// Unit is erased; direct calls pass null x0 environment and at most one typed W/X argument.
+// Unit is erased; Riot closures use typed heap records and preserve their environment across calls.
 use Prelude.{List, Nil, Cons, Result, Ok, Err, Option, Some, None}
 use String.{equal}
 use NativeIr.Ir.{
@@ -7,7 +7,7 @@ use NativeIr.Ir.{
   NativeModuleInitializer
 }
 use Syntax.Lexer.{SourceSpan}
-use Syntax.Ast.{ValueName}
+use Syntax.Ast.{ValueName, IntegerLiteral}
 use Check.Inference.{BindingIdentity, ModuleValueBinding}
 use NativeIr.Print.{block_id}
 use Backend.Native.Aarch64.MachineIr.{
@@ -16,9 +16,11 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
+  A64ClosureCall, A64ClosureCallSite, A64CreateClosure, A64ClosureAllocation,
+  A64ClosureLayout, A64ClosureCaptureValue, A64CaptureField, A64LoadCapture,
   A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64RuntimeHostArgs,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeI64Division,
-  A64RuntimeI64Remainder,
+  A64RuntimeI64Remainder, A64RuntimeAllocate,
   A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32,
   A64AddI64, A64SubtractI64, A64MultiplyI64,
@@ -31,22 +33,38 @@ use Backend.Native.Aarch64.MachineIr.{
 }
 use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister,
-  A64ValueLocation, A64FrameSlot, A64LinearLabel, A64BasicBlockLabel,
+  A64ValueLocation, A64FrameSlot, A64EnvironmentSlot, A64LinearLabel, A64BasicBlockLabel,
   A64TrueEdgeLabel, A64FalseEdgeLabel, A64LinearInstruction,
   A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill,
   A64SpillRegister, A64AddW, A64AddX, A64SubtractW, A64SubtractX,
   A64MultiplyW, A64MultiplyX, A64NegateW, A64NegateX, A64CompareSetX,
-  A64CompareSetW, A64CallDirect, A64CallRuntime, A64LinearTerminator, A64LinearJump,
+  A64CompareSetW, A64LoadMemory, A64StoreMemory, A64LoadFunctionAddress,
+  A64ReloadEnvironment, A64SpillEnvironment, A64CallDirect, A64CallIndirect,
+  A64CallRuntime, A64LinearTerminator, A64LinearJump,
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
   A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
   A64LinearTerminatorItem, A64LinearFunction, A64LinearFailure,
-  w0, w1, w9, w10, w11, x0, x1, x9, x10, x11, slot_size, slot_alignment,
+  w0, w1, w9, w10, w11, x0, x1, x9, x10, x11, x16, slot_size, slot_alignment,
   align_frame, is_unit
 }
 
 type A64LocationAssignment = A64LocationAssignment(List<A64ValueLocation>, i32)
+type A64EnvironmentAssignment = A64EnvironmentAssignment {
+  slot: Option<A64EnvironmentSlot>,
+  next_offset: i32
+}
 type A64BinaryOpcode = A64OpcodeAdd | A64OpcodeSubtract | A64OpcodeMultiply
 type A64LoweredEdge = A64LoweredEdge(List<A64LinearItem>, A64LinearLabel)
+
+let decimal_digit = fn value -> match value {
+  | 0 -> "0" | 1 -> "1" | 2 -> "2" | 3 -> "3" | 4 -> "4"
+  | 5 -> "5" | 6 -> "6" | 7 -> "7" | 8 -> "8" | _ -> "9"
+}
+
+let decimal_text = fn value -> match (value < 10) {
+  | true -> decimal_digit value
+  | false -> decimal_text (value / 10) + decimal_digit (value % 10)
+}
 
 let register_number = fn register -> match register {
   | A64VirtualRegister(number) -> number
@@ -197,7 +215,8 @@ let add_instruction = fn instruction -> Cons(A64LinearInstructionItem(instructio
 let add_terminator = fn terminator -> Cons(A64LinearTerminatorItem(terminator), Nil)
 
 let lower_operation = fn function_identity -> fn block -> fn span ->
-  fn destination -> fn result_type -> fn operation -> fn locations -> match operation {
+  fn destination -> fn result_type -> fn operation -> fn environment_slot ->
+  fn locations -> match operation {
   | A64LoadUnit -> Ok(Nil)
   | A64LoadI32(literal) -> match (lookup_slot function_identity block span destination locations) {
     | Err(failure) -> Err(failure)
@@ -244,6 +263,14 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
   | A64Call(A64CallSite { target, arguments, result_type: call_result }) ->
     lower_call function_identity block span destination result_type target arguments
       call_result locations
+  | A64ClosureCall(A64ClosureCallSite { closure, arguments, result_type: call_result }) ->
+    lower_closure_call function_identity block span destination result_type closure
+      arguments call_result locations
+  | A64CreateClosure(A64ClosureAllocation { function, layout, captures }) ->
+    lower_closure_creation function_identity block span destination result_type
+      function layout captures locations
+  | A64LoadCapture(field) -> lower_capture_load function_identity block span
+      destination result_type field environment_slot locations
   | A64RuntimeCall(A64RuntimeCallSite { helper, arguments, result_type: call_result }) ->
     match (same_value_type result_type call_result) {
       | false -> Err(A64LinearFailure {
@@ -573,20 +600,207 @@ let lower_call = fn function_identity -> fn block -> fn span ->
   }
 }
 
-let lower_instruction = fn function_identity -> fn label ->
+let lower_capture_stores = fn function_identity -> fn block -> fn span ->
+  fn (captures: List<A64ClosureCaptureValue>) -> fn locations -> match captures {
+  | Nil -> Ok(Nil)
+  | Cons(A64ClosureCaptureValue {
+      field: A64CaptureField {
+        index: _, binding: _, value_type, offset, size: _, alignment: _, span: _
+      }, register
+    }, remaining) -> match (lookup_type function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(actual_type) -> match (same_value_type value_type actual_type) {
+      | false -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "closure capture value type differs from its layout field"
+      })
+      | true -> match value_type {
+        | A64Unit -> lower_capture_stores function_identity block span remaining locations
+        | _ -> match (lookup_slot function_identity block span register locations) {
+          | Err(failure) -> Err(failure)
+          | Ok(value_slot) -> match (lower_capture_stores function_identity block span
+              remaining locations) {
+            | Err(failure) -> Err(failure)
+            | Ok(rest) -> {
+              let value_register = match value_type {
+                | A64I32 -> w10
+                | A64Boolean -> w10
+                | _ -> x10
+              };
+              Ok(append_linear_items
+                (add_instruction(A64ReloadSpill(value_register, value_slot)))
+                (append_linear_items
+                  (add_instruction(A64StoreMemory(x9, offset, value_register))) rest))
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+let lower_closure_creation = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn (result_type: A64ValueType) -> fn target ->
+  fn (A64ClosureLayout { fields: _, environment_size: _, allocation_size }) ->
+  fn (captures: List<A64ClosureCaptureValue>) -> fn locations -> match result_type {
+  | A64Pointer -> match (lookup_slot function_identity block span destination locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(closure_slot) -> match (lower_capture_stores function_identity block span
+        captures locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(capture_stores) -> {
+        let size_argument = add_instruction(A64LoadI64Literal(
+          x0, IntegerLiteral(decimal_text allocation_size)
+        ));
+        let allocation_call = add_instruction(A64CallRuntime(A64RuntimeAllocate));
+        let closure_pointer = add_instruction(A64SpillRegister(closure_slot, x0));
+        let closure_base = add_instruction(A64ReloadSpill(x9, closure_slot));
+        let code_address = add_instruction(A64LoadFunctionAddress(x10, target));
+        let code_store = add_instruction(A64StoreMemory(x9, 0, x10));
+        let allocation = append_linear_items size_argument allocation_call;
+        let header = append_linear_items closure_pointer
+          (append_linear_items closure_base
+            (append_linear_items code_address code_store));
+        Ok(append_linear_items allocation
+          (append_linear_items header capture_stores))
+      }
+    }
+  }
+  | _ -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "closure creation must produce an opaque pointer"
+  })
+}
+
+let lower_capture_load = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn (result_type: A64ValueType) ->
+  fn (A64CaptureField {
+    index: _, binding: _, value_type, offset, size: _, alignment: _, span: _
+  }) -> fn (environment_slot: Option<A64EnvironmentSlot>) ->
+  fn locations -> match (same_value_type result_type value_type) {
+  | false -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "capture load result type differs from its layout field"
+  })
+  | true -> match value_type {
+    | A64Unit -> Ok(Nil)
+    | _ -> match environment_slot {
+      | None -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "capture load has no saved closure environment"
+      })
+      | Some(saved_environment) -> match (lookup_slot function_identity block span
+          destination locations) {
+        | Err(failure) -> Err(failure)
+        | Ok(result_slot) -> {
+          let value_register = match value_type {
+            | A64I32 -> w10
+            | A64Boolean -> w10
+            | _ -> x10
+          };
+          Ok(append_linear_items
+            (add_instruction(A64ReloadEnvironment(x9, saved_environment)))
+            (append_linear_items
+              (add_instruction(A64LoadMemory(value_register, x9, offset)))
+              (add_instruction(A64SpillRegister(result_slot, value_register)))))
+        }
+      }
+    }
+  }
+}
+
+let lower_closure_argument = fn function_identity -> fn block -> fn span ->
+  fn (A64CallArgument { register, value_type }) -> fn locations -> match value_type {
+  | A64Unit -> Ok(Nil)
+  | A64I32 -> match (lookup_slot function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(w1, slot)))
+  }
+  | A64Boolean -> match (lookup_slot function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(w1, slot)))
+  }
+  | A64I64 -> match (lookup_slot function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(x1, slot)))
+  }
+  | A64Pointer -> match (lookup_slot function_identity block span register locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(slot) -> Ok(add_instruction(A64ReloadSpill(x1, slot)))
+  }
+}
+
+let closure_call_setup = fn closure_slot -> fn argument_setup ->
+  append_linear_items (add_instruction(A64ReloadSpill(x9, closure_slot)))
+  (append_linear_items (add_instruction(A64LoadMemory(x16, x9, 0)))
+  (append_linear_items (add_instruction(A64ReloadSpill(x0, closure_slot)))
+    argument_setup))
+
+let lower_closure_call = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn instruction_type -> fn closure -> fn arguments ->
+  fn call_result -> fn locations -> match (same_value_type instruction_type call_result) {
+  | false -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "closure-call instruction result differs from its typed signature"
+  })
+  | true -> match (lookup_type function_identity block span closure locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(A64Pointer) -> match arguments {
+      | Cons(argument, Nil) -> match (lookup_slot function_identity block span closure locations) {
+        | Err(failure) -> Err(failure)
+        | Ok(closure_slot) -> match (lower_closure_argument function_identity block span
+            argument locations) {
+          | Err(failure) -> Err(failure)
+          | Ok(argument_setup) -> {
+            let call_setup = closure_call_setup closure_slot argument_setup;
+            match (is_unit call_result) {
+              | true -> Ok(append_linear_items call_setup
+                  (add_instruction(A64CallIndirect(x16))))
+              | false -> match (lookup_slot function_identity block span destination locations) {
+                | Err(failure) -> Err(failure)
+                | Ok(result_slot) -> {
+                  let result_register = match call_result {
+                    | A64I64 -> x0
+                    | A64Pointer -> x0
+                    | _ -> w0
+                  };
+                  Ok(append_linear_items call_setup
+                    (append_linear_items (add_instruction(A64CallIndirect(x16)))
+                      (add_instruction(A64SpillRegister(result_slot, result_register)))))
+                }
+              }
+            }
+          }
+        }
+      }
+      | _ -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "AArch64 closure call requires exactly one source argument"
+      })
+    }
+    | Ok(_) -> Err(A64LinearFailure {
+      function: function_identity, block: block, span: span,
+      reason: "closure call target must be an opaque pointer"
+    })
+  }
+}
+
+let lower_instruction = fn function_identity -> fn label -> fn environment_slot ->
   fn (A64Instruction { destination, result_type, operation, effects: _, span }) ->
   fn locations -> match (lower_operation function_identity label
-      span destination result_type operation locations) {
+      span destination result_type operation environment_slot locations) {
     | Err(failure) -> Err(failure)
     | Ok(instructions) -> Ok(instructions)
   }
 
-let lower_instructions = fn function_identity -> fn block -> fn instructions ->
-  fn locations -> match instructions {
+let lower_instructions = fn function_identity -> fn block -> fn environment_slot ->
+  fn instructions -> fn locations -> match instructions {
   | Nil -> Ok(Nil)
-  | Cons(instruction, remaining) -> match (lower_instruction function_identity block instruction locations) {
+  | Cons(instruction, remaining) -> match (lower_instruction function_identity block
+      environment_slot instruction locations) {
     | Err(failure) -> Err(failure)
-    | Ok(current) -> match (lower_instructions function_identity block remaining locations) {
+    | Ok(current) -> match (lower_instructions function_identity block environment_slot
+        remaining locations) {
       | Err(failure) -> Err(failure)
       | Ok(rest) -> Ok(append_linear_items current rest)
     }
@@ -756,8 +970,9 @@ let lower_entry_parameter_setup = fn function_identity -> fn label ->
 }
 
 let lower_block_items = fn function_identity -> fn function_result -> fn blocks ->
-  fn locations -> fn label -> fn parameter_setup -> fn instructions ->
-  fn terminator -> fn span -> match (lower_instructions function_identity label instructions locations) {
+  fn locations -> fn environment_slot -> fn label -> fn parameter_setup -> fn instructions ->
+  fn terminator -> fn span -> match (lower_instructions function_identity label
+      environment_slot instructions locations) {
     | Err(failure) -> Err(failure)
     | Ok(lowered_instructions) -> match (lower_terminator function_identity function_result
         label span terminator blocks locations) {
@@ -768,50 +983,87 @@ let lower_block_items = fn function_identity -> fn function_result -> fn blocks 
   }
 
 let lower_block = fn function_identity -> fn function_result -> fn entry -> fn blocks ->
-  fn locations -> fn (A64Block { label, parameters, instructions, terminator, span }) ->
-  match (same_label entry label) {
+  fn locations -> fn environment_slot -> fn (A64Block {
+    label, parameters, instructions, terminator, span
+  }) -> match (same_label entry label) {
     | false -> lower_block_items function_identity function_result blocks locations
-        label Nil instructions terminator span
+        environment_slot label Nil instructions terminator span
     | true -> match (lower_entry_parameter_setup function_identity label span parameters locations) {
       | Err(failure) -> Err(failure)
-      | Ok(parameter_setup) -> lower_block_items function_identity function_result blocks
-          locations label parameter_setup instructions terminator span
+      | Ok(parameter_setup) -> {
+        let environment_setup = match environment_slot {
+          | None -> Nil
+          | Some(slot) -> add_instruction(A64SpillEnvironment(slot, x0))
+        };
+        lower_block_items function_identity function_result blocks locations environment_slot
+          label (append_linear_items environment_setup parameter_setup)
+          instructions terminator span
+      }
     }
   }
 
 let lower_blocks_from = fn function_identity -> fn function_result -> fn entry ->
-  fn all_blocks -> fn pending_blocks -> fn locations -> match pending_blocks {
+  fn all_blocks -> fn pending_blocks -> fn locations -> fn environment_slot ->
+  match pending_blocks {
   | Nil -> Ok(Nil)
   | Cons(block, remaining) -> match (lower_block function_identity function_result
-      entry all_blocks locations block) {
+      entry all_blocks locations environment_slot block) {
     | Err(failure) -> Err(failure)
     | Ok(current) -> match (lower_blocks_from function_identity function_result
-        entry all_blocks remaining locations) {
+        entry all_blocks remaining locations environment_slot) {
       | Err(failure) -> Err(failure)
       | Ok(rest) -> Ok(append_linear_items current rest)
     }
   }
 }
 let lower_blocks = fn function_identity -> fn function_result -> fn entry -> fn blocks ->
-  fn locations -> lower_blocks_from function_identity function_result entry
-    blocks blocks locations
+  fn locations -> fn environment_slot -> lower_blocks_from function_identity function_result entry
+    blocks blocks locations environment_slot
 
-let lower_function = fn (A64Function { identity, result_type, entry, blocks, span }) ->
-  match (assign_locations (collect_block_values blocks) 0) {
-    | Err(message) -> match blocks {
-      | Cons(A64Block { label, span: block_span, parameters: _, instructions: _, terminator: _ }, _) ->
-        Err(A64LinearFailure {
-          function: identity, block: label, span: block_span, reason: message
-        })
-      | Nil -> Err(A64LinearFailure {
-        function: identity, block: entry, span: span, reason: message
+let assign_environment_slot = fn (A64ClosureLayout {
+  fields, environment_size: _, allocation_size: _
+}) -> fn next_offset -> match fields {
+  | Nil -> Ok(A64EnvironmentAssignment { slot: None, next_offset: next_offset })
+  | _ -> {
+    let offset = match (next_offset % 8) {
+      | 0 -> next_offset
+      | remainder -> next_offset + (8 - remainder)
+    };
+    match (offset > 2147483639) {
+      | true -> Err("AArch64 frame with saved closure environment exceeds 32-bit size")
+      | false -> Ok(A64EnvironmentAssignment {
+        slot: Some(A64EnvironmentSlot { offset: offset }),
+        next_offset: offset + 8
       })
     }
-    | Ok(A64LocationAssignment(values, next_offset)) -> match (lower_blocks identity result_type entry blocks values) {
+  }
+}
+
+let lower_function = fn (A64Function {
+  identity, result_type, capture_layout, entry, blocks, span
+}) -> match (assign_locations (collect_block_values blocks) 0) {
+  | Err(message) -> match blocks {
+    | Cons(A64Block { label, span: block_span, parameters: _, instructions: _, terminator: _ }, _) ->
+      Err(A64LinearFailure {
+        function: identity, block: label, span: block_span, reason: message
+      })
+    | Nil -> Err(A64LinearFailure {
+      function: identity, block: entry, span: span, reason: message
+    })
+  }
+  | Ok(A64LocationAssignment(values, spill_offset)) -> match
+      (assign_environment_slot capture_layout spill_offset) {
+    | Err(message) -> Err(A64LinearFailure {
+      function: identity, block: entry, span: span, reason: message
+    })
+    | Ok(A64EnvironmentAssignment { slot, next_offset }) -> match
+        (lower_blocks identity result_type entry blocks values slot) {
       | Err(failure) -> Err(failure)
       | Ok(items) -> Ok(A64LinearFunction {
         identity: identity,
         result_type: result_type,
+        capture_layout: capture_layout,
+        environment_slot: slot,
         entry: A64BasicBlockLabel(entry),
         values: values,
         frame_size: align_frame next_offset,
@@ -820,3 +1072,4 @@ let lower_function = fn (A64Function { identity, result_type, entry, blocks, spa
       })
     }
   }
+}

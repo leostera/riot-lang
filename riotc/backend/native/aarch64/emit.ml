@@ -1,4 +1,4 @@
-// Emit verified scalar and opaque-pointer AArch64 LinearIR as Mach-O assembly.
+// Emit verified scalar, closure-record, and opaque-pointer AArch64 LinearIR as Mach-O assembly.
 use Prelude.{List, Nil, Cons, Result, Ok, Err, Option, Some, None}
 use String.{equal}
 use Syntax.Ast.{IntegerLiteral}
@@ -10,17 +10,20 @@ use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
   A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer, A64Equal, A64NotEqual,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeI64Division,
-  A64RuntimeI64Remainder, A64RuntimeHostArgs,
+  A64RuntimeI64Remainder, A64RuntimeHostArgs, A64RuntimeAllocate,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual
 }
 use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64FrameSlot,
+  A64EnvironmentSlot,
   A64LinearLabel, A64BasicBlockLabel, A64TrueEdgeLabel, A64FalseEdgeLabel,
   A64LinearInstruction, A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral,
-  A64ReloadSpill, A64SpillRegister, A64AddW, A64AddX, A64SubtractW, A64SubtractX,
+  A64ReloadSpill, A64SpillRegister, A64LoadMemory, A64StoreMemory,
+  A64LoadFunctionAddress, A64ReloadEnvironment, A64SpillEnvironment,
+  A64AddW, A64AddX, A64SubtractW, A64SubtractX,
   A64MultiplyW, A64MultiplyX, A64NegateW, A64NegateX, A64CompareSetW, A64CompareSetX,
-  A64CallDirect, A64CallRuntime,
+  A64CallDirect, A64CallIndirect, A64CallRuntime,
   A64LinearTerminator,
   A64LinearJump, A64LinearBranch, A64LinearReturn, A64LinearTrap,
   A64LinearUnreachable, A64LinearItem, A64LinearLabelItem,
@@ -52,6 +55,7 @@ let zero_register = fn (A64PhysicalRegister { number: _, width }) -> match width
   | A64X64 -> "xzr"
 }
 let slot_offset = fn (A64FrameSlot { value: _, offset, value_type: _ }) -> offset
+let environment_slot_offset = fn (A64EnvironmentSlot { offset }) -> offset
 let label_text = fn symbol -> fn label -> match label {
   | A64BasicBlockLabel(A64Label(NativeBlockId(number))) ->
     ".L" + symbol + "_bb" + decimal_text number
@@ -152,6 +156,21 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
       + (match value { | true -> "1" | false -> "0" }) + "\n")
   | A64ReloadSpill(destination, slot) -> Ok(emit_load_spill destination slot)
   | A64SpillRegister(slot, source) -> Ok(emit_store_spill slot source)
+  | A64LoadMemory(destination, base, offset) -> Ok("ldr " + register_text destination
+      + ", [" + register_text base + ",#" + decimal_text offset + "]\n")
+  | A64StoreMemory(base, offset, source) -> Ok("str " + register_text source
+      + ", [" + register_text base + ",#" + decimal_text offset + "]\n")
+  | A64LoadFunctionAddress(destination, target) -> match (find_function_symbol target functions) {
+    | None -> Err("closure code function is absent from the Codegen function set: "
+        + print_function_id target)
+    | Some(target_symbol) -> Ok("adrp " + register_text destination + ", "
+        + target_symbol + "@PAGE\nadd " + register_text destination + ", "
+        + register_text destination + ", " + target_symbol + "@PAGEOFF\n")
+  }
+  | A64ReloadEnvironment(destination, slot) -> Ok("ldr " + register_text destination
+      + ", [sp,#" + decimal_text (environment_slot_offset slot) + "]\n")
+  | A64SpillEnvironment(slot, source) -> Ok("str " + register_text source
+      + ", [sp,#" + decimal_text (environment_slot_offset slot) + "]\n")
   | A64AddW(destination, left, right) -> Ok("add " + register_text destination + ", "
       + register_text left + ", " + register_text right + "\n")
   | A64AddX(destination, left, right) -> Ok("add " + register_text destination + ", "
@@ -174,6 +193,7 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
   | A64CompareSetX(condition, destination, left, right) -> Ok("cmp " + register_text left
       + ", " + register_text right + "\ncset " + register_text destination + ", "
       + condition_text condition + "\n")
+  | A64CallIndirect(target) -> Ok("blr " + register_text target + "\n")
   | A64CallDirect(target) -> match (find_function_symbol target functions) {
     | None -> Err("direct-call target is absent from the Codegen function set: "
         + print_function_id target)
@@ -184,6 +204,7 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
   | A64CallRuntime(A64RuntimeI64Division) -> Ok("bl _rt_native_i64_div\n")
   | A64CallRuntime(A64RuntimeI64Remainder) -> Ok("bl _rt_native_i64_rem\n")
   | A64CallRuntime(A64RuntimeHostArgs) -> Ok("bl _rt_native_host_args\n")
+  | A64CallRuntime(A64RuntimeAllocate) -> Ok("bl _rt_native_alloc\n")
 }
 
 let trap_immediate = fn reason -> match reason {

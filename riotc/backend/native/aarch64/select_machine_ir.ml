@@ -1,5 +1,5 @@
 // Select the typed scalar, opaque-pointer, and control-flow subset of verified NativeIR.
-use Prelude.{List, Nil, Cons, Result, Ok, Err}
+use Prelude.{List, Nil, Cons, Option, Some, None, Result, Ok, Err}
 use String.{equal}
 use Syntax.Ast.{
   Addition, Subtraction, Multiplication, Division, Remainder, Equal,
@@ -11,8 +11,9 @@ use Check.Inference.{
   InferredVariant, InferredVariantCase, TypeSubstitution, apply_substitutions
 }
 use NativeIr.Ir.{
-  NativeFunction, NativeFunctionId, NativeBlock, NativeBlockId, NativeBlockParameter,
-  NativeValueId, NativeInstruction, NativeConstant, NativeUnit, NativeInteger,
+  NativeFunction, NativeFunctionId, NativeCapture, NativeClosureCapture,
+  NativeBlock, NativeBlockId, NativeBlockParameter, NativeValueId,
+  NativeInstruction, NativeConstant, NativeUnit, NativeInteger,
   NativeBoolean, NativePrimitiveOperation, NativePrimitiveBinary,
   NativePrimitiveNegate, NativeBinaryPrimitive, NativeNegatePrimitive,
   NativeTestValue, NativeValueTest, NativeLiteralTest, NativeConstructorTest,
@@ -21,8 +22,8 @@ use NativeIr.Ir.{
   NativeTuplePatternTest, NativeNestedRecordPatternTest,
   NativeCallOperation, NativeCall, NativeDirectCall,
   NativeClosureCall, NativeHostCall, NativeEffectSet, NativeTerminator,
-  NativeCreateClosure, NativeCreateAggregate, NativeProjectAggregate,
-  NativeLoadGlobal, NativeStoreGlobal,
+  NativeCreateClosure, NativeClosure, NativeLoadCapture,
+  NativeCreateAggregate, NativeProjectAggregate, NativeLoadGlobal, NativeStoreGlobal,
   NativeJump, NativeConditionalBranch,
   NativeBranch, NativeReturn, NativeTrap, NativeUnreachable, NativeSwitchTerminator,
   NativeEdge
@@ -30,8 +31,11 @@ use NativeIr.Ir.{
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
+  A64CallArgument, A64CaptureField, A64ClosureLayout, A64ClosureCaptureValue,
+  A64ClosureAllocation, A64ClosureCallSite,
   A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
-  A64HostCall, A64CallArgument, A64RuntimeCall, A64RuntimeCallSite,
+  A64ClosureCall, A64CreateClosure, A64LoadCapture,
+  A64HostCall, A64RuntimeCall, A64RuntimeCallSite,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeI64Division,
   A64RuntimeI64Remainder, A64AddI32, A64SubtractI32,
   A64MultiplyI32, A64AddI64, A64SubtractI64, A64MultiplyI64, A64CompareI64,
@@ -130,6 +134,131 @@ let is_value_type = fn expected -> fn checked_type -> fn substitutions ->
     | Err(_) -> false
     | Ok(actual) -> same_value_type expected actual
   }
+
+type A64CaptureLayoutProgress = A64CaptureLayoutProgress {
+  fields: List<A64CaptureField>,
+  next_offset: i32
+}
+
+let capture_size_alignment = fn value_type -> match value_type {
+  | A64Unit -> (0, 1)
+  | A64I32 -> (4, 4)
+  | A64Boolean -> (4, 4)
+  | A64I64 -> (8, 8)
+  | A64Pointer -> (8, 8)
+}
+
+let align_capture_offset = fn offset -> fn alignment -> match (offset % alignment) {
+  | 0 -> offset
+  | remainder -> offset + (alignment - remainder)
+}
+
+let layout_capture_fields = fn captures -> fn index -> fn offset -> fn substitutions ->
+  match captures {
+    | Nil -> Ok(A64CaptureLayoutProgress { fields: Nil, next_offset: offset })
+    | Cons(NativeCapture { binding, checked_type, span }, remaining) -> match
+        (native_type checked_type substitutions) {
+      | Err(message) -> Err("closure capture has no AArch64 representation: " + message)
+      | Ok(value_type) -> {
+        let (size, alignment) = capture_size_alignment value_type;
+        let field_offset = align_capture_offset offset alignment;
+        let field_limit = match size {
+          | 0 -> 2147483647
+          | 4 -> 16380
+          | _ -> 32760
+        };
+        match (field_offset > field_limit) {
+          | true -> Err("closure capture layout exceeds the AArch64 immediate range")
+          | false -> match (field_offset > 2147483647 - size) {
+            | true -> Err("closure capture layout exceeds the supported 32-bit size")
+            | false -> match (layout_capture_fields remaining (index + 1)
+                (field_offset + size) substitutions) {
+              | Err(message) -> Err(message)
+              | Ok(A64CaptureLayoutProgress { fields, next_offset }) -> Ok(
+                A64CaptureLayoutProgress {
+                  fields: Cons(A64CaptureField {
+                    index: index,
+                    binding: binding,
+                    value_type: value_type,
+                    offset: field_offset,
+                    size: size,
+                    alignment: alignment,
+                    span: span
+                  }, fields),
+                  next_offset: next_offset
+                }
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+
+let layout_native_captures = fn captures -> fn substitutions ->
+  match (layout_capture_fields captures 0 8 substitutions) {
+    | Err(message) -> Err(message)
+    | Ok(A64CaptureLayoutProgress { fields, next_offset }) -> match
+        (next_offset > 2147483640) {
+      | true -> Err("closure allocation size exceeds the supported 32-bit size")
+      | false -> {
+        let allocation_size = align_capture_offset next_offset 8;
+        Ok(A64ClosureLayout {
+          fields: fields,
+          environment_size: next_offset - 8,
+          allocation_size: allocation_size
+        })
+      }
+    }
+  }
+
+let closure_capture_metadata = fn captures -> match captures {
+  | Nil -> Nil
+  | Cons(NativeClosureCapture { capture, value: _ }, remaining) ->
+    Cons(capture, closure_capture_metadata remaining)
+}
+
+let attach_capture_values = fn (fields: List<A64CaptureField>) ->
+  fn (captures: List<NativeClosureCapture>) -> match fields {
+  | Nil -> match captures {
+    | Nil -> Ok(Nil)
+    | _ -> Err("closure capture count differs from its computed layout")
+  }
+  | Cons(field, remaining_fields) -> match captures {
+    | Nil -> Err("closure capture count differs from its computed layout")
+    | Cons(NativeClosureCapture { capture: _, value }, remaining_captures) ->
+      match (attach_capture_values remaining_fields remaining_captures) {
+        | Err(message) -> Err(message)
+        | Ok(rest) -> Ok(Cons(A64ClosureCaptureValue {
+          field: field,
+          register: native_register value
+        }, rest))
+      }
+  }
+}
+
+let find_capture_field = fn (wanted: i32) ->
+  fn (fields: List<A64CaptureField>) -> match fields {
+  | Nil -> None
+  | Cons(A64CaptureField {
+      index, binding, value_type, offset, size, alignment, span
+    }, remaining) -> match (index == wanted) {
+    | true -> Some(A64CaptureField {
+      index: index,
+      binding: binding,
+      value_type: value_type,
+      offset: offset,
+      size: size,
+      alignment: alignment,
+      span: span
+    })
+    | false -> find_capture_field wanted remaining
+  }
+}
+
+let closure_layout_fields = fn (A64ClosureLayout {
+  fields, environment_size: _, allocation_size: _
+}) -> fields
 
 // Keep this helper's result concrete: module-level values remain monomorphic
 // while Riotc checks the module, so callers must wrap the failure in `Err`.
@@ -309,7 +438,7 @@ let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
 let select_call_target = fn target -> match target {
   | NativeDirectCall(function) -> Ok(A64DirectCall(function))
   | NativeHostCall(binding) -> Ok(A64HostCall(binding))
-  | NativeClosureCall(_) -> Err("closure calls require a selected closure representation")
+  | NativeClosureCall(_) -> Err("closure target must use the AArch64 closure-call pseudo")
 }
 
 let select_call_arguments = fn values -> fn argument_types -> fn substitutions ->
@@ -336,20 +465,27 @@ let select_call_arguments = fn values -> fn argument_types -> fn substitutions -
 
 let select_call_site = fn target -> fn arguments -> fn argument_types ->
   fn call_result -> fn instruction_result -> fn substitutions -> {
-  match (select_call_target target) {
+  match (select_call_arguments arguments argument_types substitutions) {
     | Err(message) -> Err(message)
-    | Ok(machine_target) -> match (select_call_arguments arguments argument_types substitutions) {
-      | Err(message) -> Err(message)
-      | Ok(machine_arguments) -> match (native_type call_result substitutions) {
-        | Err(message) -> Err("call result: " + message)
-        | Ok(machine_result) -> match (is_value_type machine_result
-            instruction_result substitutions) {
-          | false -> Err("call result type disagrees with its NativeIR definition")
-          | true -> Ok(A64CallSite {
-            target: machine_target,
+    | Ok(machine_arguments) -> match (native_type call_result substitutions) {
+      | Err(message) -> Err("call result: " + message)
+      | Ok(machine_result) -> match (is_value_type machine_result
+          instruction_result substitutions) {
+        | false -> Err("call result type disagrees with its NativeIR definition")
+        | true -> match target {
+          | NativeClosureCall(closure) -> Ok(A64ClosureCall(A64ClosureCallSite {
+            closure: native_register closure,
             arguments: machine_arguments,
             result_type: machine_result
-          })
+          }))
+          | _ -> match (select_call_target target) {
+            | Err(message) -> Err(message)
+            | Ok(machine_target) -> Ok(A64Call(A64CallSite {
+              target: machine_target,
+              arguments: machine_arguments,
+              result_type: machine_result
+            }))
+          }
         }
       }
     }
@@ -374,7 +510,8 @@ let select_literal_test = fn value -> fn constant -> fn result_type ->
     }
   }
 
-let select_operation = fn operation -> fn result_type -> fn substitutions -> match operation {
+let select_operation = fn operation -> fn result_type ->
+  fn (capture_layout: A64ClosureLayout) -> fn substitutions -> match operation {
   | NativeConstant(NativeUnit) -> match (is_value_type A64Unit result_type substitutions) {
     | true -> Ok(A64LoadUnit)
     | false -> Err("unit constant must have type unit")
@@ -416,16 +553,47 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
     }) -> Err("record patterns require explicit runtime representation lowering")
   | NativeProjectAggregate(_) -> Err("aggregate projections are outside the AArch64 selector")
   | NativeCreateAggregate(_) -> Err("aggregate construction is outside the AArch64 selector")
-  | NativeCreateClosure(_) -> Err("closure creation requires a concrete native closure layout")
+  | NativeCreateClosure(NativeClosure { function, captures }) -> {
+    let metadata = closure_capture_metadata captures;
+    match (layout_native_captures metadata substitutions) {
+      | Err(message) -> Err(message)
+      | Ok(layout) -> match (attach_capture_values
+          (closure_layout_fields layout) captures) {
+        | Err(message) -> Err(message)
+        | Ok(capture_values) -> match (is_value_type A64Pointer result_type substitutions) {
+          | false -> Err("closure creation must produce a pointer-shaped function value")
+          | true -> Ok(A64CreateClosure(A64ClosureAllocation {
+            function: function,
+            layout: layout,
+            captures: capture_values
+          }))
+        }
+      }
+    }
+  }
+  | NativeLoadCapture(index) -> match (find_capture_field index
+      (closure_layout_fields capture_layout)) {
+    | None -> Err("capture load is absent from the selected function layout")
+    | Some(A64CaptureField { index, binding, value_type, offset, size, alignment, span }) ->
+      match (is_value_type value_type result_type substitutions) {
+        | true -> Ok(A64LoadCapture(A64CaptureField {
+          index: index,
+          binding: binding,
+          value_type: value_type,
+          offset: offset,
+          size: size,
+          alignment: alignment,
+          span: span
+        }))
+        | false -> Err("capture load type differs from its selected field")
+      }
+  }
   | NativeLoadGlobal(_) -> Err("module global loads are outside the AArch64 selector")
   | NativeStoreGlobal(_) -> Err("module global stores are outside the AArch64 selector")
   | NativeCallOperation(NativeCall {
       target, arguments, argument_types, result_type: call_result
-    }) -> match (select_call_site target arguments argument_types call_result
-        result_type substitutions) {
-      | Err(message) -> Err(message)
-      | Ok(call_site) -> Ok(A64Call(call_site))
-    }
+    }) -> select_call_site target arguments argument_types call_result
+        result_type substitutions
   | NativePrimitiveOperation(NativePrimitiveNegate(NativeNegatePrimitive {
       operand_type, operand
     })) -> match (native_type operand_type substitutions) {
@@ -445,6 +613,7 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
 
 let operation_is_call = fn operation -> match operation {
   | NativeCallOperation(_) -> true
+  | NativeCreateClosure(_) -> true
   | NativePrimitiveOperation(NativePrimitiveBinary(NativeBinaryPrimitive {
       operator: Division, operand_type: _, left: _, right: _
     })) -> true
@@ -455,9 +624,9 @@ let operation_is_call = fn operation -> match operation {
 }
 
 let select_instruction = fn function_identity -> fn block_identity ->
-  fn substitutions -> fn (NativeInstruction {
+  fn capture_layout -> fn substitutions -> fn (NativeInstruction {
     result, result_type, operation, effects: NativeEffectSet(effects), span
-  }) -> match (select_operation operation result_type substitutions) {
+  }) -> match (select_operation operation result_type capture_layout substitutions) {
     | Err(reason) -> Err(selection_failure function_identity block_identity span reason)
     | Ok(machine_operation) -> match (operation_is_call operation) {
       | true -> match (native_type result_type substitutions) {
@@ -506,13 +675,13 @@ let select_block_parameters = fn function_identity -> fn block_identity ->
   }
 
 let select_instructions = fn function_identity -> fn block_identity ->
-  fn substitutions -> fn instructions -> match instructions {
+  fn capture_layout -> fn substitutions -> fn instructions -> match instructions {
     | Nil -> Ok(Nil)
     | Cons(instruction, remaining) -> match (select_instruction function_identity
-        block_identity substitutions instruction) {
+        block_identity capture_layout substitutions instruction) {
       | Err(failure) -> Err(failure)
       | Ok(selected) -> match (select_instructions function_identity block_identity
-          substitutions remaining) {
+          capture_layout substitutions remaining) {
         | Err(failure) -> Err(failure)
         | Ok(rest) -> Ok(Cons(selected, rest))
       }
@@ -545,12 +714,12 @@ let select_terminator = fn function_identity -> fn block_identity ->
         "switch terminators are not in the AArch64 scalar selector subset")
   }
 
-let select_block = fn function_identity -> fn substitutions ->
+let select_block = fn function_identity -> fn capture_layout -> fn substitutions ->
   fn (NativeBlock { identity, parameters, instructions, terminator, span }) ->
   match (select_block_parameters function_identity identity substitutions parameters) {
     | Err(failure) -> Err(failure)
     | Ok(machine_parameters) -> match (select_instructions function_identity identity
-        substitutions instructions) {
+        capture_layout substitutions instructions) {
       | Err(failure) -> Err(failure)
       | Ok(machine_instructions) -> match (select_terminator function_identity identity
           span terminator) {
@@ -566,11 +735,11 @@ let select_block = fn function_identity -> fn substitutions ->
     }
   }
 
-let select_blocks = fn function_identity -> fn substitutions -> fn blocks -> match blocks {
+let select_blocks = fn function_identity -> fn capture_layout -> fn substitutions -> fn blocks -> match blocks {
   | Nil -> Ok(Nil)
-  | Cons(block, remaining) -> match (select_block function_identity substitutions block) {
+  | Cons(block, remaining) -> match (select_block function_identity capture_layout substitutions block) {
     | Err(failure) -> Err(failure)
-    | Ok(selected) -> match (select_blocks function_identity substitutions remaining) {
+    | Ok(selected) -> match (select_blocks function_identity capture_layout substitutions remaining) {
       | Err(failure) -> Err(failure)
       | Ok(rest) -> Ok(Cons(selected, rest))
     }
@@ -580,23 +749,22 @@ let select_blocks = fn function_identity -> fn substitutions -> fn blocks -> mat
 // The caller must verify the NativeIR module first. This stage preserves its
 // SSA IDs, CFG edges, and spans; no physical register or calling convention is chosen.
 let select_function = fn (NativeFunction {
-  identity, result_type, entry, blocks, span
-}) -> fn substitutions -> match (native_type result_type substitutions) {
-  | Err(reason) -> match blocks {
-    | Cons(NativeBlock { identity: block, span: block_span, parameters: _, instructions: _,
-        terminator: _ }, _) -> Err(selection_failure identity block block_span reason)
-    | Nil -> Err(A64SelectionFailure {
-      function: identity, block: NativeBlockId(0), span: span, reason: reason
-    })
-  }
-  | Ok(machine_result_type) -> match (select_blocks identity substitutions blocks) {
-    | Err(failure) -> Err(failure)
-    | Ok(machine_blocks) -> Ok(A64Function {
-      identity: identity,
-      result_type: machine_result_type,
-      entry: native_label entry,
-      blocks: machine_blocks,
-      span: span
-    })
+  identity, captures, result_type, entry, blocks, span
+}) -> fn substitutions -> match (layout_native_captures captures substitutions) {
+  | Err(reason) -> Err(selection_failure identity entry span reason)
+  | Ok(capture_layout) -> match (native_type result_type substitutions) {
+    | Err(reason) -> Err(selection_failure identity entry span reason)
+    | Ok(machine_result_type) -> match (select_blocks identity capture_layout
+        substitutions blocks) {
+      | Err(failure) -> Err(failure)
+      | Ok(machine_blocks) -> Ok(A64Function {
+        identity: identity,
+        result_type: machine_result_type,
+        capture_layout: capture_layout,
+        entry: native_label entry,
+        blocks: machine_blocks,
+        span: span
+      })
+    }
   }
 }

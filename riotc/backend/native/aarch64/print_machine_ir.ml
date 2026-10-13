@@ -17,9 +17,11 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadBoolean, A64TestUnitLiteral,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
-  A64CallArgument, A64RuntimeCall, A64RuntimeCallSite, A64RuntimeI32Division,
+  A64CallArgument, A64ClosureCall, A64ClosureCallSite, A64CreateClosure,
+  A64ClosureAllocation, A64ClosureLayout, A64ClosureCaptureValue,
+  A64CaptureField, A64LoadCapture, A64RuntimeCall, A64RuntimeCallSite, A64RuntimeI32Division,
   A64RuntimeI32Remainder, A64RuntimeI64Division, A64RuntimeI64Remainder,
-  A64RuntimeHostArgs,
+  A64RuntimeHostArgs, A64RuntimeAllocate,
   A64AddI32, A64SubtractI32, A64MultiplyI32, A64AddI64, A64SubtractI64,
   A64MultiplyI64, A64CompareI32, A64CompareI64,
   A64EqualBoolean, A64NotEqualBoolean, A64NegateI32, A64NegateI64,
@@ -83,6 +85,7 @@ let print_runtime_helper = fn helper -> match helper {
   | A64RuntimeI64Division -> "rt_native_i64_div"
   | A64RuntimeI64Remainder -> "rt_native_i64_rem"
   | A64RuntimeHostArgs -> "rt_native_host_args"
+  | A64RuntimeAllocate -> "rt_native_alloc"
 }
 
 let print_call_arguments = fn arguments -> match arguments {
@@ -92,6 +95,26 @@ let print_call_arguments = fn arguments -> match arguments {
   | Cons(A64CallArgument { register, value_type }, remaining) ->
     print_register register + ":" + print_value_type value_type + ", "
       + print_call_arguments remaining
+}
+
+let print_capture_field = fn (A64CaptureField {
+  index, binding, value_type, offset, size: _, alignment: _, span: _
+}) -> "#" + decimal_text index + " " + print_binding binding + "@+"
+  + decimal_text offset + ":" + print_value_type value_type
+
+let print_capture_fields = fn fields -> match fields {
+  | Nil -> ""
+  | Cons(field, Nil) -> print_capture_field field
+  | Cons(field, remaining) -> print_capture_field field + ", " + print_capture_fields remaining
+}
+
+let print_closure_capture_values = fn captures -> match captures {
+  | Nil -> ""
+  | Cons(A64ClosureCaptureValue { field, register }, Nil) ->
+    print_capture_field field + "=" + print_register register
+  | Cons(A64ClosureCaptureValue { field, register }, remaining) ->
+    print_capture_field field + "=" + print_register register + ", "
+      + print_closure_capture_values remaining
 }
 
 let print_effect = fn effect -> match effect {
@@ -136,6 +159,15 @@ let print_operation = fn operation -> match operation {
   | A64Call(A64CallSite { target, arguments, result_type }) ->
     "call " + print_call_target target + "(" + print_call_arguments arguments
       + ") -> " + print_value_type result_type
+  | A64ClosureCall(A64ClosureCallSite { closure, arguments, result_type }) ->
+    "closure_call " + print_register closure + "("
+      + print_call_arguments arguments + ") -> " + print_value_type result_type
+  | A64CreateClosure(A64ClosureAllocation {
+      function, layout: A64ClosureLayout { fields: _, environment_size, allocation_size }, captures
+    }) -> "create_closure " + print_function_id function + " env="
+      + decimal_text environment_size + " bytes=" + decimal_text allocation_size
+      + " [" + print_closure_capture_values captures + "]"
+  | A64LoadCapture(field) -> "load_capture " + print_capture_field field
   | A64RuntimeCall(A64RuntimeCallSite { helper, arguments, result_type }) ->
     "call runtime " + print_runtime_helper helper + "("
       + print_call_arguments arguments + ") -> " + print_value_type result_type
@@ -221,10 +253,18 @@ let print_blocks = fn blocks -> match blocks {
 }
 
 let print_function = fn (A64Function {
-  identity, result_type, entry, blocks, span: _
-}) -> "function " + print_function_id identity + " -> "
-  + print_value_type result_type + " entry " + print_label entry + " {\n"
-  + print_blocks blocks + "}\n"
+  identity, result_type,
+  capture_layout: A64ClosureLayout { fields, environment_size: _, allocation_size: _ },
+  entry, blocks, span: _
+}) -> {
+  let capture_suffix = match fields {
+    | Nil -> ""
+    | _ -> " captures [" + print_capture_fields fields + "]"
+  };
+  "function " + print_function_id identity + " -> "
+    + print_value_type result_type + capture_suffix + " entry " + print_label entry + " {\n"
+    + print_blocks blocks + "}\n"
+}
 
 let print_failure = fn (A64SelectionFailure {
   function, block: NativeBlockId(block),

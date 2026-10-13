@@ -1,5 +1,5 @@
 // ABI, scalar/pointer spill, unit-erasure, edge-copy, and rejection fixtures.
-use Prelude.{List, Nil, Cons, Result, Ok, Err, Some}
+use Prelude.{List, Nil, Cons, Result, Ok, Err, Some, None}
 use String.{equal}
 use Host.{write_stdout, write_stderr}
 use Syntax.Ast.{ValueName, IntegerLiteral}
@@ -11,7 +11,8 @@ use NativeIr.Ir.{
 }
 use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64Unit, A64I32, A64Boolean, A64Pointer,
-  A64Function, A64Block, A64BlockParameter, A64Instruction, A64LoadUnit,
+  A64Function, A64ClosureLayout, A64CaptureField, A64Block, A64BlockParameter,
+  A64Instruction, A64LoadUnit,
   A64LoadI32, A64LoadBoolean, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64AddI32, A64BinaryOperands,
   A64Edge, A64Branch, A64Jump, A64ConditionalBranch, A64Return
@@ -21,8 +22,11 @@ use Backend.Native.Aarch64.VerifyLinearIr.{verify_function}
 use Backend.Native.Aarch64.PrintLinearIr.{print_function}
 use Backend.Native.Aarch64.LinearIr.{
   A64BasicBlockLabel, A64LinearFunction, A64LinearFailure,
-  A64FrameSlot, A64ValueLocation, A64LinearItem, A64LinearLabelItem,
-  A64LinearTerminatorItem, A64LinearReturn
+  A64FrameSlot, A64EnvironmentSlot, A64ValueLocation, A64PhysicalRegister,
+  A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
+  A64LinearTerminatorItem, A64LinearReturn, A64ReloadSpill,
+  A64LoadMemory, A64ReloadEnvironment, A64SpillEnvironment, A64CallIndirect,
+  A64SpillRegister, x0, x9, x10, x16, w0, w1, w10
 }
 
 let module_name = "linear-ir-test"
@@ -41,8 +45,12 @@ let nested_callee = NativeNestedFunction(NativeNestedFunctionId {
   ordinal: 0
 })
 let empty_effects = NativeEffectSet(Nil)
+let empty_capture_layout = A64ClosureLayout {
+  fields: Nil, environment_size: 0, allocation_size: 8
+}
 
 let scalar_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "scalar",
   result_type: A64I32,
   entry: A64Label(NativeBlockId(0)),
@@ -66,6 +74,7 @@ let scalar_function = A64Function {
 }
 
 let unit_entry_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "unit_entry",
   result_type: A64I32,
   entry: A64Label(NativeBlockId(0)),
@@ -84,6 +93,7 @@ let unit_entry_function = A64Function {
 }
 
 let direct_call_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "caller",
   result_type: A64I32,
   entry: A64Label(NativeBlockId(0)),
@@ -108,6 +118,7 @@ let direct_call_function = A64Function {
 }
 
 let pointer_identity_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "pointer_identity",
   result_type: A64Pointer,
   entry: A64Label(NativeBlockId(0)),
@@ -123,6 +134,7 @@ let pointer_identity_function = A64Function {
 }
 
 let pointer_direct_call_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "pointer_caller",
   result_type: A64Pointer,
   entry: A64Label(NativeBlockId(0)),
@@ -147,6 +159,7 @@ let pointer_direct_call_function = A64Function {
 }
 
 let pointer_branch_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "pointer_branch",
   result_type: A64Pointer,
   entry: A64Label(NativeBlockId(0)),
@@ -189,6 +202,7 @@ let pointer_branch_function = A64Function {
 }
 
 let unit_direct_call_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "unit_caller",
   result_type: A64I32,
   entry: A64Label(NativeBlockId(0)),
@@ -213,6 +227,7 @@ let unit_direct_call_function = A64Function {
 }
 
 let unit_return_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "unit_return",
   result_type: A64Unit,
   entry: A64Label(NativeBlockId(0)),
@@ -231,6 +246,7 @@ let unit_return_function = A64Function {
 }
 
 let branch_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "branch_values",
   result_type: A64I32,
   entry: A64Label(NativeBlockId(0)),
@@ -271,6 +287,7 @@ let branch_function = A64Function {
 }
 
 let nested_call_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "nested_caller",
   result_type: A64Unit,
   entry: A64Label(NativeBlockId(0)),
@@ -295,6 +312,7 @@ let nested_call_function = A64Function {
 }
 
 let host_call_function = A64Function {
+  capture_layout: empty_capture_layout,
   identity: function_id "host_call",
   result_type: A64Unit,
   entry: A64Label(NativeBlockId(0)),
@@ -329,6 +347,8 @@ let check_nested_rejection = fn machine_function -> match (lower_function machin
 }
 
 let invalid_frame_function = A64LinearFunction {
+  capture_layout: empty_capture_layout,
+  environment_slot: None,
   identity: function_id "invalid_frame",
   result_type: A64I32,
   entry: A64BasicBlockLabel(A64Label(NativeBlockId(0))),
@@ -338,7 +358,73 @@ let invalid_frame_function = A64LinearFunction {
   span: span
 }
 
+let invalid_capture_layout = A64ClosureLayout {
+  fields: Cons(A64CaptureField {
+    index: 0, binding: binding "captured", value_type: A64I32,
+    offset: 12, size: 4, alignment: 4, span: span
+  }, Nil),
+  environment_size: 8, allocation_size: 24
+}
+
+let invalid_capture_layout_function = A64LinearFunction {
+  capture_layout: invalid_capture_layout,
+  environment_slot: Some(A64EnvironmentSlot { offset: 0 }),
+  identity: function_id "invalid_capture_layout",
+  result_type: A64I32,
+  entry: A64BasicBlockLabel(A64Label(NativeBlockId(0))),
+  values: Nil,
+  frame_size: 16,
+  items: Nil,
+  span: span
+}
+
+let valid_closure_capture_layout = A64ClosureLayout {
+  fields: Cons(A64CaptureField {
+    index: 0, binding: binding "captured", value_type: A64I32,
+    offset: 8, size: 4, alignment: 4, span: span
+  }, Nil),
+  environment_size: 4, allocation_size: 16
+}
+
+let closure_pointer_slot = A64FrameSlot {
+  value: A64VirtualRegister(0), offset: 0, value_type: A64Pointer
+}
+let closure_argument_slot = A64FrameSlot {
+  value: A64VirtualRegister(1), offset: 8, value_type: A64I32
+}
+let closure_environment_slot = A64EnvironmentSlot { offset: 16 }
+let closure_block_label = A64BasicBlockLabel(A64Label(NativeBlockId(0)))
+
+let closure_call_function = fn argument_register -> A64LinearFunction {
+  capture_layout: valid_closure_capture_layout,
+  environment_slot: Some(closure_environment_slot),
+  identity: function_id "closure_call",
+  result_type: A64I32,
+  entry: closure_block_label,
+  values: Cons(A64ValueLocation {
+    value: A64VirtualRegister(0), value_type: A64Pointer,
+    slot: Some(closure_pointer_slot)
+  }, Cons(A64ValueLocation {
+    value: A64VirtualRegister(1), value_type: A64I32,
+    slot: Some(closure_argument_slot)
+  }, Nil)),
+  frame_size: 32,
+  items: Cons(A64LinearLabelItem(closure_block_label),
+    Cons(A64LinearInstructionItem(A64SpillEnvironment(closure_environment_slot, x0)),
+    Cons(A64LinearInstructionItem(A64ReloadEnvironment(x9, closure_environment_slot)),
+    Cons(A64LinearInstructionItem(A64LoadMemory(w10, x9, 8)),
+    Cons(A64LinearInstructionItem(A64ReloadSpill(x9, closure_pointer_slot)),
+    Cons(A64LinearInstructionItem(A64LoadMemory(x16, x9, 0)),
+    Cons(A64LinearInstructionItem(A64ReloadSpill(x0, closure_pointer_slot)),
+    Cons(A64LinearInstructionItem(A64ReloadSpill(argument_register, closure_argument_slot)),
+    Cons(A64LinearInstructionItem(A64CallIndirect(x16)),
+    Cons(A64LinearTerminatorItem(A64LinearReturn), Nil)))))))))),
+  span: span
+}
+
 let invalid_overlapping_slots = A64LinearFunction {
+  capture_layout: empty_capture_layout,
+  environment_slot: None,
   identity: function_id "invalid_overlapping_slots",
   result_type: A64I32,
   entry: A64BasicBlockLabel(A64Label(NativeBlockId(0))),
@@ -407,7 +493,16 @@ let main = fn () -> match (run_and_print scalar_function) {
                 | 1 -> 1
                 | 0 -> match (verify_function invalid_frame_function) {
                   | Err(_) -> match (verify_function invalid_overlapping_slots) {
-                    | Err(_) -> check_pointer_fixtures()
+                    | Err(_) -> match (verify_function invalid_capture_layout_function) {
+                      | Err(_) -> match (verify_function (closure_call_function w1)) {
+                        | Ok(_) -> match (verify_function (closure_call_function w0)) {
+                          | Err(_) -> check_pointer_fixtures()
+                          | Ok(_) -> 1
+                        }
+                        | Err(_) -> 1
+                      }
+                      | Ok(_) -> 1
+                    }
                     | Ok(_) -> 1
                   }
                   | Ok(_) -> 1
