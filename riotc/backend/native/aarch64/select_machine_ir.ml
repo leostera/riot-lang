@@ -384,7 +384,7 @@ let select_operation = fn operation -> fn result_type -> fn substitutions -> mat
     }) -> Err("record patterns require explicit runtime representation lowering")
   | NativeProjectAggregate(_) -> Err("aggregate projections are outside the AArch64 selector")
   | NativeCreateAggregate(_) -> Err("aggregate construction is outside the AArch64 selector")
-  | NativeCreateClosure(_) -> Err("closure creation is outside the AArch64 selector")
+  | NativeCreateClosure(_) -> Err("closure creation requires a concrete native closure layout")
   | NativeLoadGlobal(_) -> Err("module global loads are outside the AArch64 selector")
   | NativeStoreGlobal(_) -> Err("module global stores are outside the AArch64 selector")
   | NativeCallOperation(NativeCall {

@@ -113,11 +113,14 @@ their target is present in the Codegen function set (currently one function
 for this CLI).
 
 `aarch64-compile-direct-graph SOURCE ENTRY -o OUTPUT` expands the Codegen set
-to the entry's reachable same-module `NativeDirectCall` targets. It accepts
-only a single-block, no-parameter initializer with a return terminator and
-instructions limited to zero-capture closure creation, global stores, and unit
-constants; it verifies and skips that initializer. Selected functions that
-load globals still fail in selection. It does not include unrelated functions,
+to the entry's reachable same-module `NativeDirectCall` targets. Entry-specific
+lowering conservatively requires every root value declaration to be a top-level
+function, then accepts only a single-block, no-parameter initializer with a
+return terminator and instructions limited to zero-capture closure creation,
+global stores, and unit constants; it verifies and skips that initializer.
+Selected functions that load globals fail in selection. Closure creation in a
+selected function fails explicitly because no concrete native closure layout
+has been selected. It does not include unrelated functions,
 imported closure targets, or general module initialization, so it is not a
 whole-module compiler.
 

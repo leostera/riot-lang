@@ -1063,6 +1063,34 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     assert!(!global_initializer_executable.exists());
     assert!(!global_initializer_assembly.exists());
 
+    let closure_source = dir.join("closure.ml");
+    fs::write(
+        &closure_source,
+        "let main = fn () -> { let identity = fn (value: i32) -> value; identity 42 }\n",
+    )
+    .unwrap();
+    let closure_executable = dir.join("closure.native");
+    let closure_assembly = dir.join("closure.native.aarch64.s");
+    fs::write(&closure_executable, "stale executable").unwrap();
+    fs::write(&closure_assembly, "stale assembly").unwrap();
+    let closure_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&closure_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&closure_executable)
+        .output()
+        .unwrap();
+    assert!(!closure_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&closure_compile.stderr)
+            .contains("closure creation requires a concrete native closure layout")
+    );
+    assert!(!closure_executable.exists());
+    assert!(!closure_assembly.exists());
+
     let host_args_source = dir.join("host-args.ml");
     fs::write(
         &host_args_source,
