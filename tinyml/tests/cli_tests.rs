@@ -4352,34 +4352,53 @@ fn c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript() {
         .unwrap();
     assert_eq!(multi_capture_run.status.code(), Some(42));
 
-    let unsupported_string_source = dir.join("unsupported-string-native.ml");
-    let unsupported_string_executable = dir.join("unsupported-string-native");
-    let unsupported_string_assembly = dir.join("unsupported-string-native.aarch64.s");
-    fs::write(
-        &unsupported_string_source,
-        "let main = fn () -> { let message = \"native\"; 42 }\n",
-    )
-    .unwrap();
-    fs::write(&unsupported_string_executable, "stale executable").unwrap();
-    fs::write(&unsupported_string_assembly, "stale assembly").unwrap();
-    let unsupported_string_compile = Command::new(&bootstrap_compiler)
-        .current_dir(repo)
-        .env("PATH", no_node_path)
-        .env("RIOTML_RUNTIME_DIR", runtime_directory)
-        .arg("aarch64-compile-direct-graph")
-        .arg(&unsupported_string_source)
-        .arg("main")
-        .arg("-o")
-        .arg(&unsupported_string_executable)
-        .output()
-        .unwrap();
-    assert!(!unsupported_string_compile.status.success());
-    assert!(
-        String::from_utf8_lossy(&unsupported_string_compile.stderr)
-            .contains("string constants are outside the scalar selector")
-    );
-    assert!(!unsupported_string_executable.exists());
-    assert!(!unsupported_string_assembly.exists());
+    let unsupported_programs = [
+        (
+            "string",
+            "let main = fn () -> { let message = \"native\"; 42 }\n",
+            "string constants are outside the scalar selector",
+        ),
+        (
+            "aggregate",
+            "let main = fn () -> { let pair = (40, 2); 42 }\n",
+            "aggregate construction is outside the AArch64 selector",
+        ),
+        (
+            "host",
+            "use Host.{current_directory}\nlet main = fn () -> current_directory ()\n",
+            "unsupported Host helper `current_directory` requires explicit boundary marshalling",
+        ),
+    ];
+    for (name, source, expected_diagnostic) in unsupported_programs {
+        let source_path = dir.join(format!("unsupported-{name}-native.ml"));
+        let executable_path = dir.join(format!("unsupported-{name}-native"));
+        let assembly_path = dir.join(format!("unsupported-{name}-native.aarch64.s"));
+        fs::write(&source_path, source).unwrap();
+        fs::write(&executable_path, "stale executable").unwrap();
+        fs::write(&assembly_path, "stale assembly").unwrap();
+        let compile = Command::new(&bootstrap_compiler)
+            .current_dir(repo)
+            .env("PATH", no_node_path)
+            .env("RIOTML_RUNTIME_DIR", runtime_directory)
+            .arg("aarch64-compile-direct-graph")
+            .arg(&source_path)
+            .arg("main")
+            .arg("-o")
+            .arg(&executable_path)
+            .output()
+            .unwrap();
+        assert!(
+            !compile.status.success(),
+            "unsupported {name} unexpectedly compiled"
+        );
+        assert!(
+            String::from_utf8_lossy(&compile.stderr).contains(expected_diagnostic),
+            "unexpected {name} diagnostic: {}",
+            String::from_utf8_lossy(&compile.stderr)
+        );
+        assert!(!executable_path.exists());
+        assert!(!assembly_path.exists());
+    }
 
     let invalid_source = dir.join("invalid-native.ml");
     let invalid_executable = dir.join("invalid-native");

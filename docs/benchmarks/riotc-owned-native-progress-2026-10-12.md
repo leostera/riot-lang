@@ -217,9 +217,11 @@ corpus tests, 1 module test, and 1 pipeline API test). `cargo fmt --all --
 --check` and `git diff --check` also passed. The CLI suite includes existing
 Node-dependent tests; the acceptance-specific Stage 0 → C-hosted compiler →
 native closure test separately runs with `PATH=/usr/bin:/bin`. That test also
-confirms a string literal, still unsupported by the owned selector, fails
-before Codegen and removes stale executable/assembly artifacts. The focused
-no-Node acceptance regression also exercises a nested escaping closure that
+confirms a string literal and tuple construction, still unsupported by the
+owned selector, fail before Codegen; it also confirms an unsupported
+`Host.current_directory` call is rejected during LinearIR lowering. Each case
+removes stale executable/assembly artifacts. The focused no-Node acceptance
+regression also exercises a nested escaping closure that
 captures an `i32` at offset 8 and an `i64` at offset 16; the executable returns
 42.
 
