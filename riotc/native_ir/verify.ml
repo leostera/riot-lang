@@ -1187,12 +1187,12 @@ let verify_binary_result_type = fn operator -> fn operand_type -> fn result_type
     | Multiplication -> verify_integer_binary_result operand_type result_type substitutions
     | Division -> verify_i32_binary_result operand_type result_type substitutions
     | Remainder -> verify_i32_binary_result operand_type result_type substitutions
-    | Equal -> verify_boolean_result result_type substitutions
-    | NotEqual -> verify_boolean_result result_type substitutions
-    | LessThan -> verify_boolean_result result_type substitutions
-    | LessThanOrEqual -> verify_boolean_result result_type substitutions
-    | GreaterThan -> verify_boolean_result result_type substitutions
-    | GreaterThanOrEqual -> verify_boolean_result result_type substitutions
+    | Equal -> verify_equality_result operand_type result_type substitutions
+    | NotEqual -> verify_equality_result operand_type result_type substitutions
+    | LessThan -> verify_integer_comparison_result operand_type result_type substitutions
+    | LessThanOrEqual -> verify_integer_comparison_result operand_type result_type substitutions
+    | GreaterThan -> verify_integer_comparison_result operand_type result_type substitutions
+    | GreaterThanOrEqual -> verify_integer_comparison_result operand_type result_type substitutions
   }
 
 let verify_integer_binary_result = fn operand_type -> fn result_type -> fn substitutions ->
@@ -1209,6 +1209,19 @@ let verify_i32_binary_result = fn operand_type -> fn result_type -> fn substitut
   match (verify_named_result operand_type "i32" substitutions) {
     | Err(message) -> Err(message)
     | Ok(_) -> verify_named_result result_type "i32" substitutions
+  }
+
+let verify_integer_comparison_result = fn operand_type -> fn result_type ->
+  fn substitutions -> match (verify_integer_binary_result operand_type operand_type
+      substitutions) {
+    | Err(message) -> Err(message)
+    | Ok(_) -> verify_boolean_result result_type substitutions
+  }
+
+let verify_equality_result = fn operand_type -> fn result_type -> fn substitutions ->
+  match (type_is_named operand_type "bool" substitutions) {
+    | true -> verify_boolean_result result_type substitutions
+    | false -> verify_integer_comparison_result operand_type result_type substitutions
   }
 
 let verify_boolean_result = fn result_type -> fn substitutions ->

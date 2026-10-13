@@ -60,6 +60,7 @@ type A64Operation =
   | A64SubtractI64(A64BinaryOperands)
   | A64MultiplyI64(A64BinaryOperands)
   | A64CompareI32(A64IntegerComparison)
+  | A64CompareI64(A64IntegerComparison)
   | A64EqualBoolean(A64BinaryOperands)
   | A64NotEqualBoolean(A64BinaryOperands)
   | A64NegateI32(A64VirtualRegister)

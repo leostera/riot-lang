@@ -908,6 +908,53 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     );
     assert!(!i64_arithmetic_c_executable.exists());
 
+    let i64_comparison_source = dir.join("i64-comparison.ml");
+    fs::write(
+        &i64_comparison_source,
+        "let is_greater = fn (value: i64) -> value > (9: i64)\nlet main = fn () -> match (is_greater (10: i64)) { | true -> 42 | false -> 0 }\n",
+    )
+    .unwrap();
+    let i64_comparison_executable = dir.join("i64-comparison.native");
+    let i64_comparison_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_comparison_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_comparison_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_comparison_compile.status.success(),
+        "i64 comparison graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_comparison_compile.stderr)
+    );
+    let i64_comparison_assembly = fs::read_to_string(
+        i64_comparison_executable.with_file_name("i64-comparison.native.aarch64.s"),
+    )
+    .unwrap();
+    assert!(i64_comparison_assembly.contains("cmp x9, x10"));
+    assert!(i64_comparison_assembly.contains("cset w11, gt"));
+    let i64_comparison_run = Command::new(&i64_comparison_executable).output().unwrap();
+    assert_eq!(i64_comparison_run.status.code(), Some(42));
+    let i64_comparison_c_executable = dir.join("i64-comparison.c-backend");
+    let i64_comparison_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&i64_comparison_source)
+        .arg("-o")
+        .arg(&i64_comparison_c_executable)
+        .output()
+        .unwrap();
+    assert!(!i64_comparison_c_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&i64_comparison_c_compile.stderr)
+            .contains("C backend does not support integer comparison on `i64`")
+    );
+    assert!(!i64_comparison_c_executable.exists());
+
     let out_of_range_i64_source = dir.join("out-of-range-i64.ml");
     fs::write(
         &out_of_range_i64_source,

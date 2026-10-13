@@ -33,7 +33,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64RuntimeCall, A64RuntimeCallSite,
   A64RuntimeI32Division, A64RuntimeI32Remainder, A64AddI32, A64SubtractI32,
-  A64MultiplyI32, A64AddI64, A64SubtractI64, A64MultiplyI64,
+  A64MultiplyI32, A64AddI64, A64SubtractI64, A64MultiplyI64, A64CompareI64,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64CompareI32, A64EqualBoolean, A64NotEqualBoolean,
   A64BinaryOperands,
@@ -250,9 +250,9 @@ let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
       }
       | false -> match (comparison_condition operator) {
         | Err(message) -> Err(message)
-        | Ok(condition) -> match (is_value_type A64I32 operand_type substitutions) {
-          | false -> Err("integer comparison requires i32 operands")
-          | true -> match (is_value_type A64Boolean result_type substitutions) {
+        | Ok(condition) -> match (native_type operand_type substitutions) {
+          | Err(message) -> Err("integer comparison: " + message)
+          | Ok(A64I32) -> match (is_value_type A64Boolean result_type substitutions) {
             | true -> Ok(A64CompareI32(A64IntegerComparison {
               condition: condition,
               left: native_register left,
@@ -260,6 +260,15 @@ let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
             }))
             | false -> Err("integer comparison must produce bool")
           }
+          | Ok(A64I64) -> match (is_value_type A64Boolean result_type substitutions) {
+            | true -> Ok(A64CompareI64(A64IntegerComparison {
+              condition: condition,
+              left: native_register left,
+              right: native_register right
+            }))
+            | false -> Err("integer comparison must produce bool")
+          }
+          | Ok(_) -> Err("integer comparison supports only i32 and i64")
         }
       }
     }

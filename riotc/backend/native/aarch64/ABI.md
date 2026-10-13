@@ -122,8 +122,8 @@ This conservative policy validates an initial ABI lowering but is not the full
 native backend. The current LIR slice supports signed `i64` decimal constants when explicitly
 ascribed and within the checked `i64` range, plus `i64` parameters, returns,
 direct-call arguments/results, spill/reload, block-edge copies, addition,
-subtraction, multiplication, and unary negation. Division/remainder,
-comparisons, and pattern tests remain unsupported for `i64`. `A64Pointer` supports opaque pointer arguments, returns,
+subtraction, multiplication, unary negation, and signed comparisons.
+Division/remainder and pattern tests remain unsupported for `i64`. `A64Pointer` supports opaque pointer arguments, returns,
 spill/reload, and edge copies; it does not implement string constants, heap
 layouts, constructors, projections, or closure calls. Narrow integer widths,
 closure environments, and general Host helper marshalling remain outside the

@@ -51,6 +51,8 @@ type A64LinearInstruction =
   | A64NegateX(A64PhysicalRegister, A64PhysicalRegister)
   | A64CompareSetW(A64Condition, A64PhysicalRegister, A64PhysicalRegister,
       A64PhysicalRegister)
+  | A64CompareSetX(A64Condition, A64PhysicalRegister, A64PhysicalRegister,
+      A64PhysicalRegister)
   | A64CallDirect(NativeFunctionId)
   | A64CallRuntime(A64RuntimeHelper)
 

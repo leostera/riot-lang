@@ -20,7 +20,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64CallArgument, A64RuntimeCall, A64RuntimeCallSite, A64RuntimeI32Division,
   A64RuntimeI32Remainder, A64RuntimeHostArgs,
   A64AddI32, A64SubtractI32, A64MultiplyI32, A64AddI64, A64SubtractI64,
-  A64MultiplyI64, A64CompareI32,
+  A64MultiplyI64, A64CompareI32, A64CompareI64,
   A64EqualBoolean, A64NotEqualBoolean, A64NegateI32, A64NegateI64,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
@@ -144,6 +144,9 @@ let print_operation = fn operation -> match operation {
   | A64MultiplyI64(operands) -> "mul_x " + print_binary_operands operands
   | A64CompareI32(A64IntegerComparison { condition, left, right }) ->
     "cmp_set." + print_condition condition + "_w "
+      + print_register left + ", " + print_register right
+  | A64CompareI64(A64IntegerComparison { condition, left, right }) ->
+    "cmp_set." + print_condition condition + "_x "
       + print_register left + ", " + print_register right
   | A64EqualBoolean(operands) -> "cmp_set.eq_bool " + print_binary_operands operands
   | A64NotEqualBoolean(operands) -> "cmp_set.ne_bool " + print_binary_operands operands

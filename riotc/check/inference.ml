@@ -2350,14 +2350,12 @@ let infer_binary_types = fn operator -> fn left_type -> fn right_type -> fn stat
   }
 
 let infer_comparison_types = fn left_type -> fn right_type -> fn state ->
-  match (constrain_types left_type (builtin_inferred_type "i32") state) {
-    | Err(message) -> Err("integer comparison requires i32 values: " + message)
-    | Ok(next_state) -> match (constrain_types right_type (builtin_inferred_type "i32") next_state) {
-      | Err(message) -> Err("integer comparison requires i32 values: " + message)
-      | Ok(final_state) -> Ok(InferenceResult {
-        inferred_type: builtin_inferred_type "bool", state: final_state
+  match (infer_integer_binary_types left_type right_type state) {
+    | Err(message) -> Err("integer comparison requires matching integer types: " + message)
+    | Ok(InferenceResult { inferred_type: _, state: next_state }) ->
+      Ok(InferenceResult {
+        inferred_type: builtin_inferred_type "bool", state: next_state
       })
-    }
   }
 
 let infer_binary_expression = fn infer_child -> fn (BinaryExpression {

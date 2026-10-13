@@ -20,7 +20,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32,
   A64AddI64, A64SubtractI64, A64MultiplyI64,
-  A64CompareI32, A64EqualBoolean, A64NotEqualBoolean, A64NegateI32, A64NegateI64,
+  A64CompareI32, A64CompareI64, A64EqualBoolean, A64NotEqualBoolean,
+  A64NegateI32, A64NegateI64,
   A64BinaryOperands, A64IntegerComparison, A64Condition, A64Equal, A64NotEqual,
   A64Edge, A64Branch,
   A64Terminator, A64Jump, A64ConditionalBranch, A64Return, A64Trap,
@@ -32,7 +33,7 @@ use Backend.Native.Aarch64.LinearIr.{
   A64TrueEdgeLabel, A64FalseEdgeLabel, A64LinearInstruction,
   A64MoveZero, A64LoadI32Literal, A64LoadI64Literal, A64LoadBooleanLiteral, A64ReloadSpill,
   A64SpillRegister, A64AddW, A64AddX, A64SubtractW, A64SubtractX,
-  A64MultiplyW, A64MultiplyX, A64NegateW, A64NegateX,
+  A64MultiplyW, A64MultiplyX, A64NegateW, A64NegateX, A64CompareSetX,
   A64CompareSetW, A64CallDirect, A64CallRuntime, A64LinearTerminator, A64LinearJump,
   A64LinearBranch, A64LinearReturn, A64LinearTrap, A64LinearUnreachable,
   A64LinearItem, A64LinearLabelItem, A64LinearInstructionItem,
@@ -301,6 +302,8 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
     lower_binary_x function_identity block span destination left right locations A64OpcodeMultiply
   | A64CompareI32(A64IntegerComparison { condition, left, right }) ->
     lower_comparison function_identity block span destination left right condition locations
+  | A64CompareI64(A64IntegerComparison { condition, left, right }) ->
+    lower_comparison_x function_identity block span destination left right condition locations
   | A64EqualBoolean(A64BinaryOperands { left, right }) ->
     lower_comparison function_identity block span destination left right A64Equal locations
   | A64NotEqualBoolean(A64BinaryOperands { left, right }) ->
@@ -380,6 +383,22 @@ let lower_comparison = fn function_identity -> fn block -> fn span ->
         | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(w9, left_slot)))
           (append_linear_items (add_instruction(A64ReloadSpill(w10, right_slot)))
           (append_linear_items (add_instruction(A64CompareSetW(condition, w11, w9, w10)))
+            (add_instruction(A64SpillRegister(result_slot, w11))))))
+      }
+    }
+  }
+
+let lower_comparison_x = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn left -> fn right -> fn condition -> fn locations ->
+  match (lookup_slot function_identity block span left locations) {
+    | Err(failure) -> Err(failure)
+    | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
+        | Err(failure) -> Err(failure)
+        | Ok(result_slot) -> Ok(append_linear_items (add_instruction(A64ReloadSpill(x9, left_slot)))
+          (append_linear_items (add_instruction(A64ReloadSpill(x10, right_slot)))
+          (append_linear_items (add_instruction(A64CompareSetX(condition, w11, x9, x10)))
             (add_instruction(A64SpillRegister(result_slot, w11))))))
       }
     }

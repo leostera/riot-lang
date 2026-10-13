@@ -7,6 +7,7 @@ use Host.{
 use Syntax.Ast.{
   ValueName, SourceModule, Declaration, ValueDeclaration, ValueDeclarationData,
   RecordExpression, RecordExpressionField, Binary, BinaryExpression, Addition,
+  Equal, NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
   TypeDeclaration,
   Function, FunctionExpression, Apply, ApplicationExpression, Let, LetExpression,
   Match, MatchExpression, MatchArm, ConstructorExpr, ConstructorExpression,
@@ -212,6 +213,12 @@ let validate_c_operand_type = fn operation -> fn allow_string ->
 let validate_c_binary = fn operator -> fn left -> fn typed_module ->
   match operator {
     | Addition -> validate_c_operand_type "addition" true left typed_module
+    | Equal -> validate_c_operand_type "integer comparison" false left typed_module
+    | NotEqual -> validate_c_operand_type "integer comparison" false left typed_module
+    | LessThan -> validate_c_operand_type "integer comparison" false left typed_module
+    | LessThanOrEqual -> validate_c_operand_type "integer comparison" false left typed_module
+    | GreaterThan -> validate_c_operand_type "integer comparison" false left typed_module
+    | GreaterThanOrEqual -> validate_c_operand_type "integer comparison" false left typed_module
     | _ -> validate_c_operand_type "integer arithmetic" false left typed_module
   }
 
