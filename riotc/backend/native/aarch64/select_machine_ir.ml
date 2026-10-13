@@ -32,7 +32,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64Function, A64Block, A64BlockParameter, A64Instruction, A64Operation,
   A64LoadUnit, A64LoadI32, A64LoadI64, A64LoadBoolean, A64TestUnitLiteral, A64Call, A64CallSite, A64DirectCall,
   A64HostCall, A64CallArgument, A64RuntimeCall, A64RuntimeCallSite,
-  A64RuntimeI32Division, A64RuntimeI32Remainder, A64AddI32, A64SubtractI32,
+  A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeI64Division,
+  A64RuntimeI64Remainder, A64AddI32, A64SubtractI32,
   A64MultiplyI32, A64AddI64, A64SubtractI64, A64MultiplyI64, A64CompareI64,
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64CompareI32, A64EqualBoolean, A64NotEqualBoolean,
@@ -170,6 +171,37 @@ let select_i32_runtime_binary = fn helper -> fn operand_type -> fn result_type -
     }
   }
 
+let select_i64_runtime_binary = fn helper -> fn operand_type -> fn result_type ->
+  fn left -> fn right -> fn substitutions ->
+  match (is_value_type A64I64 operand_type substitutions) {
+    | false -> Err("runtime i64 helper requires i64 operands")
+    | true -> match (is_value_type A64I64 result_type substitutions) {
+      | false -> Err("runtime i64 helper must produce i64")
+      | true -> Ok(A64RuntimeCall(A64RuntimeCallSite {
+        helper: helper,
+        arguments: Cons(A64CallArgument {
+          register: native_register left,
+          value_type: A64I64
+        }, Cons(A64CallArgument {
+          register: native_register right,
+          value_type: A64I64
+        }, Nil)),
+        result_type: A64I64
+      }))
+    }
+  }
+
+let select_integer_runtime_binary = fn i32_helper -> fn i64_helper ->
+  fn operand_type -> fn result_type -> fn left -> fn right -> fn substitutions ->
+  match (native_type operand_type substitutions) {
+    | Err(message) -> Err("integer runtime helper: " + message)
+    | Ok(A64I32) -> select_i32_runtime_binary i32_helper operand_type result_type
+        left right substitutions
+    | Ok(A64I64) -> select_i64_runtime_binary i64_helper operand_type result_type
+        left right substitutions
+    | Ok(_) -> Err("integer runtime helpers support only i32 and i64")
+  }
+
 let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
   fn left -> fn right -> fn substitutions -> match operator {
     | Addition -> match (native_type operand_type substitutions) {
@@ -226,9 +258,9 @@ let select_integer_binary = fn operator -> fn operand_type -> fn result_type ->
       | Ok(_) -> Err("integer multiplication supports only i32 and i64")
       | Err(message) -> Err("integer multiplication: " + message)
     }
-    | Division -> select_i32_runtime_binary A64RuntimeI32Division
+    | Division -> select_integer_runtime_binary A64RuntimeI32Division A64RuntimeI64Division
         operand_type result_type left right substitutions
-    | Remainder -> select_i32_runtime_binary A64RuntimeI32Remainder
+    | Remainder -> select_integer_runtime_binary A64RuntimeI32Remainder A64RuntimeI64Remainder
         operand_type result_type left right substitutions
     | _ -> match (is_value_type A64Boolean operand_type substitutions) {
       | true -> match operator {

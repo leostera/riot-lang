@@ -10,7 +10,7 @@ use Backend.Native.Aarch64.MachineIr.{
   A64Equal, A64NotEqual,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual, A64RuntimeI32Division, A64RuntimeI32Remainder,
-  A64RuntimeHostArgs
+  A64RuntimeI64Division, A64RuntimeI64Remainder, A64RuntimeHostArgs
 }
 use Backend.Native.Aarch64.LinearIr.{
   A64RegisterWidth, A64W32, A64X64, A64PhysicalRegister, A64ValueLocation,
@@ -103,6 +103,8 @@ let print_instruction = fn instruction -> match instruction {
   | A64CallDirect(function) -> "  bl " + print_function_id function + "\n"
   | A64CallRuntime(A64RuntimeI32Division) -> "  bl rt_native_i32_div\n"
   | A64CallRuntime(A64RuntimeI32Remainder) -> "  bl rt_native_i32_rem\n"
+  | A64CallRuntime(A64RuntimeI64Division) -> "  bl rt_native_i64_div\n"
+  | A64CallRuntime(A64RuntimeI64Remainder) -> "  bl rt_native_i64_rem\n"
   | A64CallRuntime(A64RuntimeHostArgs) -> "  bl rt_native_host_args\n"
 }
 let print_terminator = fn terminator -> match terminator {

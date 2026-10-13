@@ -22,18 +22,20 @@ The selected subset currently includes typed `unit`, `i32`, and `bool` values
 values, and opaque pointer values for concrete strings, composites, and
 function values. `i64` values support explicitly ascribed decimal literals
 within the checked `i64` range, parameters, returns, direct-call
-arguments/results, and block-edge copies; arithmetic, comparisons, and pattern
-tests remain unsupported. Pointer values can be passed through a function unchanged; string
+arguments/results, and block-edge copies; addition/subtraction/multiplication,
+unary negation, signed comparisons, and division/remainder are supported, but
+pattern tests remain unsupported. Pointer values can be passed through a function unchanged; string
 constants and operations that inspect or construct pointed-to values remain
 unsupported. The slice also includes `i32` addition, subtraction,
 multiplication, negation, signed comparisons, and boolean equality/inequality;
-typed i32 division/remainder helper calls; unit/i32/bool literal-pattern tests;
+typed i32/i64 division/remainder helper calls; unit/i32/bool literal-pattern tests;
 conditional and unconditional branches with block arguments; returns,
 unreachable and trap pseudos; plus direct calls and the explicit
 `tinyml/lib/host.ml::args` Host call. Calls retain typed virtual arguments and
 NativeIR effects. Runtime division/remainder use explicit helper IDs with
-fixed `i32, i32 -> i32` signatures; `Host.args` uses the typed opaque-pointer
-`rt_native_host_args` bridge. Other calls remain logical until ABI lowering.
+`i32, i32 -> i32` or `i64, i64 -> i64` signatures; `Host.args` uses the typed
+opaque-pointer `rt_native_host_args` bridge. Other calls remain logical until
+ABI lowering.
 
 Closure creation/calls/captures, string constants, constructor/tuple/record
 pattern tests, aggregate construction or projection, globals, and switches
@@ -62,8 +64,9 @@ entry `i32`/`bool` arguments arrive in `w1`; `i64`/pointer arguments arrive in
 `x1`. Direct top-level/module-initializer calls set the hidden environment
 `x0` to null, pass an optional `i32`/`bool` in `w1` or `i64`/pointer in `x1`,
 and take results from `w0` or `x0`. Typed runtime division/remainder use
-their declared C helper ABI: `i32` arguments in `w0`/`w1` and an `i32` result in
-`w0`, without a hidden environment. Unit arguments/results have no data
+their declared C helper ABI without a hidden environment: `i32` arguments in
+`w0`/`w1` and result in `w0`, or `i64` arguments in `x0`/`x1` and result in
+`x0`. Unit arguments/results have no data
 transfer. Conditional edges are explicit labels with typed spill/reload copies.
 
 The LinearIR verifier checks value/slot ownership, unique non-overlapping
@@ -81,9 +84,11 @@ lowers spill loads/stores, i32 arithmetic/comparisons, i64 pass-through values,
 i64 addition/subtraction/multiplication/negation and signed comparisons,
 branches, direct calls with
 symbols in the supplied function set, frame
-prologues/epilogues, and trap pseudos. Block labels are function-qualified. Typed i32
-division/remainder call `_rt_native_i32_div`/`_rt_native_i32_rem`, whose exact
-prototypes are in `runtime.h`; the linker includes the existing `runtime.c`.
+prologues/epilogues, and trap pseudos. Block labels are function-qualified.
+Typed i32 and i64 division/remainder call the declared
+`rt_native_i32_div`, `rt_native_i32_rem`, `rt_native_i64_div`, and
+`rt_native_i64_rem` helpers; their exact prototypes are in `runtime.h`, and
+the linker includes the existing `runtime.c`.
 `Host.args` calls `_rt_native_host_args`, whose declared `void *` helper keeps
 `RtValue` conversion inside the runtime. Pattern-failure traps call the
 no-argument helper `rt_pattern_fail` and retain a `brk` fallback if it returns.
@@ -151,6 +156,7 @@ cargo test -p tinyml --test cli_tests c_hosted_bootstrap_compiles_native_direct_
 That Codegen test compares process status, stdout, and stderr against the
 existing C backend for scalar arithmetic, signed comparisons/branches, wrapped
 integer operations, i32 division/remainder (including zero and `INT32_MIN / -1`
+edge behavior), i64 division/remainder (including zero and `INT64_MIN / -1`
 edge behavior), two-function and recursive direct-call graphs, typed i64 call
 and block-edge pass-through, pattern-failure diagnostics,
 and a `Host.args` helper call. It also confirms unsupported Host helpers,

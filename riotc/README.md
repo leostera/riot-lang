@@ -95,8 +95,9 @@ TOP_LEVEL_FUNCTION` lowers and verifies the unit/i32/bool ABI slice, signed
 spill slots, call-register assignments, and linearized control flow. The
 current i64 slice supports explicitly ascribed decimal literals within the
 checked signed range, parameters, returns, direct-call arguments/results,
-block-edge copies, addition, subtraction, multiplication, unary negation, and
-signed comparisons; i64 division/remainder and pattern tests remain unsupported.
+block-edge copies, addition, subtraction, multiplication, unary negation,
+signed comparisons, and division/remainder through typed trapping runtime
+helpers; i64 pattern tests remain unsupported.
 `aarch64-compile-function SOURCE TOP_LEVEL_FUNCTION -o OUTPUT` emits and links
 AArch64 assembly for one selected function and writes `OUTPUT.aarch64.s` for
 inspection. This is a function-level Codegen harness, not a whole-module

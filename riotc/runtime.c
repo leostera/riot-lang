@@ -348,6 +348,18 @@ int32_t rt_native_i32_rem(int32_t numerator, int32_t denominator) {
   return numerator % denominator;
 }
 
+int64_t rt_native_i64_div(int64_t numerator, int64_t denominator) {
+  if (denominator == 0) rt_fail("division by zero");
+  if (numerator == INT64_MIN && denominator == -1) return INT64_MIN;
+  return numerator / denominator;
+}
+
+int64_t rt_native_i64_rem(int64_t numerator, int64_t denominator) {
+  if (denominator == 0) rt_fail("remainder by zero");
+  if (numerator == INT64_MIN && denominator == -1) return 0;
+  return numerator % denominator;
+}
+
 RtValue rt_i32_div(RtValue left, RtValue right) {
   int32_t numerator = (int32_t)rt_as_int(left);
   int32_t denominator = (int32_t)rt_as_int(right);

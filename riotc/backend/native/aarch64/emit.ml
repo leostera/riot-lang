@@ -9,7 +9,8 @@ use NativeIr.Ir.{
 use NativeIr.Print.{print_function_id}
 use Backend.Native.Aarch64.MachineIr.{
   A64Label, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer, A64Equal, A64NotEqual,
-  A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeHostArgs,
+  A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeI64Division,
+  A64RuntimeI64Remainder, A64RuntimeHostArgs,
   A64SignedLessThan, A64SignedLessThanOrEqual, A64SignedGreaterThan,
   A64SignedGreaterThanOrEqual
 }
@@ -180,6 +181,8 @@ let emit_instruction = fn functions -> fn instruction -> match instruction {
   }
   | A64CallRuntime(A64RuntimeI32Division) -> Ok("bl _rt_native_i32_div\n")
   | A64CallRuntime(A64RuntimeI32Remainder) -> Ok("bl _rt_native_i32_rem\n")
+  | A64CallRuntime(A64RuntimeI64Division) -> Ok("bl _rt_native_i64_div\n")
+  | A64CallRuntime(A64RuntimeI64Remainder) -> Ok("bl _rt_native_i64_rem\n")
   | A64CallRuntime(A64RuntimeHostArgs) -> Ok("bl _rt_native_host_args\n")
 }
 

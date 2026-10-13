@@ -1185,8 +1185,8 @@ let verify_binary_result_type = fn operator -> fn operand_type -> fn result_type
     }
     | Subtraction -> verify_integer_binary_result operand_type result_type substitutions
     | Multiplication -> verify_integer_binary_result operand_type result_type substitutions
-    | Division -> verify_i32_binary_result operand_type result_type substitutions
-    | Remainder -> verify_i32_binary_result operand_type result_type substitutions
+    | Division -> verify_integer_binary_result operand_type result_type substitutions
+    | Remainder -> verify_integer_binary_result operand_type result_type substitutions
     | Equal -> verify_equality_result operand_type result_type substitutions
     | NotEqual -> verify_equality_result operand_type result_type substitutions
     | LessThan -> verify_integer_comparison_result operand_type result_type substitutions

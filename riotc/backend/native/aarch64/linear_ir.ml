@@ -8,7 +8,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64VirtualRegister, A64Label, A64ValueType, A64Unit, A64I32, A64I64, A64Boolean, A64Pointer,
   A64Condition, A64Equal, A64NotEqual, A64SignedLessThan,
   A64SignedLessThanOrEqual, A64SignedGreaterThan, A64SignedGreaterThanOrEqual,
-  A64RuntimeHelper, A64RuntimeI32Division, A64RuntimeI32Remainder
+  A64RuntimeHelper, A64RuntimeI32Division, A64RuntimeI32Remainder,
+  A64RuntimeI64Division, A64RuntimeI64Remainder
 }
 
 type A64RegisterWidth = A64W32 | A64X64

@@ -2331,16 +2331,13 @@ let infer_addition_types = fn left_type -> fn right_type -> fn state -> {
   }
 }
 
-let infer_i32_binary_types = fn left_type -> fn right_type -> fn state ->
-  infer_same_integer_types left_type right_type (builtin_inferred_type "i32") state
-
 let infer_binary_types = fn operator -> fn left_type -> fn right_type -> fn state ->
   match operator {
     | Addition -> infer_addition_types left_type right_type state
     | Subtraction -> infer_integer_binary_types left_type right_type state
     | Multiplication -> infer_integer_binary_types left_type right_type state
-    | Division -> infer_i32_binary_types left_type right_type state
-    | Remainder -> infer_i32_binary_types left_type right_type state
+    | Division -> infer_integer_binary_types left_type right_type state
+    | Remainder -> infer_integer_binary_types left_type right_type state
     | Equal -> infer_comparison_types left_type right_type state
     | NotEqual -> infer_comparison_types left_type right_type state
     | LessThan -> infer_comparison_types left_type right_type state

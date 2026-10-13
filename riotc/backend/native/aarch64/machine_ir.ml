@@ -95,6 +95,8 @@ type A64CallArgument = A64CallArgument {
 type A64RuntimeHelper =
   | A64RuntimeI32Division
   | A64RuntimeI32Remainder
+  | A64RuntimeI64Division
+  | A64RuntimeI64Remainder
   | A64RuntimeHostArgs
 type A64RuntimeCallSite = A64RuntimeCallSite {
   helper: A64RuntimeHelper,

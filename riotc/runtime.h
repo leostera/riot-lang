@@ -113,6 +113,9 @@ RtValue rt_i32_rem(RtValue left, RtValue right);
 /* Typed C-ABI helpers used by native i32 division/remainder lowering. */
 int32_t rt_native_i32_div(int32_t numerator, int32_t denominator);
 int32_t rt_native_i32_rem(int32_t numerator, int32_t denominator);
+/* Typed C-ABI helpers used by native i64 division/remainder lowering. */
+int64_t rt_native_i64_div(int64_t numerator, int64_t denominator);
+int64_t rt_native_i64_rem(int64_t numerator, int64_t denominator);
 RtValue rt_i32_equal(RtValue left, RtValue right);
 RtValue rt_i32_not_equal(RtValue left, RtValue right);
 RtValue rt_i32_less(RtValue left, RtValue right);

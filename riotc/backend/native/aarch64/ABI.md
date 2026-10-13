@@ -112,9 +112,9 @@ shape while deliberately using an all-spill allocator:
 - `emit.ml` lowers this verified slice to AArch64 instructions. A pattern
   failure calls the declared no-argument `rt_pattern_fail` helper from
   `runtime.h`/`runtime.c` under the Apple C ABI, then emits a `brk` fallback;
-  other current trap pseudos use distinct `brk` immediates. Typed i32
-  division/remainder lower through the declared `rt_native_i32_div` and
-  `rt_native_i32_rem` C helpers. The exact `tinyml/lib/host.ml::args` binding
+  other current trap pseudos use distinct `brk` immediates. Typed i32 and i64
+  division/remainder lower through their declared scalar C helpers. The exact
+  `tinyml/lib/host.ml::args` binding
   lowers through `rt_native_host_args`; every other Host helper still fails
   before Codegen.
 
@@ -122,8 +122,9 @@ This conservative policy validates an initial ABI lowering but is not the full
 native backend. The current LIR slice supports signed `i64` decimal constants when explicitly
 ascribed and within the checked `i64` range, plus `i64` parameters, returns,
 direct-call arguments/results, spill/reload, block-edge copies, addition,
-subtraction, multiplication, unary negation, and signed comparisons.
-Division/remainder and pattern tests remain unsupported for `i64`. `A64Pointer` supports opaque pointer arguments, returns,
+subtraction, multiplication, unary negation, signed comparisons, and
+trap-preserving division/remainder through typed i64 runtime helpers. Pattern
+tests remain unsupported for `i64`. `A64Pointer` supports opaque pointer arguments, returns,
 spill/reload, and edge copies; it does not implement string constants, heap
 layouts, constructors, projections, or closure calls. Narrow integer widths,
 closure environments, and general Host helper marshalling remain outside the
@@ -183,13 +184,18 @@ The owned scalar division/remainder helpers have explicit prototypes:
 ```c
 int32_t rt_native_i32_div(int32_t numerator, int32_t denominator);
 int32_t rt_native_i32_rem(int32_t numerator, int32_t denominator);
+int64_t rt_native_i64_div(int64_t numerator, int64_t denominator);
+int64_t rt_native_i64_rem(int64_t numerator, int64_t denominator);
 ```
 
-They use the Apple AArch64 C ABI directly: numerator in `w0`, denominator in
-`w1`, result in `w0`, with no hidden environment. They guard `INT32_MIN / -1`
-and `INT32_MIN % -1` before using C operators, and report zero denominators
-with the same diagnostics as Riotc's current C-plus-Clang source backend.
-The original boxed `rt_i32_div`/`rt_i32_rem` helpers keep their own contracts.
+They use the Apple AArch64 C ABI directly, with no hidden environment: i32
+numerator/denominator/result in `w0`/`w1`/`w0`; i64 numerator/denominator/result
+in `x0`/`x1`/`x0`. They guard `INT32_MIN / -1`, `INT32_MIN % -1`,
+`INT64_MIN / -1`, and `INT64_MIN % -1` before using C operators, preserving
+wrapping quotient and zero remainder. Zero denominators report the same
+`division by zero` or `remainder by zero` diagnostics as Riotc's current
+C-plus-Clang source backend. The original boxed `rt_i32_div`/`rt_i32_rem`
+helpers keep their own contracts.
 C helper prototypes using `int`, `size_t`, pointers, or other C types use those
 declared types directly under the same C ABI. Host operations retain the
 behavior in `riotc/runtime.c`; the owned compiler adds no generated-C fallback.

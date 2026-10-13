@@ -18,7 +18,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
   A64CallArgument, A64RuntimeCall, A64RuntimeCallSite, A64RuntimeI32Division,
-  A64RuntimeI32Remainder, A64RuntimeHostArgs,
+  A64RuntimeI32Remainder, A64RuntimeI64Division, A64RuntimeI64Remainder,
+  A64RuntimeHostArgs,
   A64AddI32, A64SubtractI32, A64MultiplyI32, A64AddI64, A64SubtractI64,
   A64MultiplyI64, A64CompareI32, A64CompareI64,
   A64EqualBoolean, A64NotEqualBoolean, A64NegateI32, A64NegateI64,
@@ -79,6 +80,8 @@ let print_call_target = fn target -> match target {
 let print_runtime_helper = fn helper -> match helper {
   | A64RuntimeI32Division -> "rt_native_i32_div"
   | A64RuntimeI32Remainder -> "rt_native_i32_rem"
+  | A64RuntimeI64Division -> "rt_native_i64_div"
+  | A64RuntimeI64Remainder -> "rt_native_i64_rem"
   | A64RuntimeHostArgs -> "rt_native_host_args"
 }
 

@@ -17,6 +17,8 @@ use Backend.Native.Aarch64.MachineIr.{
   A64TestI32Literal, A64TestBooleanLiteral, A64I32LiteralTest,
   A64BooleanLiteralTest, A64Call, A64CallSite, A64DirectCall, A64HostCall,
   A64RuntimeCall, A64RuntimeCallSite, A64RuntimeHelper, A64RuntimeHostArgs,
+  A64RuntimeI32Division, A64RuntimeI32Remainder, A64RuntimeI64Division,
+  A64RuntimeI64Remainder,
   A64CallArgument,
   A64AddI32, A64SubtractI32, A64MultiplyI32,
   A64AddI64, A64SubtractI64, A64MultiplyI64,
@@ -248,45 +250,8 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
         function: function_identity, block: block, span: span,
         reason: "runtime call result type differs from its instruction type"
       })
-      | true -> match call_result {
-        | A64Unit -> Err(A64LinearFailure {
-          function: function_identity, block: block, span: span,
-          reason: "typed i32 runtime helper must return i32"
-        })
-        | A64Boolean -> Err(A64LinearFailure {
-          function: function_identity, block: block, span: span,
-          reason: "typed i32 runtime helper must return i32"
-        })
-        | A64Pointer -> Err(A64LinearFailure {
-          function: function_identity, block: block, span: span,
-          reason: "typed i32 runtime helper must return i32"
-        })
-        | A64I64 -> Err(A64LinearFailure {
-          function: function_identity, block: block, span: span,
-          reason: "typed i32 runtime helper must return i32"
-        })
-        | A64I32 -> match arguments {
-          | Cons(A64CallArgument { register: left, value_type: A64I32 },
-              Cons(A64CallArgument { register: right, value_type: A64I32 }, Nil)) ->
-            match (lookup_slot function_identity block span left locations) {
-              | Err(failure) -> Err(failure)
-              | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
-                | Err(failure) -> Err(failure)
-                | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
-                  | Err(failure) -> Err(failure)
-                  | Ok(result_slot) -> Ok(Cons(A64LinearInstructionItem(A64ReloadSpill(w0, left_slot)),
-                    Cons(A64LinearInstructionItem(A64ReloadSpill(w1, right_slot)),
-                    Cons(A64LinearInstructionItem(A64CallRuntime(helper)),
-                    Cons(A64LinearInstructionItem(A64SpillRegister(result_slot, w0)), Nil)))))
-                }
-              }
-            }
-          | _ -> Err(A64LinearFailure {
-            function: function_identity, block: block, span: span,
-            reason: "typed i32 runtime helper requires exactly two i32 arguments"
-          })
-        }
-      }
+      | true -> lower_runtime_integer_call function_identity block span destination
+          result_type helper arguments locations
     }
   | A64AddI32(A64BinaryOperands { left, right }) ->
     lower_binary function_identity block span destination left right locations A64OpcodeAdd
@@ -327,6 +292,81 @@ let lower_operation = fn function_identity -> fn block -> fn span ->
     }
   }
 }
+
+let lower_runtime_i32_call = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn helper -> fn arguments -> fn locations -> match arguments {
+  | Cons(A64CallArgument { register: left, value_type: A64I32 },
+      Cons(A64CallArgument { register: right, value_type: A64I32 }, Nil)) ->
+    match (lookup_slot function_identity block span left locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
+        | Err(failure) -> Err(failure)
+        | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
+          | Err(failure) -> Err(failure)
+          | Ok(result_slot) -> Ok(Cons(A64LinearInstructionItem(A64ReloadSpill(w0, left_slot)),
+            Cons(A64LinearInstructionItem(A64ReloadSpill(w1, right_slot)),
+            Cons(A64LinearInstructionItem(A64CallRuntime(helper)),
+            Cons(A64LinearInstructionItem(A64SpillRegister(result_slot, w0)), Nil)))))
+        }
+      }
+    }
+  | _ -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "typed i32 runtime helper requires exactly two i32 arguments"
+  })
+}
+
+let lower_runtime_i64_call = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn helper -> fn arguments -> fn locations -> match arguments {
+  | Cons(A64CallArgument { register: left, value_type: A64I64 },
+      Cons(A64CallArgument { register: right, value_type: A64I64 }, Nil)) ->
+    match (lookup_slot function_identity block span left locations) {
+      | Err(failure) -> Err(failure)
+      | Ok(left_slot) -> match (lookup_slot function_identity block span right locations) {
+        | Err(failure) -> Err(failure)
+        | Ok(right_slot) -> match (lookup_slot function_identity block span destination locations) {
+          | Err(failure) -> Err(failure)
+          | Ok(result_slot) -> Ok(Cons(A64LinearInstructionItem(A64ReloadSpill(x0, left_slot)),
+            Cons(A64LinearInstructionItem(A64ReloadSpill(x1, right_slot)),
+            Cons(A64LinearInstructionItem(A64CallRuntime(helper)),
+            Cons(A64LinearInstructionItem(A64SpillRegister(result_slot, x0)), Nil)))))
+        }
+      }
+    }
+  | _ -> Err(A64LinearFailure {
+    function: function_identity, block: block, span: span,
+    reason: "typed i64 runtime helper requires exactly two i64 arguments"
+  })
+}
+
+let lower_runtime_integer_call = fn function_identity -> fn block -> fn span ->
+  fn destination -> fn result_type -> fn helper -> fn arguments -> fn locations ->
+  match result_type {
+    | A64I32 -> match helper {
+      | A64RuntimeI32Division -> lower_runtime_i32_call function_identity block span
+          destination helper arguments locations
+      | A64RuntimeI32Remainder -> lower_runtime_i32_call function_identity block span
+          destination helper arguments locations
+      | _ -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "i32 result requires an i32 runtime helper"
+      })
+    }
+    | A64I64 -> match helper {
+      | A64RuntimeI64Division -> lower_runtime_i64_call function_identity block span
+          destination helper arguments locations
+      | A64RuntimeI64Remainder -> lower_runtime_i64_call function_identity block span
+          destination helper arguments locations
+      | _ -> Err(A64LinearFailure {
+        function: function_identity, block: block, span: span,
+        reason: "i64 result requires an i64 runtime helper"
+      })
+    }
+    | _ -> Err(A64LinearFailure {
+      function: function_identity, block: block, span: span,
+      reason: "typed integer runtime helper must return i32 or i64"
+    })
+  }
 
 let binary_instruction = fn opcode -> fn destination -> fn left -> fn right -> match opcode {
   | A64OpcodeAdd -> A64AddW(destination, left, right)

@@ -955,6 +955,112 @@ fn aarch64_codegen_assembles_links_and_removes_failed_outputs() {
     );
     assert!(!i64_comparison_c_executable.exists());
 
+    let i64_division_source = dir.join("i64-division.ml");
+    fs::write(
+        &i64_division_source,
+        "let calculate = fn (value: i64) -> (value / (2: i64)) + (value % (5: i64))\nlet main = fn () -> { let ignored = calculate (85: i64); 42 }\n",
+    )
+    .unwrap();
+    let i64_division_executable = dir.join("i64-division.native");
+    let i64_division_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_division_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_division_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_division_compile.status.success(),
+        "i64 division/remainder graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_division_compile.stderr)
+    );
+    let i64_division_assembly =
+        fs::read_to_string(i64_division_executable.with_file_name("i64-division.native.aarch64.s"))
+            .unwrap();
+    assert!(i64_division_assembly.contains("bl _rt_native_i64_div"));
+    assert!(i64_division_assembly.contains("bl _rt_native_i64_rem"));
+    let i64_division_run = Command::new(&i64_division_executable).output().unwrap();
+    assert_eq!(i64_division_run.status.code(), Some(42));
+
+    let i64_division_zero_source = dir.join("i64-division-zero.ml");
+    fs::write(
+        &i64_division_zero_source,
+        "let divide = fn () -> (1: i64) / (0: i64)\nlet main = fn () -> { let ignored = divide (); 42 }\n",
+    )
+    .unwrap();
+    let i64_division_zero_executable = dir.join("i64-division-zero.native");
+    let i64_division_zero_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_division_zero_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_division_zero_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_division_zero_compile.status.success(),
+        "i64 division-by-zero graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_division_zero_compile.stderr)
+    );
+    let i64_division_zero_run = Command::new(&i64_division_zero_executable)
+        .output()
+        .unwrap();
+    assert!(!i64_division_zero_run.status.success());
+    assert!(
+        String::from_utf8_lossy(&i64_division_zero_run.stderr)
+            .contains("riotml runtime: division by zero")
+    );
+
+    let i64_division_overflow_source = dir.join("i64-division-overflow.ml");
+    fs::write(
+        &i64_division_overflow_source,
+        "let minimum = fn () -> (-(9223372036854775807: i64)) - (1: i64)\nlet main = fn () -> { let min = minimum (); let quotient_ok = (min / (-1: i64)) == min; let remainder_ok = (min % (-1: i64)) == (0: i64); match quotient_ok { | true -> match remainder_ok { | true -> 42 | false -> 0 } | false -> 0 } }\n",
+    )
+    .unwrap();
+    let i64_division_overflow_executable = dir.join("i64-division-overflow.native");
+    let i64_division_overflow_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("aarch64-compile-direct-graph")
+        .arg(&i64_division_overflow_source)
+        .arg("main")
+        .arg("-o")
+        .arg(&i64_division_overflow_executable)
+        .output()
+        .unwrap();
+    assert!(
+        i64_division_overflow_compile.status.success(),
+        "i64 division-overflow graph Codegen failed: {}",
+        String::from_utf8_lossy(&i64_division_overflow_compile.stderr)
+    );
+    let i64_division_overflow_run = Command::new(&i64_division_overflow_executable)
+        .output()
+        .unwrap();
+    assert_eq!(i64_division_overflow_run.status.code(), Some(42));
+
+    let i64_division_c_executable = dir.join("i64-division.c-backend");
+    let i64_division_c_compile = Command::new("node")
+        .current_dir(repo)
+        .arg(&runner)
+        .arg("compile")
+        .arg(&i64_division_source)
+        .arg("-o")
+        .arg(&i64_division_c_executable)
+        .output()
+        .unwrap();
+    assert!(!i64_division_c_compile.status.success());
+    assert!(
+        String::from_utf8_lossy(&i64_division_c_compile.stderr)
+            .contains("C backend does not support addition on `i64`")
+    );
+    assert!(!i64_division_c_executable.exists());
+    assert!(!i64_division_c_executable.with_extension("c").exists());
+
     let out_of_range_i64_source = dir.join("out-of-range-i64.ml");
     fs::write(
         &out_of_range_i64_source,
