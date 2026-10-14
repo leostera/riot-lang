@@ -1,4 +1,4 @@
 [workspace]
-members = ["tinyml"]
+members = ["tinyml", "riotc", "stage0"]
 resolver = "3"
 exclude = [ "ref"]

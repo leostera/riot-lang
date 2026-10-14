@@ -279,3 +279,36 @@ benchmark intentionally uses the legacy JavaScript-hosted route and is not the
 new C-first/no-JavaScript acceptance chain or a comparison against a completed
 owned native compiler. Full host/tool details and logs are in
 `riotc-c-bootstrap-baseline-2026-10-12.md`.
+
+## 2026-10-13 NativeString slice and current self-build blocker
+
+The user approved Riotc's initial NativeString layout: immutable pointer-shaped
+records with a `u64` UTF-8 byte length, exact payload bytes, and a trailing NUL
+sentinel not included in the length. Static literals are emitted in Mach-O
+`__TEXT,__const`; dynamic concatenation uses the typed C-ABI helper
+`rt_native_string_concat` and process-lifetime `rt_native_alloc` storage. The
+implementation is in the `.ml` selector, LinearIR, verifier, and assembly
+emitter; `riotc/runtime.h`/`runtime.c` declare the representation and helpers.
+The aggregate layout/allocation policy remains unresolved.
+
+The focused selection, Codegen, C-runtime-helper, and C-hosted no-Node
+integration tests pass. In the C-hosted native integration, the fixture
+concatenates `"a\\0"` and `"é"`, then returns 42. Its assembly has separate
+length-2 constants with payloads `.byte 97, 0` and `.byte 195, 169`, each with
+its NUL sentinel, and calls `_rt_native_string_concat`. A C helper test confirms
+concatenation, equality, and inequality preserve embedded NUL bytes. This is a
+bounded string/codegen fixture, not compiler self-generation.
+
+After this change, a fresh working-tree Stage 0 C build and Clang-built
+C-hosted compiler ran
+`aarch64-compile-direct-graph riotc/main.ml main` with `PATH=/usr/bin:/bin`.
+The latest attempt took 369.45 s and exited 1 during selection in
+`nested(riotc/main.ml::clang_arguments@3002,3061,3061)` on the imported global
+`riotc/modules.ml::join_path@3327`; the selector diagnostic is
+`module global loads are outside the AArch64 selector`. No executable or
+assembly was produced. This supersedes the earlier string-constant blocker but
+does not establish native compiler generation. `String.get` and other
+`Option`/aggregate operations also remain blocked on the undecided aggregate
+representation. This attempt was on the working tree, not a clean archive; the
+clean C-hosted string smoke is covered by
+`c_hosted_bootstrap_compiles_native_direct_call_graph_without_javascript`.

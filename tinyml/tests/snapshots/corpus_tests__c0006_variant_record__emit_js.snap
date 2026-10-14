@@ -1,7 +1,0 @@
----
-source: target/debug/build/tinyml-5ca75f78dd26b47e/out/corpus_tests_generated.rs
-expression: "emit_js_snapshot(\"tests/fixtures/0006_variant_record.ml\")"
----
-export type Msg<a> = variant;
-
-declare function $tinyml_integer(op: "add" | "sub" | "mul" | "div" | "rem", left: bigint, right: bigint, bits: number, signed: boolean): bigint;
